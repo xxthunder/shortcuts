@@ -1,0 +1,5 @@
+*.bak
+
+# Temporary powershell scripts
+# downloaded or created
+_tmp*.ps1
