@@ -1,0 +1,138 @@
+<#
+.DESCRIPTION
+    Utility methods for common tasks.
+#>
+
+function Invoke-CommandLine {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Usually this statement must be avoided (https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3), here it is OK as it does not execute unknown code.')]
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$CommandLine,
+        [Parameter(Mandatory = $false, Position = 1)]
+        [bool]$StopAtError = $true,
+        [Parameter(Mandatory = $false, Position = 2)]
+        [bool]$PrintCommand = $true,
+        [Parameter(Mandatory = $false, Position = 3)]
+        [bool]$Silent = $false
+    )
+    if ($PrintCommand) {
+        Write-Output "Executing: $CommandLine"
+    }
+    $global:LASTEXITCODE = 0
+    if ($Silent) {
+        # Omit information stream (6) and stdout (1)
+        Invoke-Expression $CommandLine 6>&1 | Out-Null
+    }
+    else {
+        Invoke-Expression $CommandLine
+    }
+    if ($global:LASTEXITCODE -ne 0) {
+        if ($StopAtError) {
+            Write-Error "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE"
+        }
+        else {
+            Write-Output "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE, continuing ..."
+        }
+    }
+}
+
+# Update/Reload current environment variable PATH with settings from registry
+function Initialize-EnvPath {
+    # workaround for system-wide installations (e.g. in GitHub Actions)
+    if ($Env:USER_PATH_FIRST) {
+        $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    }
+    else {
+        $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
+}
+
+function Remove-Path {
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$path
+    )
+    if (Test-Path -Path $path -PathType Container) {
+        Write-Output "Deleting directory '$path' ..."
+        Remove-Item $path -Force -Recurse
+    }
+    elseif (Test-Path -Path $path -PathType Leaf) {
+        Write-Output "Deleting file '$path' ..."
+        Remove-Item $path -Force
+    }
+}
+
+function New-Directory {
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$dir
+    )
+    if (-Not (Test-Path -Path $dir)) {
+        Write-Output "Creating directory '$dir' ..."
+        New-Item -ItemType Directory $dir
+    }
+}
+
+function Test-RunningInCIorTestEnvironment {
+    # Check if running in CI environment
+    $ciEnvVars = @('CI', 'GITHUB_ACTIONS', 'TF_BUILD', 'JENKINS_URL', 'CIRCLECI')
+    foreach ($var in $ciEnvVars) {
+        if (Test-Path "Env:\$var") {
+            return $true
+        }
+    }
+
+    # Check if running in Pester test environment
+    # Look for PesterPreference in various scopes
+    try {
+        $pesterVar = Get-Variable -Name 'PesterPreference' -Scope Global -ErrorAction SilentlyContinue
+        if ($null -ne $pesterVar) {
+            return $true
+        }
+    }
+    catch {
+        # Ignore errors
+    }
+
+    # Alternative check: look for Pester module in call stack
+    $callStack = Get-PSCallStack
+    foreach ($frame in $callStack) {
+        if ($frame.Command -like '*Pester*' -or $frame.InvocationInfo.MyCommand.ModuleName -eq 'Pester') {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-UserConfirmation {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$message,
+        # Default value of the confirmation prompt
+        [Parameter(Mandatory = $false)]
+        [bool]$defaultValueForUser = $true,
+        # Value when running in CI or test environment
+        [Parameter(Mandatory = $false)]
+        [bool]$valueForCi = $false
+    )
+
+    if (Test-RunningInCIorTestEnvironment) {
+        return $valueForCi
+    }
+    else {
+        $defaultText = if ($defaultValueForUser) { "[Y/n]" } else { "[y/N]" }
+        $userResponse = Read-Host "$message $defaultText"
+        if ($userResponse -eq '') {
+            return $defaultValueForUser
+        }
+        elseif ($userResponse -match '^[Yy]') {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+}

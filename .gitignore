@@ -16,3 +16,6 @@ __pycache__/
 
 # bootstrap files are downloaded during installation
 /.bootstrap
+
+# Pester test results
+tests/out/TestResults.xml

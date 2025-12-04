@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pwsh -File:*)",
+      "Bash(mkdir:*)",
+      "Bash(pwsh -Command:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

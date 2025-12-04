@@ -1,0 +1,49 @@
+name: CI
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+
+    workflow_dispatch:
+
+jobs:
+    test_pwsh:
+        name: Unit and Integration Tests (Powershell 7.x)
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install and run Pester
+              run: |
+                  Write-Output $PSVersionTable
+                  .\tests\bin\init.ps1
+                  .\tests\bin\test-all.ps1
+              shell: pwsh
+            - name: Publish Test Results
+              uses: EnricoMi/publish-unit-test-result-action/windows@v2
+              if: always()
+              with:
+                  files: |
+                      tests/out/TestResults.xml
+    test_powershell:
+        name: Unit and Integration Tests (Powershell 5.x)
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  submodules: true
+            - name: Install and run Pester
+              run: |
+                  Write-Output $PSVersionTable
+                  .\tests\bin\init.ps1
+                  .\tests\bin\test-all.ps1
+              shell: powershell
+            - name: Publish Test Results
+              uses: EnricoMi/publish-unit-test-result-action/windows@v2
+              if: always()
+              with:
+                  files: |
+                      tests/out/TestResults.xml
