@@ -29,9 +29,9 @@ if ($TestPath) {
     }
 
     if ($invalidPaths.Count -gt 0) {
-        Write-Host "Error: The following test paths do not exist:" -ForegroundColor Red
+        Write-Error "The following test paths do not exist:"
         foreach ($invalid in $invalidPaths) {
-            Write-Host "  - $invalid" -ForegroundColor Red
+            Write-Output "  - $invalid"
         }
         exit 1
     }

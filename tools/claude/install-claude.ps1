@@ -31,17 +31,17 @@ $ErrorActionPreference = "Stop"
 . $PSScriptRoot\..\pslib\utils.ps1
 function Write-Status {
     param([string]$Message)
-    Write-Host "==> $Message" -ForegroundColor Cyan
+    Write-Information "==> $Message" -InformationAction Continue
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "✓ $Message" -ForegroundColor Green
+    Write-Information "✓ $Message" -InformationAction Continue
 }
 
 function Write-ErrorMsg {
     param([string]$Message)
-    Write-Host "✗ $Message" -ForegroundColor Red
+    Write-Error "✗ $Message"
 }
 
 #endregion
@@ -61,7 +61,7 @@ try {
     Write-Status "Checking Node.js installation..."
     if (Get-Command node -ErrorAction SilentlyContinue) {
         $nodeVersion = node --version
-        Write-Host "  Current Node.js version: $nodeVersion"
+        Write-Output "  Current Node.js version: $nodeVersion"
 
         Write-Status "Updating Node.js via Scoop..."
         scoop update nodejs 2>&1 | Out-Null
@@ -97,9 +97,9 @@ try {
     # Install or update Claude Code CLI via npm
     Write-Status "Checking Claude Code CLI installation..."
     $claudePackage = "@anthropic-ai/claude-code"
-    $claudeInstalled = npm list -g $claudePackage --depth=0 2>$null
+    npm list -g $claudePackage --depth=0 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "  Claude Code CLI is already installed"
+        Write-Output "  Claude Code CLI is already installed"
         Write-Status "Updating Claude Code CLI..."
         npm update -g $claudePackage
         if ($LASTEXITCODE -ne 0) {
@@ -128,29 +128,29 @@ try {
         }
     } else {
         Write-ErrorMsg "Claude CLI installation verification failed"
-        Write-Host "Try restarting your terminal or run: refreshenv" -ForegroundColor Yellow
+        Write-Warning "Try restarting your terminal or run: refreshenv"
         exit 1
     }
 
-    Write-Host ""
+    Write-Output ""
     Write-Success "Installation complete!"
-    Write-Host ""
-    Write-Host "You can now run: claude" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Remember to refresh Keypirinha catalog:" -ForegroundColor Yellow
-    Write-Host "  Press Win+Alt+Space and type 'Refresh catalog'" -ForegroundColor Yellow
+    Write-Output ""
+    Write-Information "You can now run: claude" -InformationAction Continue
+    Write-Output ""
+    Write-Information "Remember to refresh Keypirinha catalog:" -InformationAction Continue
+    Write-Information "  Press Win+Alt+Space and type 'Refresh catalog'" -InformationAction Continue
 
 } catch {
     Write-ErrorMsg "An unexpected error occurred: $_"
-    Write-Host $_.ScriptStackTrace -ForegroundColor Red
+    Write-Error $_.ScriptStackTrace
     exit 1
 } finally {
     if (-not (Test-RunningInCIorTestEnvironment)) {
-        Write-Host ""
-        Write-Host "Press any key to exit..." -ForegroundColor Yellow
+        Write-Output ""
+        Write-Information "Press any key to exit..." -InformationAction Continue
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
-    Write-Host ""
+    Write-Output ""
 }
 
 #endregion
