@@ -1,5 +1,6 @@
 #Requires -Version 5.1
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.2.0'}
+#Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.18.0'}
 
 param(
     [Parameter(Mandatory = $true)]
@@ -46,6 +47,18 @@ if ($TestPath.Count -eq 1) {
     }
 }
 
+# Configure PSScriptAnalyzer via linter.Tests.ps1
+Write-Output "`nConfiguring PSScriptAnalyzer..."
+$linterTestPath = Join-Path $PSScriptRoot "linter.Tests.ps1"
+
+# Pass test paths to linter via environment variable
+$env:PESTER_LINT_PATHS = $TestPath -join ';'
+Write-Output "Paths to analyze: $($env:PESTER_LINT_PATHS)"
+
+# Add linter tests to run before regular tests
+$TestPath = @($linterTestPath) + $TestPath
+Write-Output "Linter tests will run from: $linterTestPath"
+
 # Ensure output directory exists
 $reportDir = Split-Path $ReportPath -Parent
 if (-not (Test-Path $reportDir)) {
@@ -73,9 +86,13 @@ $testConfig = New-PesterConfiguration -Hashtable @{
 
 Write-Output "Starting Pester tests..."
 Write-Output "PowerShell: $($PSVersionTable.PSVersion)"
-Write-Output "Pester: $((Get-Module Pester -ListAvailable | Select-Object -First 1).Version)"
 
 $testResult = Invoke-Pester -Configuration $testConfig
+
+# Cleanup environment variable
+if ($env:PESTER_LINT_PATHS) {
+    Remove-Item -Path "Env:\PESTER_LINT_PATHS" -ErrorAction SilentlyContinue
+}
 
 if (Test-Path $ReportPath) {
     Write-Output "Test report generated at: $ReportPath"

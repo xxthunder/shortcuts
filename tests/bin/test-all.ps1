@@ -21,8 +21,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $testScript = Join-Path $PSScriptRoot "test.ps1"
-$testPath = ".\tools"
 
-& $testScript -TestPath $testPath -Verbosity 'Detailed'
+& $testScript -TestPath @(".\tools", ".\tests") -Verbosity 'Detailed'
 
 exit $LASTEXITCODE

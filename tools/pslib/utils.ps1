@@ -86,14 +86,9 @@ function Test-RunningInCIorTestEnvironment {
 
     # Check if running in Pester test environment
     # Look for PesterPreference in various scopes
-    try {
-        $pesterVar = Get-Variable -Name 'PesterPreference' -Scope Global -ErrorAction SilentlyContinue
-        if ($null -ne $pesterVar) {
-            return $true
-        }
-    }
-    catch {
-        # Ignore errors
+    $pesterVar = Get-Variable -Name 'PesterPreference' -Scope Global -ErrorAction SilentlyContinue
+    if ($null -ne $pesterVar) {
+        return $true
     }
 
     # Alternative check: look for Pester module in call stack

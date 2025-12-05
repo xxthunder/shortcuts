@@ -21,12 +21,6 @@ jobs:
                   .\tests\bin\init.ps1
                   .\tests\bin\test-all.ps1
               shell: pwsh
-            - name: Publish Test Results
-              uses: EnricoMi/publish-unit-test-result-action/windows@v2
-              if: always()
-              with:
-                  files: |
-                      tests/out/TestResults.xml
     test_powershell:
         name: Unit and Integration Tests (Powershell 5.x)
         runs-on: windows-latest
@@ -41,9 +35,3 @@ jobs:
                   .\tests\bin\init.ps1
                   .\tests\bin\test-all.ps1
               shell: powershell
-            - name: Publish Test Results
-              uses: EnricoMi/publish-unit-test-result-action/windows@v2
-              if: always()
-              with:
-                  files: |
-                      tests/out/TestResults.xml

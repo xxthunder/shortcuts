@@ -279,6 +279,43 @@ When implementing new functionality:
 6. **Document**: Add comments and help documentation
 7. **Integration**: Ensure Keypirinha can discover new shortcuts if applicable
 
+### Review Guidelines
+
+#### PowerShell Code Quality
+
+- Adherence to project coding guidelines (TDD, DRY, SOLID)
+- Proper error handling with Set-StrictMode and $ErrorActionPreference
+- Use of pslib functions (Invoke-CommandLine, New-Directory, etc.)
+- Environment awareness (CI vs interactive)
+- Proper path handling and validation
+- Clear output and logging
+
+#### Testing
+
+- Presence of Pester tests for new functionality
+- Test coverage for both success and failure paths
+- Proper mocking of external dependencies
+
+#### Security
+
+- No hardcoded credentials or sensitive data
+- Proper input validation
+- Safe command execution
+
+#### Documentation
+
+- Clear comments where logic isn't self-evident
+- Synopsis and examples in script headers
+- Updated README if needed
+
+#### Integration
+
+- Compatibility with existing scripts
+- Proper Keypirinha integration if applicable
+- Conventional commit messages
+
+Provide specific, actionable feedback with file:line references.
+
 ### Reference Documentation
 
 For detailed PowerShell library guidelines, see:

@@ -152,3 +152,64 @@ Manually delete these directories if desired:
 
 - `%USERPROFILE%\scoop` - Scoop installation directory
 - `%USERPROFILE%\shortcuts` - Shortcuts repository folder
+
+## Development
+
+### Testing and Code Quality
+
+The project uses **Pester** for testing and **PSScriptAnalyzer** for code quality checks.
+
+#### Prerequisites for Development
+
+- **Pester**: PowerShell testing framework (version 5.2.0+)
+- **PSScriptAnalyzer**: PowerShell linter (version 1.18.0+)
+
+Install both modules if not already present:
+
+```powershell
+Install-Module -Name Pester -MinimumVersion 5.2.0 -Force -SkipPublisherCheck
+Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.18.0 -Force
+```
+
+#### Running Tests
+
+**Run all tests** (includes linting and unit tests):
+
+```powershell
+pwsh -File tests\bin\test-all.ps1
+```
+
+**Run tests for specific paths:**
+
+```powershell
+pwsh -File tests\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+```
+
+#### Code Quality Checks
+
+The test suite automatically runs PSScriptAnalyzer on all PowerShell files before executing unit tests:
+
+- **Checks**: Error and Warning severity violations
+- **Files analyzed**: All `.ps1` files in the specified test paths
+- **Integration**: Results are included in the JUnit XML test report
+
+#### Test Structure
+
+- `tests/bin/test.ps1` - Main test runner script
+- `tests/bin/test-all.ps1` - Convenience wrapper for running all tests
+- `tests/bin/linter.Tests.ps1` - PSScriptAnalyzer integration
+- `*.Tests.ps1` - Unit test files (located alongside source files)
+
+#### Coding Standards
+
+All PowerShell code must:
+
+- Pass PSScriptAnalyzer checks (Error/Warning severity)
+- Include Pester unit tests
+- Follow project guidelines in `AGENTS.md` and `tools/pslib/AGENTS.md`
+- Use TDD, DRY, and SOLID principles
+
+For detailed development guidelines, see:
+
+- `AGENTS.md` - Project-wide coding guidelines
+- `tools/pslib/AGENTS.md` - PowerShell library development guide
