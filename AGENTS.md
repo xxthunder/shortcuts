@@ -1,14 +1,24 @@
 # Agent Instructions for Shortcuts
 
+@README.md
+
 ## Purpose
 
 The **Shortcuts** project provides a curated collection of tools, links, and automation scripts for Windows, centered around the Keypirinha launcher. It enables users to quickly access their favorite applications, URLs, and custom shortcuts through a keyboard-driven interface.
 
 Key components:
-- **Keypirinha**: Fast launcher accessed via Win+Alt+Space
+
+- **Keypirinha**: Fast launcher for accessing applications and shortcuts
 - **Scoop**: Package manager for Windows tools
 - **PowerShell utilities**: Reusable functions in `tools/pslib/`
 - **Installation system**: Automated setup via `bin/install.ps1`
+
+## Coding Guidelines
+
+- TDD
+- DRY
+- SOLID
+- conventional commits
 
 ## PowerShell Implementation Guidelines
 
@@ -189,6 +199,7 @@ try {
 All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` for detailed testing guidelines.
 
 Quick reference:
+
 - Test files: `*.Tests.ps1`
 - Run tests: `Invoke-Pester -Path .\script.Tests.ps1`
 - Mock external dependencies
@@ -226,8 +237,7 @@ Scripts should remind users to refresh Keypirinha after changes:
 ```powershell
 Write-Success "Installation complete!"
 Write-Host ""
-Write-Host "Remember to refresh Keypirinha catalog:" -ForegroundColor Yellow
-Write-Host "  Press Win+Alt+Space and type 'Refresh catalog'" -ForegroundColor Yellow
+Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" -ForegroundColor Yellow
 ```
 
 ### Project-Specific Considerations
@@ -244,6 +254,7 @@ Write-Host "  Press Win+Alt+Space and type 'Refresh catalog'" -ForegroundColor Y
 #### Scoop Integration
 
 This project heavily uses Scoop:
+
 - Check for Scoop before using it
 - Use `scoop install`, `scoop update`, `scoop list`
 - Reference `scoopfile.json` for managed packages
@@ -251,6 +262,7 @@ This project heavily uses Scoop:
 #### Bootstrap System
 
 The project uses a `.bootstrap` system (see `.bootstrap/` directory):
+
 - Handles initial setup
 - Manages dependencies
 - Keep bootstrap scripts independent from main tools
@@ -270,9 +282,11 @@ When implementing new functionality:
 ### Reference Documentation
 
 For detailed PowerShell library guidelines, see:
+
 - `tools/pslib/AGENTS.md`: In-depth PowerShell development guide
 - `tools/pslib/CLAUDE.md`: Library-specific Claude instructions
 
 For project usage:
+
 - `README.md`: User-facing installation and usage guide
 - `bin/install.ps1`: Main installation entry point
