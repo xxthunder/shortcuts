@@ -2,6 +2,7 @@
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.2.0'}
 #Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.18.0'}
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
 param(
     [Parameter(Mandatory = $true)]
     [string[]]$TestPath,
@@ -29,9 +30,9 @@ if ($TestPath) {
     }
 
     if ($invalidPaths.Count -gt 0) {
-        Write-Error "The following test paths do not exist:"
+        Write-Host "Error: The following test paths do not exist:" -ForegroundColor Red
         foreach ($invalid in $invalidPaths) {
-            Write-Output "  - $invalid"
+            Write-Host "  - $invalid" -ForegroundColor Red
         }
         exit 1
     }

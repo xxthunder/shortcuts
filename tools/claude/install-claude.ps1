@@ -27,24 +27,7 @@ $InformationPreference = "Continue"
 # Stop on first error
 $ErrorActionPreference = "Stop"
 
-#region Helper Functions
 . $PSScriptRoot\..\pslib\utils.ps1
-function Write-Status {
-    param([string]$Message)
-    Write-Information "==> $Message" -InformationAction Continue
-}
-
-function Write-Success {
-    param([string]$Message)
-    Write-Information "✓ $Message" -InformationAction Continue
-}
-
-function Write-ErrorMsg {
-    param([string]$Message)
-    Write-Error "✗ $Message"
-}
-
-#endregion
 
 #region Main Logic
 
@@ -52,8 +35,7 @@ try {
     # Check if Scoop is installed
     Write-Status "Checking for Scoop..."
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "Scoop is not installed. Please install Scoop first!"
-        exit 1
+        Write-Error "Scoop is not installed. Please install Scoop first!"
     }
     Write-Success "Scoop is installed"
 
@@ -61,7 +43,7 @@ try {
     Write-Status "Checking Node.js installation..."
     if (Get-Command node -ErrorAction SilentlyContinue) {
         $nodeVersion = node --version
-        Write-Output "  Current Node.js version: $nodeVersion"
+        Write-Information "  Current Node.js version: $nodeVersion"
 
         Write-Status "Updating Node.js via Scoop..."
         scoop update nodejs 2>&1 | Out-Null
@@ -79,8 +61,7 @@ try {
         Write-Status "Installing Node.js via Scoop..."
         scoop install nodejs
         if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMsg "Failed to install Node.js"
-            exit 1
+            Write-Error "Failed to install Node.js"
         }
         Write-Success "Node.js installed"
     }
@@ -88,8 +69,7 @@ try {
     # Verify npm is available
     Write-Status "Verifying npm installation..."
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "npm not found. Node.js installation may be incomplete."
-        exit 1
+        Write-Error "npm not found. Node.js installation may be incomplete."
     }
     $npmVersion = npm --version
     Write-Success "npm version: $npmVersion"
@@ -99,20 +79,18 @@ try {
     $claudePackage = "@anthropic-ai/claude-code"
     npm list -g $claudePackage --depth=0 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-Output "  Claude Code CLI is already installed"
+        Write-Information "  Claude Code CLI is already installed"
         Write-Status "Updating Claude Code CLI..."
         npm update -g $claudePackage
         if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMsg "Failed to update Claude Code CLI"
-            exit 1
+            Write-Error "Failed to update Claude Code CLI"
         }
         Write-Success "Claude CLI updated"
     } else {
         Write-Status "Installing Claude CLI..."
         npm install -g @anthropic-ai/claude-code
         if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMsg "Failed to install Claude CLI"
-            exit 1
+            Write-Error "Failed to install Claude CLI"
         }
         Write-Success "Claude CLI installed"
     }
@@ -128,29 +106,27 @@ try {
         }
     } else {
         Write-ErrorMsg "Claude CLI installation verification failed"
-        Write-Warning "Try restarting your terminal or run: refreshenv"
+        Write-ErrorMsg "Try restarting your terminal or run: refreshenv"
         exit 1
     }
 
-    Write-Output ""
+    Write-Information ""
     Write-Success "Installation complete!"
-    Write-Output ""
-    Write-Information "You can now run: claude" -InformationAction Continue
-    Write-Output ""
-    Write-Information "Remember to refresh Keypirinha catalog:" -InformationAction Continue
-    Write-Information "  Press Win+Alt+Space and type 'Refresh catalog'" -InformationAction Continue
+    Write-Information ""
+    Write-Information "You can now run: claude"
+    Write-Information ""
+    Write-Information "Remember to refresh Keypirinha catalog:"
+    Write-Information "  Press Win+Alt+Space and type 'Refresh catalog'"
 
 } catch {
-    Write-ErrorMsg "An unexpected error occurred: $_"
-    Write-Error $_.ScriptStackTrace
-    exit 1
+    Write-Error "An unexpected error occurred: $_"
 } finally {
     if (-not (Test-RunningInCIorTestEnvironment)) {
-        Write-Output ""
-        Write-Information "Press any key to exit..." -InformationAction Continue
+        Write-Information ""
+        Write-Information "Press any key to exit..."
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
-    Write-Output ""
+    Write-Information ""
 }
 
 #endregion

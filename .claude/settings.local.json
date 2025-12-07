@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pwsh -File:*)",
       "Bash(mkdir:*)",
-      "Bash(pwsh -Command:*)"
+      "Bash(pwsh -Command:*)",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []

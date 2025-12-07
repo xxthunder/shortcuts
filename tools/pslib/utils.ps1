@@ -1,7 +1,11 @@
-<#
+﻿<#
 .DESCRIPTION
     Utility methods for common tasks.
 #>
+
+# Suppress PSAvoidUsingWriteHost for colored console output functions
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
+param()
 
 function Invoke-CommandLine {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Usually this statement must be avoided (https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3), here it is OK as it does not execute unknown code.')]
@@ -131,3 +135,22 @@ function Get-UserConfirmation {
         }
     }
 }
+
+#region Console Output Helpers
+
+function Write-Status {
+    param([string]$Message)
+    Write-Host "==> $Message" -ForegroundColor Cyan
+}
+
+function Write-Success {
+    param([string]$Message)
+    Write-Host "✓ $Message" -ForegroundColor Green
+}
+
+function Write-ErrorMsg {
+    param([string]$Message)
+    Write-Host "✗ $Message" -ForegroundColor Red
+}
+
+#endregion
