@@ -88,7 +88,7 @@ if (Test-RunningInCIorTestEnvironment) {
 }
 ```
 
-When running any script for testing, set the environment variable CI to ensure non-blocking execution.
+**Note:** When manually testing interactive scripts (not Pester tests), you can set the environment variable `CI=true` to trigger non-interactive behavior and avoid blocking prompts. However, when running the Pester test suite via `test-all.ps1` or `test.ps1`, do NOT set the CI variable - let the tests run normally.
 
 #### 4. Path Handling
 

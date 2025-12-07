@@ -153,4 +153,9 @@ function Write-ErrorMsg {
     Write-Host "✗ $Message" -ForegroundColor Red
 }
 
+function Write-WarningMsg {
+    param([string]$Message)
+    Write-Host "⚠ $Message" -ForegroundColor Yellow
+}
+
 #endregion

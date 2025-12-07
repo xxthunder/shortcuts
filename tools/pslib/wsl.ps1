@@ -33,26 +33,60 @@ function Test-WslInstalled {
     }
 }
 
-function Install-WslDebian {
+function New-WslDistro {
     <#
     .SYNOPSIS
-        Installs the Debian distribution for WSL.
+        Creates a new WSL distribution.
 
     .DESCRIPTION
-        Installs Debian as a WSL distribution using the 'wsl --install -d Debian' command.
+        Installs a new WSL distribution using the 'wsl --install -d' command.
+        Supports Ubuntu and Debian distributions.
         Requires WSL to be installed on the system.
 
+    .PARAMETER Name
+        The name of the distribution to create. Supported values: Ubuntu, Debian.
+
     .EXAMPLE
-        Install-WslDebian
+        New-WslDistro -Name "Debian"
+
+    .EXAMPLE
+        New-WslDistro -Name "Ubuntu"
 
     .NOTES
         Requires administrator privileges for first-time WSL distribution installation.
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
     if (-not (Test-WslInstalled)) {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    Invoke-CommandLine -CommandLine "wsl --install -d Debian"
+    # Trim the name to handle any whitespace issues
+    $Name = $Name.Trim()
+
+    # Validate distribution name
+    $supportedDistros = @("Ubuntu", "Debian")
+    if ($Name -notin $supportedDistros) {
+        throw "Unsupported distribution: '$Name'. Supported distributions: $($supportedDistros -join ', ')"
+    }
+
+    # Check if distribution already exists
+    $distros = Get-WslDistroList
+    if ($Name -in $distros) {
+        throw "Distribution '$Name' already exists."
+    }
+
+    if ($PSCmdlet.ShouldProcess($Name, "Create WSL distribution")) {
+        Write-Output "Creating WSL distribution '$Name'..."
+        Invoke-CommandLine -CommandLine "wsl --install -d $Name --no-launch"
+        Write-Output "Successfully created '$Name'."
+        Write-Output ""
+        Write-Output "To start: wsl -d $Name"
+    }
 }
 
 function Get-WslDistroList {
@@ -86,4 +120,52 @@ function Get-WslDistroList {
     }
 
     return $distros
+}
+
+function Remove-WslDistro {
+    <#
+    .SYNOPSIS
+        Removes an existing WSL distribution.
+
+    .DESCRIPTION
+        Unregisters a WSL distribution using the 'wsl --unregister' command.
+        Requires WSL to be installed and the distribution to exist.
+
+    .PARAMETER Name
+        The name of the distribution to remove.
+
+    .EXAMPLE
+        Remove-WslDistro -Name "MyDebian"
+
+    .EXAMPLE
+        Remove-WslDistro -Name "MyDebian" -Confirm:$false
+
+    .NOTES
+        This operation cannot be undone and will delete all data in the distribution.
+    #>
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Check if distribution exists
+    $distros = Get-WslDistroList
+    if ($Name -notin $distros) {
+        throw "Distribution '$Name' does not exist."
+    }
+
+    # Ask for confirmation using ShouldProcess
+    if ($PSCmdlet.ShouldProcess($Name, "Remove WSL distribution")) {
+        Write-Output "Removing WSL distribution '$Name'..."
+        Invoke-CommandLine -CommandLine "wsl --unregister $Name"
+        Write-Output "Successfully removed '$Name'."
+    }
+    else {
+        Write-Output "Removal cancelled."
+    }
 }

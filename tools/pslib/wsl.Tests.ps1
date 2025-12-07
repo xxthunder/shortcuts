@@ -22,36 +22,6 @@ Describe "Test-WslInstalled" {
     }
 }
 
-Describe "Install-WslDebian" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Install-WslDebian } | Should -Throw "*WSL is not installed*"
-        }
-
-        It "Should not attempt installation" {
-            Mock Test-WslInstalled { $false }
-            Mock Invoke-CommandLine {}
-
-            { Install-WslDebian } | Should -Throw
-
-            Should -Invoke Invoke-CommandLine -Times 0
-        }
-    }
-
-    Context "When WSL is installed" {
-        It "Should install Debian using wsl --install -d Debian" {
-            Mock Test-WslInstalled { $true }
-            Mock Invoke-CommandLine {}
-
-            Install-WslDebian
-
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d Debian" }
-        }
-    }
-}
-
 Describe "Get-WslDistroList" {
     Context "When WSL is not installed" {
         It "Should throw an error" {
@@ -85,6 +55,160 @@ Describe "Get-WslDistroList" {
             Get-WslDistroList
 
             Should -Invoke wsl -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
+        }
+    }
+}
+
+Describe "Remove-WslDistro" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Remove-WslDistro -Name "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Remove-WslDistro -Name "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When user cancels confirmation" {
+        It "Should not remove distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {}
+
+            Remove-WslDistro -Name "Debian" -WhatIf
+
+            Should -Invoke Invoke-CommandLine -Times 0
+        }
+    }
+
+    Context "When user confirms removal" {
+        It "Should remove distribution using wsl --unregister" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {}
+
+            Remove-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+        }
+    }
+
+    Context "When Force parameter is used" {
+        It "Should skip confirmation and remove distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {}
+
+            Remove-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+        }
+    }
+}
+
+Describe "New-WslDistro" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { New-WslDistro -Name "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+
+        It "Should not attempt installation" {
+            Mock Test-WslInstalled { $false }
+            Mock Invoke-CommandLine {}
+
+            { New-WslDistro -Name "Ubuntu" } | Should -Throw
+
+            Should -Invoke Invoke-CommandLine -Times 0
+        }
+    }
+
+    Context "When distribution already exists" {
+        It "Should throw an error for existing Debian" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            { New-WslDistro -Name "Debian" } | Should -Throw "*already exists*"
+        }
+
+        It "Should throw an error for existing Ubuntu" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { New-WslDistro -Name "Ubuntu" } | Should -Throw "*already exists*"
+        }
+    }
+
+    Context "When distribution name is unsupported" {
+        It "Should throw an error for unsupported distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+
+            { New-WslDistro -Name "Alpine" } | Should -Throw "*Unsupported distribution*"
+        }
+    }
+
+    Context "When creating a new distribution" {
+        It "Should create <DistroName> using wsl --install -d <DistroName> --no-launch" -ForEach @(
+            @{ DistroName = "Debian" }
+            @{ DistroName = "Ubuntu" }
+        ) {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine {}
+
+            New-WslDistro -Name $DistroName -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d $DistroName --no-launch" }
+        }
+
+        It "Should display success message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine {}
+
+            $output = New-WslDistro -Name "Debian" -Confirm:$false 6>&1
+
+            $output -join ' ' | Should -Match "Successfully created 'Debian'"
+        }
+
+        It "Should display how to start the distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine {}
+
+            $output = New-WslDistro -Name "Ubuntu" -Confirm:$false 6>&1
+
+            $output -join ' ' | Should -Match "To start: wsl -d Ubuntu"
+        }
+
+        It "Should trim whitespace from distribution name" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine {}
+
+            New-WslDistro -Name "  Debian  " -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d Debian --no-launch" }
+        }
+
+        It "Should skip installation when user cancels confirmation" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine {}
+
+            New-WslDistro -Name "Debian" -WhatIf
+
+            Should -Invoke Invoke-CommandLine -Times 0
         }
     }
 }
