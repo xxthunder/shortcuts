@@ -1,159 +1,331 @@
-# Shortcuts
+<p align="center">
+  <img src="docs/images/shortcuts_logo_title_transparent.png" alt="Shortcuts Logo" width="400">
+</p>
 
-## Prerequisites
+<p align="center">
+  <strong>A keyboard-driven launcher and automation toolkit for Windows</strong>
+</p>
 
-Before installing Shortcuts, ensure your system meets these requirements:
+---
 
-- **Operating System**: Windows 10 or later
-- **PowerShell**: Version 5.1 or later (comes pre-installed on Windows 10+)
-  - To check your version, run: `$PSVersionTable.PSVersion`
-- **Internet Connection**: Required for downloading tools and packages
-- **Execution Policy**: PowerShell scripts must be allowed to run
-  - If needed, run: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
+## Table of Contents
 
-## Complete Installation
+- [Quick Start](#quick-start)
+- [What is Shortcuts?](#what-is-shortcuts)
+- [Installation](#installation)
+- [Using Keypirinha](#using-keypirinha)
+- [Managing Shortcuts](#managing-shortcuts)
+- [Update](#update)
+- [Troubleshooting](#troubleshooting)
+- [Uninstallation](#uninstallation)
+- [Development](#development)
 
-If you just came here to install the Shortcuts, open a PowerShell terminal (version 5.1 or later) and run:
+---
+
+## Quick Start
+
+**Just want to get started?** Open PowerShell and run this command:
 
 ```powershell
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-The most important tool of Shortcuts is Keypirinha.
-It provides a fast and configurable way to open your favorite tools, links and URLs.
-It was started automatically after installation (you can see a *k*-icon in your taskbar's icon area).
+After installation, press **Win+Alt+Space** and start typing to launch apps and shortcuts!
 
-### Using Keypirinha
+> **Note:** If you get an execution policy error, see [Troubleshooting](#installation-script-fails-with-execution-policy-error).
 
-> **Note:** Keypirinha can be launched by hitting **Win+Alt+Space**.
+---
 
-In the small window that pops up you can search for any tool installed on your PC or shortcuts we provide.
+## What is Shortcuts?
 
-**Try these examples:**
+Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 
-- Type **word** - Opens Microsoft Word
-- Type **chrome** - Opens Google Chrome
-- Type **SPL** - Opens a custom shortcut (if configured)
-- Type **wt**, **cmd** or **powershell** - Opens command-line tools
-- Type **calc** - Opens Calculator
+- **Keypirinha Launcher**: Press **Win+Alt+Space** to instantly search and open anything
+- **Smart Shortcuts**: Quick access to tools, websites, and custom commands
+- **Package Management**: Easy installation of developer tools via Scoop
+- **Automation Scripts**: PowerShell utilities to streamline your workflow
 
-> **Important:** After installing new applications or updating shortcuts, run **'Refresh catalog'** in Keypirinha. This commands Keypirinha to rescan your PC for new tools and shortcuts.
+**Perfect for:** Developers, power users, and anyone who prefers keyboard over mouse.
 
-## Available Shortcuts
+---
 
-Shortcuts provides quick access to common tools and URLs through Keypirinha. The available shortcuts depend on your specific configuration in the `links/` directory.
+## Installation
 
-**Common shortcut categories:**
+### Prerequisites
 
-- **Development Tools**: Quick access to IDEs, text editors, and development utilities
-- **Web Links**: Frequently used websites and web applications
-- **System Utilities**: Administrative tools and system configurations
-- **Project-Specific Links**: Custom shortcuts defined in your configuration
+> **Good news!** If you have Windows 10 or later, you already have everything you need.
 
-To see all available shortcuts, open Keypirinha (**Win+Alt+Space**) and start typing. Keypirinha will show matching shortcuts as you type.
+<details>
+<summary><strong>Click here if you want to verify your system</strong></summary>
 
-**Note:** Shortcuts are defined in `.url` files in the `links/` directory and are automatically discovered by Keypirinha after running 'Refresh catalog'.
+- **Operating System**: Windows 10 or later ✓
+- **PowerShell**: Version 5.1+ (pre-installed on Windows 10+)
+  - Check your version: `$PSVersionTable.PSVersion`
+- **Internet Connection**: Required for downloads
 
-## Optional Installations
+</details>
 
-### PowerShell Core
+### Installation Steps
 
-PowerShell Core is the latest stable release of PowerShell maintained by its own community.
-It can be easily installed via scoop. Again open a PowerShell terminal and run:
+**1. Open PowerShell**
+   - Press `Win + X` and select "Windows PowerShell" or "Terminal"
+   - Or search for "PowerShell" in Start Menu
+
+**2. Run the installation command:**
+
+```powershell
+irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
+```
+
+**3. Wait for installation to complete**
+   - The script will install Scoop (package manager) and Keypirinha (launcher)
+   - You'll see a *k*-icon appear in your taskbar when done
+
+**4. Start using Shortcuts!**
+   - Press **Win+Alt+Space** to launch Keypirinha
+   - Start typing to search for apps and shortcuts
+
+---
+
+## Using Keypirinha
+
+### Launch Keypirinha
+
+Press **Win+Alt+Space** anywhere, anytime. A search box appears where you can type to find what you need.
+
+### Try These Examples
+
+Open Keypirinha (**Win+Alt+Space**) and try typing:
+
+| Type this | What happens |
+|-----------|-------------|
+| `chrome` | Opens Google Chrome browser |
+| `word` | Opens Microsoft Word |
+| `code` | Opens VS Code (if installed) |
+| `calc` | Opens Calculator |
+| `cmd` | Opens Command Prompt |
+| `powershell` | Opens PowerShell |
+| `notepad` | Opens Notepad |
+
+### Pro Tips
+
+- **Fuzzy search**: Type `chr` to find Chrome, `wrd` to find Word
+- **Calculator**: Type math directly: `2+2`, `15*8`, etc.
+- **Files**: Start typing a file path to open folders
+- **Recent items**: Your recently used items appear first
+
+### Important: Refresh Catalog
+
+After installing new apps or adding shortcuts, refresh Keypirinha's catalog:
+
+1. Press **Win+Alt+Space**
+2. Type **"Refresh catalog"**
+3. Press Enter
+4. Wait a few seconds for the scan to complete
+
+---
+
+## Managing Shortcuts
+
+### Available Shortcuts
+
+Your shortcuts are stored as `.url` files in the `links/` directory. After refreshing Keypirinha's catalog, these appear instantly when you search.
+
+**Common categories:**
+
+- **Web Links**: Favorite websites and web apps
+- **Development Tools**: IDEs, editors, debugging tools
+- **System Utilities**: Windows tools and configurations
+- **Custom Commands**: Project-specific shortcuts
+
+### Creating Your Own Shortcuts
+
+1. Navigate to the `links/` folder in your Shortcuts installation
+2. Create a new `.url` file (e.g., `MyApp.url`)
+3. Edit the file with this format:
+   ```ini
+   [InternetShortcut]
+   URL=https://example.com
+   ```
+4. Refresh Keypirinha catalog (**Win+Alt+Space** → "Refresh catalog")
+5. Type the shortcut name to use it!
+
+### Installing Optional Tools
+
+**PowerShell Core** (recommended for developers):
 
 ```powershell
 scoop install pwsh
 ```
 
+**Other useful tools via Scoop:**
+
+```powershell
+scoop install git         # Version control
+scoop install nodejs      # JavaScript runtime
+scoop install python      # Python programming
+scoop install vscode      # Visual Studio Code
+```
+
+---
+
 ## Update
 
-When you already installed Shortcuts and you want to update to the latest version, you can just hit **Win+Alt+Space** and search for update.bat.
+### Quick Update (Easiest)
 
-Another possibility for updating Shortcuts is to open a PowerShell terminal and run the install command again:
+1. Press **Win+Alt+Space**
+2. Type **"update"**
+3. Select and run `update.bat`
+4. After update completes, type **"Refresh catalog"** in Keypirinha
+
+### Manual Update
+
+Run the installation command again (it won't duplicate anything):
 
 ```powershell
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-After the update, hit **Win+Alt+Space** and search for 'Refresh catalog'.
-Execute this to update Keypirinha's catalog database.
-After a short time the new shortcuts are available.
+> **Remember:** Always refresh Keypirinha's catalog after updates to see new shortcuts.
+
+---
 
 ## Troubleshooting
 
-### Keypirinha doesn't start or show the window
-
-- Check if Keypirinha is running: Look for the *k*-icon in your system tray
-- If not running, manually start it from the Windows Start Menu.
-- Try restarting Keypirinha: Right-click the *k*-icon → Exit, then start it again
-
-### Shortcuts or applications don't appear in Keypirinha
-
-1. Open Keypirinha (**Win+Alt+Space**)
-2. Type **Refresh catalog** and press Enter
-3. Wait a few seconds for Keypirinha to rescan
-4. If still not appearing, check that the application is installed or the `.url` file exists in `links/`
-
 ### Installation script fails with execution policy error
 
-Run this command in PowerShell as Administrator:
+**Problem:** PowerShell blocks the installation script.
+
+**Solution:** Run this command in PowerShell, then try installing again:
 
 ```powershell
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### Scoop commands not recognized
-
-- Close and reopen your PowerShell terminal
-- Check if Scoop is in your PATH: `Get-Command scoop`
-- If Scoop is missing, reinstall it from the installation script
-
-### Update.bat doesn't work
-
-Try running the installation command directly in PowerShell:
+Or use the bypass option (one-time):
 
 ```powershell
-irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
+Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
+
+### Keypirinha doesn't start or show the window
+
+**Check these:**
+
+1. Look for the *k*-icon in your system tray (bottom-right corner)
+2. If missing, search for "Keypirinha" in Start Menu and launch it
+3. Try restarting: Right-click the *k*-icon → Exit → Launch again
+
+**Still not working?** Reinstall Keypirinha:
+
+```powershell
+scoop uninstall keypirinha
+scoop install keypirinha
+```
+
+### Shortcuts or apps don't appear in Keypirinha
+
+**Solution (fixes 90% of cases):**
+
+1. Press **Win+Alt+Space**
+2. Type **"Refresh catalog"**
+3. Press Enter and wait 5-10 seconds
+
+**Still missing?** Check if:
+- The application is actually installed
+- The `.url` file exists in the `links/` folder
+- Keypirinha is running (check system tray)
+
+### Scoop commands not recognized
+
+**Solution:**
+
+1. Close and reopen your PowerShell terminal
+2. Try running: `Get-Command scoop`
+3. If still not found, reinstall using the installation script
+
+### Update doesn't work
+
+**Try these in order:**
+
+1. Run update via Keypirinha (**Win+Alt+Space** → "update")
+2. Run installation command again (safe to repeat):
+   ```powershell
+   irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
+   ```
+3. Check internet connection
+4. Disable antivirus temporarily and try again
+
+### Keypirinha hotkey (Win+Alt+Space) doesn't work
+
+**Possible causes:**
+
+1. Another app is using the same hotkey
+2. Keypirinha isn't running (check system tray)
+3. You can configure a different hotkey in Keypirinha settings
+
+**To change hotkey:**
+- Right-click Keypirinha *k*-icon → Configure Keypirinha → Edit main settings
+
+---
 
 ## Uninstallation
 
-To remove Shortcuts and its components:
+### Quick Uninstall (Just Keypirinha)
 
-### 1. Uninstall Keypirinha
+If you just want to remove the launcher:
 
 ```powershell
 scoop uninstall keypirinha
 ```
 
-### 2. Remove Scoop packages (optional)
+### Complete Uninstall
 
-To see all installed packages:
+**Step 1: Uninstall Keypirinha**
 
+```powershell
+scoop uninstall keypirinha
+```
+
+**Step 2: Remove other Scoop packages (optional)**
+
+See what's installed:
 ```powershell
 scoop list
 ```
 
-To remove specific packages:
-
+Remove specific packages:
 ```powershell
 scoop uninstall <package-name>
 ```
 
-### 3. Remove Scoop entirely (optional)
+**Step 3: Remove Scoop entirely (optional)**
 
 ```powershell
 scoop uninstall scoop
 ```
 
-### 4. Clean up directories
+**Step 4: Clean up directories (optional)**
 
-Manually delete these directories if desired:
+Manually delete these folders if desired:
+- `%USERPROFILE%\scoop` - Scoop and all installed packages
+- `%USERPROFILE%\shortcuts` - Shortcuts repository
 
-- `%USERPROFILE%\scoop` - Scoop installation directory
-- `%USERPROFILE%\shortcuts` - Shortcuts repository folder
+> **Tip:** You can also use File Explorer's address bar: paste `%USERPROFILE%` and press Enter to navigate there.
+
+---
 
 ## Development
+
+> **For Contributors:** This section is for developers who want to contribute to Shortcuts.
+
+### Getting Started
+
+**AI-Assisted Development:**
+If you're using AI tools (Claude Code, GitHub Copilot, etc.), read `AGENTS.md` first. It contains detailed technical guidelines, coding standards, and architectural patterns for AI agents.
+
+**Human Developers:**
+Read both this section and `AGENTS.md` for comprehensive development guidelines.
 
 ### Testing and Code Quality
 
@@ -161,15 +333,27 @@ The project uses **Pester** for testing and **PSScriptAnalyzer** for code qualit
 
 #### Prerequisites for Development
 
+The project requires:
 - **Pester**: PowerShell testing framework (version 5.2.0+)
 - **PSScriptAnalyzer**: PowerShell linter (version 1.18.0+)
 
-Install both modules if not already present:
+**Easy installation:**
+
+```powershell
+.\tests\bin\init.ps1
+```
+
+This script automatically installs all required development dependencies.
+
+<details>
+<summary>Manual installation (if needed)</summary>
 
 ```powershell
 Install-Module -Name Pester -MinimumVersion 5.2.0 -Force -SkipPublisherCheck
 Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.18.0 -Force
 ```
+
+</details>
 
 #### Running Tests
 

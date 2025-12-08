@@ -15,12 +15,12 @@
     ],
     "apps": [
         {
-            "Name": "git",
-            "Source": "main"
+            "Source": "main",
+            "Name": "git"
         },
         {
-            "Name": "windows-terminal",
-            "Source": "extras"
+            "Source": "extras",
+            "Name": "windows-terminal"
         },
         {
             "Source": "extras",

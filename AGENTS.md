@@ -1,17 +1,30 @@
 # Agent Instructions for Shortcuts
 
-@README.md
+## Overview
 
-## Purpose
+This document provides technical guidelines for AI agents working on the Shortcuts project. For user-facing documentation, see @README.md.
 
-The **Shortcuts** project provides a curated collection of tools, links, and automation scripts for Windows, centered around the Keypirinha launcher. It enables users to quickly access their favorite applications, URLs, and custom shortcuts through a keyboard-driven interface.
+## Project Architecture
 
-Key components:
+**Shortcuts** is a Windows automation project that provides CLI tools, shortcuts, and system utilities accessible through the Keypirinha launcher.
 
-- **Keypirinha**: Fast launcher for accessing applications and shortcuts
-- **Scoop**: Package manager for Windows tools
-- **PowerShell utilities**: Reusable functions in `tools/pslib/`
-- **Installation system**: Automated setup via `bin/install.ps1`
+### Technical Stack
+
+- **Language**: PowerShell 5.1+
+- **Package Manager**: Scoop (for Windows tools)
+- **Launcher Integration**: Keypirinha (fast keyboard-driven launcher)
+- **Testing**: Pester 5.2.0+
+- **Linting**: PSScriptAnalyzer 1.18.0+
+
+### Directory Structure
+
+- `bin/`: Installation and update scripts
+- `config/`: Configuration files
+- `tools/`: Tool-specific utilities and installers
+- `tools/pslib/`: Shared PowerShell library (reusable functions)
+- `links/`: Keypirinha link definitions (.url files)
+- `tests/`: Test files and test utilities
+- `.bootstrap/`: Bootstrap system for initial setup
 
 ## Coding Guidelines
 
@@ -28,13 +41,21 @@ When working with PowerShell code in this project, follow these guidelines:
 
 #### 1. Use Existing Library Functions
 
-Before writing new code, check `tools/pslib/` for existing utilities:
+**Before writing any new code, ALWAYS check `tools/pslib/` for existing utilities.**
 
-- `Invoke-CommandLine`: Execute external commands with proper error handling
-- `New-Directory`: Create directories safely
-- `Remove-Path`: Delete files/directories with safety checks
-- `Get-UserConfirmation`: Handle user prompts (CI-aware)
-- `Test-RunningInCIorTestEnvironment`: Detect automation context
+To discover available functions:
+
+1. **Read the library files** in `tools/pslib/` (e.g., `utils.ps1`, `wsl.ps1`)
+2. **Check function documentation** - Each function has synopsis and examples
+3. **Look at test files** (`*.Tests.ps1`) to see usage patterns
+4. **Use Get-Help** after sourcing the library: `Get-Help Invoke-CommandLine -Full`
+
+**Key utilities include:**
+
+- External command execution (use `Invoke-CommandLine`)
+- File/directory operations (check before reimplementing)
+- User interaction in CI/interactive contexts
+- WSL management functions
 
 **Example:**
 
@@ -46,6 +67,8 @@ Before writing new code, check `tools/pslib/` for existing utilities:
 Invoke-CommandLine -Command "scoop install nodejs" -StopAtError
 New-Directory -Path "C:\Tools\MyApp"
 ```
+
+> **Important:** If you need functionality that seems common (file operations, command execution, user prompts), it likely already exists in pslib. Check first!
 
 #### 2. Error Handling
 
@@ -133,22 +156,34 @@ Write-Success "Installation complete"
 
 #### 6. External Commands
 
-Use proper command invocation patterns:
+**Always use `Invoke-CommandLine` from pslib for executing external commands.** This ensures consistent error handling and proper output capture.
 
 ```powershell
+# Source the library first
+. "$PSScriptRoot\tools\pslib\utils.ps1"
+
 # Check if command exists
 if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
     Write-Error "Scoop is not installed"
     exit 1
 }
 
-# Execute with error handling
-$result = scoop list 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Scoop command failed"
-    exit 1
+# Execute with Invoke-CommandLine
+Invoke-CommandLine -Command "scoop list" -StopAtError
+
+# For commands that may fail gracefully
+$result = Invoke-CommandLine -Command "scoop list nodejs"
+if (-not $result) {
+    Write-Information "nodejs not installed, proceeding with installation"
 }
 ```
+
+**Key benefits of using `Invoke-CommandLine`:**
+
+- Consistent error handling across all scripts
+- Proper exit code checking
+- Standardized output capture
+- Integration with CI/test environments
 
 #### 7. Script Structure
 
@@ -210,23 +245,30 @@ Quick reference:
 #### Installing/Updating via Scoop
 
 ```powershell
+# Source library
+. "$PSScriptRoot\tools\pslib\utils.ps1"
+
 if (Get-Command tool -ErrorAction SilentlyContinue) {
     Write-Status "Updating tool..."
-    scoop update tool
+    Invoke-CommandLine -Command "scoop update tool" -StopAtError
 } else {
     Write-Status "Installing tool..."
-    scoop install tool
+    Invoke-CommandLine -Command "scoop install tool" -StopAtError
 }
 ```
 
 #### Installing/Updating via npm
 
 ```powershell
-$installed = npm list -g package --depth=0 2>$null
-if ($LASTEXITCODE -eq 0) {
-    npm update -g package
+# Source library
+. "$PSScriptRoot\tools\pslib\utils.ps1"
+
+# Check if package is installed
+$result = Invoke-CommandLine -Command "npm list -g package --depth=0"
+if ($result) {
+    Invoke-CommandLine -Command "npm update -g package" -StopAtError
 } else {
-    npm install -g package
+    Invoke-CommandLine -Command "npm install -g package" -StopAtError
 }
 ```
 
