@@ -4,7 +4,8 @@
       "Bash(pwsh -File:*)",
       "Bash(mkdir:*)",
       "Bash(pwsh -Command:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(wsl --list:*)"
     ],
     "deny": [],
     "ask": []

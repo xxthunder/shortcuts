@@ -14,7 +14,8 @@
 
 .PARAMETER Name
     The name of the distribution (used with create command).
-    Supported values: Debian, Ubuntu.
+    Supports any distribution available from 'wsl --list --online'.
+    Examples: Debian, Ubuntu, Ubuntu-22.04, Ubuntu-24.04, kali-linux.
 
 .EXAMPLE
     .\wsl-manager.ps1
@@ -27,6 +28,10 @@
 .EXAMPLE
     .\wsl-manager.ps1 create Debian
     Creates a new Debian WSL distribution.
+
+.EXAMPLE
+    .\wsl-manager.ps1 create Ubuntu-22.04
+    Creates an Ubuntu 22.04 LTS distribution.
 #>
 
 # Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
@@ -89,12 +94,20 @@ function Invoke-CreateDistro {
         throw "WSL is not installed. Please install WSL first."
     }
 
+    # Get available distributions dynamically
+    $availableDistros = Get-WslAvailableDistro
+
     # If Name is not provided, prompt for it
     if ([string]::IsNullOrWhiteSpace($Name)) {
         Write-Host ""
-        Write-Host "Supported distributions:" -ForegroundColor Cyan
-        Write-Host "  1. Debian" -ForegroundColor White
-        Write-Host "  2. Ubuntu" -ForegroundColor White
+        Write-Host "Available distributions:" -ForegroundColor Cyan
+
+        # Show available distributions with numbers
+        $index = 1
+        foreach ($distro in $availableDistros) {
+            Write-Host "  $index. $distro" -ForegroundColor White
+            $index++
+        }
         Write-Host ""
 
         $selection = Read-Host "Enter number or name of the distribution to create"
@@ -107,13 +120,12 @@ function Invoke-CreateDistro {
         # Check if selection is a number
         if ($selection -match '^\d+$') {
             $selectionNum = [int]$selection
-            switch ($selectionNum) {
-                1 { $Name = "Debian" }
-                2 { $Name = "Ubuntu" }
-                default {
-                    Write-ErrorMsg "Invalid selection number. Must be 1 or 2."
-                    return
-                }
+            if ($selectionNum -ge 1 -and $selectionNum -le $availableDistros.Count) {
+                $Name = $availableDistros[$selectionNum - 1]
+            }
+            else {
+                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($availableDistros.Count)."
+                return
             }
         }
         else {
@@ -122,9 +134,15 @@ function Invoke-CreateDistro {
     }
 
     # Validate the distribution name
-    if ($Name -notin @("Debian", "Ubuntu")) {
-        Write-ErrorMsg "Unsupported distribution: $Name"
-        Write-WarningMsg "Supported distributions: Debian, Ubuntu"
+    if ($Name -notin $availableDistros) {
+        Write-ErrorMsg "Distribution '$Name' is not available."
+        Write-Host ""
+        Write-Host "Available distributions:" -ForegroundColor Yellow
+        foreach ($distro in $availableDistros) {
+            Write-Host "  - $distro" -ForegroundColor Yellow
+        }
+        Write-Host ""
+        Write-Host "Run 'wsl --list --online' to see all available distributions." -ForegroundColor Yellow
         return
     }
 

@@ -182,16 +182,17 @@ Describe "Invoke-WslManager" {
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
-        It "Should support Ubuntu" {
+        It "Should support any available distribution" {
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create" -Name "Ubuntu"
+            Invoke-WslManager -Command "create" -Name "Ubuntu-22.04"
 
-            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Ubuntu-22.04" }
         }
 
         It "Should prompt for distribution when name not provided" {
             Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock Write-Host {}
             Mock Read-Host { "Debian" }
             Mock New-WslDistro {}
@@ -204,6 +205,7 @@ Describe "Invoke-WslManager" {
 
         It "Should support selection by number" {
             Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock Write-Host {}
             Mock Read-Host { "1" }
             Mock New-WslDistro {}
@@ -213,19 +215,36 @@ Describe "Invoke-WslManager" {
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
-        It "Should reject unsupported distributions" {
+        It "Should display available distributions dynamically" {
             Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04", "kali-linux") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock New-WslDistro {}
+
+            Invoke-WslManager -Command "create"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu-22.04*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*kali-linux*" }
+        }
+
+        It "Should reject distribution not in available list" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
             Mock Write-Host {}
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create" -Name "Alpine"
+            Invoke-WslManager -Command "create" -Name "InvalidDistro"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Unsupported distribution*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" }
             Should -Invoke New-WslDistro -Times 0
         }
 
         It "Should reject invalid number selection" {
             Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
             Mock Write-Host {}
             Mock Read-Host { "99" }
             Mock New-WslDistro {}
