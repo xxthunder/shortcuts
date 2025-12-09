@@ -13,8 +13,8 @@ This document provides technical guidelines for AI agents working on the Shortcu
 - **Language**: PowerShell 5.1+
 - **Package Manager**: Scoop (for Windows tools)
 - **Launcher Integration**: Keypirinha (fast keyboard-driven launcher)
-- **Testing**: Pester 5.2.0+
-- **Linting**: PSScriptAnalyzer 1.18.0+
+- **Testing**: Pester 5.7.1+
+- **Linting**: PSScriptAnalyzer 1.24.0+
 
 ### Directory Structure
 
@@ -247,14 +247,34 @@ All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` f
 
 ```powershell
 # Run all tests (PowerShell 7.x - recommended)
-pwsh -File .\tests\bin\test-all.ps1
+pwsh -File ".\tests\bin\test-all.ps1"
 
 # Run all tests (PowerShell 5.1 - for compatibility testing)
-powershell -File .\tests\bin\test-all.ps1
+powershell -File ".\tests\bin\test-all.ps1"
 
 # Run specific test file
-Invoke-Pester -Path .\path\to\script.Tests.ps1
+Invoke-Pester -Path ".\path\to\script.Tests.ps1"
+
+# Run all tests with code coverage (PowerShell 7.x)
+pwsh -File ".\tests\bin\test-all.ps1" -Coverage
+
+# Run all tests with code coverage (PowerShell 5.1)
+powershell -File ".\tests\bin\test-all.ps1" -Coverage
 ```
+
+**Code Coverage:**
+
+The test suite supports code coverage analysis via the `-Coverage` switch. When enabled, it:
+
+- Generates a JaCoCo XML coverage report at `tests/out/coverage.xml`
+- Outputs a coverage summary to the console
+- Creates a markdown summary at `tests/out/test-summary.md` for CI/PR comments
+- Only analyzes files that have corresponding test files
+
+Coverage reports include:
+- Commands analyzed vs executed
+- Coverage percentage
+- Detailed line-by-line coverage in the XML report
 
 **Testing requirements:**
 
@@ -272,6 +292,82 @@ The project uses `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1
 - Pester test context (via `PesterPreference` or call stack)
 
 When manually testing interactive scripts (not Pester tests), you can set `CI=true` to simulate non-interactive behavior and avoid blocking prompts.
+
+### Calling PowerShell from Bash Tool (AI Agents)
+
+When using AI agents (like Claude Code) that execute PowerShell commands through a Bash tool, follow these guidelines to avoid command failures:
+
+#### Path Quoting Rules
+
+**ALWAYS quote file paths** when calling PowerShell through bash. Windows paths contain backslashes which must be properly escaped.
+
+**Correct usage:**
+
+```bash
+# PowerShell 7.x - quote the entire path
+pwsh -File ".\tests\bin\test-all.ps1"
+pwsh -File ".\tests\bin\test-all.ps1" -Coverage
+
+# PowerShell 5.1 - quote the entire path
+powershell -File ".\tests\bin\test-all.ps1"
+powershell -File ".\tests\bin\test-all.ps1" -Coverage
+
+# Running specific test files
+pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
+```
+
+**Incorrect usage (will fail):**
+
+```bash
+# Missing quotes - WRONG
+pwsh -File .\tests\bin\test-all.ps1
+
+# Backslashes not handled properly - WRONG
+pwsh -File .testsbintest-all.ps1
+```
+
+#### PowerShell Version Selection
+
+- **pwsh**: PowerShell 7.x (recommended for modern features)
+- **powershell**: PowerShell 5.1 (for compatibility testing)
+
+#### Common Commands via Bash
+
+```bash
+# Run all tests with coverage
+Bash(pwsh -File ".\tests\bin\test-all.ps1" -Coverage)
+
+# Run all tests without coverage
+Bash(pwsh -File ".\tests\bin\test-all.ps1")
+
+# Run specific test file
+Bash(pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")
+
+# Run linter checks
+Bash(pwsh -File ".\tests\bin\linter.Tests.ps1")
+
+# Check PowerShell version
+Bash(pwsh -Command "$PSVersionTable.PSVersion")
+```
+
+#### Error Prevention
+
+When calling PowerShell scripts through the Bash tool:
+
+1. **Always use double quotes** around file paths with the `-File` parameter
+2. **Always use single quotes inside double quotes** when using `-Command` parameter with paths
+3. **Verify the path** exists before executing if unsure
+4. **Check for proper backslash handling** - if backslashes disappear, you need better quoting
+
+**Example workflow in AI agent:**
+
+```
+# Step 1: Verify test script exists
+Bash(Test-Path ".\tests\bin\test-all.ps1")
+
+# Step 2: Run tests with proper quoting
+Bash(pwsh -File ".\tests\bin\test-all.ps1")
+```
 
 ### Common Patterns
 

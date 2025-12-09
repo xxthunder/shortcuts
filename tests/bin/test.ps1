@@ -1,14 +1,16 @@
 #Requires -Version 5.1
-#Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.2.0'}
-#Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.18.0'}
+#Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.7.1'}
+#Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.24.0'}
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File contains Unicode emojis for CI/PR summaries. UTF-8 encoding is properly handled.')]
 param(
     [Parameter(Mandatory = $true)]
     [string[]]$TestPath,
     [string]$ReportPath = (Join-Path $PSScriptRoot "..\out\TestResults.xml"),
     [string]$Verbosity = 'Detailed',
-    [string]$Filter
+    [string]$Filter,
+    [switch]$EnableCodeCoverage = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,6 +68,22 @@ if (-not (Test-Path $reportDir)) {
     New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
 }
 
+# Define files for code coverage analysis (only files with tests)
+# Dynamically discover source files based on existing test files
+$repoRoot = Join-Path $PSScriptRoot "..\.."
+$testFiles = Get-ChildItem -Path $repoRoot -Filter "*.Tests.ps1" -Recurse
+
+$coveragePaths = @()
+foreach ($testFile in $testFiles) {
+    # Infer source file name (e.g., utils.Tests.ps1 -> utils.ps1)
+    $sourceName = $testFile.Name -replace '\.Tests\.ps1$', '.ps1'
+    $sourcePath = Join-Path $testFile.DirectoryName $sourceName
+
+    if (Test-Path $sourcePath) {
+        $coveragePaths += $sourcePath
+    }
+}
+
 # Configure Pester
 $testConfig = New-PesterConfiguration -Hashtable @{
     Run    = @{
@@ -82,6 +100,23 @@ $testConfig = New-PesterConfiguration -Hashtable @{
         Enabled      = $true
         OutputPath   = $ReportPath
         OutputFormat = 'JUnitXml'
+    }
+}
+
+# Add code coverage configuration if enabled
+if ($EnableCodeCoverage) {
+    $coverageXmlPath = Join-Path $reportDir "coverage.xml"
+    $testConfig.CodeCoverage.Enabled = $true
+    $testConfig.CodeCoverage.Path = $coveragePaths
+    $testConfig.CodeCoverage.OutputFormat = 'JaCoCo'
+    $testConfig.CodeCoverage.OutputPath = $coverageXmlPath
+    $testConfig.CodeCoverage.OutputEncoding = 'UTF8'
+
+    Write-Output "`nCode coverage enabled"
+    Write-Output "Coverage XML will be generated at: $coverageXmlPath"
+    Write-Output "Files under coverage:"
+    foreach ($path in $coveragePaths) {
+        Write-Output "  - $path"
     }
 }
 
@@ -111,4 +146,70 @@ if ($testResult.FailedCount -gt 0) {
     Write-Error "Tests failed! Failed count: $($testResult.FailedCount)"
 }
 
-Exit $testResult.FailedCount
+# Display coverage summary if enabled
+if ($EnableCodeCoverage -and $testResult.CodeCoverage) {
+    $coverage = $testResult.CodeCoverage
+
+    # Pester 5.x uses different property names
+    # Try to get values from available properties
+    if ($null -ne $coverage.CommandsExecutedCount) {
+        $coveredCommands = $coverage.CommandsExecutedCount
+        $totalCommands = $coverage.CommandsAnalyzedCount
+    } elseif ($null -ne $coverage.NumberOfCommandsExecuted) {
+        $coveredCommands = $coverage.NumberOfCommandsExecuted
+        $totalCommands = $coverage.NumberOfCommandsAnalyzed
+    } else {
+        # Fallback: count from Hit and Missed commands
+        $coveredCommands = ($coverage.HitCommands | Measure-Object).Count
+        $missedCommands = ($coverage.MissedCommands | Measure-Object).Count
+        $totalCommands = $coveredCommands + $missedCommands
+    }
+
+    $coveragePercent = if ($totalCommands -gt 0) {
+        [math]::Round(($coveredCommands / $totalCommands) * 100, 2)
+    } else {
+        0
+    }
+
+    Write-Output "`nCode Coverage Summary:"
+    Write-Output "  Commands Analyzed: $totalCommands"
+    Write-Output "  Commands Executed: $coveredCommands"
+    Write-Output "  Coverage: $coveragePercent%"
+
+    if (Test-Path $coverageXmlPath) {
+        Write-Output "`nCoverage XML report generated at: $coverageXmlPath"
+    }
+
+    # Generate markdown summary for CI/PR comments
+    $summaryPath = Join-Path $reportDir "test-summary.md"
+    $testStatus = if ($testResult.FailedCount -gt 0) { '❌' } else { '✅' }
+    $coverageEmoji = if ($coveragePercent -ge 80) { '✅' } elseif ($coveragePercent -ge 60) { '⚠️' } else { '❌' }
+
+    # Calculate execution time
+    $executionTime = [math]::Round($testResult.Duration.TotalSeconds, 2)
+
+    $markdownContent = @"
+# $testStatus Test Results (PowerShell $($PSVersionTable.PSVersion))
+
+## Test Summary
+
+| Status | Count |
+|--------|-------|
+| ✅ Passed | $($testResult.PassedCount) |
+| ❌ Failed | $($testResult.FailedCount) |
+| ⏭️ Skipped | $($testResult.SkippedCount) |
+| **Total** | **$($testResult.TotalCount)** |
+| ⏱️ Duration | ${executionTime}s |
+
+## $coverageEmoji Code Coverage
+
+| Metric | Coverage |
+|--------|----------|
+| Commands | $coveredCommands/$totalCommands ($coveragePercent%) |
+"@
+
+    $markdownContent | Out-File -FilePath $summaryPath -Encoding UTF8 -Force
+    Write-Output "`nTest summary markdown generated at: $summaryPath"
+}
+
+Exit ($testResult.FailedCount -gt 0 ? 1 : 0)
