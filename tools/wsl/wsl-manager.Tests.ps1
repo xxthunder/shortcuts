@@ -265,4 +265,143 @@ Describe "Invoke-WslManager" {
             Should -Invoke Show-InteractiveMenu -Times 1
         }
     }
+
+    Context "When called with 'clone' argument" {
+        It "Should clone distribution when both names are provided" {
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone" -Name "Debian" -TargetName "MyDebian"
+
+            Should -Invoke Copy-WslDistro -ParameterFilter {
+                $SourceName -eq "Debian" -and $TargetName -eq "MyDebian"
+            }
+        }
+
+        It "Should prompt for source when only target name provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone" -Name "" -TargetName "MyProject"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*source*" }
+            Should -Invoke Copy-WslDistro -ParameterFilter {
+                $SourceName -eq "Debian" -and $TargetName -eq "MyProject"
+            }
+        }
+
+        It "Should prompt for target name when only source provided" {
+            Mock Write-Host {}
+            Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone" -Name "Debian" -TargetName ""
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*target*" }
+            Should -Invoke Copy-WslDistro -ParameterFilter {
+                $SourceName -eq "Debian" -and $TargetName -eq "MyDebian"
+            }
+        }
+
+        It "Should prompt for both names when neither provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone" -Name "" -TargetName ""
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*source*" }
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*target*" }
+        }
+
+        It "Should display installed distributions when prompting for source" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
+        }
+
+        It "Should support selection by number for source" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "2" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Copy-WslDistro -ParameterFilter {
+                $SourceName -eq "Ubuntu" -and $TargetName -eq "MyProject"
+            }
+        }
+
+        It "Should support selection by name for source" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Copy-WslDistro -ParameterFilter {
+                $SourceName -eq "Alpine" -and $TargetName -eq "MyProject"
+            }
+        }
+
+        It "Should cancel when no source selection provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Write-Host {}
+            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Copy-WslDistro -Times 0
+        }
+
+        It "Should cancel when no target name provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*target*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Copy-WslDistro -Times 0
+        }
+
+        It "Should reject invalid number selection for source" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "99" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Copy-WslDistro {}
+
+            Invoke-WslManager -Command "clone"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Copy-WslDistro -Times 0
+        }
+    }
 }

@@ -31,6 +31,12 @@ This document provides technical guidelines for AI agents working on the Shortcu
 - TDD
 - DRY
 - SOLID
+- boundary checks
+- equivalence classes
+- error handling
+- parametrized tests
+- test fixtures
+- mocking external dependencies
 - conventional commits
 
 ## PowerShell Implementation Guidelines

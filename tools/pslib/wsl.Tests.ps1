@@ -327,3 +327,206 @@ Describe "New-WslDistro" {
         }
     }
 }
+
+Describe "Copy-WslDistro" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When source distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When target distribution already exists" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "MyDebian") }
+
+            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" } | Should -Throw "*already exists*"
+        }
+    }
+
+    Context "When copying distribution successfully" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {}
+            Mock Test-Path { $false } -ParameterFilter { $Path -notlike "*temp*.tar" }
+            Mock Test-Path { $true } -ParameterFilter { $Path -like "*temp*.tar" }
+            Mock New-Item {}
+            Mock Remove-Item {}
+        }
+
+        It "Should export source distribution to temp file" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --export Debian *"
+            }
+        }
+
+        It "Should import with target name" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --import MyDebian * *"
+            }
+        }
+
+        It "Should use default install path when not specified" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --import MyDebian *wsl\MyDebian* *"
+            }
+        }
+
+        It "Should use custom install path when specified" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "D:\WSL\MyDebian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --import MyDebian *D:\WSL\MyDebian* *"
+            }
+        }
+
+        It "Should clean up temp file after successful import" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
+
+            Should -Invoke Remove-Item -ParameterFilter {
+                $Path -like "*temp*.tar"
+            }
+        }
+
+        It "Should display success message" {
+            $output = Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false 6>&1
+
+            $output -join ' ' | Should -Match "Successfully cloned"
+            $output -join ' ' | Should -Match "Debian"
+            $output -join ' ' | Should -Match "MyDebian"
+        }
+
+        It "Should display how to start the cloned distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Invoke-CommandLine {}
+            Mock Test-Path { $false } -ParameterFilter { $Path -notlike "*temp*.tar" }
+            Mock Test-Path { $true } -ParameterFilter { $Path -like "*temp*.tar" }
+            Mock New-Item {}
+            Mock Remove-Item {}
+
+            $output = Copy-WslDistro -SourceName "Ubuntu" -TargetName "MyUbuntu" -Confirm:$false 6>&1
+
+            $output -join ' ' | Should -Match "To start: wsl -d MyUbuntu"
+        }
+
+        It "Should trim whitespace from distribution names" {
+            Copy-WslDistro -SourceName "  Debian  " -TargetName "  MyDebian  " -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --export Debian *"
+            }
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --import MyDebian *"
+            }
+        }
+
+        It "Should skip cloning when user cancels confirmation" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -WhatIf
+
+            Should -Invoke Invoke-CommandLine -Times 0
+        }
+    }
+
+    Context "When export fails" {
+        It "Should not attempt import and should clean up" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Test-Path { $true }
+            Mock Remove-Item {}
+
+            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl --import *" } -Times 0
+            Should -Invoke Remove-Item
+        }
+    }
+
+    Context "When testing boundary conditions" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {}
+            Mock Test-Path { $false } -ParameterFilter { $Path -notlike "*temp*.tar" }
+            Mock Test-Path { $true } -ParameterFilter { $Path -like "*temp*.tar" }
+            Mock New-Item {}
+            Mock Remove-Item {}
+        }
+
+        It "Should throw on empty source name" {
+            { Copy-WslDistro -SourceName "" -TargetName "MyDebian" } | Should -Throw
+        }
+
+        It "Should throw on empty target name" {
+            { Copy-WslDistro -SourceName "Debian" -TargetName "" } | Should -Throw
+        }
+
+        It "Should throw on whitespace-only source name" {
+            { Copy-WslDistro -SourceName "   " -TargetName "MyDebian" } | Should -Throw
+        }
+
+        It "Should throw on whitespace-only target name" {
+            { Copy-WslDistro -SourceName "Debian" -TargetName "   " } | Should -Throw
+        }
+
+        It "Should handle install paths with spaces" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "C:\My WSL\MyDebian" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "*wsl --import MyDebian*My WSL\MyDebian*"
+            }
+        }
+
+        It "Should handle distribution names with hyphens" {
+            Mock Get-WslDistroList { @("Ubuntu-22.04") }
+
+            Copy-WslDistro -SourceName "Ubuntu-22.04" -TargetName "My-Project" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --export Ubuntu-22.04 *"
+            }
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --import My-Project *"
+            }
+        }
+
+        It "Should handle distribution names with underscores" {
+            Mock Get-WslDistroList { @("Oracle_Linux_8") }
+
+            Copy-WslDistro -SourceName "Oracle_Linux_8" -TargetName "My_Project" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --export Oracle_Linux_8 *"
+            }
+        }
+
+        It "Should handle distribution names with dots" {
+            Mock Get-WslDistroList { @("openSUSE-Leap-15.6") }
+
+            Copy-WslDistro -SourceName "openSUSE-Leap-15.6" -TargetName "SUSE.Project" -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl --export openSUSE-Leap-15.6 *"
+            }
+        }
+    }
+}

@@ -147,6 +147,7 @@ function New-WslDistro {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$Name
     )
 
@@ -243,6 +244,7 @@ function Remove-WslDistro {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$Name
     )
 
@@ -264,5 +266,106 @@ function Remove-WslDistro {
     }
     else {
         Write-Output "Removal cancelled."
+    }
+}
+
+function Copy-WslDistro {
+    <#
+    .SYNOPSIS
+        Clones an existing WSL distribution with a new name.
+
+    .DESCRIPTION
+        Creates a copy of an existing WSL distribution by exporting it to a tar file
+        and importing it with a new name. This creates an independent copy at the
+        filesystem level.
+
+    .PARAMETER SourceName
+        The name of the source distribution to clone.
+
+    .PARAMETER TargetName
+        The name for the new cloned distribution.
+
+    .PARAMETER InstallPath
+        Optional custom installation path for the cloned distribution.
+        If not specified, defaults to %USERPROFILE%\wsl\<TargetName>.
+
+    .EXAMPLE
+        Copy-WslDistro -SourceName "Debian" -TargetName "MyProject"
+
+    .EXAMPLE
+        Copy-WslDistro -SourceName "Ubuntu-22.04" -TargetName "ProjectX" -InstallPath "D:\WSL\ProjectX"
+
+    .NOTES
+        Requires WSL to be installed on the system.
+        The cloned distribution is completely independent of the source.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SourceName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$TargetName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$InstallPath = ""
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim names to handle whitespace
+    $SourceName = $SourceName.Trim()
+    $TargetName = $TargetName.Trim()
+
+    # Check if source distribution exists
+    $distros = Get-WslDistroList
+    if ($SourceName -notin $distros) {
+        throw "Source distribution '$SourceName' does not exist."
+    }
+
+    # Check if target name already exists
+    if ($TargetName -in $distros) {
+        throw "Distribution '$TargetName' already exists."
+    }
+
+    # Set default install path if not provided
+    if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+        $InstallPath = Join-Path $env:USERPROFILE "wsl\$TargetName"
+    }
+
+    # Create temp tar file path
+    $tempTarFile = Join-Path $env:TEMP "wsl-clone-$([Guid]::NewGuid().ToString()).tar"
+
+    if ($PSCmdlet.ShouldProcess($SourceName, "Clone WSL distribution to $TargetName")) {
+        try {
+            Write-Output "Cloning WSL distribution '$SourceName' to '$TargetName'..."
+
+            # Create install directory if it doesn't exist
+            if (-not (Test-Path $InstallPath)) {
+                New-Item -Path $InstallPath -ItemType Directory -Force | Out-Null
+            }
+
+            # Export source distribution
+            Write-Output "Exporting '$SourceName'..."
+            Invoke-CommandLine -CommandLine "wsl --export $SourceName `"$tempTarFile`""
+
+            # Import as new distribution
+            Write-Output "Importing as '$TargetName'..."
+            Invoke-CommandLine -CommandLine "wsl --import $TargetName `"$InstallPath`" `"$tempTarFile`""
+
+            Write-Output "Successfully cloned '$SourceName' to '$TargetName'."
+            Write-Output ""
+            Write-Output "To start: wsl -d $TargetName"
+        }
+        finally {
+            # Clean up temp file
+            if (Test-Path $tempTarFile) {
+                Remove-Item -Path $tempTarFile -Force
+            }
+        }
     }
 }

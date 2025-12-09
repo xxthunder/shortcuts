@@ -82,6 +82,38 @@ Describe "Invoke-CommandLine" {
             Should -Invoke Write-Output -ParameterFilter { $InputObject -eq "Executing: test" }
         }
     }
+
+    Context "When testing boundary conditions" {
+        It "Should handle commands with special characters" {
+            Mock Invoke-Expression { $global:LASTEXITCODE = 0 }
+            Mock Write-Output {}
+
+            { Invoke-CommandLine -CommandLine 'echo "test with quotes"' } | Should -Not -Throw
+        }
+
+        It "Should handle commands with pipes" {
+            Mock Invoke-Expression { $global:LASTEXITCODE = 0 }
+            Mock Write-Output {}
+
+            { Invoke-CommandLine -CommandLine 'echo test | findstr test' } | Should -Not -Throw
+        }
+
+        It "Should handle very long command strings" {
+            $longCommand = "echo " + ("test" * 100)
+            Mock Invoke-Expression { $global:LASTEXITCODE = 0 }
+            Mock Write-Output {}
+
+            { Invoke-CommandLine -CommandLine $longCommand -PrintCommand $false } | Should -Not -Throw
+        }
+
+        It "Should throw on empty command string" {
+            { Invoke-CommandLine -CommandLine "" } | Should -Throw
+        }
+
+        It "Should throw on whitespace-only command string" {
+            { Invoke-CommandLine -CommandLine "   " } | Should -Throw
+        }
+    }
 }
 
 Describe "Initialize-EnvPath" {
@@ -152,7 +184,7 @@ Describe "Remove-Path" {
             Mock Remove-Item {}
             Mock Write-Output {}
 
-            Remove-Path -path $testPath
+            Remove-Path -Path $testPath
 
             Should -Invoke Remove-Item -ParameterFilter { $Path -eq $testPath -and $Force -eq $true -and $Recurse -eq $true }
             Should -Invoke Write-Output -ParameterFilter { $InputObject -like "*Deleting directory*" }
@@ -165,7 +197,7 @@ Describe "Remove-Path" {
             Mock Remove-Item {}
             Mock Write-Output {}
 
-            Remove-Path -path $testPath
+            Remove-Path -Path $testPath
 
             Should -Invoke Write-Output -ParameterFilter { $InputObject -eq "Deleting directory '$testPath' ..." }
         }
@@ -179,7 +211,7 @@ Describe "Remove-Path" {
             Mock Remove-Item {}
             Mock Write-Output {}
 
-            Remove-Path -path $testPath
+            Remove-Path -Path $testPath
 
             Should -Invoke Remove-Item -ParameterFilter { $Path -eq $testPath -and $Force -eq $true }
             Should -Invoke Write-Output -ParameterFilter { $InputObject -like "*Deleting file*" }
@@ -192,7 +224,7 @@ Describe "Remove-Path" {
             Mock Remove-Item {}
             Mock Write-Output {}
 
-            Remove-Path -path $testPath
+            Remove-Path -Path $testPath
 
             Should -Invoke Write-Output -ParameterFilter { $InputObject -eq "Deleting file '$testPath' ..." }
         }
@@ -204,9 +236,41 @@ Describe "Remove-Path" {
             Mock Test-Path { $false }
             Mock Remove-Item {}
 
-            Remove-Path -path $testPath
+            Remove-Path -Path $testPath
 
             Should -Invoke Remove-Item -Times 0
+        }
+    }
+
+    Context "When testing boundary conditions" {
+        It "Should throw on empty path" {
+            { Remove-Path -Path "" } | Should -Throw
+        }
+
+        It "Should throw on whitespace-only path" {
+            { Remove-Path -Path "   " } | Should -Throw
+        }
+
+        It "Should handle paths with spaces" {
+            $testPath = "TestDrive:\test dir"
+            Mock Test-Path { $true } -ParameterFilter { $PathType -eq "Container" }
+            Mock Remove-Item {}
+            Mock Write-Output {}
+
+            { Remove-Path -Path $testPath } | Should -Not -Throw
+
+            Should -Invoke Remove-Item -Times 1
+        }
+
+        It "Should handle paths with special characters" {
+            $testPath = "TestDrive:\test[dir]"
+            Mock Test-Path { $true } -ParameterFilter { $PathType -eq "Container" }
+            Mock Remove-Item {}
+            Mock Write-Output {}
+
+            { Remove-Path -Path $testPath } | Should -Not -Throw
+
+            Should -Invoke Remove-Item -Times 1
         }
     }
 }
@@ -218,8 +282,9 @@ Describe "New-Directory" {
             Mock Test-Path { $false }
             Mock New-Item { @{ FullName = $testDir } }
             Mock Write-Output {}
+            Mock Out-Null {}
 
-            New-Directory -dir $testDir
+            New-Directory -Path $testDir
 
             Should -Invoke New-Item -ParameterFilter { $ItemType -eq "Directory" -and $Path -eq $testDir }
             Should -Invoke Write-Output -ParameterFilter { $InputObject -eq "Creating directory '$testDir' ..." }
@@ -232,7 +297,7 @@ Describe "New-Directory" {
             Mock Test-Path { $true }
             Mock New-Item {}
 
-            New-Directory -dir $testDir
+            New-Directory -Path $testDir
 
             Should -Invoke New-Item -Times 0
         }
@@ -242,9 +307,31 @@ Describe "New-Directory" {
             Mock Test-Path { $true }
             Mock Write-Output {}
 
-            New-Directory -dir $testDir
+            New-Directory -Path $testDir
 
             Should -Invoke Write-Output -Times 0
+        }
+    }
+
+    Context "When testing boundary conditions" {
+        It "Should throw on empty path" {
+            { New-Directory -Path "" } | Should -Throw
+        }
+
+        It "Should throw on whitespace-only path" {
+            { New-Directory -Path "   " } | Should -Throw
+        }
+
+        It "Should handle paths with spaces" {
+            $testDir = "TestDrive:\test dir"
+            Mock Test-Path { $false }
+            Mock New-Item { @{ FullName = $testDir } }
+            Mock Write-Output {}
+            Mock Out-Null {}
+
+            { New-Directory -Path $testDir } | Should -Not -Throw
+
+            Should -Invoke New-Item -Times 1
         }
     }
 }
@@ -273,58 +360,37 @@ Describe "Get-UserConfirmation" {
     }
 
     Context "When running interactively with user input" {
-        It "Should return true when user enters Y" {
+        It "Should return <Expected> when user enters '<UserInput>'" -ForEach @(
+            @{ UserInput = "Y"; Expected = $true; Description = "uppercase Y" }
+            @{ UserInput = "y"; Expected = $true; Description = "lowercase y" }
+            @{ UserInput = "Yes"; Expected = $true; Description = "Yes" }
+            @{ UserInput = "yes"; Expected = $true; Description = "lowercase yes" }
+            @{ UserInput = "N"; Expected = $false; Description = "uppercase N" }
+            @{ UserInput = "n"; Expected = $false; Description = "lowercase n" }
+            @{ UserInput = "No"; Expected = $false; Description = "No" }
+            @{ UserInput = "no"; Expected = $false; Description = "lowercase no" }
+        ) {
             Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "Y" }
+            Mock Read-Host { $UserInput }
 
             $result = Get-UserConfirmation -message "Continue?"
 
-            $result | Should -Be $true
+            $result | Should -Be $Expected
         }
 
-        It "Should return true when user enters y (lowercase)" {
+        It "Should handle edge case inputs: '<UserInput>'" -ForEach @(
+            @{ UserInput = "  Y  "; Expected = $false; Description = "Y with whitespace (treated as invalid)" }
+            @{ UserInput = "yeah"; Expected = $false; Description = "informal affirmative" }
+            @{ UserInput = "nope"; Expected = $false; Description = "informal negative" }
+            @{ UserInput = "maybe"; Expected = $false; Description = "ambiguous" }
+            @{ UserInput = "1"; Expected = $false; Description = "numeric" }
+        ) {
             Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "y" }
+            Mock Read-Host { $UserInput }
 
-            $result = Get-UserConfirmation -message "Continue?"
+            $result = Get-UserConfirmation -message "Continue?" -defaultValueForUser $true
 
-            $result | Should -Be $true
-        }
-
-        It "Should return true when user enters Yes" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "Yes" }
-
-            $result = Get-UserConfirmation -message "Continue?"
-
-            $result | Should -Be $true
-        }
-
-        It "Should return false when user enters N" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "N" }
-
-            $result = Get-UserConfirmation -message "Continue?"
-
-            $result | Should -Be $false
-        }
-
-        It "Should return false when user enters n (lowercase)" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "n" }
-
-            $result = Get-UserConfirmation -message "Continue?"
-
-            $result | Should -Be $false
-        }
-
-        It "Should return false when user enters No" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Read-Host { "No" }
-
-            $result = Get-UserConfirmation -message "Continue?"
-
-            $result | Should -Be $false
+            $result | Should -Be $Expected
         }
     }
 

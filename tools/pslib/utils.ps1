@@ -8,9 +8,51 @@
 param()
 
 function Invoke-CommandLine {
+    <#
+    .SYNOPSIS
+        Executes a command line string and handles exit codes.
+
+    .DESCRIPTION
+        Invokes a command line expression with proper error handling and output control.
+        This function provides consistent error checking across the codebase by validating
+        exit codes and providing configurable error handling behavior.
+
+    .PARAMETER CommandLine
+        The command line string to execute.
+
+    .PARAMETER StopAtError
+        If $true (default), throws an error when the command fails (non-zero exit code).
+        If $false, continues execution and logs a warning message.
+
+    .PARAMETER PrintCommand
+        If $true (default), prints the command being executed to the output stream.
+        If $false, executes silently without printing the command.
+
+    .PARAMETER Silent
+        If $true, suppresses all output from the command (stdout and information stream).
+        If $false (default), allows command output to display normally.
+
+    .EXAMPLE
+        Invoke-CommandLine -CommandLine "git status"
+        Executes git status with default settings (prints command, stops on error).
+
+    .EXAMPLE
+        Invoke-CommandLine -CommandLine "npm install" -Silent $true
+        Executes npm install silently without displaying output.
+
+    .EXAMPLE
+        Invoke-CommandLine -CommandLine "test.exe" -StopAtError $false
+        Executes test.exe and continues even if it returns a non-zero exit code.
+
+    .NOTES
+        Uses Invoke-Expression internally. Only use with trusted command strings.
+        Sets $global:LASTEXITCODE to 0 before execution.
+    #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Usually this statement must be avoided (https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3), here it is OK as it does not execute unknown code.')]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Command line cannot be empty or whitespace")]
         [string]$CommandLine,
         [Parameter(Mandatory = $false, Position = 1)]
         [bool]$StopAtError = $true,
@@ -52,30 +94,68 @@ function Initialize-EnvPath {
 }
 
 function Remove-Path {
+    <#
+    .SYNOPSIS
+        Removes a file or directory.
+
+    .DESCRIPTION
+        Safely removes a file or directory if it exists. Handles both files and directories
+        with appropriate Remove-Item parameters.
+
+    .PARAMETER Path
+        The path to the file or directory to remove.
+
+    .EXAMPLE
+        Remove-Path -Path "C:\Temp\MyFolder"
+        Removes the directory and all its contents.
+
+    .EXAMPLE
+        Remove-Path -Path "C:\Temp\file.txt"
+        Removes the specified file.
+    #>
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
-        [string]$path
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Path cannot be empty or whitespace")]
+        [string]$Path
     )
-    if (Test-Path -Path $path -PathType Container) {
-        Write-Output "Deleting directory '$path' ..."
-        Remove-Item $path -Force -Recurse
+    if (Test-Path -Path $Path -PathType Container) {
+        Write-Output "Deleting directory '$Path' ..."
+        Remove-Item $Path -Force -Recurse
     }
-    elseif (Test-Path -Path $path -PathType Leaf) {
-        Write-Output "Deleting file '$path' ..."
-        Remove-Item $path -Force
+    elseif (Test-Path -Path $Path -PathType Leaf) {
+        Write-Output "Deleting file '$Path' ..."
+        Remove-Item $Path -Force
     }
 }
 
 function New-Directory {
+    <#
+    .SYNOPSIS
+        Creates a new directory if it doesn't exist.
+
+    .DESCRIPTION
+        Creates a directory at the specified path if it does not already exist.
+        Does nothing if the directory already exists.
+
+    .PARAMETER Path
+        The path where the directory should be created.
+
+    .EXAMPLE
+        New-Directory -Path "C:\Temp\MyFolder"
+        Creates the directory if it doesn't exist.
+    #>
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
-        [string]$dir
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Path cannot be empty or whitespace")]
+        [string]$Path
     )
-    if (-Not (Test-Path -Path $dir)) {
-        Write-Output "Creating directory '$dir' ..."
-        New-Item -ItemType Directory $dir
+    if (-Not (Test-Path -Path $Path)) {
+        Write-Output "Creating directory '$Path' ..."
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
 }
 
@@ -107,8 +187,36 @@ function Test-RunningInCIorTestEnvironment {
 }
 
 function Get-UserConfirmation {
+    <#
+    .SYNOPSIS
+        Prompts the user for confirmation with Yes/No response.
+
+    .DESCRIPTION
+        Displays a confirmation prompt to the user in interactive mode.
+        In CI or test environments, automatically returns the specified CI value.
+
+    .PARAMETER message
+        The confirmation message to display to the user.
+
+    .PARAMETER defaultValueForUser
+        The default value if the user presses Enter without typing anything.
+        Default is $true.
+
+    .PARAMETER valueForCi
+        The value to return when running in CI or test environment.
+        Default is $false.
+
+    .EXAMPLE
+        Get-UserConfirmation -message "Continue with installation?"
+        Prompts user with default Yes.
+
+    .EXAMPLE
+        Get-UserConfirmation -message "Delete files?" -defaultValueForUser $false
+        Prompts user with default No.
+    #>
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$message,
         # Default value of the confirmation prompt
         [Parameter(Mandatory = $false)]
@@ -127,10 +235,14 @@ function Get-UserConfirmation {
         if ($userResponse -eq '') {
             return $defaultValueForUser
         }
-        elseif ($userResponse -match '^[Yy]') {
+        elseif ($userResponse -match '^[Yy](es)?$') {
             return $true
         }
+        elseif ($userResponse -match '^[Nn](o)?$') {
+            return $false
+        }
         else {
+            # Invalid input, return opposite of default to force explicit choice
             return $false
         }
     }
