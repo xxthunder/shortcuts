@@ -57,9 +57,18 @@ param(
     [string]$TargetName = ""
 )
 
+# Always set the $InformationPreference variable to "Continue" globally,
+# this way it gets printed on execution and continues execution afterwards.
+$InformationPreference = "Continue"
+
+# Stop on first error
+$ErrorActionPreference = "Stop"
+
 # Source dependencies
 . "$PSScriptRoot\..\pslib\utils.ps1"
 . "$PSScriptRoot\..\pslib\wsl.ps1"
+
+#region Functions
 
 function Show-WslDistroList {
     <#
@@ -410,7 +419,12 @@ function Invoke-WslManager {
     }
 }
 
-# Main execution - only run if script is executed directly (not dot-sourced)
+#endregion
+
+#region  Main execution - only run if script is executed directly (not dot-sourced)
+
 if ($MyInvocation.InvocationName -ne '.') {
     Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName
 }
+
+#endregion

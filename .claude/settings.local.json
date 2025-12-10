@@ -10,7 +10,8 @@
       "Bash(gh pr checks:*)",
       "Bash(gh run view:*)",
       "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL\" -Context 2,2)",
-      "Bash(powershell -File \".\\tests\\bin\\test-all.ps1\")"
+      "Bash(powershell -File \".\\tests\\bin\\test-all.ps1\")",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []

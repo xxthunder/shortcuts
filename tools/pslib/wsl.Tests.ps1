@@ -201,6 +201,17 @@ Describe "Remove-WslDistro" {
 
             Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
         }
+
+        It "Should throw error when wsl command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { 
+                $global:LASTEXITCODE = 1
+                throw "Command line call `"wsl --unregister Debian`" failed with exit code 1"
+            }
+
+            { Remove-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
+        }
     }
 }
 
@@ -324,6 +335,34 @@ Describe "New-WslDistro" {
             New-WslDistro -Name "Debian" -WhatIf
 
             Should -Invoke Invoke-CommandLine -Times 0
+        }
+
+        It "Should throw error and stop execution when wsl command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian") }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine { 
+                $global:LASTEXITCODE = 1
+                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+            }
+
+            { New-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
+        }
+
+        It "Should not display success message when wsl command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslAvailableDistro { @("Debian") }
+            Mock Get-WslDistroList { @() }
+            Mock Invoke-CommandLine { 
+                $global:LASTEXITCODE = 1
+                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+            }
+            Mock Write-Output {}
+
+            { New-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw
+
+            # Verify success message was never written
+            Should -Invoke Write-Output -Times 0 -ParameterFilter { $InputObject -like "*Successfully created*" }
         }
     }
 }
@@ -457,6 +496,23 @@ Describe "Copy-WslDistro" {
             { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
 
             Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl --import *" } -Times 0
+            Should -Invoke Remove-Item
+        }
+
+        It "Should clean up temp file when import fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Invoke-CommandLine { 
+                $global:LASTEXITCODE = 1
+                throw "Command line call failed with exit code 1" 
+            } -ParameterFilter { $CommandLine -like "wsl --import *" }
+            Mock Test-Path { $true }
+            Mock Remove-Item {}
+
+            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
+
+            # Verify temp file cleanup still happens
             Should -Invoke Remove-Item
         }
     }
