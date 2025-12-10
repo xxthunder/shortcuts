@@ -268,6 +268,8 @@ Describe "Invoke-WslManager" {
 
     Context "When called with 'clone' argument" {
         It "Should clone distribution when both names are provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone" -Name "Debian" -TargetName "MyDebian"
@@ -293,6 +295,8 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should prompt for target name when only source provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
             Mock Write-Host {}
             Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
