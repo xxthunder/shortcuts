@@ -8,15 +8,15 @@
 
 ## Acceptance Criteria
 
-- [ ] Running `wsl-manager.ps1 clone <source> <name>` creates a copy of an existing distribution
-- [ ] The new distribution is created with the specified custom name
-- [ ] Any installed WSL distribution can be used as the source
-- [ ] If the source distribution doesn't exist, an appropriate error message is shown
-- [ ] If a distribution with the target name already exists, an appropriate error message is shown
-- [ ] If WSL is not installed, an appropriate error message is shown
-- [ ] Success message is displayed after cloning
-- [ ] The new distribution appears in `wsl-manager.ps1 list`
-- [ ] The cloned distribution is independent (changes don't affect the source)
+- [x] Running `wsl-manager.ps1 clone <source> <name>` creates a copy of an existing distribution
+- [x] The new distribution is created with the specified custom name
+- [x] Any installed WSL distribution can be used as the source
+- [x] If the source distribution doesn't exist, an appropriate error message is shown
+- [x] If a distribution with the target name already exists, an appropriate error message is shown
+- [x] If WSL is not installed, an appropriate error message is shown
+- [x] Success message is displayed after cloning
+- [x] The new distribution appears in `wsl-manager.ps1 list`
+- [x] The cloned distribution is independent (changes don't affect the source)
 
 ## Technical Notes
 

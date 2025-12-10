@@ -239,12 +239,39 @@ try {
 
 All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` for detailed testing guidelines.
 
-Quick reference:
+#### Quick Reference
 
-- Test files: `*.Tests.ps1`
-- Run tests: `Invoke-Pester -Path .\script.Tests.ps1`
-- Mock external dependencies
+**Test files:** `*.Tests.ps1` (located alongside source files)
+
+**Running tests:**
+
+```powershell
+# Run all tests (PowerShell 7.x - recommended)
+pwsh -File .\tests\bin\test-all.ps1
+
+# Run all tests (PowerShell 5.1 - for compatibility testing)
+powershell -File .\tests\bin\test-all.ps1
+
+# Run specific test file
+Invoke-Pester -Path .\path\to\script.Tests.ps1
+```
+
+**Testing requirements:**
+
+- Mock external dependencies (file system, commands, environment)
 - Test both success and failure paths
+- Test CI and interactive environment behavior separately
+- Ensure tests pass on both PowerShell 5.1 and 7.x
+- **DO NOT** set `CI` environment variable when running tests manually (the test framework handles this automatically)
+- Use PowerShell 5.1-compatible syntax (avoid features introduced in PowerShell 6.0+)
+
+**CI Environment Detection:**
+
+The project uses `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1` to automatically detect CI and Pester test environments. This function checks for:
+- CI environment variables (`CI`, `GITHUB_ACTIONS`, etc.)
+- Pester test context (via `PesterPreference` or call stack)
+
+When manually testing interactive scripts (not Pester tests), you can set `CI=true` to simulate non-interactive behavior and avoid blocking prompts.
 
 ### Common Patterns
 

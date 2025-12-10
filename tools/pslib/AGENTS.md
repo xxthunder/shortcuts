@@ -77,10 +77,20 @@ All PowerShell code in this library must be tested using **Pester**, the standar
 
 #### Pester Basics
 
-- **Installation**: Pester should be installed via `Install-Module -Name Pester -Force -SkipPublisherCheck`
+- **Installation**: Pester should be installed via `Install-Module -Name Pester -Force -SkipPublisherCheck` or by running `.\tests\bin\init.ps1`
 - **Test files**: Name test files with `.Tests.ps1` suffix (e.g., `utils.Tests.ps1`)
 - **Location**: Place tests in the same directory as the code or in a dedicated `tests` subdirectory
-- **Running tests**: Execute with `Invoke-Pester` or `Invoke-Pester -Path .\utils.Tests.ps1`
+- **Running tests**:
+  ```powershell
+  # Run all tests (recommended)
+  pwsh -File .\tests\bin\test-all.ps1
+
+  # Run specific test file
+  Invoke-Pester -Path .\path\to\script.Tests.ps1
+
+  # Test on PowerShell 5.1 for compatibility
+  powershell -File .\tests\bin\test-all.ps1
+  ```
 
 #### Pester Test Structure
 
@@ -116,6 +126,47 @@ Describe "Function-Name" {
 - Use `BeforeEach` and `AfterEach` for per-test setup/teardown
 - Test CI and interactive environment behavior separately
 - Use `-ParameterFilter` to mock specific scenarios
+- **Verify tests pass on both PowerShell 5.1 and 7.x** before committing
+
+#### PowerShell Version Compatibility
+
+**IMPORTANT**: All code must be compatible with **PowerShell 5.1** and **PowerShell 7.x**.
+
+**Common compatibility issues to avoid:**
+
+- ❌ **`ErrorMessage` parameter in `ValidateScript`** (PowerShell 6.0+ only)
+  ```powershell
+  # WRONG - Only works in PowerShell 6.0+
+  [ValidateScript({ $_ -gt 0 }, ErrorMessage = "Must be positive")]
+
+  # CORRECT - Works in PowerShell 5.1+
+  [ValidateScript({ $_ -gt 0 })]
+  ```
+
+- ❌ **Ternary operator** `? :` (PowerShell 7.0+ only)
+  ```powershell
+  # WRONG - Only works in PowerShell 7.0+
+  $result = $condition ? "yes" : "no"
+
+  # CORRECT - Works in PowerShell 5.1+
+  $result = if ($condition) { "yes" } else { "no" }
+  ```
+
+- ❌ **Null-coalescing operators** `??`, `??=` (PowerShell 7.0+ only)
+
+**Testing on both versions:**
+
+Always run tests on both PowerShell versions before creating a pull request:
+
+```powershell
+# Test on PowerShell 7.x
+pwsh -File .\tests\bin\test-all.ps1
+
+# Test on PowerShell 5.1
+powershell -File .\tests\bin\test-all.ps1
+```
+
+The CI pipeline runs tests on both versions and will fail if either version encounters errors.
 
 ### Test-Driven Development (TDD)
 

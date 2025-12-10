@@ -5,7 +5,12 @@
       "Bash(mkdir:*)",
       "Bash(pwsh -Command:*)",
       "Bash(git show:*)",
-      "Bash(wsl --list:*)"
+      "Bash(wsl --list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL\" -Context 2,2)",
+      "Bash(powershell -File \".\\tests\\bin\\test-all.ps1\")"
     ],
     "deny": [],
     "ask": []

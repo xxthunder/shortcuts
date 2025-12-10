@@ -357,17 +357,42 @@ Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.18.0 -Force
 
 #### Running Tests
 
-**Run all tests** (includes linting and unit tests):
+The project supports testing on both **PowerShell 5.1** and **PowerShell 7.x** to ensure compatibility across all environments.
+
+**Run all tests on PowerShell 7.x (recommended):**
 
 ```powershell
-pwsh -File tests\bin\test-all.ps1
+pwsh -File .\tests\bin\test-all.ps1
+```
+
+**Run all tests on PowerShell 5.1:**
+
+```powershell
+powershell -File .\tests\bin\test-all.ps1
+```
+
+**Run tests on both versions (comprehensive):**
+
+```powershell
+# PowerShell 7.x
+pwsh -File .\tests\bin\test-all.ps1
+
+# PowerShell 5.1
+powershell -File .\tests\bin\test-all.ps1
 ```
 
 **Run tests for specific paths:**
 
 ```powershell
-pwsh -File tests\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+pwsh -File .\tests\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
 ```
+
+**Important Notes:**
+
+- Always run tests **without** the `CI` environment variable set (unless testing CI-specific behavior)
+- The test suite automatically detects Pester environment and handles non-interactive scenarios
+- Tests should pass on both PowerShell 5.1 and 7.x for CI compatibility
+- Path must be quoted when passed to `-File` parameter (e.g., `".\tests\bin\test-all.ps1"`)
 
 #### Code Quality Checks
 

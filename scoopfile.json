@@ -19,6 +19,10 @@
             "Name": "git"
         },
         {
+            "Source": "main",
+            "Name": "pwsh"
+        },
+        {
             "Source": "extras",
             "Name": "windows-terminal"
         },

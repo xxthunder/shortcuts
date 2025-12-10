@@ -52,7 +52,7 @@ function Invoke-CommandLine {
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Command line cannot be empty or whitespace")]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$CommandLine,
         [Parameter(Mandatory = $false, Position = 1)]
         [bool]$StopAtError = $true,
@@ -117,7 +117,7 @@ function Remove-Path {
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Path cannot be empty or whitespace")]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$Path
     )
     if (Test-Path -Path $Path -PathType Container) {
@@ -150,7 +150,7 @@ function New-Directory {
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) }, ErrorMessage = "Path cannot be empty or whitespace")]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$Path
     )
     if (-Not (Test-Path -Path $Path)) {
