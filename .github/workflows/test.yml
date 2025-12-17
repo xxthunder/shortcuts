@@ -5,35 +5,67 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-
   workflow_dispatch:
 
 jobs:
+  test:
+    name: Tests (${{ matrix.shell_name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            shell: pwsh
+            shell_name: "Powershell 7.x"
+            shell_label: PS7
+          - os: windows-2019
+            shell: powershell
+            shell_name: "Powershell 5.x"
+            shell_label: PS5
 
-  test_pwsh:
-    name: Unit and Integration Tests (Powershell 7.x)
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install and run Pester
+        continue-on-error: true # Essential for aggregating results later
+        shell: cmd
         run: |
-          Write-Output $PSVersionTable
-          .\test\bin\init.ps1
-          .\test\bin\test-all.ps1 -Coverage
-        shell: pwsh
+          ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\test-all.ps1 -Coverage"
 
-  test_powershell:
-    name: Unit and Integration Tests (Powershell 5.x)
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
         with:
-          submodules: true
-      - name: Install and run Pester
-        run: |
-          Write-Output $PSVersionTable
-          .\test\bin\init.ps1
-          .\test\bin\test-all.ps1 -Coverage
-        shell: powershell
+          # Use the env variable instead of the matrix context here
+          name: junit-results-${{ matrix.shell_label }}.xml
+          path: "**/junit.xml"
+          if-no-files-found: warn
+
+  report:
+    name: Finalize Results
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Download All Results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+          pattern: junit-results-*
+          merge-multiple: true
+
+      - name: Publish and Evaluate Test Report
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: "all-results/*.xml"
+          detailed_summary: true # Adds a rich table to the Job Summary
+          include_passed: true
+          annotate_only: false # This is what makes the job FAIL if tests fail
+          check_name: "Pester Test Results"

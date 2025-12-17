@@ -371,6 +371,40 @@ Bash(Test-Path ".\test\bin\test-all.ps1")
 Bash(pwsh -File ".\test\bin\test-all.ps1")
 ```
 
+### GitHub Actions Workflows
+
+When working with GitHub Actions workflows for this project, be aware of these important limitations:
+
+#### Shell Selection in Matrix Strategies
+
+**IMPORTANT:** You CANNOT use matrix variables in the `shell` field of GitHub Actions steps. The `shell` field only accepts literal values, not matrix interpolation.
+
+**Incorrect (will not work):**
+
+```yaml
+shell: ${{ matrix.shell }}  # This does NOT work
+run: |
+  Write-Output $PSVersionTable
+  .\test\bin\test-all.ps1
+```
+
+**Correct approach:**
+
+```yaml
+shell: cmd  # Use a literal shell value
+run: |
+  # Then invoke the matrix shell within the command
+  ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\test-all.ps1 -Coverage"
+```
+
+This limitation is fundamental to GitHub Actions and requires using a wrapper shell (like `cmd`) to invoke the desired PowerShell version from the matrix.
+
+**Current test workflow pattern (.github/workflows/test.yml):**
+
+- Uses `shell: cmd` as the literal shell
+- Invokes `${{ matrix.shell }}` (either `pwsh` or `powershell`) within the command
+- This allows testing across multiple PowerShell versions using matrix strategy
+
 ### Common Patterns
 
 #### Installing/Updating via Scoop
