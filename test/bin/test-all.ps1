@@ -12,12 +12,12 @@
     Enable code coverage analysis and generate HTML report.
 
 .EXAMPLE
-    pwsh -File tests/bin/test-all.ps1
+    pwsh -File test/bin/test-all.ps1
 
     Runs all tests found in the tools directory.
 
 .EXAMPLE
-    pwsh -File tests/bin/test-all.ps1 -Coverage
+    pwsh -File test/bin/test-all.ps1 -Coverage
 
     Runs all tests with code coverage analysis enabled.
 #>
@@ -33,7 +33,7 @@ $ErrorActionPreference = 'Stop'
 $testScript = Join-Path $PSScriptRoot "test.ps1"
 
 $params = @{
-    TestPath = @(".\tools", ".\tests")
+    TestPath = @(".\tools", ".\test")
     Verbosity = 'Detailed'
 }
 

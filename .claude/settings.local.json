@@ -10,7 +10,7 @@
       "Bash(gh pr checks:*)",
       "Bash(gh run view:*)",
       "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL\" -Context 2,2)",
-      "Bash(powershell -File \".\\tests\\bin\\test-all.ps1\")",
+      "Bash(powershell -File \".\\test\\bin\\test-all.ps1\")",
       "Bash(git push)",
       "Bash(gh pr list:*)",
       "Bash(gh pr diff:*)",
@@ -20,7 +20,8 @@
       "Bash(Start-Sleep -Seconds 5)",
       "Bash(gh api:*)",
       "Bash(git restore:*)",
-      "Bash(Remove-Item -Path .git/index.lock -Force -ErrorAction SilentlyContinue)"
+      "Bash(Remove-Item -Path .git/index.lock -Force -ErrorAction SilentlyContinue)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

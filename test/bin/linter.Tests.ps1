@@ -5,7 +5,7 @@
 .DESCRIPTION
     Analyzes PowerShell scripts using PSScriptAnalyzer rules.
     Paths to analyze are provided via PESTER_LINT_PATHS environment variable
-    (semicolon-separated list). Falls back to tests/bin directory if not set.
+    (semicolon-separated list). Falls back to test/bin directory if not set.
 
 .NOTES
     This test file is typically invoked by test.ps1, not run directly.

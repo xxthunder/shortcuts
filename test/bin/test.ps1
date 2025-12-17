@@ -212,4 +212,8 @@ if ($EnableCodeCoverage -and $testResult.CodeCoverage) {
     Write-Output "`nTest summary markdown generated at: $summaryPath"
 }
 
-Exit ($testResult.FailedCount -gt 0 ? 1 : 0)
+if ($testResult.FailedCount -gt 0) {
+    Exit 1
+} else {
+    Exit 0
+}

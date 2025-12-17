@@ -77,19 +77,19 @@ All PowerShell code in this library must be tested using **Pester**, the standar
 
 #### Pester Basics
 
-- **Installation**: Pester should be installed via `Install-Module -Name Pester -Force -SkipPublisherCheck` or by running `.\tests\bin\init.ps1`
+- **Installation**: Pester should be installed via `Install-Module -Name Pester -Force -SkipPublisherCheck` or by running `.\test\bin\init.ps1`
 - **Test files**: Name test files with `.Tests.ps1` suffix (e.g., `utils.Tests.ps1`)
 - **Location**: Place tests in the same directory as the code or in a dedicated `tests` subdirectory
 - **Running tests**:
   ```powershell
   # Run all tests (recommended)
-  pwsh -File .\tests\bin\test-all.ps1
+  pwsh -File .\test\bin\test-all.ps1
 
   # Run specific test file
   Invoke-Pester -Path .\path\to\script.Tests.ps1
 
   # Test on PowerShell 5.1 for compatibility
-  powershell -File .\tests\bin\test-all.ps1
+  powershell -File .\test\bin\test-all.ps1
   ```
 
 #### Pester Test Structure
@@ -160,10 +160,10 @@ Always run tests on both PowerShell versions before creating a pull request:
 
 ```powershell
 # Test on PowerShell 7.x
-pwsh -File .\tests\bin\test-all.ps1
+pwsh -File .\test\bin\test-all.ps1
 
 # Test on PowerShell 5.1
-powershell -File .\tests\bin\test-all.ps1
+powershell -File .\test\bin\test-all.ps1
 ```
 
 The CI pipeline runs tests on both versions and will fail if either version encounters errors.

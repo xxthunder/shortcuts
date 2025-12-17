@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
+
   test_pwsh:
     name: Unit and Integration Tests (Powershell 7.x)
     runs-on: windows-latest
@@ -18,9 +19,10 @@ jobs:
       - name: Install and run Pester
         run: |
           Write-Output $PSVersionTable
-          .\tests\bin\init.ps1
-          .\tests\bin\test-all.ps1 -Coverage
+          .\test\bin\init.ps1
+          .\test\bin\test-all.ps1 -Coverage
         shell: pwsh
+
   test_powershell:
     name: Unit and Integration Tests (Powershell 5.x)
     runs-on: windows-latest
@@ -32,6 +34,6 @@ jobs:
       - name: Install and run Pester
         run: |
           Write-Output $PSVersionTable
-          .\tests\bin\init.ps1
-          .\tests\bin\test-all.ps1 -Coverage
+          .\test\bin\init.ps1
+          .\test\bin\test-all.ps1 -Coverage
         shell: powershell

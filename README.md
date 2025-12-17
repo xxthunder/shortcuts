@@ -340,7 +340,7 @@ The project requires:
 **Easy installation:**
 
 ```powershell
-.\tests\bin\init.ps1
+.\test\bin\init.ps1
 ```
 
 This script automatically installs all required development dependencies.
@@ -362,29 +362,29 @@ The project supports testing on both **PowerShell 5.1** and **PowerShell 7.x** t
 **Run all tests on PowerShell 7.x (recommended):**
 
 ```powershell
-pwsh -File .\tests\bin\test-all.ps1
+pwsh -File .\test\bin\test-all.ps1
 ```
 
 **Run all tests on PowerShell 5.1:**
 
 ```powershell
-powershell -File .\tests\bin\test-all.ps1
+powershell -File .\test\bin\test-all.ps1
 ```
 
 **Run tests on both versions (comprehensive):**
 
 ```powershell
 # PowerShell 7.x
-pwsh -File .\tests\bin\test-all.ps1
+pwsh -File .\test\bin\test-all.ps1
 
 # PowerShell 5.1
-powershell -File .\tests\bin\test-all.ps1
+powershell -File .\test\bin\test-all.ps1
 ```
 
 **Run tests for specific paths:**
 
 ```powershell
-pwsh -File .\tests\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+pwsh -File .\test\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
 ```
 
 **Important Notes:**
@@ -392,7 +392,7 @@ pwsh -File .\tests\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
 - Always run tests **without** the `CI` environment variable set (unless testing CI-specific behavior)
 - The test suite automatically detects Pester environment and handles non-interactive scenarios
 - Tests should pass on both PowerShell 5.1 and 7.x for CI compatibility
-- Path must be quoted when passed to `-File` parameter (e.g., `".\tests\bin\test-all.ps1"`)
+- Path must be quoted when passed to `-File` parameter (e.g., `".\test\bin\test-all.ps1"`)
 
 #### Code Quality Checks
 
@@ -404,9 +404,9 @@ The test suite automatically runs PSScriptAnalyzer on all PowerShell files befor
 
 #### Test Structure
 
-- `tests/bin/test.ps1` - Main test runner script
-- `tests/bin/test-all.ps1` - Convenience wrapper for running all tests
-- `tests/bin/linter.Tests.ps1` - PSScriptAnalyzer integration
+- `test/bin/test.ps1` - Main test runner script
+- `test/bin/test-all.ps1` - Convenience wrapper for running all tests
+- `test/bin/linter.Tests.ps1` - PSScriptAnalyzer integration
 - `*.Tests.ps1` - Unit test files (located alongside source files)
 
 #### Coding Standards

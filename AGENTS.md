@@ -23,7 +23,7 @@ This document provides technical guidelines for AI agents working on the Shortcu
 - `tools/`: Tool-specific utilities and installers
 - `tools/pslib/`: Shared PowerShell library (reusable functions)
 - `links/`: Keypirinha link definitions (.url files)
-- `tests/`: Test files and test utilities
+- `test/`: Test files and test utilities
 - `.bootstrap/`: Bootstrap system for initial setup
 
 ## Coding Guidelines
@@ -247,28 +247,28 @@ All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` f
 
 ```powershell
 # Run all tests (PowerShell 7.x - recommended)
-pwsh -File ".\tests\bin\test-all.ps1"
+pwsh -File ".\test\bin\test-all.ps1"
 
 # Run all tests (PowerShell 5.1 - for compatibility testing)
-powershell -File ".\tests\bin\test-all.ps1"
+powershell -File ".\test\bin\test-all.ps1"
 
 # Run specific test file
 Invoke-Pester -Path ".\path\to\script.Tests.ps1"
 
 # Run all tests with code coverage (PowerShell 7.x)
-pwsh -File ".\tests\bin\test-all.ps1" -Coverage
+pwsh -File ".\test\bin\test-all.ps1" -Coverage
 
 # Run all tests with code coverage (PowerShell 5.1)
-powershell -File ".\tests\bin\test-all.ps1" -Coverage
+powershell -File ".\test\bin\test-all.ps1" -Coverage
 ```
 
 **Code Coverage:**
 
 The test suite supports code coverage analysis via the `-Coverage` switch. When enabled, it:
 
-- Generates a JaCoCo XML coverage report at `tests/out/coverage.xml`
+- Generates a JaCoCo XML coverage report at `test/out/coverage.xml`
 - Outputs a coverage summary to the console
-- Creates a markdown summary at `tests/out/test-summary.md` for CI/PR comments
+- Creates a markdown summary at `test/out/test-summary.md` for CI/PR comments
 - Only analyzes files that have corresponding test files
 
 Coverage reports include:
@@ -305,12 +305,12 @@ When using AI agents (like Claude Code) that execute PowerShell commands through
 
 ```bash
 # PowerShell 7.x - quote the entire path
-pwsh -File ".\tests\bin\test-all.ps1"
-pwsh -File ".\tests\bin\test-all.ps1" -Coverage
+pwsh -File ".\test\bin\test-all.ps1"
+pwsh -File ".\test\bin\test-all.ps1" -Coverage
 
 # PowerShell 5.1 - quote the entire path
-powershell -File ".\tests\bin\test-all.ps1"
-powershell -File ".\tests\bin\test-all.ps1" -Coverage
+powershell -File ".\test\bin\test-all.ps1"
+powershell -File ".\test\bin\test-all.ps1" -Coverage
 
 # Running specific test files
 pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
@@ -320,7 +320,7 @@ pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
 
 ```bash
 # Missing quotes - WRONG
-pwsh -File .\tests\bin\test-all.ps1
+pwsh -File .\test\bin\test-all.ps1
 
 # Backslashes not handled properly - WRONG
 pwsh -File .testsbintest-all.ps1
@@ -335,16 +335,16 @@ pwsh -File .testsbintest-all.ps1
 
 ```bash
 # Run all tests with coverage
-Bash(pwsh -File ".\tests\bin\test-all.ps1" -Coverage)
+Bash(pwsh -File ".\test\bin\test-all.ps1" -Coverage)
 
 # Run all tests without coverage
-Bash(pwsh -File ".\tests\bin\test-all.ps1")
+Bash(pwsh -File ".\test\bin\test-all.ps1")
 
 # Run specific test file
 Bash(pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")
 
 # Run linter checks
-Bash(pwsh -File ".\tests\bin\linter.Tests.ps1")
+Bash(pwsh -File ".\test\bin\linter.Tests.ps1")
 
 # Check PowerShell version
 Bash(pwsh -Command "$PSVersionTable.PSVersion")
@@ -363,10 +363,10 @@ When calling PowerShell scripts through the Bash tool:
 
 ```
 # Step 1: Verify test script exists
-Bash(Test-Path ".\tests\bin\test-all.ps1")
+Bash(Test-Path ".\test\bin\test-all.ps1")
 
 # Step 2: Run tests with proper quoting
-Bash(pwsh -File ".\tests\bin\test-all.ps1")
+Bash(pwsh -File ".\test\bin\test-all.ps1")
 ```
 
 ### Common Patterns
@@ -420,7 +420,7 @@ Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" 
 - `tools/`: Tool-specific utilities and installers
 - `tools/pslib/`: Shared PowerShell library
 - `links/`: Keypirinha link definitions
-- `tests/`: Test files and test utilities
+- `test/`: Test files and test utilities
 
 #### Scoop Integration
 
