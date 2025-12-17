@@ -7,7 +7,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string[]]$TestPath,
-    [string]$ReportPath = (Join-Path $PSScriptRoot "..\out\TestResults.xml"),
+    [string]$ReportPath = (Join-Path $PSScriptRoot "..\out\junit.xml"),
     [string]$Verbosity = 'Detailed',
     [string]$Filter,
     [switch]$EnableCodeCoverage = $false
@@ -85,6 +85,7 @@ foreach ($testFile in $testFiles) {
 }
 
 # Configure Pester
+$psVersion = $PSVersionTable.PSVersion.ToString()
 $testConfig = New-PesterConfiguration -Hashtable @{
     Run    = @{
         Path     = $TestPath
@@ -97,9 +98,10 @@ $testConfig = New-PesterConfiguration -Hashtable @{
         Verbosity = $Verbosity
     }
     TestResult = @{
-        Enabled      = $true
-        OutputPath   = $ReportPath
-        OutputFormat = 'JUnitXml'
+        Enabled       = $true
+        OutputPath    = $ReportPath
+        OutputFormat  = 'JUnitXml'
+        TestSuiteName = "Pester Tests (PowerShell $psVersion)"
     }
 }
 

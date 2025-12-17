@@ -272,6 +272,7 @@ The test suite supports code coverage analysis via the `-Coverage` switch. When 
 - Only analyzes files that have corresponding test files
 
 Coverage reports include:
+
 - Commands analyzed vs executed
 - Coverage percentage
 - Detailed line-by-line coverage in the XML report
@@ -288,6 +289,7 @@ Coverage reports include:
 **CI Environment Detection:**
 
 The project uses `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1` to automatically detect CI and Pester test environments. This function checks for:
+
 - CI environment variables (`CI`, `GITHUB_ACTIONS`, etc.)
 - Pester test context (via `PesterPreference` or call stack)
 
