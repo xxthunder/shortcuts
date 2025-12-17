@@ -39,8 +39,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # Use the env variable instead of the matrix context here
-          name: junit-results-${{ matrix.shell_label }}.xml
+          name: junit-results-${{ matrix.shell_label }}
           path: "**/junit.xml"
+          if-no-files-found: warn
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.shell_label }}
+          path: "test/out/coverage.xml"
           if-no-files-found: warn
 
   report:
@@ -64,7 +71,7 @@ jobs:
       - name: Publish and Evaluate Test Report
         uses: mikepenz/action-junit-report@v6
         with:
-          report_paths: "all-results/*.xml"
+          report_paths: "all-results/**/junit.xml"
           detailed_summary: true # Adds a rich table to the Job Summary
           include_passed: true
           annotate_only: false # This is what makes the job FAIL if tests fail
