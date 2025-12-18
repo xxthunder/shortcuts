@@ -175,6 +175,7 @@ Describe "Invoke-WslManager" {
 
     Context "When called with 'create' argument" {
         It "Should create distribution when name is provided" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock New-WslDistro {}
 
             Invoke-WslManager -Command "create" -Name "Debian"
@@ -183,6 +184,7 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should support any available distribution" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock New-WslDistro {}
 
             Invoke-WslManager -Command "create" -Name "Ubuntu-22.04"
