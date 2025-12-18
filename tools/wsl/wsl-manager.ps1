@@ -560,7 +560,7 @@ function Invoke-WslManager {
 #region  Main execution - only run if script is executed directly (not dot-sourced)
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName | Out-Null
+    Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName
 }
 
 #endregion

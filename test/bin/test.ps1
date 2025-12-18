@@ -10,6 +10,7 @@ param(
     [string]$ReportPath = (Join-Path $PSScriptRoot "..\out\junit.xml"),
     [string]$Verbosity = 'Detailed',
     [string]$Filter,
+    [string]$ExcludePattern,
     [switch]$EnableCodeCoverage = $false
 )
 
@@ -86,7 +87,7 @@ foreach ($testFile in $testFiles) {
 
 # Configure Pester
 $psVersion = $PSVersionTable.PSVersion.ToString()
-$testConfig = New-PesterConfiguration -Hashtable @{
+$pesterConfig = @{
     Run    = @{
         Path     = $TestPath
         PassThru = $true
@@ -104,6 +105,21 @@ $testConfig = New-PesterConfiguration -Hashtable @{
         TestSuiteName = "Pester Tests (PowerShell $psVersion)"
     }
 }
+
+# Add exclude pattern if provided
+if ($ExcludePattern) {
+    # Get all test files matching the exclude pattern
+    $repoRoot = Join-Path $PSScriptRoot "..\.."
+    $excludePaths = @(Get-ChildItem -Path $repoRoot -Filter $ExcludePattern -Recurse |
+        Select-Object -ExpandProperty FullName)
+
+    if ($excludePaths.Count -gt 0) {
+        $pesterConfig.Run.ExcludePath = $excludePaths
+        Write-Output "Excluding $($excludePaths.Count) test file(s) matching pattern: $ExcludePattern"
+    }
+}
+
+$testConfig = New-PesterConfiguration -Hashtable $pesterConfig
 
 # Add code coverage configuration if enabled
 if ($EnableCodeCoverage) {

@@ -243,23 +243,50 @@ All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` f
 
 **Test files:** `*.Tests.ps1` (located alongside source files)
 
+**Test types:**
+
+- **Unit tests**: `*.Tests.ps1` - Fast, isolated tests with mocked dependencies
+- **Integration tests**: `*.Integration.Tests.ps1` - Tests that interact with real systems (WSL, file system, etc.)
+
+**Local development workflow:**
+
+1. Run unit tests first (`test-unit.ps1`) - provides fast feedback
+2. Run integration tests afterwards (`test-integration.ps1`) - when necessary or before committing
+3. Both test suites should pass before pushing to remote
+
+**CI/GitHub Actions workflow:**
+
+- Use `test-all.ps1` to run all tests (unit + integration) in a single pass
+
 **Running tests:**
 
 ```powershell
-# Run all tests (PowerShell 7.x - recommended)
+# Local development workflow (recommended):
+# Step 1: Run unit tests first (faster feedback)
+pwsh -File ".\test\bin\test-unit.ps1"
+
+# Step 2: Run integration tests afterwards when necessary
+pwsh -File ".\test\bin\test-integration.ps1"
+
+# CI/GitHub Actions - Run all tests (unit + integration)
 pwsh -File ".\test\bin\test-all.ps1"
-
-# Run all tests (PowerShell 5.1 - for compatibility testing)
-powershell -File ".\test\bin\test-all.ps1"
-
-# Run specific test file
-Invoke-Pester -Path ".\path\to\script.Tests.ps1"
 
 # Run all tests with code coverage (PowerShell 7.x)
 pwsh -File ".\test\bin\test-all.ps1" -Coverage
 
-# Run all tests with code coverage (PowerShell 5.1)
-powershell -File ".\test\bin\test-all.ps1" -Coverage
+# Run unit tests with code coverage
+pwsh -File ".\test\bin\test-unit.ps1" -Coverage
+
+# Run integration tests with code coverage
+pwsh -File ".\test\bin\test-integration.ps1" -Coverage
+
+# Run specific test file
+Invoke-Pester -Path ".\path\to\script.Tests.ps1"
+
+# PowerShell 5.1 compatibility testing
+powershell -File ".\test\bin\test-unit.ps1"
+powershell -File ".\test\bin\test-integration.ps1"
+powershell -File ".\test\bin\test-all.ps1"
 ```
 
 **Code Coverage:**
@@ -336,11 +363,24 @@ pwsh -File .testsbintest-all.ps1
 #### Common Commands via Bash
 
 ```bash
+# Local development workflow (recommended):
+# Run unit tests first (faster feedback)
+Bash(pwsh -File ".\test\bin\test-unit.ps1")
+
+# Run integration tests afterwards when necessary
+Bash(pwsh -File ".\test\bin\test-integration.ps1")
+
+# CI - Run all tests (unit + integration)
+Bash(pwsh -File ".\test\bin\test-all.ps1")
+
 # Run all tests with coverage
 Bash(pwsh -File ".\test\bin\test-all.ps1" -Coverage)
 
-# Run all tests without coverage
-Bash(pwsh -File ".\test\bin\test-all.ps1")
+# Run unit tests with coverage
+Bash(pwsh -File ".\test\bin\test-unit.ps1" -Coverage)
+
+# Run integration tests with coverage
+Bash(pwsh -File ".\test\bin\test-integration.ps1" -Coverage)
 
 # Run specific test file
 Bash(pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")

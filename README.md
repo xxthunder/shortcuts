@@ -83,8 +83,9 @@ Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 ### Installation Steps
 
 **1. Open PowerShell**
-   - Press `Win + X` and select "Windows PowerShell" or "Terminal"
-   - Or search for "PowerShell" in Start Menu
+
+- Press `Win + X` and select "Windows PowerShell" or "Terminal"
+- Or search for "PowerShell" in Start Menu
 
 **2. Run the installation command:**
 
@@ -93,12 +94,14 @@ irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin
 ```
 
 **3. Wait for installation to complete**
-   - The script will install Scoop (package manager) and Keypirinha (launcher)
-   - You'll see a *k*-icon appear in your taskbar when done
+
+- The script will install Scoop (package manager) and Keypirinha (launcher)
+- You'll see a *k*-icon appear in your taskbar when done
 
 **4. Start using Shortcuts!**
-   - Press **Win+Alt+Space** to launch Keypirinha
-   - Start typing to search for apps and shortcuts
+
+- Press **Win+Alt+Space** to launch Keypirinha
+- Start typing to search for apps and shortcuts
 
 ---
 
@@ -158,10 +161,12 @@ Your shortcuts are stored as `.url` files in the `links/` directory. After refre
 1. Navigate to the `links/` folder in your Shortcuts installation
 2. Create a new `.url` file (e.g., `MyApp.url`)
 3. Edit the file with this format:
+
    ```ini
    [InternetShortcut]
    URL=https://example.com
    ```
+
 4. Refresh Keypirinha catalog (**Win+Alt+Space** → "Refresh catalog")
 5. Type the shortcut name to use it!
 
@@ -247,6 +252,7 @@ scoop install keypirinha
 3. Press Enter and wait 5-10 seconds
 
 **Still missing?** Check if:
+
 - The application is actually installed
 - The `.url` file exists in the `links/` folder
 - Keypirinha is running (check system tray)
@@ -265,9 +271,11 @@ scoop install keypirinha
 
 1. Run update via Keypirinha (**Win+Alt+Space** → "update")
 2. Run installation command again (safe to repeat):
+
    ```powershell
    irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
    ```
+
 3. Check internet connection
 4. Disable antivirus temporarily and try again
 
@@ -280,6 +288,7 @@ scoop install keypirinha
 3. You can configure a different hotkey in Keypirinha settings
 
 **To change hotkey:**
+
 - Right-click Keypirinha *k*-icon → Configure Keypirinha → Edit main settings
 
 ---
@@ -305,11 +314,13 @@ scoop uninstall keypirinha
 **Step 2: Remove other Scoop packages (optional)**
 
 See what's installed:
+
 ```powershell
 scoop list
 ```
 
 Remove specific packages:
+
 ```powershell
 scoop uninstall <package-name>
 ```
@@ -323,6 +334,7 @@ scoop uninstall scoop
 **Step 4: Clean up directories (optional)**
 
 Manually delete these folders if desired:
+
 - `%USERPROFILE%\scoop` - Scoop and all installed packages
 - `%USERPROFILE%\shortcuts` - Shortcuts repository
 
@@ -349,6 +361,7 @@ The project uses **Pester** for testing and **PSScriptAnalyzer** for code qualit
 #### Prerequisites for Development
 
 The project requires:
+
 - **Pester**: PowerShell testing framework (version 5.2.0+)
 - **PSScriptAnalyzer**: PowerShell linter (version 1.18.0+)
 
@@ -374,26 +387,42 @@ Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.18.0 -Force
 
 The project supports testing on both **PowerShell 5.1** and **PowerShell 7.x** to ensure compatibility across all environments.
 
-**Run all tests on PowerShell 7.x (recommended):**
+**Test types:**
+
+- **Unit tests** (`*.Tests.ps1`): Fast, isolated tests with mocked dependencies
+- **Integration tests** (`*.Integration.Tests.ps1`): Tests that interact with real systems
+
+**Local development workflow (recommended):**
 
 ```powershell
-pwsh -File .\test\bin\test-all.ps1
+# Step 1: Run unit tests first (faster feedback)
+pwsh -File .\test\bin\test-unit.ps1
+
+# Step 2: Run integration tests when necessary (e.g., before committing)
+pwsh -File .\test\bin\test-integration.ps1
 ```
 
-**Run all tests on PowerShell 5.1:**
+**Run all tests (CI/comprehensive testing):**
 
 ```powershell
+# PowerShell 7.x (recommended)
+pwsh -File .\test\bin\test-all.ps1
+
+# PowerShell 5.1 (for compatibility testing)
 powershell -File .\test\bin\test-all.ps1
 ```
 
-**Run tests on both versions (comprehensive):**
+**Run tests with code coverage:**
 
 ```powershell
-# PowerShell 7.x
-pwsh -File .\test\bin\test-all.ps1
+# All tests with coverage
+pwsh -File .\test\bin\test-all.ps1 -Coverage
 
-# PowerShell 5.1
-powershell -File .\test\bin\test-all.ps1
+# Unit tests with coverage
+pwsh -File .\test\bin\test-unit.ps1 -Coverage
+
+# Integration tests with coverage
+pwsh -File .\test\bin\test-integration.ps1 -Coverage
 ```
 
 **Run tests for specific paths:**
@@ -419,10 +448,13 @@ The test suite automatically runs PSScriptAnalyzer on all PowerShell files befor
 
 #### Test Structure
 
-- `test/bin/test.ps1` - Main test runner script
-- `test/bin/test-all.ps1` - Convenience wrapper for running all tests
+- `test/bin/test.ps1` - Main test runner script (with flexible parameters)
+- `test/bin/test-all.ps1` - Run all tests (unit + integration) - used in CI/GitHub Actions
+- `test/bin/test-unit.ps1` - Run only unit tests (excludes integration tests) - local development
+- `test/bin/test-integration.ps1` - Run only integration tests - local development
 - `test/bin/linter.Tests.ps1` - PSScriptAnalyzer integration
 - `*.Tests.ps1` - Unit test files (located alongside source files)
+- `*.Integration.Tests.ps1` - Integration test files (located alongside source files)
 
 #### Coding Standards
 

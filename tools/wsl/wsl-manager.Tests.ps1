@@ -12,12 +12,8 @@ BeforeAll {
     . "$PSScriptRoot\wsl-manager.ps1"
 
     # Import Security module explicitly for PowerShell 5.1 compatibility
-    try {
-        Import-Module Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
-    }
-    catch {
-        # Ignore errors - module may already be loaded
-    }
+    # Errors are silently ignored if module is already loaded or unavailable
+    Import-Module Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
 
     # Create SecureString objects at top level for PowerShell 5.1 compatibility
     $script:testSecurePass = ConvertTo-SecureString "testpass" -AsPlainText -Force

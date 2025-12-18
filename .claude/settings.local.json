@@ -23,7 +23,8 @@
       "Bash(Remove-Item -Path .git/index.lock -Force -ErrorAction SilentlyContinue)",
       "Bash(git mv:*)",
       "Bash(gh run download:*)",
-      "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL|Tests Passed\" -Context 2,2)"
+      "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL|Tests Passed\" -Context 2,2)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []
