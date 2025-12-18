@@ -586,3 +586,464 @@ Describe "Copy-WslDistro" {
         }
     }
 }
+
+Describe "Invoke-WslDistroCommand" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+
+            { Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When executing valid command" {
+        It "Should execute command with correct wsl parameters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { "command output" }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*wsl -d Debian -e bash -c "echo test"*'
+            }
+            $result | Should -Be "command output"
+        }
+
+        It "Should pass StopAtError parameter to Invoke-CommandLine" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -StopAtError $false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $StopAtError -eq $false
+            }
+        }
+
+        It "Should pass PrintCommand parameter to Invoke-CommandLine" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PrintCommand $false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $PrintCommand -eq $false
+            }
+        }
+    }
+
+    Context "When command contains special characters" {
+        It "Should escape double quotes in command" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Debian" -Command 'echo "hello world"'
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*bash -c "echo \\"hello world\\""*'
+            }
+        }
+
+        It "Should handle commands with pipes" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Ubuntu" -Command "cat file.txt | grep pattern"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*bash -c "cat file.txt | grep pattern"*'
+            }
+        }
+
+        It "Should handle commands with && operator" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "apt update && apt upgrade"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*bash -c "apt update && apt upgrade"*'
+            }
+        }
+    }
+
+    Context "When command fails" {
+        It "Should throw when StopAtError is true and command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { throw "Command failed with exit code 1" }
+
+            { Invoke-WslDistroCommand -DistroName "Debian" -Command "false" -StopAtError $true } | Should -Throw "*Command failed*"
+        }
+
+        It "Should not throw when StopAtError is false and command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            { Invoke-WslDistroCommand -DistroName "Debian" -Command "false" -StopAtError $false } | Should -Not -Throw
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Invoke-WslDistroCommand -DistroName "" -Command "echo test" } | Should -Throw
+        }
+
+        It "Should throw when Command is empty" {
+            { Invoke-WslDistroCommand -DistroName "Debian" -Command "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Get-WslDistroType" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Get-WslDistroType -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Get-WslDistroType -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When detecting distribution types" {
+        It "Should detect Debian distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "debian" } -ParameterFilter {
+                $Command -like '*os-release*' -and $DistroName -eq "Debian"
+            }
+
+            $result = Get-WslDistroType -DistroName "Debian"
+
+            $result | Should -Be "debian"
+        }
+
+        It "Should detect Ubuntu distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Invoke-WslDistroCommand { "ubuntu" } -ParameterFilter {
+                $Command -like '*os-release*' -and $DistroName -eq "Ubuntu"
+            }
+
+            $result = Get-WslDistroType -DistroName "Ubuntu"
+
+            $result | Should -Be "ubuntu"
+        }
+
+        It "Should detect Arch distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Arch") }
+            Mock Invoke-WslDistroCommand { "arch" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "Arch"
+
+            $result | Should -Be "arch"
+        }
+
+        It "Should detect Fedora as rhel family" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Fedora") }
+            Mock Invoke-WslDistroCommand { "fedora" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "Fedora"
+
+            $result | Should -Be "rhel"
+        }
+
+        It "Should detect CentOS as rhel family" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("CentOS") }
+            Mock Invoke-WslDistroCommand { "centos" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "CentOS"
+
+            $result | Should -Be "rhel"
+        }
+
+        It "Should detect RHEL as rhel family" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("RHEL") }
+            Mock Invoke-WslDistroCommand { "rhel" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "RHEL"
+
+            $result | Should -Be "rhel"
+        }
+
+        It "Should return unknown for unrecognized distributions" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("CustomLinux") }
+            Mock Invoke-WslDistroCommand { "customlinux" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "CustomLinux"
+
+            $result | Should -Be "unknown"
+        }
+    }
+
+    Context "When parsing os-release output" {
+        It "Should execute command silently without printing" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "debian" }
+
+            Get-WslDistroType -DistroName "Debian"
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $PrintCommand -eq $false
+            }
+        }
+
+        It "Should parse ID field from os-release" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "debian" }
+
+            Get-WslDistroType -DistroName "Debian"
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like '*grep*ID=*/etc/os-release*'
+            }
+        }
+
+        It "Should handle output with quotes" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Invoke-WslDistroCommand { '"ubuntu"' } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "Ubuntu"
+
+            $result | Should -Be "ubuntu"
+        }
+
+        It "Should handle output with whitespace" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "  debian  " } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "Debian"
+
+            $result | Should -Be "debian"
+        }
+
+        It "Should normalize to lowercase" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "DEBIAN" } -ParameterFilter {
+                $Command -like '*os-release*'
+            }
+
+            $result = Get-WslDistroType -DistroName "Debian"
+
+            $result | Should -Be "debian"
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Get-WslDistroType -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Update-WslDistro" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Update-WslDistro -Name "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Update-WslDistro -Name "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When distribution is not Debian/Ubuntu" {
+        It "Should throw error for Arch distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Arch") }
+            Mock Get-WslDistroType { "arch" }
+
+            { Update-WslDistro -Name "Arch" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+        }
+
+        It "Should throw error for RHEL family" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Fedora") }
+            Mock Get-WslDistroType { "rhel" }
+
+            { Update-WslDistro -Name "Fedora" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+        }
+
+        It "Should throw error for unknown distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("CustomLinux") }
+            Mock Get-WslDistroType { "unknown" }
+
+            { Update-WslDistro -Name "CustomLinux" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+        }
+    }
+
+    Context "When updating Debian/Ubuntu distributions" {
+        It "Should update Debian distribution successfully" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { }
+
+            Update-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt update && sudo apt upgrade -y*"
+            }
+        }
+
+        It "Should update Ubuntu distribution successfully" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Get-WslDistroType { "ubuntu" }
+            Mock Invoke-WslDistroCommand { }
+
+            Update-WslDistro -Name "Ubuntu" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt update && sudo apt upgrade -y*"
+            }
+        }
+
+        It "Should display progress message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { }
+            Mock Write-Output { }
+
+            Update-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Updating*Debian*"
+            }
+        }
+
+        It "Should display success message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { }
+            Mock Write-Output { }
+
+            Update-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Successfully updated*Debian*"
+            }
+        }
+
+        It "Should trim whitespace from distribution name" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { }
+
+            Update-WslDistro -Name "  Debian  " -Confirm:$false
+
+            Should -Invoke Get-WslDistroType -ParameterFilter {
+                $DistroName -eq "Debian"
+            }
+        }
+    }
+
+    Context "When ShouldProcess is used" {
+        It "Should skip update when user cancels confirmation" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { }
+
+            Update-WslDistro -Name "Debian" -WhatIf
+
+            Should -Invoke Invoke-WslDistroCommand -Times 0
+        }
+    }
+
+    Context "When update command fails" {
+        It "Should throw error when apt command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { throw "apt upgrade failed" }
+
+            { Update-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*apt upgrade failed*"
+        }
+
+        It "Should not display success message when update fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Get-WslDistroType { "debian" }
+            Mock Invoke-WslDistroCommand { throw "apt upgrade failed" }
+            Mock Write-Output { }
+
+            try {
+                Update-WslDistro -Name "Debian" -Confirm:$false
+            }
+            catch {
+                # Expected to throw - suppressing error for test verification
+                $null = $_
+            }
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Successfully*"
+            } -Times 0
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when Name is empty" {
+            { Update-WslDistro -Name "" } | Should -Throw
+        }
+    }
+}

@@ -369,3 +369,206 @@ function Copy-WslDistro {
         }
     }
 }
+
+function Invoke-WslDistroCommand {
+    <#
+    .SYNOPSIS
+        Executes a command inside a WSL distribution.
+
+    .DESCRIPTION
+        Runs a command within a specified WSL distribution using bash.
+        Provides consistent error handling and output capture.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution in which to execute the command.
+
+    .PARAMETER Command
+        The command to execute inside the distribution.
+
+    .PARAMETER StopAtError
+        If $true (default), throws an error when the command fails (non-zero exit code).
+        If $false, continues execution and returns the output.
+
+    .PARAMETER PrintCommand
+        If $true (default), prints the command being executed.
+        If $false, executes silently without printing the command.
+
+    .OUTPUTS
+        System.String
+        Returns the command output.
+
+    .EXAMPLE
+        Invoke-WslDistroCommand -DistroName "Debian" -Command "echo hello"
+        Executes "echo hello" inside the Debian distribution.
+
+    .EXAMPLE
+        Invoke-WslDistroCommand -DistroName "Ubuntu" -Command "apt update" -PrintCommand $false
+        Updates package lists silently without printing the command.
+
+    .EXAMPLE
+        $output = Invoke-WslDistroCommand -DistroName "Debian" -Command 'grep "^ID=" /etc/os-release'
+        Captures the output of a command for further processing.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Command,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$StopAtError = $true,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$PrintCommand = $true
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Escape double quotes in the command (need to double the backslash for proper escaping)
+    $escapedCommand = $Command -replace '"', '\\"'
+
+    # Build the WSL command
+    $wslCommand = "wsl -d $DistroName -e bash -c `"$escapedCommand`""
+
+    # Execute the command
+    $result = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand
+
+    return $result
+}
+
+function Get-WslDistroType {
+    <#
+    .SYNOPSIS
+        Detects the type of a WSL distribution.
+
+    .DESCRIPTION
+        Reads /etc/os-release to determine the distribution family (Debian, Ubuntu, Arch, RHEL, etc.).
+        Returns a normalized distribution type string.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to detect.
+
+    .OUTPUTS
+        System.String
+        Returns one of: "debian", "ubuntu", "arch", "rhel", or "unknown"
+
+    .EXAMPLE
+        $type = Get-WslDistroType -DistroName "Debian"
+        if ($type -in @("debian", "ubuntu")) {
+            Write-Host "This is a Debian-based distribution"
+        }
+
+    .EXAMPLE
+        Get-WslDistroType -DistroName "Ubuntu-22.04"
+        Returns: "ubuntu"
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Read ID field from /etc/os-release
+    $command = 'grep "^ID=" /etc/os-release | cut -d= -f2 | tr -d \"'
+    $result = Invoke-WslDistroCommand -DistroName $DistroName -Command $command -PrintCommand $false -StopAtError $false
+
+    # Clean up output (trim whitespace, remove quotes, convert to lowercase)
+    $distroId = $result.Trim().Trim('"').ToLower()
+
+    # Map distribution ID to family
+    $distroType = switch -Regex ($distroId) {
+        "^debian$" { "debian" }
+        "^ubuntu$" { "ubuntu" }
+        "^arch.*" { "arch" }
+        "^(rhel|centos|fedora)$" { "rhel" }
+        default { "unknown" }
+    }
+
+    return $distroType
+}
+
+function Update-WslDistro {
+    <#
+    .SYNOPSIS
+        Updates packages in a Debian/Ubuntu WSL distribution.
+
+    .DESCRIPTION
+        Runs apt update and apt upgrade in a Debian or Ubuntu distribution.
+        Only supports Debian and Ubuntu distributions.
+
+    .PARAMETER Name
+        The name of the WSL distribution to update.
+
+    .EXAMPLE
+        Update-WslDistro -Name "Debian"
+        Updates all packages in the Debian distribution.
+
+    .EXAMPLE
+        Update-WslDistro -Name "Ubuntu-22.04" -Confirm:$false
+        Updates Ubuntu 22.04 without prompting for confirmation.
+
+    .NOTES
+        This function only works with Debian and Ubuntu distributions.
+        For other distributions, you must use the appropriate package manager manually.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim name
+    $Name = $Name.Trim()
+
+    # Check if distribution exists
+    $distros = Get-WslDistroList
+    if ($Name -notin $distros) {
+        throw "Distribution '$Name' does not exist."
+    }
+
+    # Detect distribution type
+    $distroType = Get-WslDistroType -DistroName $Name
+
+    # Validate it's Debian or Ubuntu
+    if ($distroType -notin @("debian", "ubuntu")) {
+        throw "Distribution '$Name' is not a Debian/Ubuntu distribution. Only Debian and Ubuntu distributions are supported for updates."
+    }
+
+    if ($PSCmdlet.ShouldProcess($Name, "Update WSL distribution packages")) {
+        Write-Output "Updating WSL distribution '$Name'..."
+
+        # Execute apt update && apt upgrade
+        $updateCommand = "sudo apt update && sudo apt upgrade -y"
+        Invoke-WslDistroCommand -DistroName $Name -Command $updateCommand
+
+        Write-Output "Successfully updated '$Name'."
+    }
+}
