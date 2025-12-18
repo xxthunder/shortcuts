@@ -21,7 +21,8 @@
       "Bash(gh api:*)",
       "Bash(git restore:*)",
       "Bash(Remove-Item -Path .git/index.lock -Force -ErrorAction SilentlyContinue)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(gh run download:*)"
     ],
     "deny": [],
     "ask": []
