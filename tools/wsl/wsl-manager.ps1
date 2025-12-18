@@ -168,6 +168,16 @@ function Invoke-CreateDistro {
 
     # Create the distribution (skip confirmation since we're handling it interactively)
     New-WslDistro -Name $Name -Confirm:$false
+
+    # Prompt for user setup after successful creation (skip in CI)
+    if (-not (Test-RunningInCIorTestEnvironment)) {
+        Write-Host ""
+        $createUser = Read-Host "Create a user account in '$Name'? [y/N]"
+
+        if ($createUser -match '^[Yy](es)?$') {
+            Invoke-SetupUser -DistroName $Name
+        }
+    }
 }
 
 function Invoke-RemoveDistro {
@@ -276,6 +286,62 @@ function Invoke-UpdateDistro {
 
     # Update the distribution (skip confirmation since we're handling it interactively)
     Update-WslDistro -Name $selectedName -Confirm:$false
+}
+
+function Invoke-SetupUser {
+    <#
+    .SYNOPSIS
+        Handles the user setup workflow interactively.
+    .PARAMETER DistroName
+        The name of the distribution to create a user in.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    # Skip in CI environment
+    if (Test-RunningInCIorTestEnvironment) {
+        Write-Host "Skipping user setup in CI/test environment." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ""
+    Write-Host "Setting up user account in '$DistroName'..." -ForegroundColor Cyan
+    Write-Host ""
+
+    # Prompt for username
+    $username = Read-Host "Enter username"
+
+    if ([string]::IsNullOrWhiteSpace($username)) {
+        Write-WarningMsg "No username provided. Cancelling user setup."
+        return
+    }
+
+    # Prompt for password securely
+    $securePassword = Read-Host "Enter password" -AsSecureString
+
+    # Convert SecureString to plain text for chpasswd
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+    $passwordPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+
+    try {
+        # Create the user (skip confirmation since we're handling it interactively)
+        New-WslUser -DistroName $DistroName -Username $username -Password $passwordPlain -Confirm:$false
+
+        Write-Host ""
+        Write-Success "Successfully created user '$username' in '$DistroName'."
+        Write-Host ""
+        Write-Host "To apply the default user change, restart the distribution with:" -ForegroundColor Yellow
+        Write-Host "  wsl --terminate $DistroName" -ForegroundColor Yellow
+    }
+    finally {
+        # Clear the plain text password from memory
+        $passwordPlain = $null
+    }
 }
 
 function Invoke-CloneDistro {
@@ -479,6 +545,9 @@ function Invoke-WslManager {
         }
         "update" {
             Invoke-UpdateDistro
+        }
+        "setup-user" {
+            Invoke-SetupUser -DistroName $Name
         }
         default {
             Show-InteractiveMenu
