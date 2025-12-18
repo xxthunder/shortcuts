@@ -410,4 +410,104 @@ Describe "Invoke-WslManager" {
             Should -Invoke Copy-WslDistro -Times 0
         }
     }
+
+    Context "When called with 'update' argument" {
+        It "Should prompt for distribution selection" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should display available distributions" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+        }
+
+        It "Should support selection by number" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Alpine" }
+        }
+
+        It "Should reject invalid number selection" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Update-WslDistro -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Update-WslDistro -Times 0
+        }
+
+        It "Should warn when no distributions exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Write-Host {}
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
+            Should -Invoke Update-WslDistro -Times 0
+        }
+
+        It "Should handle Update-WslDistro errors gracefully" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Arch") }
+            Mock Write-Host {}
+            Mock Read-Host { "Arch" }
+            Mock Update-WslDistro { throw "Distribution 'Arch' is not a Debian/Ubuntu distribution" }
+
+            { Invoke-WslManager -Command "update" } | Should -Throw "*not a Debian/Ubuntu*"
+        }
+    }
 }

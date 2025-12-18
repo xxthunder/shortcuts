@@ -836,7 +836,8 @@ Describe "Get-WslDistroType" {
             Get-WslDistroType -DistroName "Debian"
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like '*grep*ID=*/etc/os-release*'
+                $Command -like '*grep*ID=*/etc/os-release*' -and
+                $Command -like '*cut -d= -f2*'
             }
         }
 
@@ -1044,6 +1045,300 @@ Describe "Update-WslDistro" {
     Context "Parameter validation" {
         It "Should throw when Name is empty" {
             { Update-WslDistro -Name "" } | Should -Throw
+        }
+    }
+}
+
+Describe "New-WslUser" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "Username validation" {
+        It "Should accept valid username" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "validuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand
+        }
+
+        It "Should throw for username starting with number" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            { New-WslUser -DistroName "Debian" -Username "1user" -Password "testpass" } | Should -Throw "*invalid username*"
+        }
+
+        It "Should throw for username with uppercase letters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            { New-WslUser -DistroName "Debian" -Username "TestUser" -Password "testpass" } | Should -Throw "*invalid username*"
+        }
+
+        It "Should throw for username with special characters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            { New-WslUser -DistroName "Debian" -Username "test@user" -Password "testpass" } | Should -Throw "*invalid username*"
+        }
+
+        It "Should accept username with hyphens and underscores" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "test_user-name" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand
+        }
+
+        It "Should throw for username longer than 32 characters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            { New-WslUser -DistroName "Debian" -Username ("a" * 33) -Password "testpass" } | Should -Throw "*too long*"
+        }
+
+        It "Should accept username with exactly 32 characters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username ("a" * 32) -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand
+        }
+    }
+
+    Context "When user already exists" {
+        It "Should throw error when user exists" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "1001" } -ParameterFilter { $Command -like "*id -u*" }
+
+            { New-WslUser -DistroName "Debian" -Username "existinguser" -Password "testpass" -Confirm:$false } | Should -Throw "*already exists*"
+        }
+
+        It "Should continue when user does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "newuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter { $Command -like "*useradd*" }
+        }
+    }
+
+    Context "When creating user" {
+        It "Should create user with useradd command" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*useradd -m -s /bin/bash testuser*"
+            }
+        }
+
+        It "Should set user password with chpasswd" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*echo*testuser:testpass*chpasswd*"
+            }
+        }
+
+        It "Should add user to sudo group" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*usermod -aG sudo testuser*"
+            }
+        }
+
+        It "Should configure NOPASSWD in sudoers.d" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*testuser ALL=(ALL) NOPASSWD:ALL*" -and
+                $Command -like "*sudo tee /etc/sudoers.d/testuser*" -and
+                $Command -like "*chmod 0440*"
+            }
+        }
+
+        It "Should set default user in wsl.conf" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*[user]*" -and
+                $Command -like "*default=testuser*" -and
+                $Command -like "*sudo tee /etc/wsl.conf*"
+            }
+        }
+
+        It "Should display restart message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+            Mock Write-Output { }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*wsl --terminate*"
+            }
+        }
+
+        It "Should trim username" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "  testuser  " -Password "testpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*useradd*testuser*" -and $Command -notlike "*  testuser  *"
+            }
+        }
+    }
+
+    Context "When handling passwords" {
+        It "Should accept password string" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "plainpass" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*testuser:plainpass*"
+            }
+        }
+
+        It "Should handle password with special characters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password 'p@$$w0rd!&*' -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*testuser:p@*"
+            }
+        }
+    }
+
+    Context "When ShouldProcess is used" {
+        It "Should skip user creation when user cancels confirmation" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -WhatIf
+
+            Should -Invoke Invoke-WslDistroCommand -Times 0
+        }
+    }
+
+    Context "When user creation fails" {
+        It "Should throw error when useradd fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { throw "useradd failed" } -ParameterFilter { $Command -like "*useradd*" }
+
+            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false } | Should -Throw "*useradd failed*"
+        }
+
+        It "Should throw error when password setting fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*useradd*" }
+            Mock Invoke-WslDistroCommand { throw "chpasswd failed" } -ParameterFilter { $Command -like "*chpasswd*" }
+
+            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false } | Should -Throw "*chpasswd failed*"
+        }
+
+        It "Should not display success message when user creation fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { throw "useradd failed" } -ParameterFilter { $Command -like "*useradd*" }
+            Mock Write-Output { }
+
+            try {
+                New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+            }
+            catch {
+                # Expected to throw - suppressing error for test verification
+                $null = $_
+            }
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Successfully created*"
+            } -Times 0
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { New-WslUser -DistroName "" -Username "testuser" -Password "testpass" } | Should -Throw
+        }
+
+        It "Should throw when Username is empty" {
+            { New-WslUser -DistroName "Debian" -Username "" -Password "testpass" } | Should -Throw
+        }
+
+        It "Should throw when Password is empty" {
+            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "" } | Should -Throw
         }
     }
 }

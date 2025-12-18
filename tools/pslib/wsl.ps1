@@ -492,7 +492,7 @@ function Get-WslDistroType {
     }
 
     # Read ID field from /etc/os-release
-    $command = 'grep "^ID=" /etc/os-release | cut -d= -f2 | tr -d \"'
+    $command = 'grep "^ID=" /etc/os-release | cut -d= -f2'
     $result = Invoke-WslDistroCommand -DistroName $DistroName -Command $command -PrintCommand $false -StopAtError $false
 
     # Clean up output (trim whitespace, remove quotes, convert to lowercase)
@@ -570,5 +570,136 @@ function Update-WslDistro {
         Invoke-WslDistroCommand -DistroName $Name -Command $updateCommand
 
         Write-Output "Successfully updated '$Name'."
+    }
+}
+
+function New-WslUser {
+    <#
+    .SYNOPSIS
+        Creates a new user in a WSL distribution with sudo privileges.
+
+    .DESCRIPTION
+        Creates a new user account in a WSL distribution with the following configuration:
+        - Creates user with home directory
+        - Sets user password
+        - Adds user to sudo group
+        - Configures passwordless sudo (NOPASSWD)
+        - Sets user as default user in wsl.conf
+
+        After creation, the distribution must be restarted with 'wsl --terminate <DistroName>'
+        for the default user change to take effect.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution where the user will be created.
+
+    .PARAMETER Username
+        The username to create. Must start with a lowercase letter or underscore,
+        contain only lowercase letters, numbers, underscores, and hyphens,
+        and be 32 characters or less.
+
+    .PARAMETER Password
+        The password for the new user. Can be a plain text string or SecureString.
+
+    .EXAMPLE
+        New-WslUser -DistroName "Debian" -Username "john" -Password "mypassword"
+        Creates a user named 'john' in the Debian distribution.
+
+    .EXAMPLE
+        $securePass = Read-Host -AsSecureString -Prompt "Enter password"
+        New-WslUser -DistroName "Ubuntu" -Username "developer" -Password $securePass -Confirm:$false
+        Creates a user with a securely entered password without confirmation prompt.
+
+    .NOTES
+        The distribution must be restarted after user creation:
+        wsl --terminate <DistroName>
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Function accepts both SecureString and plain text for flexibility. SecureString is handled internally.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '', Justification = 'Password parameter accepts both SecureString and String. SecureString is properly converted internally.')]
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Username,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        $Password
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim inputs
+    $DistroName = $DistroName.Trim()
+    $Username = $Username.Trim()
+
+    # Validate username pattern BEFORE checking distribution (must start with lowercase letter or underscore, contain only lowercase, numbers, underscore, hyphen)
+    # Use -cnotmatch for case-sensitive matching
+    if ($Username -cnotmatch '^[a-z_][a-z0-9_-]*$') {
+        throw "Invalid username '$Username'. Username must start with a lowercase letter or underscore and contain only lowercase letters, numbers, underscores, and hyphens."
+    }
+
+    # Validate username length (max 32 characters)
+    if ($Username.Length -gt 32) {
+        throw "Username '$Username' is too long. Maximum length is 32 characters."
+    }
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Convert SecureString to plain text if needed
+    $plainPassword = if ($Password -is [SecureString]) {
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+        [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    }
+    else {
+        $Password
+    }
+
+    if ($PSCmdlet.ShouldProcess("$Username in $DistroName", "Create WSL user")) {
+        # Check if user already exists
+        $checkUserCmd = "id -u $Username 2>/dev/null"
+        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false
+
+        if (-not [string]::IsNullOrWhiteSpace($userExists)) {
+            throw "User '$Username' already exists in distribution '$DistroName'."
+        }
+
+        Write-Output "Creating user '$Username' in distribution '$DistroName'..."
+
+        # Step 1: Create user with home directory
+        $createUserCmd = "sudo useradd -m -s /bin/bash $Username"
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $createUserCmd
+
+        # Step 2: Set password
+        $setPasswordCmd = "echo `"$Username`:$plainPassword`" | sudo chpasswd"
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $setPasswordCmd -PrintCommand $false
+
+        # Step 3: Add user to sudo group
+        $addSudoCmd = "sudo usermod -aG sudo $Username"
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $addSudoCmd
+
+        # Step 4: Configure NOPASSWD in sudoers.d
+        $sudoersContent = "$Username ALL=(ALL) NOPASSWD:ALL"
+        $sudoersCmd = "echo `"$sudoersContent`" | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false
+
+        # Step 5: Set default user in wsl.conf
+        $wslConfContent = "[user]`ndefault=$Username"
+        $wslConfCmd = "echo `"$wslConfContent`" | sudo tee /etc/wsl.conf > /dev/null"
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false
+
+        Write-Output "Successfully created user '$Username' in '$DistroName'."
+        Write-Output ""
+        Write-Output "To apply the default user change, restart the distribution with:"
+        Write-Output "  wsl --terminate $DistroName"
     }
 }

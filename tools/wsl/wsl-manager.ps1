@@ -47,7 +47,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -224,6 +224,60 @@ function Invoke-RemoveDistro {
     Remove-WslDistro -Name $selectedName -Confirm:$false
 }
 
+function Invoke-UpdateDistro {
+    <#
+    .SYNOPSIS
+        Handles the update distribution workflow.
+    #>
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = @(Get-WslDistroList)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found to update."
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Write-Host "  $index. $distro" -ForegroundColor White
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to update"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1]
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Update the distribution (skip confirmation since we're handling it interactively)
+    Update-WslDistro -Name $selectedName -Confirm:$false
+}
+
 function Invoke-CloneDistro {
     <#
     .SYNOPSIS
@@ -336,6 +390,7 @@ function Show-InteractiveMenu {
         Write-Host "Commands:" -ForegroundColor Cyan
         Write-Host "  [C] Create new distribution" -ForegroundColor White
         Write-Host "  [L] Clone distribution" -ForegroundColor White
+        Write-Host "  [U] Update distribution" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
@@ -355,6 +410,15 @@ function Show-InteractiveMenu {
             "L" {
                 try {
                     Invoke-CloneDistro
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
+            "U" {
+                try {
+                    Invoke-UpdateDistro
                 }
                 catch {
                     Write-ErrorMsg "$_"
@@ -412,6 +476,9 @@ function Invoke-WslManager {
         }
         "remove" {
             Invoke-RemoveDistro
+        }
+        "update" {
+            Invoke-UpdateDistro
         }
         default {
             Show-InteractiveMenu
