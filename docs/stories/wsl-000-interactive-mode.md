@@ -17,6 +17,7 @@
 - [x] User can exit the interactive mode by selecting "exit" or pressing Ctrl+C
 - [x] If WSL is not installed, an appropriate error message is shown
 - [x] In CI environment, interactive mode is skipped with a helpful message
+- [x] All commands executed are printed before execution for transparency
 
 ## Technical Notes
 
@@ -25,6 +26,7 @@
 - Check `Test-RunningInCIorTestEnvironment` to skip in CI
 - Command-line arguments should bypass interactive mode
 - Follow project PowerShell guidelines
+- All WSL commands use `Invoke-CommandLine` with `PrintCommand=$true` (default) to display executed commands for transparency and debugging
 
 ## Example Usage
 

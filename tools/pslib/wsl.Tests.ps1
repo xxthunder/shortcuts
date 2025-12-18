@@ -642,6 +642,18 @@ Describe "Invoke-WslDistroCommand" {
                 $PrintCommand -eq $false
             }
         }
+
+        It "Should print commands by default when PrintCommand is not specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { }
+
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $PrintCommand -eq $true
+            }
+        }
     }
 
     Context "When command contains special characters" {
