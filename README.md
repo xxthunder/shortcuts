@@ -6,6 +6,21 @@
   <strong>A keyboard-driven launcher and automation toolkit for Windows</strong>
 </p>
 
+<p align="center">
+  <a href="https://github.com/xxthunder/shortcuts/actions/workflows/test.yml">
+    <img src="https://github.com/xxthunder/shortcuts/actions/workflows/test.yml/badge.svg" alt="CI Status">
+  </a>
+  <a href="https://github.com/xxthunder/shortcuts/blob/develop/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
+  </a>
+  <a href="https://github.com/xxthunder/shortcuts">
+    <img src="https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg" alt="PowerShell 5.1+">
+  </a>
+  <a href="https://github.com/xxthunder/shortcuts">
+    <img src="https://img.shields.io/badge/platform-Windows-lightgrey.svg" alt="Platform: Windows">
+  </a>
+</p>
+
 ---
 
 ## Table of Contents
