@@ -442,10 +442,15 @@ function Invoke-WslDistroCommand {
     # Build the WSL command
     $wslCommand = "wsl -d $DistroName -e bash -c `"$escapedCommand`""
 
-    # Execute the command
-    $result = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand
+    # Execute the command and capture output
+    # Invoke-CommandLine displays output in real-time via Invoke-Expression
+    # and returns the output to the pipeline for capture
+    $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand
 
-    return $result
+    # Return captured output as a joined string
+    if ($capturedOutput) {
+        return ($capturedOutput -join "`n")
+    }
 }
 
 function Get-WslDistroType {
@@ -491,12 +496,21 @@ function Get-WslDistroType {
         throw "Distribution '$DistroName' does not exist."
     }
 
-    # Read ID field from /etc/os-release
-    $command = 'grep "^ID=" /etc/os-release | cut -d= -f2'
+    # Warm up the distro (ensure it's started and file system is accessible)
+    # This is especially important for freshly imported/cloned distributions
+    Invoke-WslDistroCommand -DistroName $DistroName -Command "echo warmup" -PrintCommand $false -StopAtError $false | Out-Null
+
+    # Read ID field from /etc/os-release using simpler command without complex quoting
+    $command = 'cat /etc/os-release | grep ^ID= | head -1 | cut -d= -f2'
     $result = Invoke-WslDistroCommand -DistroName $DistroName -Command $command -PrintCommand $false -StopAtError $false
 
     # Clean up output (trim whitespace, remove quotes, convert to lowercase)
-    $distroId = $result.Trim().Trim('"').ToLower()
+    if ([string]::IsNullOrWhiteSpace($result)) {
+        $distroId = "unknown"
+    }
+    else {
+        $distroId = $result.Trim().Trim('"').ToLower()
+    }
 
     # Map distribution ID to family
     $distroType = switch -Regex ($distroId) {

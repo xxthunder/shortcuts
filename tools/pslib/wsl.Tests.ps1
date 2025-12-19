@@ -848,7 +848,7 @@ Describe "Get-WslDistroType" {
             Get-WslDistroType -DistroName "Debian"
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like '*grep*ID=*/etc/os-release*' -and
+                $Command -like '*cat /etc/os-release*grep*ID=*' -and
                 $Command -like '*cut -d= -f2*'
             }
         }

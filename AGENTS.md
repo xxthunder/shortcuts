@@ -78,34 +78,18 @@ New-Directory -Path "C:\Tools\MyApp"
 
 #### 2. Error Handling
 
-Always implement robust error handling:
+Always implement robust error handling with:
 
-```powershell
-#Requires -Version 5.1
+- `Set-StrictMode -Version Latest`
+- `$ErrorActionPreference = "Stop"`
+- `$InformationPreference = "Continue"`
+- Try/catch blocks for main logic
 
-[CmdletBinding()]
-param()
-
-Set-StrictMode -Version Latest
-
-# Always set the $InformationPreference variable to "Continue" globally,
-# this way it gets printed on execution and continues execution afterwards.
-$InformationPreference = "Continue"
-
-# Stop on first error
-$ErrorActionPreference = "Stop"
-
-try {
-    # Your code here
-} catch {
-    Write-Error "Operation failed: $_"
-    exit 1
-}
-```
+See "Script Structure" section below for the complete template.
 
 #### 3. Environment Awareness
 
-Scripts must work in both interactive and CI environments:
+Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1`:
 
 ```powershell
 if (Test-RunningInCIorTestEnvironment) {
@@ -117,7 +101,12 @@ if (Test-RunningInCIorTestEnvironment) {
 }
 ```
 
-**Note:** When manually testing interactive scripts (not Pester tests), you can set the environment variable `CI=true` to trigger non-interactive behavior and avoid blocking prompts. However, when running the Pester test suite via `test-all.ps1` or `test.ps1`, do NOT set the CI variable - let the tests run normally.
+**CI/Test Detection:** This function automatically detects:
+
+- CI environment variables (`CI`, `GITHUB_ACTIONS`, etc.)
+- Pester test context (via `PesterPreference` or call stack)
+
+**Manual Testing:** Set `CI=true` to simulate non-interactive behavior when manually testing interactive scripts. DO NOT set `CI` when running the Pester test suite - the test framework handles this automatically.
 
 #### 4. Path Handling
 
@@ -308,19 +297,9 @@ Coverage reports include:
 
 - Mock external dependencies (file system, commands, environment)
 - Test both success and failure paths
-- Test CI and interactive environment behavior separately
+- Test CI and interactive environment behavior separately (see "Environment Awareness" section)
 - Ensure tests pass on both PowerShell 5.1 and 7.x
-- **DO NOT** set `CI` environment variable when running tests manually (the test framework handles this automatically)
 - Use PowerShell 5.1-compatible syntax (avoid features introduced in PowerShell 6.0+)
-
-**CI Environment Detection:**
-
-The project uses `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1` to automatically detect CI and Pester test environments. This function checks for:
-
-- CI environment variables (`CI`, `GITHUB_ACTIONS`, etc.)
-- Pester test context (via `PesterPreference` or call stack)
-
-When manually testing interactive scripts (not Pester tests), you can set `CI=true` to simulate non-interactive behavior and avoid blocking prompts.
 
 ### Calling PowerShell from Bash Tool (AI Agents)
 
@@ -360,6 +339,55 @@ pwsh -File .testsbintest-all.ps1
 - **pwsh**: PowerShell 7.x (recommended for modern features)
 - **powershell**: PowerShell 5.1 (for compatibility testing)
 
+#### PowerShell Piping and Cmdlets
+
+**CRITICAL:** When using PowerShell cmdlets or piping commands, you MUST execute the entire pipeline within PowerShell using `-Command`, NOT by piping in bash.
+
+**The Problem:**
+
+When you call PowerShell from bash and try to pipe the output to a PowerShell cmdlet, the pipe happens in the **bash context**, not PowerShell. Bash doesn't know about PowerShell cmdlets like `Select-String`, `Where-Object`, etc.
+
+**Incorrect usage (will fail):**
+
+```bash
+# This tries to pipe in BASH, not PowerShell - WRONG
+pwsh -File ".\test\bin\test-all.ps1" | Select-String -Pattern "Error"
+
+# Bash tries to find 'Select-String' as a bash command and fails
+```
+
+**Correct usage:**
+
+```bash
+# Option 1: Use -Command to run the entire pipeline in PowerShell
+pwsh -Command ".\test\bin\test-all.ps1 | Select-String -Pattern 'Error'"
+
+# Option 2: Use -Command with cmdlet pipeline
+pwsh -Command "Get-Content '.\logfile.txt' | Where-Object { $_ -match 'Error' }"
+
+# Option 3: Filter within the PowerShell script itself (preferred for complex logic)
+# Modify the script to do the filtering, or create a wrapper script
+```
+
+**Examples of PowerShell cmdlets that MUST be inside `-Command`:**
+
+- `Select-String` (use `grep` in bash if you need to pipe bash-to-bash)
+- `Where-Object`
+- `Select-Object`
+- `ForEach-Object`
+- `Measure-Object`
+- Any PowerShell-specific cmdlet
+
+**When to use bash piping vs PowerShell piping:**
+
+```bash
+# Bash-to-bash piping (using bash/unix tools) - OK
+pwsh -File ".\script.ps1" | grep "Error"
+
+# PowerShell-to-PowerShell piping - use -Command
+pwsh -Command ".\script.ps1 | Select-String 'Error'"
+```
+
 #### Common Commands via Bash
 
 ```bash
@@ -398,8 +426,9 @@ When calling PowerShell scripts through the Bash tool:
 
 1. **Always use double quotes** around file paths with the `-File` parameter
 2. **Always use single quotes inside double quotes** when using `-Command` parameter with paths
-3. **Verify the path** exists before executing if unsure
-4. **Check for proper backslash handling** - if backslashes disappear, you need better quoting
+3. **NEVER pipe PowerShell cmdlets in bash** - use `pwsh -Command "script.ps1 | Select-String 'pattern'"` instead of `pwsh -File "script.ps1" | Select-String` (see "PowerShell Piping and Cmdlets" section above)
+4. **Verify the path** exists before executing if unsure
+5. **Check for proper backslash handling** - if backslashes disappear, you need better quoting
 
 **Example workflow in AI agent:**
 
@@ -445,48 +474,6 @@ This limitation is fundamental to GitHub Actions and requires using a wrapper sh
 - Invokes `${{ matrix.shell }}` (either `pwsh` or `powershell`) within the command
 - This allows testing across multiple PowerShell versions using matrix strategy
 
-### Common Patterns
-
-#### Installing/Updating via Scoop
-
-```powershell
-# Source library
-. "$PSScriptRoot\tools\pslib\utils.ps1"
-
-if (Get-Command tool -ErrorAction SilentlyContinue) {
-    Write-Status "Updating tool..."
-    Invoke-CommandLine -Command "scoop update tool" -StopAtError
-} else {
-    Write-Status "Installing tool..."
-    Invoke-CommandLine -Command "scoop install tool" -StopAtError
-}
-```
-
-#### Installing/Updating via npm
-
-```powershell
-# Source library
-. "$PSScriptRoot\tools\pslib\utils.ps1"
-
-# Check if package is installed
-$result = Invoke-CommandLine -Command "npm list -g package --depth=0"
-if ($result) {
-    Invoke-CommandLine -Command "npm update -g package" -StopAtError
-} else {
-    Invoke-CommandLine -Command "npm install -g package" -StopAtError
-}
-```
-
-#### Keypirinha Integration
-
-Scripts should remind users to refresh Keypirinha after changes:
-
-```powershell
-Write-Success "Installation complete!"
-Write-Host ""
-Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" -ForegroundColor Yellow
-```
-
 ### Project-Specific Considerations
 
 #### Directory Structure
@@ -500,11 +487,20 @@ Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" 
 
 #### Scoop Integration
 
-This project heavily uses Scoop:
+This project heavily uses Scoop for package management:
 
 - Check for Scoop before using it
 - Use `scoop install`, `scoop update`, `scoop list`
 - Reference `scoopfile.json` for managed packages
+- Use `Invoke-CommandLine` for all Scoop commands (see "External Commands" section)
+
+#### Keypirinha Integration
+
+Scripts that add/modify shortcuts should remind users to refresh the Keypirinha catalog:
+
+```powershell
+Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" -ForegroundColor Yellow
+```
 
 #### Bootstrap System
 
@@ -516,7 +512,7 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 
 ### Workflow
 
-When implementing new functionality:
+#### When Implementing New Functionality
 
 1. **Research**: Check if similar functionality exists in `tools/pslib/` or other scripts
 2. **Design**: Plan the script structure and identify reusable components
@@ -526,42 +522,65 @@ When implementing new functionality:
 6. **Document**: Add comments and help documentation
 7. **Integration**: Ensure Keypirinha can discover new shortcuts if applicable
 
-### Review Guidelines
+#### When Modifying Existing Functions
 
-#### PowerShell Code Quality
+**CRITICAL: Never modify implementation without updating tests!**
 
-- Adherence to project coding guidelines (TDD, DRY, SOLID)
-- Proper error handling with Set-StrictMode and $ErrorActionPreference
-- Use of pslib functions (Invoke-CommandLine, New-Directory, etc.)
-- Environment awareness (CI vs interactive)
-- Proper path handling and validation
-- Clear output and logging
+1. **Read Tests First**: Understand what the current tests verify
+2. **Update Tests**: Modify tests to expect new behavior (Red phase)
+3. **Run Tests**: Confirm tests fail with current implementation
+4. **Modify Implementation**: Update the function (Green phase)
+5. **Run Tests Again**: Verify all tests pass
+6. **Commit Together**: Tests and implementation must be in the same commit
 
-#### Testing
+**Example of the correct workflow:**
 
-- Presence of Pester tests for new functionality
-- Test coverage for both success and failure paths
-- Proper mocking of external dependencies
+```bash
+# 1. Modify the test to expect new behavior
+Edit tools/pslib/wsl.Tests.ps1  # Update parameter filter
 
-#### Security
+# 2. Run tests - should FAIL
+pwsh -File ".\test\bin\test-unit.ps1"  # Expected: 1 failure
 
-- No hardcoded credentials or sensitive data
-- Proper input validation
-- Safe command execution
+# 3. Update implementation
+Edit tools/pslib/wsl.ps1  # Change the command
 
-#### Documentation
+# 4. Run tests - should PASS
+pwsh -File ".\test\bin\test-unit.ps1"  # Expected: all pass
 
-- Clear comments where logic isn't self-evident
-- Synopsis and examples in script headers
-- Updated README if needed
+# 5. Commit both together
+git add tools/pslib/wsl.ps1 tools/pslib/wsl.Tests.ps1
+git commit -m "refactor: update Get-WslDistroType command"
+```
 
-#### Integration
+#### Mandatory Pre-Commit Checks
 
-- Compatibility with existing scripts
-- Proper Keypirinha integration if applicable
-- Conventional commit messages
+**Before every commit, you MUST:**
 
-Provide specific, actionable feedback with file:line references.
+1. **Run unit tests**: `pwsh -File ".\test\bin\test-unit.ps1"`
+   - All tests must pass
+   - If any fail, fix them before committing
+2. **Run integration tests** (if you modified integration points): `pwsh -File ".\test\bin\test-integration.ps1"`
+3. **Run linter**: Tests include PSScriptAnalyzer checks automatically
+
+**Never commit if:**
+- Any unit test fails
+- Any integration test fails
+- You changed a function but didn't update its tests
+- You're unsure if tests cover your changes
+
+### Code Review Checklist
+
+When reviewing code, verify adherence to:
+
+- **Guidelines**: TDD, DRY, SOLID principles (see "Coding Guidelines")
+- **Structure**: Script structure, error handling, pslib usage (see "Core Principles")
+- **Testing**: Pester tests with proper mocking (see "Testing Requirements")
+- **Security**: No hardcoded secrets, proper input validation
+- **Documentation**: Clear comments, synopsis/examples in headers
+- **Integration**: Conventional commits, Keypirinha compatibility
+
+Provide specific feedback with `file:line` references.
 
 ### Reference Documentation
 

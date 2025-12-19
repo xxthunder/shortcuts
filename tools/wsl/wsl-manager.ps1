@@ -47,7 +47,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -168,16 +168,6 @@ function Invoke-CreateDistro {
 
     # Create the distribution (skip confirmation since we're handling it interactively)
     New-WslDistro -Name $Name -Confirm:$false
-
-    # Prompt for user setup after successful creation (skip in CI)
-    if (-not (Test-RunningInCIorTestEnvironment)) {
-        Write-Host ""
-        $createUser = Read-Host "Create a user account in '$Name'? [y/N]"
-
-        if ($createUser -match '^[Yy](es)?$') {
-            Invoke-SetupUser -DistroName $Name
-        }
-    }
 }
 
 function Invoke-RemoveDistro {
@@ -344,6 +334,60 @@ function Invoke-SetupUser {
     }
 }
 
+function Invoke-SetupUserInteractive {
+    <#
+    .SYNOPSIS
+        Handles the user setup workflow interactively by prompting for distribution name.
+    #>
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = @(Get-WslDistroList)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Write-Host "  $index. $distro" -ForegroundColor White
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to setup user in"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1]
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Setup user in the selected distribution
+    Invoke-SetupUser -DistroName $selectedName
+}
+
 function Invoke-CloneDistro {
     <#
     .SYNOPSIS
@@ -454,9 +498,10 @@ function Show-InteractiveMenu {
 
         # Show menu
         Write-Host "Commands:" -ForegroundColor Cyan
-        Write-Host "  [C] Create new distribution" -ForegroundColor White
-        Write-Host "  [L] Clone distribution" -ForegroundColor White
+        Write-Host "  [I] Install new distribution" -ForegroundColor White
+        Write-Host "  [C] Clone distribution" -ForegroundColor White
         Write-Host "  [U] Update distribution" -ForegroundColor White
+        Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
@@ -464,7 +509,7 @@ function Show-InteractiveMenu {
         $choice = Read-Host "Select command"
 
         switch ($choice.ToUpper()) {
-            "C" {
+            "I" {
                 try {
                     Invoke-CreateDistro
                 }
@@ -473,7 +518,7 @@ function Show-InteractiveMenu {
                 }
                 Read-Host -Prompt "Press Enter to continue ..."
             }
-            "L" {
+            "C" {
                 try {
                     Invoke-CloneDistro
                 }
@@ -485,6 +530,15 @@ function Show-InteractiveMenu {
             "U" {
                 try {
                     Invoke-UpdateDistro
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
+            "S" {
+                try {
+                    Invoke-SetupUserInteractive
                 }
                 catch {
                     Write-ErrorMsg "$_"

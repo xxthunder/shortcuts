@@ -90,7 +90,7 @@ Describe "Show-InteractiveMenu" {
 
             Show-InteractiveMenu
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Create*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Install*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Remove*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Quit*" }
         }
@@ -266,94 +266,6 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
             Should -Invoke New-WslDistro -Times 0
-        }
-
-        It "Should prompt for user setup after successful creation in interactive mode" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Debian") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "N" } -ParameterFilter { $Prompt -like "*Create a user account*" }
-
-            Invoke-WslManager -Command "create" -Name "Debian"
-
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Create a user account*" }
-        }
-
-        It "Should call Invoke-SetupUser when user confirms with 'y'" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Ubuntu") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "y" } -ParameterFilter { $Prompt -like "*Create a user account*" }
-            Mock Read-Host { "testuser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "create" -Name "Ubuntu"
-
-            Should -Invoke New-WslUser -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should call Invoke-SetupUser when user confirms with 'yes'" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Debian") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "yes" } -ParameterFilter { $Prompt -like "*Create a user account*" }
-            Mock Read-Host { "developer" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:devSecurePass } -ParameterFilter { $AsSecureString }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "create" -Name "Debian"
-
-            Should -Invoke New-WslUser -ParameterFilter { $DistroName -eq "Debian" }
-        }
-
-        It "Should skip user setup when user declines with 'N'" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Debian") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "N" } -ParameterFilter { $Prompt -like "*Create a user account*" }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "create" -Name "Debian"
-
-            Should -Invoke New-WslUser -Times 0
-        }
-
-        It "Should skip user setup when user provides empty input" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Ubuntu") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*Create a user account*" }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "create" -Name "Ubuntu"
-
-            Should -Invoke New-WslUser -Times 0
-        }
-
-        It "Should skip user setup prompt in CI environment" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslAvailableDistro { @("Debian") }
-            Mock New-WslDistro {}
-            Mock Test-RunningInCIorTestEnvironment { $true }
-            Mock Write-Host {}
-            Mock Read-Host {}
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "create" -Name "Debian"
-
-            Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Create a user account*" }
-            Should -Invoke New-WslUser -Times 0
         }
     }
 
