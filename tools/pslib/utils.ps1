@@ -77,7 +77,7 @@ function Invoke-CommandLine {
             Write-Error "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE"
         }
         else {
-            Write-Output "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE, continuing ..."
+            Write-Information "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE, continuing ..."
         }
     }
 }

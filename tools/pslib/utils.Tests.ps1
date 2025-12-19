@@ -56,11 +56,11 @@ Describe "Invoke-CommandLine" {
 
         It "Should continue when StopAtError is false and command fails" {
             Mock Invoke-Expression { $global:LASTEXITCODE = 1 }
-            Mock Write-Output {}
+            Mock Write-Information {}
 
             { Invoke-CommandLine -CommandLine "failing command" -StopAtError $false -PrintCommand $false } | Should -Not -Throw
 
-            Should -Invoke Write-Output -ParameterFilter { $InputObject -like "*failed with exit code 1, continuing*" }
+            Should -Invoke Write-Information -ParameterFilter { $MessageData -like "*failed with exit code 1, continuing*" }
         }
 
         It "Should include exit code in error message" {
