@@ -26,11 +26,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install and run Pester
+      - name: Install Dependencies
+        shell: cmd
+        run: |
+          ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1"
+      - name: Execute Tests
         continue-on-error: true # Essential for aggregating results later
         shell: cmd
         run: |
-          ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\test-all.ps1 -Coverage"
+          ${{ matrix.shell }} -Command ".\test\bin\test.ps1 -Coverage"
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         with:

@@ -239,43 +239,43 @@ All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` f
 
 **Local development workflow:**
 
-1. Run unit tests first (`test-unit.ps1`) - provides fast feedback
-2. Run integration tests afterwards (`test-integration.ps1`) - when necessary or before committing
+1. Run unit tests first (`test.ps1 -Unit`) - provides fast feedback
+2. Run integration tests afterwards (`test.ps1 -Integration`) - when necessary or before committing
 3. Both test suites should pass before pushing to remote
 
 **CI/GitHub Actions workflow:**
 
-- Use `test-all.ps1` to run all tests (unit + integration) in a single pass
+- Use `test.ps1` (no switches) to run all tests (unit + integration) in a single pass
 
 **Running tests:**
 
 ```powershell
 # Local development workflow (recommended):
 # Step 1: Run unit tests first (faster feedback)
-pwsh -File ".\test\bin\test-unit.ps1"
+pwsh -File ".\test\bin\test.ps1" -Unit
 
 # Step 2: Run integration tests afterwards when necessary
-pwsh -File ".\test\bin\test-integration.ps1"
+pwsh -File ".\test\bin\test.ps1" -Integration
 
 # CI/GitHub Actions - Run all tests (unit + integration)
-pwsh -File ".\test\bin\test-all.ps1"
+pwsh -File ".\test\bin\test.ps1"
 
 # Run all tests with code coverage (PowerShell 7.x)
-pwsh -File ".\test\bin\test-all.ps1" -Coverage
+pwsh -File ".\test\bin\test.ps1" -Coverage
 
 # Run unit tests with code coverage
-pwsh -File ".\test\bin\test-unit.ps1" -Coverage
+pwsh -File ".\test\bin\test.ps1" -Unit -Coverage
 
 # Run integration tests with code coverage
-pwsh -File ".\test\bin\test-integration.ps1" -Coverage
+pwsh -File ".\test\bin\test.ps1" -Integration -Coverage
 
 # Run specific test file
 Invoke-Pester -Path ".\path\to\script.Tests.ps1"
 
 # PowerShell 5.1 compatibility testing
-powershell -File ".\test\bin\test-unit.ps1"
-powershell -File ".\test\bin\test-integration.ps1"
-powershell -File ".\test\bin\test-all.ps1"
+powershell -File ".\test\bin\test.ps1" -Unit
+powershell -File ".\test\bin\test.ps1" -Integration
+powershell -File ".\test\bin\test.ps1"
 ```
 
 **Code Coverage:**
@@ -313,12 +313,12 @@ When using AI agents (like Claude Code) that execute PowerShell commands through
 
 ```bash
 # PowerShell 7.x - quote the entire path
-pwsh -File ".\test\bin\test-all.ps1"
-pwsh -File ".\test\bin\test-all.ps1" -Coverage
+pwsh -File ".\test\bin\test.ps1"
+pwsh -File ".\test\bin\test.ps1" -Coverage
 
 # PowerShell 5.1 - quote the entire path
-powershell -File ".\test\bin\test-all.ps1"
-powershell -File ".\test\bin\test-all.ps1" -Coverage
+powershell -File ".\test\bin\test.ps1"
+powershell -File ".\test\bin\test.ps1" -Coverage
 
 # Running specific test files
 pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
@@ -328,10 +328,10 @@ pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
 
 ```bash
 # Missing quotes - WRONG
-pwsh -File .\test\bin\test-all.ps1
+pwsh -File .\test\bin\test.ps1
 
 # Backslashes not handled properly - WRONG
-pwsh -File .testsbintest-all.ps1
+pwsh -File .testsbintest.ps1
 ```
 
 #### PowerShell Version Selection
@@ -351,7 +351,7 @@ When you call PowerShell from bash and try to pipe the output to a PowerShell cm
 
 ```bash
 # This tries to pipe in BASH, not PowerShell - WRONG
-pwsh -File ".\test\bin\test-all.ps1" | Select-String -Pattern "Error"
+pwsh -File ".\test\bin\test.ps1" | Select-String -Pattern "Error"
 
 # Bash tries to find 'Select-String' as a bash command and fails
 ```
@@ -360,7 +360,7 @@ pwsh -File ".\test\bin\test-all.ps1" | Select-String -Pattern "Error"
 
 ```bash
 # Option 1: Use -Command to run the entire pipeline in PowerShell
-pwsh -Command ".\test\bin\test-all.ps1 | Select-String -Pattern 'Error'"
+pwsh -Command ".\test\bin\test.ps1 | Select-String -Pattern 'Error'"
 
 # Option 2: Use -Command with cmdlet pipeline
 pwsh -Command "Get-Content '.\logfile.txt' | Where-Object { $_ -match 'Error' }"
@@ -393,22 +393,22 @@ pwsh -Command ".\script.ps1 | Select-String 'Error'"
 ```bash
 # Local development workflow (recommended):
 # Run unit tests first (faster feedback)
-Bash(pwsh -File ".\test\bin\test-unit.ps1")
+Bash(pwsh -File ".\test\bin\test.ps1" -Unit)
 
 # Run integration tests afterwards when necessary
-Bash(pwsh -File ".\test\bin\test-integration.ps1")
+Bash(pwsh -File ".\test\bin\test.ps1" -Integration)
 
 # CI - Run all tests (unit + integration)
-Bash(pwsh -File ".\test\bin\test-all.ps1")
+Bash(pwsh -File ".\test\bin\test.ps1")
 
 # Run all tests with coverage
-Bash(pwsh -File ".\test\bin\test-all.ps1" -Coverage)
+Bash(pwsh -File ".\test\bin\test.ps1" -Coverage)
 
 # Run unit tests with coverage
-Bash(pwsh -File ".\test\bin\test-unit.ps1" -Coverage)
+Bash(pwsh -File ".\test\bin\test.ps1" -Unit -Coverage)
 
 # Run integration tests with coverage
-Bash(pwsh -File ".\test\bin\test-integration.ps1" -Coverage)
+Bash(pwsh -File ".\test\bin\test.ps1" -Integration -Coverage)
 
 # Run specific test file
 Bash(pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")
@@ -434,10 +434,10 @@ When calling PowerShell scripts through the Bash tool:
 
 ```
 # Step 1: Verify test script exists
-Bash(Test-Path ".\test\bin\test-all.ps1")
+Bash(Test-Path ".\test\bin\test.ps1")
 
 # Step 2: Run tests with proper quoting
-Bash(pwsh -File ".\test\bin\test-all.ps1")
+Bash(pwsh -File ".\test\bin\test.ps1")
 ```
 
 ### GitHub Actions Workflows
@@ -454,7 +454,7 @@ When working with GitHub Actions workflows for this project, be aware of these i
 shell: ${{ matrix.shell }}  # This does NOT work
 run: |
   Write-Output $PSVersionTable
-  .\test\bin\test-all.ps1
+  .\test\bin\test.ps1
 ```
 
 **Correct approach:**
@@ -463,7 +463,7 @@ run: |
 shell: cmd  # Use a literal shell value
 run: |
   # Then invoke the matrix shell within the command
-  ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\test-all.ps1 -Coverage"
+  ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\test.ps1 -Coverage"
 ```
 
 This limitation is fundamental to GitHub Actions and requires using a wrapper shell (like `cmd`) to invoke the desired PowerShell version from the matrix.
@@ -540,13 +540,13 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 Edit tools/pslib/wsl.Tests.ps1  # Update parameter filter
 
 # 2. Run tests - should FAIL
-pwsh -File ".\test\bin\test-unit.ps1"  # Expected: 1 failure
+pwsh -File ".\test\bin\test.ps1" -Unit  # Expected: 1 failure
 
 # 3. Update implementation
 Edit tools/pslib/wsl.ps1  # Change the command
 
 # 4. Run tests - should PASS
-pwsh -File ".\test\bin\test-unit.ps1"  # Expected: all pass
+pwsh -File ".\test\bin\test.ps1" -Unit  # Expected: all pass
 
 # 5. Commit both together
 git add tools/pslib/wsl.ps1 tools/pslib/wsl.Tests.ps1
@@ -557,10 +557,10 @@ git commit -m "refactor: update Get-WslDistroType command"
 
 **Before every commit, you MUST:**
 
-1. **Run unit tests**: `pwsh -File ".\test\bin\test-unit.ps1"`
+1. **Run unit tests**: `pwsh -File ".\test\bin\test.ps1" -Unit`
    - All tests must pass
    - If any fail, fix them before committing
-2. **Run integration tests** (if you modified integration points): `pwsh -File ".\test\bin\test-integration.ps1"`
+2. **Run integration tests** (if you modified integration points): `pwsh -File ".\test\bin\test.ps1" -Integration`
 3. **Run linter**: Tests include PSScriptAnalyzer checks automatically
 
 **Never commit if:**
