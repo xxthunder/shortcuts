@@ -8,30 +8,31 @@
 
 ## Acceptance Criteria
 
-- [ ] After creating a new distribution interactively, user is prompted to create a user account
-- [ ] Prompt defaults to "No" (user must opt-in by typing "y" or "yes")
-- [ ] User is prompted for username and password interactively
-- [ ] Username validation follows Linux standards:
+- [x] User setup available via CLI command (`wsl-manager.ps1 setup-user <distroname>`)
+- [x] User setup available via interactive menu option
+- [x] User is prompted for username and password interactively
+- [x] Username validation follows Linux standards:
   - Must start with lowercase letter or underscore
   - Can only contain lowercase letters, numbers, underscores, and hyphens
   - Maximum 32 characters
   - Case-sensitive validation
-- [ ] Password can be entered securely (hidden input)
-- [ ] Created user has a home directory (`/home/<username>`)
-- [ ] User is added to sudo group
-- [ ] Sudo configured with NOPASSWD (no password required for sudo commands)
-- [ ] User is set as default user in `/etc/wsl.conf`
-- [ ] Success message displays with instructions to restart distribution
-- [ ] Non-interactive (CI) mode skips user creation prompt
-- [ ] If user already exists, appropriate error message is shown
-- [ ] Function supports both SecureString and plain text passwords for flexibility
+- [x] Password can be entered securely (hidden input)
+- [x] Created user has a home directory (`/home/<username>`)
+- [x] User is added to sudo group
+- [x] Sudo configured with NOPASSWD (no password required for sudo commands)
+- [x] User is set as default user in `/etc/wsl.conf`
+- [x] Success message displays with instructions to restart distribution
+- [x] Non-interactive (CI) mode skips user creation prompt
+- [x] If user already exists, appropriate error message is shown
+- [x] Function supports both SecureString and plain text passwords for flexibility
 
 ## Technical Notes
 
-- **User creation workflow**: Integrated into `Invoke-CreateDistro` after successful distribution creation
+- **User creation workflow**: Standalone command invoked separately after distribution creation
 - **Functions**:
   - `New-WslUser` - Library function for user creation with full configuration
   - `Invoke-SetupUser` - CLI wrapper for interactive user setup
+  - `Invoke-SetupUserInteractive` - Interactive menu handler that prompts for distribution selection
 - User creation steps:
   1. Validate username pattern and length
   2. Check if user already exists via `id -u <username>`
@@ -88,15 +89,14 @@ wsl --terminate <distroname>
 ## Example Usage
 
 ```powershell
-# Create new distribution (triggers user setup prompt)
+# 1. Create new distribution first
 .\tools\wsl\wsl-manager.ps1 create Debian
-
-# Expected interaction:
 # Creating WSL distribution 'Debian' ...
 # Successfully created 'Debian'.
 # To start: wsl -d Debian
-#
-# Create a user account in 'Debian'? [y/N]: y
+
+# 2. Setup user account separately (via direct command)
+.\tools\wsl\wsl-manager.ps1 setup-user Debian
 # Enter username: john
 # Enter password: ********
 #
@@ -105,6 +105,11 @@ wsl --terminate <distroname>
 #
 # To apply the default user change, restart the distribution with:
 #   wsl --terminate Debian
+
+# Alternative: Use interactive menu
+.\tools\wsl\wsl-manager.ps1
+# Select: [S] Setup user account
+# Then select distribution from list
 
 # Direct library function usage
 $securePass = Read-Host -AsSecureString -Prompt "Enter password"
@@ -144,7 +149,7 @@ New-WslUser -DistroName "Debian" -Username "averylongusernamethatexceedsthirtytw
   - `New-WslUser` - Main user creation function
   - `Invoke-WslDistroCommand` - Command execution in WSL
 - `tools/pslib/utils.ps1` - Common utilities
-  - `Get-UserConfirmation` - User prompts in CI/interactive mode
+  - `Test-RunningInCIorTestEnvironment` - CI/test environment detection
 - `tools/wsl/wsl-manager.ps1` - CLI interface
-  - `Invoke-SetupUser` - Interactive user setup workflow
-  - `Invoke-CreateDistro` - Modified to include user setup prompt
+  - `Invoke-SetupUser` - Interactive user setup workflow for specified distribution
+  - `Invoke-SetupUserInteractive` - Interactive menu handler with distribution selection

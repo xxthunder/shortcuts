@@ -702,13 +702,13 @@ function New-WslUser {
         Invoke-WslDistroCommand -DistroName $DistroName -Command $addSudoCmd
 
         # Step 4: Configure NOPASSWD in sudoers.d
-        $sudoersContent = "$Username ALL=(ALL) NOPASSWD:ALL"
-        $sudoersCmd = "echo `"$sudoersContent`" | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
+        # Use single quotes in bash to avoid PowerShell interpreting the parentheses
+        $sudoersCmd = "echo '$Username ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false
 
         # Step 5: Set default user in wsl.conf
-        $wslConfContent = "[user]`ndefault=$Username"
-        $wslConfCmd = "echo `"$wslConfContent`" | sudo tee /etc/wsl.conf > /dev/null"
+        # Use printf with literal strings to write both lines
+        $wslConfCmd = "printf '`[user`]\n' | sudo tee /etc/wsl.conf > /dev/null && printf 'default=$Username\n' | sudo tee -a /etc/wsl.conf > /dev/null"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false
 
         Write-Output "Successfully created user '$Username' in '$DistroName'."

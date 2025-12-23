@@ -5,13 +5,14 @@
 
     Test workflow:
     1. Use existing Debian or install it (base distro)
-    2. Clone Debian to TestCustomDistro (custom distro)
-    3. Update TestCustomDistro
-    4. List both distributions
-    5. Remove only TestCustomDistro (and leave Debian untouched)
+    2. Clone Debian to debian-custom-test (custom distro)
+    3. Update debian-custom-test
+    4. Setup user in debian-custom-test
+    5. List both distributions
+    6. Remove only debian-custom-test (and leave Debian untouched)
 
     WARNING: These tests will create and remove WSL distributions.
-    Test distributions: TestCustomDistro
+    Test distribution: debian-custom-test
     Base distribution (always preserved): Debian
 #>
 
@@ -151,6 +152,48 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $output | Should -Match "Executing:.*wsl -d $script:customDistroName"
             $output | Should -Match "sudo apt update"
             $output | Should -Match "Successfully updated '$script:customDistroName'"
+        }
+    }
+
+    Context "Setup User" {
+        It "Should create test user in custom distro and print executed commands" {
+            Write-Host "`n==> TEST: Setting up user in $script:customDistroName..." -ForegroundColor Magenta
+
+            # First verify the custom distribution exists
+            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros | Should -Contain $script:customDistroName
+
+            # Load the library
+            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
+            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+
+            # Create test user with plain text password (for automation)
+            $testUsername = "testuser"
+            $testPassword = "testpass123"
+
+            # Capture output from New-WslUser
+            $output = New-WslUser -DistroName $script:customDistroName -Username $testUsername -Password $testPassword -Confirm:$false 2>&1 | Out-String
+
+            Write-Host "==> Captured Output:" -ForegroundColor Cyan
+            Write-Host $output
+
+            # Verify user creation output
+            $output | Should -Match "Creating user '$testUsername' in distribution '$script:customDistroName'"
+            $output | Should -Match "Successfully created user '$testUsername'"
+            $output | Should -Match "wsl --terminate $script:customDistroName"
+
+            # Verify user exists in the distribution
+            $userCheck = wsl -d $script:customDistroName -- id -u $testUsername 2>&1
+            $userCheck | Should -Match '^\d+$'
+
+            # Verify user is in sudo group
+            $groupCheck = wsl -d $script:customDistroName -- groups $testUsername 2>&1
+            $groupCheck | Should -Match '\bsudo\b'
+
+            # Verify sudoers file exists with NOPASSWD configuration
+            $sudoersCheck = wsl -d $script:customDistroName -- sudo cat /etc/sudoers.d/$testUsername 2>&1
+            $sudoersCheck | Should -Match "NOPASSWD:ALL"
+            $sudoersCheck | Should -Match "$testUsername ALL="
         }
     }
 
