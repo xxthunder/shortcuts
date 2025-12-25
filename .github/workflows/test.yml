@@ -70,4 +70,6 @@ jobs:
           detailed_summary: true
           include_passed: true
           fail_on_failure: true
+          fail_on_parse_error: true
+          require_tests: true
           check_name: "Pester Test Results"
