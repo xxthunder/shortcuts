@@ -18,7 +18,7 @@ jobs:
             shell: pwsh
             shell_name: "Powershell 7.x"
             shell_label: PS7
-          - os: windows-2019
+          - os: windows-latest
             shell: powershell
             shell_name: "Powershell 5.x"
             shell_label: PS5
@@ -29,7 +29,7 @@ jobs:
       - name: Install Dependencies
         shell: cmd
         run: |
-          ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1"
+          ${{ matrix.shell }} -Command ".\test\bin\init.ps1"
       - name: Execute Tests
         continue-on-error: true # Essential for aggregating results later
         shell: cmd

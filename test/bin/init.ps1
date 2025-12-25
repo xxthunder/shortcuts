@@ -1,6 +1,10 @@
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
-Write-Output "PowerShell: $($PSVersionTable.PSVersion)"
+
+Write-Output $PSVersionTable
+
+wsl --update
+wsl --version
 
 Write-Output 'Check and install dependencies ...'
 if (Get-InstalledModule -Name Pester -MinimumVersion 5.7.1 -MaximumVersion 5.99 -ErrorAction SilentlyContinue) {

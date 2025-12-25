@@ -65,12 +65,27 @@ function Invoke-CommandLine {
         Write-Output "Executing: $CommandLine"
     }
     $global:LASTEXITCODE = 0
-    if ($Silent) {
-        # Omit information stream (6) and stdout (1)
-        Invoke-Expression $CommandLine 6>&1 | Out-Null
+
+    # Temporarily set ErrorActionPreference to Continue to prevent stderr from native commands
+    # from causing terminating errors. This is necessary because native commands (like wsl.exe)
+    # often write warnings to stderr which PowerShell captures as error records.
+    # With ErrorActionPreference = 'Stop', these would cause the script to terminate even if
+    # the command succeeded (exit code 0).
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+
+    try {
+        if ($Silent) {
+            # Omit information stream (6) and stdout (1)
+            Invoke-Expression $CommandLine 6>&1 | Out-Null
+        }
+        else {
+            Invoke-Expression $CommandLine
+        }
     }
-    else {
-        Invoke-Expression $CommandLine
+    finally {
+        # Restore original ErrorActionPreference
+        $ErrorActionPreference = $previousErrorActionPreference
     }
     if ($global:LASTEXITCODE -ne 0) {
         if ($StopAtError) {
