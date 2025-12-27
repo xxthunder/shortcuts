@@ -52,6 +52,7 @@
 ### Username Validation
 
 Linux username requirements (POSIX standard):
+
 - **Pattern**: `^[a-z_][a-z0-9_-]*$`
 - Must start with lowercase letter or underscore
 - Can contain: lowercase letters (a-z), numbers (0-9), underscore (_), hyphen (-)
