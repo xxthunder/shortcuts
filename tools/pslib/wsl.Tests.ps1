@@ -1746,3 +1746,352 @@ Describe "Test-WslDockerInstalled" {
         }
     }
 }
+
+Describe "Install-WslDockerEngine" {
+    Context "Prerequisite validation - WSL installation" {
+        It "Should throw when WSL is not installed" {
+            Mock Test-WslInstalled { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "Prerequisite validation - Distribution existence" {
+        It "Should throw when distribution does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "Prerequisite validation - WSL2 version" {
+        It "Should throw when distribution is WSL1" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL2*"
+        }
+
+        It "Should provide upgrade command in error message for WSL1" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl --set-version*"
+        }
+    }
+
+    Context "Prerequisite validation - Systemd availability" {
+        It "Should throw when systemd is not available" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*"
+        }
+
+        It "Should provide wsl.conf configuration in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd=true*"
+        }
+    }
+
+    Context "Prerequisite validation - Distribution type" {
+        It "Should throw when distribution is not Debian/Ubuntu" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Arch") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "arch" }
+
+            { Install-WslDockerEngine -DistroName "Arch" -Confirm:$false } | Should -Throw "*Debian*Ubuntu*"
+        }
+
+        It "Should accept Debian distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw for Debian
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+
+        It "Should accept Ubuntu distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "ubuntu" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw for Ubuntu
+            { Install-WslDockerEngine -DistroName "Ubuntu" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+    }
+
+    Context "Prerequisite validation - Default user" {
+        It "Should throw when no default user is configured and Username not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*default user*"
+        }
+
+        It "Should provide setup-user command in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*setup-user*"
+        }
+
+        It "Should use provided Username parameter when specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw when Username is provided
+            { Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+
+        It "Should auto-detect default user from wsl.conf when Username not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "autodetected" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false -WhatIf
+
+            Should -Invoke Get-WslDefaultUser -Times 1 -ParameterFilter { $DistroName -eq "Debian" }
+        }
+    }
+
+    Context "Prerequisite validation - Docker already installed" {
+        It "Should throw when Docker is already installed" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $true }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*already installed*"
+        }
+
+        It "Should provide uninstall instructions in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $true }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*apt-get remove*"
+        }
+    }
+
+    Context "Docker installation workflow" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+        }
+
+        It "Should execute installation commands when prerequisites pass" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get update*"
+            }
+        }
+
+        It "Should remove old Docker versions" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get remove*docker*"
+            }
+        }
+
+        It "Should install Docker prerequisites" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get install*ca-certificates*curl*"
+            }
+        }
+
+        It "Should add Docker GPG key" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*gpg --dearmor*docker.gpg*"
+            }
+        }
+
+        It "Should setup Docker repository" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt/sources.list.d/docker.list*"
+            }
+        }
+
+        It "Should install Docker Engine packages" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker-ce*docker-ce-cli*containerd*docker-buildx-plugin*docker-compose-plugin*"
+            }
+        }
+
+        It "Should add user to docker group" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*usermod -aG docker*developer*"
+            }
+        }
+
+        It "Should add specified Username to docker group when provided" {
+            Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*usermod -aG docker*customuser*"
+            }
+        }
+
+        It "Should enable Docker service" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl enable docker*"
+            }
+        }
+
+        It "Should start Docker service" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl start docker*"
+            }
+        }
+    }
+
+    Context "Post-installation verification" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "Docker version 24.0.7" }
+        }
+
+        It "Should verify Docker Engine version" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker --version*"
+            }
+        }
+
+        It "Should verify Docker Compose version" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker compose version*"
+            }
+        }
+
+        It "Should verify Docker service status" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl status docker*"
+            }
+        }
+
+        It "Should run hello-world container test" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker run hello-world*"
+            }
+        }
+    }
+
+    Context "SupportsShouldProcess" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { }
+        }
+
+        It "Should support -WhatIf parameter" {
+            Install-WslDockerEngine -DistroName "Debian" -WhatIf
+
+            # With -WhatIf, no actual commands should be executed
+            Should -Invoke Invoke-WslDistroCommand -Times 0
+        }
+
+        It "Should execute when -Confirm:false is specified" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            # With -Confirm:$false, commands should execute
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get update*"
+            }
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Install-WslDockerEngine -DistroName "" -Confirm:$false } | Should -Throw
+        }
+    }
+}

@@ -340,11 +340,11 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 
 ### Phase 2: Main Installation Function
 
-- [ ] Write tests for `Install-WslDockerEngine` main function
-- [ ] Implement `Install-WslDockerEngine` with prerequisite validation
-- [ ] Implement Docker installation workflow in `Install-WslDockerEngine`
-- [ ] Implement post-installation verification in `Install-WslDockerEngine`
-- [ ] Run unit tests for `Install-WslDockerEngine` and verify they pass
+- [x] Write tests for `Install-WslDockerEngine` main function
+- [x] Implement `Install-WslDockerEngine` with prerequisite validation
+- [x] Implement Docker installation workflow in `Install-WslDockerEngine`
+- [x] Implement post-installation verification in `Install-WslDockerEngine`
+- [x] Run unit tests for `Install-WslDockerEngine` and verify they pass
 
 ### Phase 3: CLI Integration
 
