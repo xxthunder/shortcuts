@@ -328,15 +328,15 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 
 ### Phase 1: Helper Functions (TDD Approach)
 
-- [ ] Write tests for `Get-WslDefaultUser` helper function
-- [ ] Implement `Get-WslDefaultUser` in `tools/pslib/wsl.ps1`
-- [ ] Write tests for `Test-WslSystemd` helper function
-- [ ] Implement `Test-WslSystemd` in `tools/pslib/wsl.ps1`
-- [ ] Write tests for `Test-Wsl2Version` helper function
-- [ ] Implement `Test-Wsl2Version` in `tools/pslib/wsl.ps1`
-- [ ] Write tests for `Test-WslDockerInstalled` helper function
-- [ ] Implement `Test-WslDockerInstalled` in `tools/pslib/wsl.ps1`
-- [ ] Run unit tests for all helper functions and verify they pass
+- [x] Write tests for `Get-WslDefaultUser` helper function
+- [x] Implement `Get-WslDefaultUser` in `tools/pslib/wsl.ps1`
+- [x] Write tests for `Test-WslSystemd` helper function
+- [x] Implement `Test-WslSystemd` in `tools/pslib/wsl.ps1`
+- [x] Write tests for `Test-Wsl2Version` helper function
+- [x] Implement `Test-Wsl2Version` in `tools/pslib/wsl.ps1`
+- [x] Write tests for `Test-WslDockerInstalled` helper function
+- [x] Implement `Test-WslDockerInstalled` in `tools/pslib/wsl.ps1`
+- [x] Run unit tests for all helper functions and verify they pass
 
 ### Phase 2: Main Installation Function
 

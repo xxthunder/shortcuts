@@ -717,3 +717,318 @@ function New-WslUser {
         Write-Output "  wsl --terminate $DistroName"
     }
 }
+
+function Get-WslDefaultUser {
+    <#
+    .SYNOPSIS
+        Reads the default user from a WSL distribution's wsl.conf file.
+
+    .DESCRIPTION
+        Reads the /etc/wsl.conf file in a WSL distribution and extracts the default
+        user configured in the [user] section. Returns the username if configured,
+        or $null if wsl.conf doesn't exist or no default user is set.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to query.
+
+    .OUTPUTS
+        System.String
+        Returns the default username, or $null if not configured.
+
+    .EXAMPLE
+        $user = Get-WslDefaultUser -DistroName "Debian"
+        if ($user) {
+            Write-Host "Default user: $user"
+        } else {
+            Write-Host "No default user configured"
+        }
+
+    .NOTES
+        This function is used to check if a distribution has been configured with
+        a default user (typically via New-WslUser or manual wsl.conf editing).
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim input
+    $DistroName = $DistroName.Trim()
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Try to read wsl.conf
+    try {
+        $wslConfContent = Invoke-WslDistroCommand -DistroName $DistroName -Command "cat /etc/wsl.conf" -StopAtError $false -PrintCommand $false
+
+        # If command failed or returned empty, wsl.conf doesn't exist or is empty
+        if ([string]::IsNullOrWhiteSpace($wslConfContent)) {
+            return $null
+        }
+
+        # Parse the content to find [user] section and default= line
+        $inUserSection = $false
+        $lines = $wslConfContent -split "`n"
+
+        foreach ($line in $lines) {
+            $trimmedLine = $line.Trim()
+
+            # Skip empty lines and comments
+            if ([string]::IsNullOrWhiteSpace($trimmedLine) -or $trimmedLine.StartsWith('#')) {
+                continue
+            }
+
+            # Check for [user] section
+            if ($trimmedLine -match '^\[user\]') {
+                $inUserSection = $true
+                continue
+            }
+
+            # Check for new section (stop looking in [user])
+            if ($trimmedLine -match '^\[.*\]') {
+                $inUserSection = $false
+                continue
+            }
+
+            # If in [user] section, look for default= line
+            if ($inUserSection -and $trimmedLine -match '^default\s*=\s*(.+)$') {
+                $username = $matches[1].Trim()
+                return $username
+            }
+        }
+
+        # No default user found
+        return $null
+    }
+    catch {
+        # wsl.conf doesn't exist or other error - return null
+        return $null
+    }
+}
+
+function Test-WslSystemd {
+    <#
+    .SYNOPSIS
+        Checks if systemd is available and running in a WSL distribution.
+
+    .DESCRIPTION
+        Tests whether systemd is operational in a WSL distribution by attempting
+        to run 'systemctl --version'. Returns $true if systemd is running,
+        $false if systemd is not available, not installed, or not enabled in wsl.conf.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to check.
+
+    .OUTPUTS
+        System.Boolean
+        Returns $true if systemd is operational, $false otherwise.
+
+    .EXAMPLE
+        if (Test-WslSystemd -DistroName "Debian") {
+            Write-Host "Systemd is available"
+        } else {
+            Write-Host "Systemd is not available - enable it in /etc/wsl.conf"
+        }
+
+    .NOTES
+        Systemd must be enabled in /etc/wsl.conf with:
+        [boot]
+        systemd=true
+
+        The distribution must be restarted after enabling systemd.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim input
+    $DistroName = $DistroName.Trim()
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Try to run systemctl --version
+    try {
+        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "systemctl --version" -StopAtError $false -PrintCommand $false
+
+        # If command succeeded and returned output, systemd is available
+        if (-not [string]::IsNullOrWhiteSpace($output)) {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+    catch {
+        # systemctl not found or systemd not running
+        return $false
+    }
+}
+
+function Test-Wsl2Version {
+    <#
+    .SYNOPSIS
+        Checks if a WSL distribution is using WSL2 (not WSL1).
+
+    .DESCRIPTION
+        Validates that a WSL distribution is running on WSL2 by parsing the
+        output of 'wsl -l -v' and checking the VERSION column. Returns $true
+        for WSL2 distributions, $false for WSL1 distributions.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to check.
+
+    .OUTPUTS
+        System.Boolean
+        Returns $true if the distribution is WSL2, $false if WSL1.
+
+    .EXAMPLE
+        if (Test-Wsl2Version -DistroName "Debian") {
+            Write-Host "Distribution is WSL2"
+        } else {
+            Write-Host "Distribution is WSL1 - upgrade with: wsl --set-version Debian 2"
+        }
+
+    .NOTES
+        Docker requires WSL2. Distributions can be upgraded from WSL1 to WSL2 using:
+        wsl --set-version <DistroName> 2
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim input
+    $DistroName = $DistroName.Trim()
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Get WSL version list
+    $output = wsl -l -v
+
+    # Parse the output to find the distribution and its version
+    $lines = $output -split "`n"
+    foreach ($line in $lines) {
+        # Clean up line (remove null chars, carriage returns, asterisk, trim)
+        $cleanLine = $line -replace '\x00', '' -replace '\r', '' -replace '\*', '' | ForEach-Object { $_.Trim() }
+
+        # Skip empty lines and headers
+        if ([string]::IsNullOrWhiteSpace($cleanLine) -or $cleanLine -match '^NAME\s+STATE\s+VERSION') {
+            continue
+        }
+
+        # Split by whitespace to get fields
+        $fields = $cleanLine -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+        # Need at least 3 fields: NAME, STATE, VERSION
+        if ($fields.Count -ge 3) {
+            $name = $fields[0]
+            $version = $fields[2]
+
+            # Check if this is our distribution
+            if ($name -eq $DistroName) {
+                if ($version -eq "2") {
+                    return $true
+                }
+                else {
+                    return $false
+                }
+            }
+        }
+    }
+
+    # Distribution not found in output (shouldn't happen since we validated existence)
+    return $false
+}
+
+function Test-WslDockerInstalled {
+    <#
+    .SYNOPSIS
+        Checks if Docker is installed in a WSL distribution.
+
+    .DESCRIPTION
+        Tests whether Docker is installed in a WSL distribution by attempting
+        to run 'docker --version'. Returns $true if Docker is installed and
+        the command succeeds, $false if Docker is not installed or the command fails.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to check.
+
+    .OUTPUTS
+        System.Boolean
+        Returns $true if Docker is installed, $false otherwise.
+
+    .EXAMPLE
+        if (Test-WslDockerInstalled -DistroName "Debian") {
+            Write-Host "Docker is already installed"
+        } else {
+            Write-Host "Docker is not installed"
+        }
+
+    .NOTES
+        This function is used to prevent attempting to install Docker when it's
+        already present in the distribution.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim input
+    $DistroName = $DistroName.Trim()
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Try to run docker --version
+    try {
+        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "docker --version" -StopAtError $false -PrintCommand $false
+
+        # If command succeeded and returned output, Docker is installed
+        if (-not [string]::IsNullOrWhiteSpace($output)) {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+    catch {
+        # docker not found or command failed
+        return $false
+    }
+}
