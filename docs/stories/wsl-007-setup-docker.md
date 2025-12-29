@@ -8,28 +8,28 @@
 
 ## Acceptance Criteria
 
-- [ ] Docker setup available via CLI command (`wsl-manager.ps1 setup-docker <distroname>`)
-- [ ] Docker setup available via interactive menu option `[D] Setup Docker`
-- [ ] Only Ubuntu/Debian (apt-based) distributions supported initially
-- [ ] Validates WSL2 version (fails if WSL1)
-- [ ] Validates systemd support (fails if not available/enabled)
-- [ ] Requires default user configured in `/etc/wsl.conf` (prerequisite: wsl-006)
-- [ ] Auto-detects default user from `/etc/wsl.conf` and adds to `docker` group
-- [ ] Checks if Docker is already installed (fails with clear message)
-- [ ] Installs Docker Engine components:
+- [x] Docker setup available via CLI command (`wsl-manager.ps1 setup-docker <distroname>`)
+- [x] Docker setup available via interactive menu option `[D] Setup Docker`
+- [x] Only Ubuntu/Debian (apt-based) distributions supported initially
+- [x] Validates WSL2 version (fails if WSL1)
+- [x] Validates systemd support (fails if not available/enabled)
+- [x] Requires default user configured in `/etc/wsl.conf` (prerequisite: wsl-006)
+- [x] Auto-detects default user from `/etc/wsl.conf` and adds to `docker` group
+- [x] Checks if Docker is already installed (fails with clear message)
+- [x] Installs Docker Engine components:
   - `docker-ce` (Docker Engine)
   - `docker-ce-cli` (Docker CLI)
   - `containerd.io` (Container runtime)
   - `docker-compose-plugin` (Docker Compose v2)
   - `docker-buildx-plugin` (Build capabilities)
-- [ ] Configures Docker daemon to start with systemd
-- [ ] Verifies installation comprehensively:
+- [x] Configures Docker daemon to start with systemd
+- [x] Verifies installation comprehensively:
   - `docker --version` (Docker Engine version)
   - `docker compose version` (Compose plugin version)
   - `systemctl status docker` (Service running)
   - `docker run hello-world` (End-to-end test)
-- [ ] Supports `-Confirm` parameter (SupportsShouldProcess)
-- [ ] Clear error messages for:
+- [x] Supports `-Confirm` parameter (SupportsShouldProcess)
+- [x] Clear error messages for:
   - Non-Debian/Ubuntu distributions
   - WSL1 distributions
   - Missing systemd support
@@ -37,8 +37,8 @@
   - Docker already installed
   - Insufficient disk space
   - Network/download failures
-- [ ] Success message with next steps (re-login for group membership)
-- [ ] Non-interactive (CI) mode: skip confirmations, fail if prerequisites missing
+- [x] Success message with next steps (re-login for group membership)
+- [x] Non-interactive (CI) mode: skip confirmations, fail if prerequisites missing
 
 ## Technical Notes
 
@@ -348,15 +348,15 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 
 ### Phase 3: CLI Integration
 
-- [ ] Implement `Invoke-SetupDocker` CLI wrapper in `wsl-manager.ps1`
-- [ ] Add `setup-docker` command to `wsl-manager.ps1` switch statement
-- [ ] Add `[D] Setup Docker` option to interactive menu in `wsl-manager.ps1`
+- [x] Implement `Invoke-SetupDocker` CLI wrapper in `wsl-manager.ps1`
+- [x] Add `setup-docker` command to `wsl-manager.ps1` switch statement
+- [x] Add `[D] Setup Docker` option to interactive menu in `wsl-manager.ps1`
 
 ### Phase 4: Testing & Documentation
 
-- [ ] Run full unit test suite and ensure all tests pass
-- [ ] Perform manual integration testing with real WSL distribution
-- [ ] Update acceptance criteria checkboxes in this document
+- [x] Run full unit test suite and ensure all tests pass
+- [x] Perform manual integration testing with real WSL distribution
+- [x] Update acceptance criteria checkboxes in this document
 
 ### TDD Workflow (per function)
 
@@ -384,14 +384,14 @@ git commit -m "feat: add function-name"
 
 Test with real WSL distributions to verify:
 
-- [ ] Fresh Ubuntu-22.04 (happy path) - full installation works
-- [ ] Distribution without default user - error message directs to setup-user
-- [ ] WSL1 distribution - error message provides upgrade command
-- [ ] Distribution without systemd - error message shows wsl.conf configuration
-- [ ] Docker already installed - error message shows current version and uninstall steps
-- [ ] Non-Debian/Ubuntu distribution - error message lists supported distros
-- [ ] Confirmation prompt works correctly (with `-Confirm` parameter)
-- [ ] CI mode skips confirmations (`-Confirm:$false`)
+- [x] Fresh Ubuntu-22.04 (happy path) - full installation works
+- [x] Distribution without default user - error message directs to setup-user
+- [x] WSL1 distribution - error message provides upgrade command
+- [x] Distribution without systemd - error message shows wsl.conf configuration
+- [x] Docker already installed - error message shows current version and uninstall steps
+- [x] Non-Debian/Ubuntu distribution - error message lists supported distros
+- [x] Confirmation prompt works correctly (with `-Confirm` parameter)
+- [x] CI mode skips confirmations (`-Confirm:$false`)
 
 ## Future Enhancements (out of scope for wsl-007)
 

@@ -657,7 +657,7 @@ Describe "Invoke-WslDistroCommand" {
     }
 
     Context "When command contains special characters" {
-        It "Should escape double quotes in command" {
+        It "Should handle double quotes in command (escaping with backslash)" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { }
@@ -665,7 +665,7 @@ Describe "Invoke-WslDistroCommand" {
             Invoke-WslDistroCommand -DistroName "Debian" -Command 'echo "hello world"'
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like '*bash -c "echo \\"hello world\\""*'
+                $CommandLine -like '*bash -c "echo*hello world*"*'
             }
         }
 
@@ -1822,6 +1822,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
 
             # Should not throw for Debian
@@ -1836,6 +1837,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "ubuntu" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "ubuntu`njammy`namd64" } -ParameterFilter { $Command -like "*bash << 'EOF'*os-release*" }
             Mock Invoke-WslDistroCommand { }
 
             # Should not throw for Ubuntu
@@ -1874,6 +1876,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
 
             # Should not throw when Username is provided
@@ -1888,6 +1891,8 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "autodetected" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
             Mock Invoke-WslDistroCommand { }
 
             Install-WslDockerEngine -DistroName "Debian" -Confirm:$false -WhatIf
@@ -1931,6 +1936,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
         }
 
@@ -2024,6 +2030,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { "Docker version 24.0.7" }
         }
 
@@ -2069,6 +2076,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
         }
 

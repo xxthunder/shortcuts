@@ -8,8 +8,9 @@
     2. Clone Debian to debian-custom-test (custom distro)
     3. Update debian-custom-test
     4. Setup user in debian-custom-test
-    5. List both distributions
-    6. Remove only debian-custom-test (and leave Debian untouched)
+    5. Setup Docker in debian-custom-test
+    6. List both distributions
+    7. Remove only debian-custom-test (and leave Debian untouched)
 
     WARNING: These tests will create and remove WSL distributions.
     Test distribution: debian-custom-test
@@ -194,6 +195,54 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $sudoersCheck = wsl -d $script:customDistroName -- sudo cat /etc/sudoers.d/$testUsername 2>&1
             $sudoersCheck | Should -Match "NOPASSWD:ALL"
             $sudoersCheck | Should -Match "$testUsername ALL="
+        }
+    }
+
+    Context "Setup Docker" {
+        It "Should install Docker Engine in custom distro with user and print executed commands" {
+            Write-Host "`n==> TEST: Installing Docker in $script:customDistroName..." -ForegroundColor Magenta
+
+            # First verify the custom distribution exists
+            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros | Should -Contain $script:customDistroName
+
+            # Load the library
+            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
+            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+
+            # Capture output from Install-WslDockerEngine
+            $output = Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false 2>&1 | Out-String
+
+            Write-Host "==> Captured Output:" -ForegroundColor Cyan
+            Write-Host $output
+
+            # Verify Docker is installed (output messages aren't captured due to Write-Information)
+            $dockerVersion = wsl -d $script:customDistroName -- docker --version 2>&1
+            $dockerVersion | Should -Match "Docker version"
+
+            # Verify Docker Compose is installed
+            $composeVersion = wsl -d $script:customDistroName -- docker compose version 2>&1
+            $composeVersion | Should -Match "Docker Compose version"
+
+            # Verify Docker service is running
+            $serviceStatus = wsl -d $script:customDistroName -- sudo systemctl is-active docker 2>&1
+            $serviceStatus | Should -Match "active"
+
+            # Verify user is in docker group
+            $testUsername = "testuser"
+            $groupCheck = wsl -d $script:customDistroName -- groups $testUsername 2>&1
+            $groupCheck | Should -Match '\bdocker\b'
+        }
+
+        It "Should fail when trying to install Docker again (already installed)" {
+            Write-Host "`n==> TEST: Verifying Docker already installed error in $script:customDistroName..." -ForegroundColor Magenta
+
+            # Load the library
+            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
+            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+
+            # Attempt to install Docker again (should fail)
+            { Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false -ErrorAction Stop } | Should -Throw -ExpectedMessage "*Docker is already installed*"
         }
     }
 

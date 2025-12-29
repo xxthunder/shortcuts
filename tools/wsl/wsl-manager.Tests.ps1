@@ -643,4 +643,122 @@ Describe "Invoke-WslManager" {
             Should -Invoke New-WslUser -Times 0
         }
     }
+
+    Context "When called with 'setup-docker' argument" {
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should call Install-WslDockerEngine when Name is provided" {
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker" -Name "Debian"
+
+            Should -Invoke Install-WslDockerEngine -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after Docker installation" {
+            Mock Write-Host {}
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Docker*" }
+        }
+
+        It "Should display restart instructions" {
+            Mock Write-Host {}
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl --terminate*" }
+        }
+
+        It "Should handle WSL1 distribution error" {
+            Mock Install-WslDockerEngine { throw "Distribution 'OldDebian' is using WSL1.`nDocker requires WSL2. Upgrade with:`n  wsl --set-version OldDebian 2" }
+
+            { Invoke-WslManager -Command "setup-docker" -Name "OldDebian" } | Should -Throw "*WSL1*"
+        }
+
+        It "Should handle missing systemd error" {
+            Mock Install-WslDockerEngine { throw "Distribution 'CustomDistro' does not support systemd" }
+
+            { Invoke-WslManager -Command "setup-docker" -Name "CustomDistro" } | Should -Throw "*systemd*"
+        }
+
+        It "Should handle Docker already installed error" {
+            Mock Install-WslDockerEngine { throw "Docker is already installed in 'Debian'" }
+
+            { Invoke-WslManager -Command "setup-docker" -Name "Debian" } | Should -Throw "*already installed*"
+        }
+
+        It "Should handle no default user error" {
+            Mock Install-WslDockerEngine { throw "No default user configured in 'Debian'.`nDocker setup requires a non-root user" }
+
+            { Invoke-WslManager -Command "setup-docker" -Name "Debian" } | Should -Throw "*default user*"
+        }
+
+        It "Should support selection by number" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker"
+
+            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker"
+
+            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Alpine" }
+        }
+
+        It "Should reject invalid number selection" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Install-WslDockerEngine -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-WslManager -Command "setup-docker"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Install-WslDockerEngine -Times 0
+        }
+    }
 }

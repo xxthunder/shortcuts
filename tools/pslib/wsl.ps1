@@ -436,10 +436,13 @@ function Invoke-WslDistroCommand {
         throw "Distribution '$DistroName' does not exist."
     }
 
-    # Escape double quotes in the command (need to double the backslash for proper escaping)
-    $escapedCommand = $Command -replace '"', '\\"'
+    # Escape double quotes for bash and dollar signs for PowerShell
+    # We use double quotes around the command to allow bash variable expansion (e.g., $ID from /etc/os-release)
+    # But we need to escape $ for PowerShell so it doesn't try to expand bash variables
+    $escapedCommand = $Command.Replace('"', '\"').Replace('$', '`$')
 
-    # Build the WSL command
+    # Build the WSL command using expandable string with backtick-escaped command
+    # The backticks in $escapedCommand will protect bash variables from PowerShell expansion
     $wslCommand = "wsl -d $DistroName -e bash -c `"$escapedCommand`""
 
     # Execute the command and capture output
@@ -702,13 +705,14 @@ function New-WslUser {
         Invoke-WslDistroCommand -DistroName $DistroName -Command $addSudoCmd
 
         # Step 4: Configure NOPASSWD in sudoers.d
-        # Use single quotes in bash to avoid PowerShell interpreting the parentheses
+        # Use single quotes around echo content to avoid PowerShell interpretation issues
+        # PowerShell will expand $Username before passing to bash
         $sudoersCmd = "echo '$Username ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false
 
         # Step 5: Set default user in wsl.conf
-        # Use printf with literal strings to write both lines
-        $wslConfCmd = "printf '`[user`]\n' | sudo tee /etc/wsl.conf > /dev/null && printf 'default=$Username\n' | sudo tee -a /etc/wsl.conf > /dev/null"
+        # Use single quotes around echo content
+        $wslConfCmd = "echo '[user]' | sudo tee /etc/wsl.conf > /dev/null && echo 'default=$Username' | sudo tee -a /etc/wsl.conf > /dev/null"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false
 
         Write-Output "Successfully created user '$Username' in '$DistroName'."
@@ -1194,16 +1198,33 @@ Or verify your installation with:
         Write-Information "  -> Adding Docker GPG key"
         Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false | Out-Null
 
-        $gpgCommand = @"
-curl -fsSL https://download.docker.com/linux/`$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-"@
+        # Get distribution info by sourcing /etc/os-release and echoing variables
+        # Use backtick-escaped $ so PowerShell doesn't expand, but bash does (since we use double quotes in Invoke-WslDistroCommand)
+        $getDistroInfoCmd = ". /etc/os-release && echo `$ID && echo `$VERSION_CODENAME && dpkg --print-architecture"
+        $distroInfo = Invoke-WslDistroCommand -DistroName $DistroName -Command $getDistroInfoCmd -PrintCommand $false
+        if ([string]::IsNullOrWhiteSpace($distroInfo)) {
+            throw "Failed to detect distribution information"
+        }
+
+        $infoLines = $distroInfo -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        if ($infoLines.Count -lt 3) {
+            throw "Failed to parse distribution information"
+        }
+
+        $distroId = $infoLines[0].Trim().ToLower()
+        $distroCodename = $infoLines[1].Trim()
+        $arch = $infoLines[2].Trim()
+
+        # Download and add Docker's GPG key
+        $gpgUrl = "https://download.docker.com/linux/$distroId/gpg"
+        $gpgCommand = "curl -fsSL $gpgUrl | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false | Out-Null
 
         # 4. Set up Docker repository
         Write-Information "  -> Configuring Docker repository"
-        $repoCommand = @"
-echo "deb [arch=`$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/`$(lsb_release -is | tr '[:upper:]' '[:lower:]') `$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-"@
+        $repoUrl = "https://download.docker.com/linux/$distroId"
+        $repoLine = "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.gpg] $repoUrl $distroCodename stable"
+        $repoCommand = "echo '$repoLine' | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false | Out-Null
 
         # 5. Install Docker Engine

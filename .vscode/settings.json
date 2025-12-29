@@ -21,5 +21,16 @@
     "peacock.color": "#ff3d00",
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
-    "AutoHotkey2.InterpreterPath": "AutoHotkey.exe"
+    "AutoHotkey2.InterpreterPath": "AutoHotkey.exe",
+    "cSpell.words": [
+        "buildx",
+        "dearmor",
+        "distroname",
+        "distros",
+        "dpkg",
+        "keyrings",
+        "pacman",
+        "pslib",
+        "usermod"
+    ]
 }
