@@ -39,7 +39,7 @@ function Get-WslAvailableDistro {
         Gets a list of available WSL distributions that can be installed.
 
     .DESCRIPTION
-        Queries 'wsl --list --online' to get available distributions.
+        Queries 'wsl.exe --list --online' to get available distributions.
         Uses language-independent parsing to work on systems with any locale.
         Sets LC_ALL environment variable to ensure consistent output format.
 
@@ -65,7 +65,7 @@ function Get-WslAvailableDistro {
         $env:LC_ALL = "en_US.UTF-8"
 
         # Get available distributions
-        $output = wsl --list --online 2>&1
+        $output = wsl.exe --list --online 2>&1
 
         # Restore original locale
         if ($null -ne $originalLcAll) {
@@ -122,14 +122,14 @@ function New-WslDistro {
         Creates a new WSL distribution.
 
     .DESCRIPTION
-        Installs a new WSL distribution using the 'wsl --install -d' command.
-        Supports any distribution available through 'wsl --list --online'.
+        Installs a new WSL distribution using the 'wsl.exe --install -d' command.
+        Supports any distribution available through 'wsl.exe --list --online'.
         Dynamically validates against available distributions.
         Requires WSL to be installed on the system.
 
     .PARAMETER Name
         The name of the distribution to create (e.g., Ubuntu-22.04, Debian, kali-linux).
-        Must match one of the distributions returned by 'wsl --list --online'.
+        Must match one of the distributions returned by 'wsl.exe --list --online'.
 
     .EXAMPLE
         New-WslDistro -Name "Debian"
@@ -168,7 +168,7 @@ function New-WslDistro {
         foreach ($distro in $availableDistros) {
             $errorMsg += "  - $distro`n"
         }
-        $errorMsg += "`nRun 'wsl --list --online' to see all available distributions."
+        $errorMsg += "`nRun 'wsl.exe --list --online' to see all available distributions."
         throw $errorMsg
     }
 
@@ -180,10 +180,10 @@ function New-WslDistro {
 
     if ($PSCmdlet.ShouldProcess($Name, "Create WSL distribution")) {
         Write-Output "Creating WSL distribution '$Name'..."
-        Invoke-CommandLine -CommandLine "wsl --install --distribution $Name --no-launch"
+        Invoke-CommandLine -CommandLine "wsl.exe --install --distribution $Name --no-launch"
         Write-Output "Successfully created '$Name'."
         Write-Output ""
-        Write-Output "To start: wsl -d $Name"
+        Write-Output "To start: wsl.exe --distribution $Name"
     }
 }
 
@@ -213,7 +213,7 @@ function Get-WslDistroList {
     $env:LC_ALL = "en_US.UTF-8"
 
     try {
-        $distros = wsl --list --quiet | ForEach-Object {
+        $distros = wsl.exe --list --quiet | ForEach-Object {
             # Clean up WSL output: remove null chars (UTF-16), carriage returns, and trim whitespace
             $_.Trim() -replace '\x00', '' -replace '\r', ''
         } | Where-Object { $_ -ne "" }
@@ -241,7 +241,7 @@ function Remove-WslDistro {
         Removes an existing WSL distribution.
 
     .DESCRIPTION
-        Unregisters a WSL distribution using the 'wsl --unregister' command.
+        Unregisters a WSL distribution using the 'wsl.exe --unregister' command.
         Requires WSL to be installed and the distribution to exist.
 
     .PARAMETER Name
@@ -276,7 +276,7 @@ function Remove-WslDistro {
     # Ask for confirmation using ShouldProcess
     if ($PSCmdlet.ShouldProcess($Name, "Remove WSL distribution")) {
         Write-Output "Removing WSL distribution '$Name'..."
-        Invoke-CommandLine -CommandLine "wsl --unregister $Name"
+        Invoke-CommandLine -CommandLine "wsl.exe --unregister $Name"
         Write-Output "Successfully removed '$Name'."
     }
     else {
@@ -366,15 +366,15 @@ function Copy-WslDistro {
 
             # Export source distribution
             Write-Output "Exporting '$SourceName'..."
-            Invoke-CommandLine -CommandLine "wsl --export $SourceName `"$tempTarFile`""
+            Invoke-CommandLine -CommandLine "wsl.exe --export $SourceName `"$tempTarFile`""
 
             # Import as new distribution
             Write-Output "Importing as '$TargetName'..."
-            Invoke-CommandLine -CommandLine "wsl --import $TargetName `"$InstallPath`" `"$tempTarFile`""
+            Invoke-CommandLine -CommandLine "wsl.exe --import $TargetName `"$InstallPath`" `"$tempTarFile`""
 
             Write-Output "Successfully cloned '$SourceName' to '$TargetName'."
             Write-Output ""
-            Write-Output "To start: wsl -d $TargetName"
+            Write-Output "To start: wsl.exe --distribution $TargetName"
         }
         finally {
             # Clean up temp file
@@ -465,7 +465,7 @@ function Invoke-WslDistroCommand {
 
     # Build the WSL command using expandable string with backtick-escaped command
     # The backticks in $escapedCommand will protect bash variables from PowerShell expansion
-    $wslCommand = "wsl -d $DistroName -e bash -c `"$escapedCommand`""
+    $wslCommand = "wsl.exe --distribution $DistroName --exec bash -c `"$escapedCommand`""
 
     # Execute the command and capture output
     $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
@@ -623,7 +623,7 @@ function New-WslUser {
         - Configures passwordless sudo (NOPASSWD)
         - Sets user as default user in wsl.conf
 
-        After creation, the distribution must be restarted with 'wsl --terminate <DistroName>'
+        After creation, the distribution must be restarted with 'wsl.exe --terminate <DistroName>'
         for the default user change to take effect.
 
     .PARAMETER DistroName
@@ -648,7 +648,7 @@ function New-WslUser {
 
     .NOTES
         The distribution must be restarted after user creation:
-        wsl --terminate <DistroName>
+        wsl.exe --terminate <DistroName>
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Function accepts both SecureString and plain text for flexibility. SecureString is handled internally.')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '', Justification = 'Password parameter accepts both SecureString and String. SecureString is properly converted internally.')]
@@ -738,7 +738,7 @@ function New-WslUser {
         Write-Output "Successfully created user '$Username' in '$DistroName'."
         Write-Output ""
         Write-Output "To apply the default user change, restart the distribution with:"
-        Write-Output "  wsl --terminate $DistroName"
+        Write-Output "  wsl.exe --terminate $DistroName"
     }
 }
 
@@ -914,7 +914,7 @@ function Test-Wsl2Version {
 
     .DESCRIPTION
         Validates that a WSL distribution is running on WSL2 by parsing the
-        output of 'wsl -l -v' and checking the VERSION column. Returns $true
+        output of 'wsl.exe --list --verbose' and checking the VERSION column. Returns $true
         for WSL2 distributions, $false for WSL1 distributions.
 
     .PARAMETER DistroName
@@ -928,12 +928,12 @@ function Test-Wsl2Version {
         if (Test-Wsl2Version -DistroName "Debian") {
             Write-Host "Distribution is WSL2"
         } else {
-            Write-Host "Distribution is WSL1 - upgrade with: wsl --set-version Debian 2"
+            Write-Host "Distribution is WSL1 - upgrade with: wsl.exe --set-version Debian 2"
         }
 
     .NOTES
         Docker requires WSL2. Distributions can be upgraded from WSL1 to WSL2 using:
-        wsl --set-version <DistroName> 2
+        wsl.exe --set-version <DistroName> 2
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -960,7 +960,7 @@ function Test-Wsl2Version {
 
     try {
         # Get WSL version list
-        $output = wsl -l -v
+        $output = wsl.exe --list --verbose
 
         # Parse the output to find the distribution and its version
         $lines = $output -split "`n"
@@ -1111,8 +1111,8 @@ function Install-WslDockerEngine {
     .NOTES
         This function requires sudo privileges in the WSL distribution.
         After installation, the user must restart the distribution for group membership to take effect:
-          wsl --terminate <DistroName>
-          wsl -d <DistroName>
+          wsl.exe --terminate <DistroName>
+          wsl.exe --distribution <DistroName>
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -1149,7 +1149,7 @@ function Install-WslDockerEngine {
         throw @"
 Distribution '$DistroName' is using WSL1.
 Docker requires WSL2. Upgrade with:
-  wsl --set-version $DistroName 2
+  wsl.exe --set-version $DistroName 2
 "@
     }
 
@@ -1163,8 +1163,8 @@ Enable systemd in /etc/wsl.conf:
   systemd=true
 
 Then restart the distribution:
-  wsl --terminate $DistroName
-  wsl -d $DistroName
+  wsl.exe --terminate $DistroName
+  wsl.exe --distribution $DistroName
 "@
     }
 
@@ -1197,7 +1197,7 @@ Docker is already installed in '$DistroName'.
 
 To reinstall Docker:
   1. Uninstall existing Docker:
-       wsl -d $DistroName sudo apt-get remove docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+       wsl.exe --distribution $DistroName sudo apt-get remove docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   2. Run setup-docker again
 
 Or verify your installation with:
@@ -1307,8 +1307,8 @@ Or verify your installation with:
         Write-Information ""
         Write-Information "Next steps:"
         Write-Information "  1. Restart the distribution to apply group membership:"
-        Write-Information "       wsl --terminate $DistroName"
-        Write-Information "       wsl -d $DistroName"
+        Write-Information "       wsl.exe --terminate $DistroName"
+        Write-Information "       wsl.exe --distribution $DistroName"
         Write-Information "  2. Test Docker (should work without sudo):"
         Write-Information "       docker ps"
         Write-Information "       docker run hello-world"

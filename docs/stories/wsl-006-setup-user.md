@@ -94,7 +94,7 @@ wsl --terminate <distroname>
 .\tools\wsl\wsl-manager.ps1 create Debian
 # Creating WSL distribution 'Debian' ...
 # Successfully created 'Debian'.
-# To start: wsl -d Debian
+# To start: wsl --distribution Debian
 
 # 2. Setup user account separately (via direct command)
 .\tools\wsl\wsl-manager.ps1 setup-user Debian

@@ -50,16 +50,16 @@ wsl -l -v | Select-String $distroName
 # Parse VERSION column, must be "2"
 
 # 2. Check systemd support (both installed AND enabled)
-wsl -d $distroName systemctl --version
+wsl --distribution $distroName systemctl --version
 # Must exit with code 0 (fails if systemd not running)
 
 # 3. Detect default user (REQUIRED - must be configured via wsl-006 first)
-wsl -d $distroName cat /etc/wsl.conf | grep -A2 "\[user\]" | grep "default"
+wsl --distribution $distroName cat /etc/wsl.conf | grep -A2 "\[user\]" | grep "default"
 # Must return a username, not empty
 # If missing, direct user to run: wsl-manager.ps1 setup-user <distroname>
 
 # 4. Check if Docker already installed
-wsl -d $distroName docker --version
+wsl --distribution $distroName docker --version
 # If exits with 0, Docker exists - fail with message to avoid conflicts
 
 # 5. Check distribution type (Debian/Ubuntu only)
@@ -189,7 +189,7 @@ sudo docker run hello-world
 
   ```powershell
   wsl --terminate <distroname>
-  wsl -d <distroname>
+  wsl --distribution <distroname>
   ```
 
 - Test command: `docker ps` (should work without sudo after re-login)
@@ -229,7 +229,7 @@ sudo docker run hello-world
 # Next steps:
 #   1. Restart the distribution to apply group membership:
 #        wsl --terminate Ubuntu-22.04
-#        wsl -d Ubuntu-22.04
+#        wsl --distribution Ubuntu-22.04
 #   2. Test Docker (should work without sudo):
 #        docker ps
 #        docker run hello-world
@@ -265,7 +265,7 @@ sudo docker run hello-world
 #
 # To reinstall Docker:
 #   1. Uninstall existing Docker:
-#        wsl -d Ubuntu-22.04 sudo apt-get remove docker-ce docker-ce-cli containerd.io
+#        wsl --distribution Ubuntu-22.04 sudo apt-get remove docker-ce docker-ce-cli containerd.io
 #   2. Run setup-docker again
 #
 # Or verify your installation with:

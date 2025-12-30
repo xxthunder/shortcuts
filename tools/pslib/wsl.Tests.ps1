@@ -144,7 +144,7 @@ Describe "Get-WslDistroList" {
 
             Get-WslDistroList
 
-            Should -Invoke wsl -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
+            Should -Invoke wsl.exe -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
         }
 
         It "Should set and restore LC_ALL environment variable" {
@@ -191,14 +191,14 @@ Describe "Remove-WslDistro" {
     }
 
     Context "When user confirms removal" {
-        It "Should remove distribution using wsl --unregister" {
+        It "Should remove distribution using wsl.exe --unregister" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine {}
 
             Remove-WslDistro -Name "Debian" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
     }
 
@@ -210,7 +210,7 @@ Describe "Remove-WslDistro" {
 
             Remove-WslDistro -Name "Debian" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
 
         It "Should throw error when wsl command fails" {
@@ -218,7 +218,7 @@ Describe "Remove-WslDistro" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --unregister Debian`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --unregister Debian`" failed with exit code 1"
             }
 
             { Remove-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
@@ -283,12 +283,12 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name "kali-linux" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d kali-linux --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution kali-linux --no-launch" }
         }
     }
 
     Context "When creating a new distribution" {
-        It "Should create <DistroName> using wsl --install -d <DistroName> --no-launch" -ForEach @(
+        It "Should create <DistroName> using wsl.exe --install --distribution <DistroName> --no-launch" -ForEach @(
             @{ DistroName = "Debian" }
             @{ DistroName = "Ubuntu" }
             @{ DistroName = "Ubuntu-22.04" }
@@ -301,7 +301,7 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name $DistroName -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d $DistroName --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution $DistroName --no-launch" }
         }
 
         It "Should display success message" {
@@ -323,7 +323,7 @@ Describe "New-WslDistro" {
 
             $output = New-WslDistro -Name "Ubuntu" -Confirm:$false 6>&1
 
-            $output -join ' ' | Should -Match "To start: wsl -d Ubuntu"
+            $output -join ' ' | Should -Match "To start: wsl.exe --distribution Ubuntu"
         }
 
         It "Should trim whitespace from distribution name" {
@@ -334,7 +334,7 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name "  Debian  " -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d Debian --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution Debian --no-launch" }
         }
 
         It "Should skip installation when user cancels confirmation" {
@@ -354,7 +354,7 @@ Describe "New-WslDistro" {
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --install --distribution Debian --no-launch`" failed with exit code 1"
             }
 
             { New-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
@@ -366,7 +366,7 @@ Describe "New-WslDistro" {
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --install --distribution Debian --no-launch`" failed with exit code 1"
             }
             Mock Write-Output {}
 
@@ -420,7 +420,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Debian *"
+                $CommandLine -like "wsl.exe --export Debian *"
             }
         }
 
@@ -428,7 +428,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian * *"
+                $CommandLine -like "wsl.exe --import MyDebian * *"
             }
         }
 
@@ -436,7 +436,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *wsl\MyDebian* *"
+                $CommandLine -like "wsl.exe --import MyDebian *wsl\MyDebian* *"
             }
         }
 
@@ -444,7 +444,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "D:\WSL\MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *D:\WSL\MyDebian* *"
+                $CommandLine -like "wsl.exe --import MyDebian *D:\WSL\MyDebian* *"
             }
         }
 
@@ -475,17 +475,17 @@ Describe "Copy-WslDistro" {
 
             $output = Copy-WslDistro -SourceName "Ubuntu" -TargetName "MyUbuntu" -Confirm:$false 6>&1
 
-            $output -join ' ' | Should -Match "To start: wsl -d MyUbuntu"
+            $output -join ' ' | Should -Match "To start: wsl.exe --distribution MyUbuntu"
         }
 
         It "Should trim whitespace from distribution names" {
             Copy-WslDistro -SourceName "  Debian  " -TargetName "  MyDebian  " -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Debian *"
+                $CommandLine -like "wsl.exe --export Debian *"
             }
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *"
+                $CommandLine -like "wsl.exe --import MyDebian *"
             }
         }
 
@@ -500,24 +500,24 @@ Describe "Copy-WslDistro" {
         It "Should not attempt import and should clean up" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
-            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Test-Path { $true }
             Mock Remove-Item {}
 
             { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl --import *" } -Times 0
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl.exe --import *" } -Times 0
             Should -Invoke Remove-Item
         }
 
         It "Should clean up temp file when import fails" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
-            Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
                 throw "Command line call failed with exit code 1" 
-            } -ParameterFilter { $CommandLine -like "wsl --import *" }
+            } -ParameterFilter { $CommandLine -like "wsl.exe --import *" }
             Mock Test-Path { $true }
             Mock Remove-Item {}
 
@@ -559,7 +559,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "C:\My WSL\MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "*wsl --import MyDebian*My WSL\MyDebian*"
+                $CommandLine -like "*wsl.exe --import MyDebian*My WSL\MyDebian*"
             }
         }
 
@@ -569,10 +569,10 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Ubuntu-22.04" -TargetName "My-Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Ubuntu-22.04 *"
+                $CommandLine -like "wsl.exe --export Ubuntu-22.04 *"
             }
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import My-Project *"
+                $CommandLine -like "wsl.exe --import My-Project *"
             }
         }
 
@@ -582,7 +582,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Oracle_Linux_8" -TargetName "My_Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Oracle_Linux_8 *"
+                $CommandLine -like "wsl.exe --export Oracle_Linux_8 *"
             }
         }
 
@@ -592,7 +592,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "openSUSE-Leap-15.6" -TargetName "SUSE.Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export openSUSE-Leap-15.6 *"
+                $CommandLine -like "wsl.exe --export openSUSE-Leap-15.6 *"
             }
         }
     }
@@ -625,7 +625,7 @@ Describe "Invoke-WslDistroCommand" {
             $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like '*wsl -d Debian -e bash -c "echo test"*'
+                $CommandLine -like '*wsl.exe --distribution Debian --exec bash -c "echo test"*'
             }
             $result | Should -Be "command output"
         }
@@ -1252,7 +1252,7 @@ Describe "New-WslUser" {
             New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
 
             Should -Invoke Write-Output -ParameterFilter {
-                $InputObject -like "*wsl --terminate*"
+                $InputObject -like "*wsl.exe --terminate*"
             }
         }
 
@@ -1628,7 +1628,7 @@ Describe "Test-Wsl2Version" {
 * Debian    Running         2
   Ubuntu    Stopped         2
 "@
-            } -ParameterFilter { $args[0] -eq "-l" -and $args[1] -eq "-v" }
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
 
             $result = Test-Wsl2Version -DistroName "Debian"
 
@@ -1643,7 +1643,7 @@ Describe "Test-Wsl2Version" {
   NAME              STATE           VERSION
   Ubuntu-22.04      Running         2
 "@
-            } -ParameterFilter { $args[0] -eq "-l" -and $args[1] -eq "-v" }
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
 
             $result = Test-Wsl2Version -DistroName "Ubuntu-22.04"
 
@@ -1661,7 +1661,7 @@ Describe "Test-Wsl2Version" {
   Debian    Running         1
   Ubuntu    Stopped         2
 "@
-            } -ParameterFilter { $args[0] -eq "-l" -and $args[1] -eq "-v" }
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
 
             $result = Test-Wsl2Version -DistroName "Debian"
 
@@ -1671,7 +1671,7 @@ Describe "Test-Wsl2Version" {
         It "Should set and restore LC_ALL environment variable" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
-            Mock wsl { "* Debian    Running         2" } -ParameterFilter { $args[0] -eq "-l" -and $args[1] -eq "-v" }
+            Mock wsl { "* Debian    Running         2" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
 
             $originalLcAll = $env:LC_ALL
             Test-Wsl2Version -DistroName "Debian"
@@ -1802,7 +1802,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $false }
 
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl --set-version*"
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl.exe --set-version*"
         }
     }
 

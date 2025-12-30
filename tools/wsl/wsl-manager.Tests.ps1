@@ -11,11 +11,8 @@ BeforeAll {
     . "$PSScriptRoot\..\pslib\wsl.ps1"
     . "$PSScriptRoot\wsl-manager.ps1"
 
-    # Import Security module explicitly for PowerShell 5.1 compatibility
-    # Errors are silently ignored if module is already loaded or unavailable
-    Import-Module Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
-
     # Create SecureString objects at top level for PowerShell 5.1 compatibility
+    # Note: ConvertTo-SecureString is available by default in PowerShell, no explicit module import needed
     $script:testSecurePass = ConvertTo-SecureString "testpass" -AsPlainText -Force
     $script:devSecurePass = ConvertTo-SecureString "password123" -AsPlainText -Force
 }
@@ -584,7 +581,7 @@ Describe "Invoke-WslManager" {
 
             Invoke-WslManager -Command "setup-user" -Name "Ubuntu"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl --terminate*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
         }
 
         It "Should handle invalid username with validation error" {
@@ -684,11 +681,11 @@ Describe "Invoke-WslManager" {
 
             Invoke-WslManager -Command "setup-docker" -Name "Ubuntu"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl --terminate*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
         }
 
         It "Should handle WSL1 distribution error" {
-            Mock Install-WslDockerEngine { throw "Distribution 'OldDebian' is using WSL1.`nDocker requires WSL2. Upgrade with:`n  wsl --set-version OldDebian 2" }
+            Mock Install-WslDockerEngine { throw "Distribution 'OldDebian' is using WSL1.`nDocker requires WSL2. Upgrade with:`n  wsl.exe --set-version OldDebian 2" }
 
             { Invoke-WslManager -Command "setup-docker" -Name "OldDebian" } | Should -Throw "*WSL1*"
         }

@@ -44,7 +44,7 @@
 # Importing as 'MyProject'...
 # Successfully cloned 'Debian' to 'MyProject'.
 #
-# To start: wsl -d MyProject
+# To start: wsl --distribution MyProject
 
 # Clone with custom install location
 .\tools\wsl\wsl-manager.ps1 clone Ubuntu-22.04 ProjectX -InstallPath "D:\WSL\ProjectX"

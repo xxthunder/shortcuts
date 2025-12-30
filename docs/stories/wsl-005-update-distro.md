@@ -54,7 +54,7 @@ Supported types:
 
 ### Quote Escaping
 
-Commands are executed via `wsl -d <name> -e bash -c "<command>"`:
+Commands are executed via `wsl --distribution <name> -e bash -c "<command>"`:
 - Double quotes in commands are escaped: `"` → `\\"`
 - Quote removal handled in PowerShell using `.Trim('"')`
 - Avoids problematic bash command construction

@@ -14,7 +14,7 @@
 
 .PARAMETER Name
     The name of the distribution (used with create and clone commands).
-    For create: supports any distribution available from 'wsl --list --online'.
+    For create: supports any distribution available from 'wsl.exe --list --online'.
     For clone: the source distribution name to clone from.
     Examples: Debian, Ubuntu, Ubuntu-22.04, Ubuntu-24.04, kali-linux.
 
@@ -65,8 +65,11 @@ $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 # Enforce English UI culture for consistent wsl.exe output across different Windows languages
-$script:OriginalUICulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
-[System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::new('en-US')
+# Only on PowerShell 6.0+ to avoid type data loading issues in PowerShell 5.1
+if ($PSVersionTable.PSVersion.Major -ge 6) {
+    $script:OriginalUICulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
+    [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::new('en-US')
+}
 
 # Source dependencies
 . "$PSScriptRoot\..\pslib\utils.ps1"
@@ -166,7 +169,7 @@ function Invoke-CreateDistro {
             Write-Host "  - $distro" -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "Run 'wsl --list --online' to see all available distributions." -ForegroundColor Yellow
+        Write-Host "Run 'wsl.exe --list --online' to see all available distributions." -ForegroundColor Yellow
         return
     }
 
@@ -330,7 +333,7 @@ function Invoke-SetupUser {
         Write-Success "Successfully created user '$username' in '$DistroName'."
         Write-Host ""
         Write-Host "To apply the default user change, restart the distribution with:" -ForegroundColor Yellow
-        Write-Host "  wsl --terminate $DistroName" -ForegroundColor Yellow
+        Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
     }
     finally {
         # Clear the plain text password from memory
@@ -365,8 +368,8 @@ function Invoke-SetupDocker {
             Write-Success "Successfully installed Docker in '$DistroName'."
             Write-Host ""
             Write-Host "To apply group membership changes, restart the distribution with:" -ForegroundColor Yellow
-            Write-Host "  wsl --terminate $DistroName" -ForegroundColor Yellow
-            Write-Host "  wsl -d $DistroName" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --distribution $DistroName" -ForegroundColor Yellow
         }
     }
     catch {
@@ -731,5 +734,7 @@ if ($MyInvocation.InvocationName -ne '.') {
 
 #endregion
 
-# Restore original UI culture
-[System.Threading.Thread]::CurrentThread.CurrentUICulture = $script:OriginalUICulture
+# Restore original UI culture (only if it was set)
+if ($PSVersionTable.PSVersion.Major -ge 6 -and $null -ne $script:OriginalUICulture) {
+    [System.Threading.Thread]::CurrentThread.CurrentUICulture = $script:OriginalUICulture
+}

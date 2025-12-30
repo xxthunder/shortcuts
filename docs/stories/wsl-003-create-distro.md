@@ -27,7 +27,7 @@
   1. Check if WSL is installed using `Test-WslInstalled`
   2. Query available distributions using `wsl --list --online`
   3. Validate the requested distribution is in the available list
-  4. Install the distribution using `wsl --install -d <name> --no-launch`
+  4. Install the distribution using `wsl --install --distribution <name> --no-launch`
 - The `--no-launch` flag prevents automatic launch and user creation prompts
 - Parse `wsl --list --online` output to extract distribution names
 - Handle encoding issues in WSL output (UTF-16 or similar)
@@ -68,7 +68,7 @@
 # Expected output:
 # Creating WSL distribution 'Debian' ...
 # Successfully created 'Debian'.
-# To start: wsl -d Debian
+# To start: wsl --distribution Debian
 
 # Create Ubuntu 22.04 LTS
 .\tools\wsl\wsl-manager.ps1 create Ubuntu-22.04
@@ -76,7 +76,7 @@
 # Expected output:
 # Creating WSL distribution 'Ubuntu-22.04' ...
 # Successfully created 'Ubuntu-22.04'.
-# To start: wsl -d Ubuntu-22.04
+# To start: wsl --distribution Ubuntu-22.04
 
 # Create with invalid distribution name
 .\tools\wsl\wsl-manager.ps1 create InvalidDistro

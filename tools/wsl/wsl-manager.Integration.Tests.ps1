@@ -29,7 +29,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         $script:outputCapture = @()
 
         # Verify WSL is installed
-        if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
+        if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
             Write-Warning "WSL is not installed. Skipping integration tests."
             Set-ItResult -Skipped -Because "WSL is not installed"
             return
@@ -37,7 +37,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
         Write-Host "==> Preparing test environment..." -ForegroundColor Cyan
         # Check if base distro already exists
-        $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+        $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
         if ($script:baseDistroName -in $existingDistros) {
             Write-Host "    $script:baseDistroName already exists, will use it" -ForegroundColor Green
@@ -49,7 +49,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         # Only remove custom distro if it exists (test artifact)
         if ($script:customDistroName -in $existingDistros) {
             Write-Host "    Removing existing $script:customDistroName..." -ForegroundColor Yellow
-            wsl --unregister $script:customDistroName 2>&1 | Out-Null
+            wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
             Start-Sleep -Seconds 2
         }
     }
@@ -57,12 +57,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
     AfterAll {
         # Cleanup: Remove only test artifacts, preserve base distro
         Write-Host "==> Cleaning up: Removing test distros after tests..." -ForegroundColor Cyan
-        $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+        $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
         # Always remove custom distro (test artifact)
         if ($script:customDistroName -in $existingDistros) {
             Write-Host "    Removing $script:customDistroName..." -ForegroundColor Yellow
-            wsl --unregister $script:customDistroName 2>&1 | Out-Null
+            wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
         }
 
         # Always preserve base distro
@@ -74,7 +74,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
     Context "Create Distribution" {
         It "Should use existing or create Debian and print executed commands" {
             # Check if base distro exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
             if ($script:baseDistroName -in $existingDistros) {
                 Write-Host "`n==> TEST: Using existing $script:baseDistroName..." -ForegroundColor Magenta
@@ -91,11 +91,11 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
                 Write-Host $output
 
                 # Verify distribution was created
-                $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+                $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
                 $existingDistros | Should -Contain $script:baseDistroName
 
                 # Verify commands were printed
-                $output | Should -Match "Executing:.*wsl --install"
+                $output | Should -Match "Executing:.*wsl.exe --install"
                 $output | Should -Match "Successfully created '$script:baseDistroName'"
             }
         }
@@ -106,7 +106,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:customDistroName..." -ForegroundColor Magenta
 
             # First verify the base distribution exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:baseDistroName
 
             # Load the library to call Copy-WslDistro directly
@@ -120,12 +120,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host $output
 
             # Verify custom distribution was created
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:customDistroName
 
             # Verify commands were printed
-            $output | Should -Match "Executing:.*wsl --export"
-            $output | Should -Match "Executing:.*wsl --import"
+            $output | Should -Match "Executing:.*wsl.exe --export"
+            $output | Should -Match "Executing:.*wsl.exe --import"
             $output | Should -Match "Successfully cloned '$script:baseDistroName' to '$script:customDistroName'"
         }
     }
@@ -135,7 +135,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Updating $script:customDistroName..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:customDistroName
 
             # Load the library
@@ -150,7 +150,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Verify commands were printed
             $output | Should -Match "Updating WSL distribution '$script:customDistroName'"
-            $output | Should -Match "Executing:.*wsl -d $script:customDistroName"
+            $output | Should -Match "Executing:.*wsl.exe --distribution $script:customDistroName"
             $output | Should -Match "sudo apt update"
             $output | Should -Match "Successfully updated '$script:customDistroName'"
         }
@@ -161,7 +161,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Setting up user in $script:customDistroName..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:customDistroName
 
             # Load the library
@@ -181,18 +181,18 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Verify user creation output
             $output | Should -Match "Creating user '$testUsername' in distribution '$script:customDistroName'"
             $output | Should -Match "Successfully created user '$testUsername'"
-            $output | Should -Match "wsl --terminate $script:customDistroName"
+            $output | Should -Match "wsl.exe --terminate $script:customDistroName"
 
             # Verify user exists in the distribution
-            $userCheck = wsl -d $script:customDistroName -- id -u $testUsername 2>&1
+            $userCheck = wsl.exe --distribution $script:customDistroName --exec id -u $testUsername 2>&1
             $userCheck | Should -Match '^\d+$'
 
             # Verify user is in sudo group
-            $groupCheck = wsl -d $script:customDistroName -- groups $testUsername 2>&1
+            $groupCheck = wsl.exe --distribution $script:customDistroName --exec groups $testUsername 2>&1
             $groupCheck | Should -Match '\bsudo\b'
 
             # Verify sudoers file exists with NOPASSWD configuration
-            $sudoersCheck = wsl -d $script:customDistroName -- sudo cat /etc/sudoers.d/$testUsername 2>&1
+            $sudoersCheck = wsl.exe --distribution $script:customDistroName --exec sudo cat /etc/sudoers.d/$testUsername 2>&1
             $sudoersCheck | Should -Match "NOPASSWD:ALL"
             $sudoersCheck | Should -Match "$testUsername ALL="
         }
@@ -203,7 +203,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Installing Docker in $script:customDistroName..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:customDistroName
 
             # Load the library
@@ -217,20 +217,20 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host $output
 
             # Verify Docker is installed (output messages aren't captured due to Write-Information)
-            $dockerVersion = wsl -d $script:customDistroName -- docker --version 2>&1
+            $dockerVersion = wsl.exe --distribution $script:customDistroName --exec docker --version 2>&1
             $dockerVersion | Should -Match "Docker version"
 
             # Verify Docker Compose is installed
-            $composeVersion = wsl -d $script:customDistroName -- docker compose version 2>&1
+            $composeVersion = wsl.exe --distribution $script:customDistroName --exec docker compose version 2>&1
             $composeVersion | Should -Match "Docker Compose version"
 
             # Verify Docker service is running
-            $serviceStatus = wsl -d $script:customDistroName -- sudo systemctl is-active docker 2>&1
+            $serviceStatus = wsl.exe --distribution $script:customDistroName --exec sudo systemctl is-active docker 2>&1
             $serviceStatus | Should -Match "active"
 
             # Verify user is in docker group
             $testUsername = "testuser"
-            $groupCheck = wsl -d $script:customDistroName -- groups $testUsername 2>&1
+            $groupCheck = wsl.exe --distribution $script:customDistroName --exec groups $testUsername 2>&1
             $groupCheck | Should -Match '\bdocker\b'
         }
 
@@ -256,7 +256,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> Captured Output:" -ForegroundColor Cyan
 
             # Verify both distributions exist by checking WSL directly
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
             $existingDistros | Should -Contain $script:baseDistroName
             $existingDistros | Should -Contain $script:customDistroName
@@ -278,18 +278,18 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host $output
 
             # Verify custom distribution was removed
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Not -Contain $script:customDistroName
 
             # Verify commands were printed
-            $output | Should -Match "Executing:.*wsl --unregister"
+            $output | Should -Match "Executing:.*wsl.exe --unregister"
         }
 
         It "Should preserve base distro (Debian is never removed)" {
             Write-Host "`n==> TEST: Verifying $script:baseDistroName is preserved..." -ForegroundColor Magenta
 
             # Verify base distribution still exists
-            $existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:baseDistroName
 
             Write-Host "    $script:baseDistroName is preserved (base distro is never removed)" -ForegroundColor Green
