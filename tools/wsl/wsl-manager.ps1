@@ -64,6 +64,10 @@ $InformationPreference = "Continue"
 # Stop on first error
 $ErrorActionPreference = "Stop"
 
+# Enforce English UI culture for consistent wsl.exe output across different Windows languages
+$script:OriginalUICulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
+[System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::new('en-US')
+
 # Source dependencies
 . "$PSScriptRoot\..\pslib\utils.ps1"
 . "$PSScriptRoot\..\pslib\wsl.ps1"
@@ -726,3 +730,6 @@ if ($MyInvocation.InvocationName -ne '.') {
 }
 
 #endregion
+
+# Restore original UI culture
+[System.Threading.Thread]::CurrentThread.CurrentUICulture = $script:OriginalUICulture

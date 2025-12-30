@@ -208,16 +208,31 @@ function Get-WslDistroList {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = wsl --list --quiet | ForEach-Object {
-        # Clean up WSL output: remove null chars (UTF-16), carriage returns, and trim whitespace
-        $_.Trim() -replace '\x00', '' -replace '\r', ''
-    } | Where-Object { $_ -ne "" }
+    # Set locale to English for consistent output
+    $originalLcAll = $env:LC_ALL
+    $env:LC_ALL = "en_US.UTF-8"
 
-    if ($null -eq $distros) {
-        return @()
+    try {
+        $distros = wsl --list --quiet | ForEach-Object {
+            # Clean up WSL output: remove null chars (UTF-16), carriage returns, and trim whitespace
+            $_.Trim() -replace '\x00', '' -replace '\r', ''
+        } | Where-Object { $_ -ne "" }
+
+        if ($null -eq $distros) {
+            return @()
+        }
+
+        return $distros
     }
-
-    return $distros
+    finally {
+        # Restore original locale
+        if ($null -ne $originalLcAll) {
+            $env:LC_ALL = $originalLcAll
+        }
+        else {
+            Remove-Item Env:\LC_ALL -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Remove-WslDistro {
@@ -939,42 +954,57 @@ function Test-Wsl2Version {
         throw "Distribution '$DistroName' does not exist."
     }
 
-    # Get WSL version list
-    $output = wsl -l -v
+    # Set locale to English for consistent output
+    $originalLcAll = $env:LC_ALL
+    $env:LC_ALL = "en_US.UTF-8"
 
-    # Parse the output to find the distribution and its version
-    $lines = $output -split "`n"
-    foreach ($line in $lines) {
-        # Clean up line (remove null chars, carriage returns, asterisk, trim)
-        $cleanLine = $line -replace '\x00', '' -replace '\r', '' -replace '\*', '' | ForEach-Object { $_.Trim() }
+    try {
+        # Get WSL version list
+        $output = wsl -l -v
 
-        # Skip empty lines and headers
-        if ([string]::IsNullOrWhiteSpace($cleanLine) -or $cleanLine -match '^NAME\s+STATE\s+VERSION') {
-            continue
-        }
+        # Parse the output to find the distribution and its version
+        $lines = $output -split "`n"
+        foreach ($line in $lines) {
+            # Clean up line (remove null chars, carriage returns, asterisk, trim)
+            $cleanLine = $line -replace '\x00', '' -replace '\r', '' -replace '\*', '' | ForEach-Object { $_.Trim() }
 
-        # Split by whitespace to get fields
-        $fields = $cleanLine -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            # Skip empty lines and headers
+            if ([string]::IsNullOrWhiteSpace($cleanLine) -or $cleanLine -match '^NAME\s+STATE\s+VERSION') {
+                continue
+            }
 
-        # Need at least 3 fields: NAME, STATE, VERSION
-        if ($fields.Count -ge 3) {
-            $name = $fields[0]
-            $version = $fields[2]
+            # Split by whitespace to get fields
+            $fields = $cleanLine -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
-            # Check if this is our distribution
-            if ($name -eq $DistroName) {
-                if ($version -eq "2") {
-                    return $true
-                }
-                else {
-                    return $false
+            # Need at least 3 fields: NAME, STATE, VERSION
+            if ($fields.Count -ge 3) {
+                $name = $fields[0]
+                $version = $fields[2]
+
+                # Check if this is our distribution
+                if ($name -eq $DistroName) {
+                    if ($version -eq "2") {
+                        return $true
+                    }
+                    else {
+                        return $false
+                    }
                 }
             }
         }
-    }
 
-    # Distribution not found in output (shouldn't happen since we validated existence)
-    return $false
+        # Distribution not found in output (shouldn't happen since we validated existence)
+        return $false
+    }
+    finally {
+        # Restore original locale
+        if ($null -ne $originalLcAll) {
+            $env:LC_ALL = $originalLcAll
+        }
+        else {
+            Remove-Item Env:\LC_ALL -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Test-WslDockerInstalled {
