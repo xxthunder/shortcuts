@@ -180,7 +180,7 @@ function New-WslDistro {
 
     if ($PSCmdlet.ShouldProcess($Name, "Create WSL distribution")) {
         Write-Output "Creating WSL distribution '$Name'..."
-        Invoke-CommandLine -CommandLine "wsl --install -d $Name --no-launch"
+        Invoke-CommandLine -CommandLine "wsl --install --distribution $Name --no-launch"
         Write-Output "Successfully created '$Name'."
         Write-Output ""
         Write-Output "To start: wsl -d $Name"
@@ -393,6 +393,10 @@ function Invoke-WslDistroCommand {
         If $true (default), prints the command being executed.
         If $false, executes silently without printing the command.
 
+    .PARAMETER Silent
+        If $true, suppresses command output display (but still returns it).
+        If $false (default), displays output in real-time.
+
     .OUTPUTS
         System.String
         Returns the command output.
@@ -423,7 +427,10 @@ function Invoke-WslDistroCommand {
         [bool]$StopAtError = $true,
 
         [Parameter(Mandatory = $false)]
-        [bool]$PrintCommand = $true
+        [bool]$PrintCommand = $true,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$Silent = $false
     )
 
     if (-not (Test-WslInstalled)) {
@@ -446,9 +453,7 @@ function Invoke-WslDistroCommand {
     $wslCommand = "wsl -d $DistroName -e bash -c `"$escapedCommand`""
 
     # Execute the command and capture output
-    # Invoke-CommandLine displays output in real-time via Invoke-Expression
-    # and returns the output to the pipeline for capture
-    $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand
+    $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
 
     # Return captured output as a joined string
     if ($capturedOutput) {
@@ -501,7 +506,7 @@ function Get-WslDistroType {
 
     # Warm up the distro (ensure it's started and file system is accessible)
     # This is especially important for freshly imported/cloned distributions
-    Invoke-WslDistroCommand -DistroName $DistroName -Command "echo warmup" -PrintCommand $false -StopAtError $false | Out-Null
+    Invoke-WslDistroCommand -DistroName $DistroName -Command "echo warmup" -PrintCommand $false -StopAtError $false -Silent $true | Out-Null
 
     # Read ID field from /etc/os-release using simpler command without complex quoting
     $command = 'cat /etc/os-release | grep ^ID= | head -1 | cut -d= -f2'
@@ -684,7 +689,7 @@ function New-WslUser {
     if ($PSCmdlet.ShouldProcess("$Username in $DistroName", "Create WSL user")) {
         # Check if user already exists
         $checkUserCmd = "id -u $Username 2>/dev/null"
-        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false
+        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false -Silent $true
 
         if (-not [string]::IsNullOrWhiteSpace($userExists)) {
             throw "User '$Username' already exists in distribution '$DistroName'."
@@ -698,7 +703,7 @@ function New-WslUser {
 
         # Step 2: Set password
         $setPasswordCmd = "echo `"$Username`:$plainPassword`" | sudo chpasswd"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $setPasswordCmd -PrintCommand $false
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $setPasswordCmd -PrintCommand $false -Silent $true
 
         # Step 3: Add user to sudo group
         $addSudoCmd = "sudo usermod -aG sudo $Username"
@@ -708,12 +713,12 @@ function New-WslUser {
         # Use single quotes around echo content to avoid PowerShell interpretation issues
         # PowerShell will expand $Username before passing to bash
         $sudoersCmd = "echo '$Username ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false -Silent $true
 
         # Step 5: Set default user in wsl.conf
         # Use single quotes around echo content
         $wslConfCmd = "echo '[user]' | sudo tee /etc/wsl.conf > /dev/null && echo 'default=$Username' | sudo tee -a /etc/wsl.conf > /dev/null"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false -Silent $true
 
         Write-Output "Successfully created user '$Username' in '$DistroName'."
         Write-Output ""
@@ -1187,16 +1192,16 @@ Or verify your installation with:
     try {
         # 1. Remove old Docker versions
         Write-Information "  -> Removing old Docker versions"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get remove -y docker docker-engine docker.io containerd runc" -StopAtError $false -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get remove -y docker docker-engine docker.io containerd runc" -StopAtError $false -PrintCommand $false -Silent $true | Out-Null
 
         # 2. Update and install prerequisites
         Write-Information "  -> Installing prerequisites"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y ca-certificates curl gnupg lsb-release" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y ca-certificates curl gnupg lsb-release" -PrintCommand $false -Silent $true | Out-Null
 
         # 3. Add Docker's official GPG key
         Write-Information "  -> Adding Docker GPG key"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false -Silent $true | Out-Null
 
         # Get distribution info by sourcing /etc/os-release and echoing variables
         # Use backtick-escaped $ so PowerShell doesn't expand, but bash does (since we use double quotes in Invoke-WslDistroCommand)
@@ -1218,30 +1223,30 @@ Or verify your installation with:
         # Download and add Docker's GPG key
         $gpgUrl = "https://download.docker.com/linux/$distroId/gpg"
         $gpgCommand = "curl -fsSL $gpgUrl | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false -Silent $true | Out-Null
 
         # 4. Set up Docker repository
         Write-Information "  -> Configuring Docker repository"
         $repoUrl = "https://download.docker.com/linux/$distroId"
         $repoLine = "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.gpg] $repoUrl $distroCodename stable"
         $repoCommand = "echo '$repoLine' | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false -Silent $true | Out-Null
 
         # 5. Install Docker Engine
         Write-Information "  -> Installing Docker packages"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" -PrintCommand $false -Silent $true | Out-Null
 
         # 6. Add user to docker group
         Write-Information "  -> Adding user '$Username' to docker group"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo usermod -aG docker $Username" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo usermod -aG docker $Username" -PrintCommand $false -Silent $true | Out-Null
 
         # 7. Enable and start Docker service
         Write-Information "  -> Enabling Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl enable docker" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl enable docker" -PrintCommand $false -Silent $true | Out-Null
 
         Write-Information "  -> Starting Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl start docker" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl start docker" -PrintCommand $false -Silent $true | Out-Null
 
         # Post-installation verification
         Write-Information ""
@@ -1259,12 +1264,12 @@ Or verify your installation with:
 
         # Check Docker service status
         Write-Information "  -> Checking Docker service status"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl status docker --no-pager" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl status docker --no-pager" -PrintCommand $false -Silent $true | Out-Null
         Write-Information "    Docker service: active (running)"
 
         # Run hello-world container (end-to-end test)
         Write-Information "  -> Running hello-world test"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker run hello-world" -PrintCommand $false | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker run hello-world" -PrintCommand $false -Silent $true | Out-Null
         Write-Information "    Hello-world test: passed"
 
         Write-Information ""
