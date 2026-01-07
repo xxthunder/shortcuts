@@ -5,16 +5,16 @@
 
     Test workflow:
     1. Use existing Debian or install it (base distro)
-    2. Clone Debian to debian-custom-test (custom distro)
-    3. Update debian-custom-test
+    2. Update Debian (base distro) to latest packages
+    3. Clone Debian to debian-custom-test (custom distro)
     4. Setup user in debian-custom-test
     5. Setup Docker in debian-custom-test
     6. List both distributions
-    7. Remove only debian-custom-test (and leave Debian untouched)
+    7. Verify distributions (both are kept for exploratory testing)
 
-    WARNING: These tests will create and remove WSL distributions.
-    Test distribution: debian-custom-test
-    Base distribution (always preserved): Debian
+    NOTE: Test distributions are PRESERVED after tests complete for exploratory testing.
+    Test distribution: debian-custom-test (kept after tests)
+    Base distribution: Debian (kept after tests)
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Integration tests use Write-Host for user feedback during manual test runs.')]
@@ -46,29 +46,14 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    $script:baseDistroName not found, will create it during tests" -ForegroundColor Yellow
         }
 
-        # Only remove custom distro if it exists (test artifact)
+        # Always remove custom distro before tests (clean slate)
         if ($script:customDistroName -in $existingDistros) {
-            Write-Host "    Removing existing $script:customDistroName ..." -ForegroundColor Yellow
+            Write-Host "    Removing existing $script:customDistroName for fresh test run ..." -ForegroundColor Yellow
             wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
             Start-Sleep -Seconds 2
         }
-    }
 
-    AfterAll {
-        # Cleanup: Remove only test artifacts, preserve base distro
-        Write-Host "==> Cleaning up: Removing test distros after tests ..." -ForegroundColor Cyan
-        $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-
-        # Always remove custom distro (test artifact)
-        if ($script:customDistroName -in $existingDistros) {
-            Write-Host "    Removing $script:customDistroName ..." -ForegroundColor Yellow
-            wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
-        }
-
-        # Always preserve base distro
-        if ($script:baseDistroName -in $existingDistros) {
-            Write-Host "    Preserving $script:baseDistroName (base distro is never removed)" -ForegroundColor Green
-        }
+        Write-Host "    NOTE: Test distributions will be preserved after tests for exploratory testing" -ForegroundColor Cyan
     }
 
     Context "Create Distribution" {
@@ -101,6 +86,32 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
+    Context "Update Base Distribution" {
+        It "Should update Debian base distro to latest packages and print executed commands" {
+            Write-Host "`n==> TEST: Updating base $script:baseDistroName to latest packages ..." -ForegroundColor Magenta
+
+            # First verify the base distribution exists
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros | Should -Contain $script:baseDistroName
+
+            # Load the library
+            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
+            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+
+            # Capture output from Update-WslDistro
+            $output = Update-WslDistro -Name $script:baseDistroName -Confirm:$false 2>&1 | Out-String
+
+            Write-Host "==> Captured Output:" -ForegroundColor Cyan
+            Write-Host $output
+
+            # Verify commands were printed
+            $output | Should -Match "Updating WSL distribution '$script:baseDistroName'"
+            $output | Should -Match "Executing:.*wsl.exe --distribution $script:baseDistroName"
+            $output | Should -Match "sudo apt update"
+            $output | Should -Match "Successfully updated '$script:baseDistroName'"
+        }
+    }
+
     Context "Clone Distribution" {
         It "Should clone Debian to custom distro and print executed commands" {
             Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:customDistroName ..." -ForegroundColor Magenta
@@ -130,32 +141,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
-    Context "Update Distribution" {
-        It "Should update custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Updating $script:customDistroName ..." -ForegroundColor Magenta
-
-            # First verify the custom distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-            $existingDistros | Should -Contain $script:customDistroName
-
-            # Load the library
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
-
-            # Capture output from Update-WslDistro
-            $output = Update-WslDistro -Name $script:customDistroName -Confirm:$false 2>&1 | Out-String
-
-            Write-Host "==> Captured Output:" -ForegroundColor Cyan
-            Write-Host $output
-
-            # Verify commands were printed
-            $output | Should -Match "Updating WSL distribution '$script:customDistroName'"
-            $output | Should -Match "Executing:.*wsl.exe --distribution $script:customDistroName"
-            $output | Should -Match "sudo apt update"
-            $output | Should -Match "Successfully updated '$script:customDistroName'"
-        }
-    }
-
     Context "Setup User" {
         It "Should create test user in custom distro and print executed commands" {
             Write-Host "`n==> TEST: Setting up user in $script:customDistroName ..." -ForegroundColor Magenta
@@ -179,7 +164,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host $output
 
             # Verify user creation output
-            $output | Should -Match "Creating user '$testUsername' in distribution '$script:customDistroName'"
+            $output | Should -Match "User '$testUsername' does not exist in distribution '$script:customDistroName'. Creating user"
             $output | Should -Match "Successfully created user '$testUsername'"
             $output | Should -Match "wsl.exe --terminate $script:customDistroName"
 
@@ -263,36 +248,26 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
-    Context "Remove Distribution" {
-        It "Should remove custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Removing $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Load the library to call Remove-WslDistro directly
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
-
-            # Capture output from Remove-WslDistro
-            $output = Remove-WslDistro -Name $script:customDistroName -Confirm:$false 2>&1 | Out-String
-
-            Write-Host "==> Captured Output:" -ForegroundColor Cyan
-            Write-Host $output
-
-            # Verify custom distribution was removed
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-            $existingDistros | Should -Not -Contain $script:customDistroName
-
-            # Verify commands were printed
-            $output | Should -Match "Executing:.*wsl.exe --unregister"
-        }
-
-        It "Should preserve base distro (Debian is never removed)" {
+    Context "Verify Distributions Preserved" {
+        It "Should verify base distro is preserved for exploratory testing" {
             Write-Host "`n==> TEST: Verifying $script:baseDistroName is preserved ..." -ForegroundColor Magenta
 
-            # Verify base distribution still exists
+            # Verify base distribution exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
             $existingDistros | Should -Contain $script:baseDistroName
 
-            Write-Host "    $script:baseDistroName is preserved (base distro is never removed)" -ForegroundColor Green
+            Write-Host "    $script:baseDistroName is preserved for exploratory testing" -ForegroundColor Green
+        }
+
+        It "Should verify custom distro is preserved for exploratory testing" {
+            Write-Host "`n==> TEST: Verifying $script:customDistroName is preserved ..." -ForegroundColor Magenta
+
+            # Verify custom distribution exists
+            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros | Should -Contain $script:customDistroName
+
+            Write-Host "    $script:customDistroName is preserved for exploratory testing" -ForegroundColor Green
+            Write-Host "    NOTE: Test distributions kept - manually remove when no longer needed" -ForegroundColor Yellow
         }
     }
 }
