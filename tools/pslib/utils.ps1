@@ -61,9 +61,11 @@ function Invoke-CommandLine {
         [Parameter(Mandatory = $false, Position = 3)]
         [bool]$Silent = $false
     )
+
     if ($PrintCommand) {
         Write-Output "Executing: $CommandLine"
     }
+
     $global:LASTEXITCODE = 0
 
     # Temporarily set ErrorActionPreference to Continue to prevent stderr from native commands
@@ -168,7 +170,7 @@ function New-Directory {
         [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$Path
     )
-    if (-Not (Test-Path -Path $Path)) {
+    if (-not (Test-Path -Path $Path)) {
         Write-Output "Creating directory '$Path' ..."
         New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }

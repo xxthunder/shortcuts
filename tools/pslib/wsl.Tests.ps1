@@ -622,12 +622,11 @@ Describe "Invoke-WslDistroCommand" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { "command output" }
 
-            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
                 $CommandLine -like '*wsl.exe --distribution Debian --exec bash -c "echo test"*'
             }
-            $result | Should -Be "command output"
         }
 
         It "Should pass StopAtError parameter to Invoke-CommandLine" {
@@ -664,6 +663,54 @@ Describe "Invoke-WslDistroCommand" {
             Should -Invoke Invoke-CommandLine -ParameterFilter {
                 $PrintCommand -eq $true
             }
+        }
+    }
+
+    Context "When using -PassThru switch" {
+        It "Should capture and return output when -PassThru is specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { "command output" }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*wsl.exe --distribution Debian --exec bash -c "echo test"*'
+            }
+            $result | Should -Be "command output"
+        }
+
+        It "Should return output when -PassThru is not specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { "command output" }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            $result | Should -Be "command output"
+        }
+
+        It "Should join multiple output lines with newline when -PassThru is used" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { @("line1", "line2", "line3") }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
+
+            $result | Should -Be "line1`nline2`nline3"
+        }
+
+        It "Should not join multiple output lines when -PassThru is not used" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { @("line1", "line2", "line3") }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            $result | Should -HaveCount 3
+            $result[0] | Should -Be "line1"
+            $result[1] | Should -Be "line2"
+            $result[2] | Should -Be "line3"
         }
     }
 

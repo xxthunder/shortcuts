@@ -392,7 +392,8 @@ function Invoke-WslDistroCommand {
 
     .DESCRIPTION
         Runs a command within a specified WSL distribution using bash.
-        Provides consistent error handling and output capture.
+        Provides consistent error handling. By default, output flows to the console
+        in real-time. Use -PassThru to capture and return the output as a string.
 
     .PARAMETER DistroName
         The name of the WSL distribution in which to execute the command.
@@ -402,30 +403,34 @@ function Invoke-WslDistroCommand {
 
     .PARAMETER StopAtError
         If $true (default), throws an error when the command fails (non-zero exit code).
-        If $false, continues execution and returns the output.
+        If $false, continues execution.
 
     .PARAMETER PrintCommand
         If $true (default), prints the command being executed.
         If $false, executes silently without printing the command.
 
     .PARAMETER Silent
-        If $true, suppresses command output display (but still returns it).
+        If $true, suppresses command output display.
         If $false (default), displays output in real-time.
 
+    .PARAMETER PassThru
+        If specified, captures and returns the command output as a string.
+        If not specified (default), output flows to console in real-time.
+
     .OUTPUTS
-        System.String
-        Returns the command output.
+        System.String (only when -PassThru is specified)
+        Returns the command output as a joined string when -PassThru is used.
 
     .EXAMPLE
-        Invoke-WslDistroCommand -DistroName "Debian" -Command "echo hello"
-        Executes "echo hello" inside the Debian distribution.
+        Invoke-WslDistroCommand -DistroName "Debian" -Command "apt update"
+        Executes "apt update" with real-time console output.
 
     .EXAMPLE
         Invoke-WslDistroCommand -DistroName "Ubuntu" -Command "apt update" -PrintCommand $false
-        Updates package lists silently without printing the command.
+        Updates package lists without printing the command, output flows to console.
 
     .EXAMPLE
-        $output = Invoke-WslDistroCommand -DistroName "Debian" -Command 'grep "^ID=" /etc/os-release'
+        $output = Invoke-WslDistroCommand -DistroName "Debian" -Command 'grep "^ID=" /etc/os-release' -PassThru
         Captures the output of a command for further processing.
     #>
     [CmdletBinding()]
@@ -445,7 +450,10 @@ function Invoke-WslDistroCommand {
         [bool]$PrintCommand = $true,
 
         [Parameter(Mandatory = $false)]
-        [bool]$Silent = $false
+        [bool]$Silent = $false,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
     )
 
     if (-not (Test-WslInstalled)) {
@@ -467,12 +475,18 @@ function Invoke-WslDistroCommand {
     # The backticks in $escapedCommand will protect bash variables from PowerShell expansion
     $wslCommand = "wsl.exe --distribution $DistroName --exec bash -c `"$escapedCommand`""
 
-    # Execute the command and capture output
-    $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
+    # Execute the command - capture output only if -PassThru is specified
+    if ($PassThru) {
+        $capturedOutput = Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
 
-    # Return captured output as a joined string
-    if ($capturedOutput) {
-        return ($capturedOutput -join "`n")
+        # Return captured output as a joined string
+        if ($capturedOutput) {
+            return ($capturedOutput -join "`n")
+        }
+    }
+    else {
+        # Let output flow to console in real-time, don't return it
+        Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
     }
 }
 
@@ -521,11 +535,11 @@ function Get-WslDistroType {
 
     # Warm up the distro (ensure it's started and file system is accessible)
     # This is especially important for freshly imported/cloned distributions
-    Invoke-WslDistroCommand -DistroName $DistroName -Command "echo warmup" -PrintCommand $false -StopAtError $false -Silent $true | Out-Null
+    Invoke-WslDistroCommand -DistroName $DistroName -Command "echo warmup" -PrintCommand $false -StopAtError $false -Silent $true
 
     # Read ID field from /etc/os-release using simpler command without complex quoting
     $command = 'cat /etc/os-release | grep ^ID= | head -1 | cut -d= -f2'
-    $result = Invoke-WslDistroCommand -DistroName $DistroName -Command $command -PrintCommand $false -StopAtError $false
+    $result = Invoke-WslDistroCommand -DistroName $DistroName -Command $command -PrintCommand $false -StopAtError $false -PassThru
 
     # Clean up output (trim whitespace, remove quotes, convert to lowercase)
     if ([string]::IsNullOrWhiteSpace($result)) {
@@ -704,7 +718,7 @@ function New-WslUser {
     if ($PSCmdlet.ShouldProcess("$Username in $DistroName", "Create WSL user")) {
         # Check if user already exists
         $checkUserCmd = "id -u $Username 2>/dev/null"
-        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false -Silent $true
+        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false -Silent $true -PassThru
 
         if (-not [string]::IsNullOrWhiteSpace($userExists)) {
             throw "User '$Username' already exists in distribution '$DistroName'."
@@ -792,7 +806,7 @@ function Get-WslDefaultUser {
 
     # Try to read wsl.conf
     try {
-        $wslConfContent = Invoke-WslDistroCommand -DistroName $DistroName -Command "cat /etc/wsl.conf" -StopAtError $false -PrintCommand $false
+        $wslConfContent = Invoke-WslDistroCommand -DistroName $DistroName -Command "cat /etc/wsl.conf" -StopAtError $false -PrintCommand $false -PassThru
 
         # If command failed or returned empty, wsl.conf doesn't exist or is empty
         if ([string]::IsNullOrWhiteSpace($wslConfContent)) {
@@ -891,7 +905,7 @@ function Test-WslSystemd {
 
     # Try to run systemctl --version
     try {
-        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "systemctl --version" -StopAtError $false -PrintCommand $false
+        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "systemctl --version" -StopAtError $false -PrintCommand $false -PassThru
 
         # If command succeeded and returned output, systemd is available
         if (-not [string]::IsNullOrWhiteSpace($output)) {
@@ -1056,7 +1070,7 @@ function Test-WslDockerInstalled {
 
     # Try to run docker --version
     try {
-        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "docker --version" -StopAtError $false -PrintCommand $false
+        $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "docker --version" -StopAtError $false -PrintCommand $false -PassThru
 
         # If command succeeded and returned output, Docker is installed
         if (-not [string]::IsNullOrWhiteSpace($output)) {
@@ -1208,10 +1222,10 @@ Or verify your installation with:
 
     # SupportsShouldProcess - prompt for confirmation
     if (-not $PSCmdlet.ShouldProcess(
-        "Docker Engine installation in '$DistroName'",
-        "Install Docker CE, Docker Compose, and related packages (~500MB)",
-        "Confirm Docker Installation"
-    )) {
+            "Docker Engine installation in '$DistroName'",
+            "Install Docker CE, Docker Compose, and related packages (~500MB)",
+            "Confirm Docker Installation"
+        )) {
         return $false
     }
 
@@ -1222,21 +1236,21 @@ Or verify your installation with:
     try {
         # 1. Remove old Docker versions
         Write-Information "  -> Removing old Docker versions"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get remove -y docker docker-engine docker.io containerd runc" -StopAtError $false -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get remove -y docker docker-engine docker.io containerd runc" -StopAtError $false -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 2. Update and install prerequisites
         Write-Information "  -> Installing prerequisites"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y ca-certificates curl gnupg lsb-release" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true -PassThru | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y ca-certificates curl gnupg lsb-release" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 3. Add Docker's official GPG key
         Write-Information "  -> Adding Docker GPG key"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # Get distribution info by sourcing /etc/os-release and echoing variables
         # Use backtick-escaped $ so PowerShell doesn't expand, but bash does (since we use double quotes in Invoke-WslDistroCommand)
         $getDistroInfoCmd = ". /etc/os-release && echo `$ID && echo `$VERSION_CODENAME && dpkg --print-architecture"
-        $distroInfo = Invoke-WslDistroCommand -DistroName $DistroName -Command $getDistroInfoCmd -PrintCommand $false
+        $distroInfo = Invoke-WslDistroCommand -DistroName $DistroName -Command $getDistroInfoCmd -PrintCommand $false -PassThru
         if ([string]::IsNullOrWhiteSpace($distroInfo)) {
             throw "Failed to detect distribution information"
         }
@@ -1253,30 +1267,30 @@ Or verify your installation with:
         # Download and add Docker's GPG key
         $gpgUrl = "https://download.docker.com/linux/$distroId/gpg"
         $gpgCommand = "curl -fsSL $gpgUrl | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 4. Set up Docker repository
         Write-Information "  -> Configuring Docker repository"
         $repoUrl = "https://download.docker.com/linux/$distroId"
         $repoLine = "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.gpg] $repoUrl $distroCodename stable"
         $repoCommand = "echo '$repoLine' | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 5. Install Docker Engine
         Write-Information "  -> Installing Docker packages"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true -PassThru | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 6. Add user to docker group
         Write-Information "  -> Adding user '$Username' to docker group"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo usermod -aG docker $Username" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo usermod -aG docker $Username" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # 7. Enable and start Docker service
         Write-Information "  -> Enabling Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl enable docker" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl enable docker" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         Write-Information "  -> Starting Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl start docker" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl start docker" -PrintCommand $false -Silent $true -PassThru | Out-Null
 
         # Post-installation verification
         Write-Information ""
@@ -1284,22 +1298,22 @@ Or verify your installation with:
 
         # Check Docker Engine version
         Write-Information "  -> Checking Docker Engine version"
-        $dockerVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker --version" -PrintCommand $false
+        $dockerVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker --version" -PrintCommand $false -PassThru
         Write-Information "    Docker Engine: $dockerVersion"
 
         # Check Docker Compose plugin version
         Write-Information "  -> Checking Docker Compose version"
-        $composeVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker compose version" -PrintCommand $false
+        $composeVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker compose version" -PrintCommand $false -PassThru
         Write-Information "    Docker Compose: $composeVersion"
 
         # Check Docker service status
         Write-Information "  -> Checking Docker service status"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl status docker --no-pager" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl status docker --no-pager" -PrintCommand $false -Silent $true -PassThru | Out-Null
         Write-Information "    Docker service: active (running)"
 
         # Run hello-world container (end-to-end test)
         Write-Information "  -> Running hello-world test"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker run hello-world" -PrintCommand $false -Silent $true | Out-Null
+        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker run hello-world" -PrintCommand $false -Silent $true -PassThru | Out-Null
         Write-Information "    Hello-world test: passed"
 
         Write-Information ""
