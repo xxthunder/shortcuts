@@ -690,7 +690,7 @@ function New-WslUser {
     if ($PSCmdlet.ShouldProcess("$Username in $DistroName", "Create WSL user")) {
         # Check if user already exists
         $checkUserCmd = "id -u $Username 2>/dev/null"
-        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false -Silent $true -PassThru
+        $userExists = Invoke-WslDistroCommand -DistroName $DistroName -Command $checkUserCmd -PrintCommand $false -StopAtError $false -PassThru
 
         if (-not [string]::IsNullOrWhiteSpace($userExists)) {
             throw "User '$Username' already exists in distribution '$DistroName'."

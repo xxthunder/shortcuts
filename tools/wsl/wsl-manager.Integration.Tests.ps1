@@ -180,6 +180,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $sudoersCheck = wsl.exe --distribution $script:customDistroName --exec sudo cat /etc/sudoers.d/$testUsername 2>&1
             $sudoersCheck | Should -Match "NOPASSWD:ALL"
             $sudoersCheck | Should -Match "$testUsername ALL="
+
+            # Try to create the same user again (should fail with proper error message)
+            Write-Host "`n==> TEST: Attempting to create same user again (should fail) ..." -ForegroundColor Magenta
+            { New-WslUser -DistroName $script:customDistroName -Username $testUsername -Password $testPassword -Confirm:$false -ErrorAction Stop } | Should -Throw -ExpectedMessage "*User '$testUsername' already exists in distribution '$script:customDistroName'*"
+
+            Write-Host "    Correctly rejected duplicate user creation" -ForegroundColor Green
         }
     }
 
