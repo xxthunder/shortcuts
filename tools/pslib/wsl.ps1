@@ -716,15 +716,30 @@ function New-WslUser {
         $sudoersCmd = "echo '$Username ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false -Silent $true
 
-        # Step 5: Set default user in wsl.conf
-        # Use single quotes around echo content
-        $wslConfCmd = "echo '[user]' | sudo tee /etc/wsl.conf > /dev/null && echo 'default=$Username' | sudo tee -a /etc/wsl.conf > /dev/null"
+        # Step 5: Set default user in wsl.conf and ensure systemd is configured
+        # Check if systemd is running
+        $systemdRunning = Test-WslSystemd -DistroName $DistroName
+
+        # Build wsl.conf content
+        if ($systemdRunning) {
+            # If systemd is running, ensure it's configured in wsl.conf
+            $wslConfContent = "[boot]`nsystemd=true`n`n[user]`ndefault=$Username"
+        }
+        else {
+            # Just set the user
+            $wslConfContent = "[user]`ndefault=$Username"
+        }
+
+        # Write to wsl.conf
+        $wslConfCmd = "echo '$wslConfContent' | sudo tee /etc/wsl.conf > /dev/null"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $wslConfCmd -PrintCommand $false -Silent $true
 
+        # Restart the distribution to apply wsl.conf changes (especially systemd)
+        Write-Output "Restarting distribution to apply wsl.conf changes ..."
+        wsl.exe --terminate $DistroName
+        Start-Sleep -Seconds 2
+
         Write-Output "Successfully created user '$Username' in '$DistroName'."
-        Write-Output ""
-        Write-Output "To apply the default user change, restart the distribution with:"
-        Write-Output "  wsl.exe --terminate $DistroName"
     }
 }
 
@@ -822,6 +837,106 @@ function Get-WslDefaultUser {
     catch {
         # wsl.conf doesn't exist or other error - return null
         return $null
+    }
+}
+
+function Test-WslSystemdConfigured {
+    <#
+    .SYNOPSIS
+        Checks if systemd is configured in a WSL distribution's wsl.conf file.
+
+    .DESCRIPTION
+        Reads the /etc/wsl.conf file in a WSL distribution and checks if systemd
+        is enabled in the [boot] section. Returns $true if systemd=true is configured,
+        or $false if wsl.conf doesn't exist, [boot] section is missing, or systemd
+        is not set to true.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to query.
+
+    .OUTPUTS
+        System.Boolean
+        Returns $true if systemd=true is configured, $false otherwise.
+
+    .EXAMPLE
+        $configured = Test-WslSystemdConfigured -DistroName "Debian"
+        if ($configured) {
+            Write-Host "Systemd is configured"
+        } else {
+            Write-Host "Systemd is not configured in wsl.conf"
+        }
+
+    .NOTES
+        This function only checks the configuration in wsl.conf. Use Test-WslSystemd
+        to check if systemd is actually running. Both checks may be needed:
+        - Test-WslSystemdConfigured: Checks wsl.conf configuration
+        - Test-WslSystemd: Checks if systemd is actually running
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Trim input
+    $DistroName = $DistroName.Trim()
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Try to read wsl.conf
+    try {
+        $wslConfContent = Invoke-WslDistroCommand -DistroName $DistroName -Command "cat /etc/wsl.conf" -StopAtError $false -PrintCommand $false -PassThru
+
+        # If command failed or returned empty, wsl.conf doesn't exist or is empty
+        if ([string]::IsNullOrWhiteSpace($wslConfContent)) {
+            return $false
+        }
+
+        # Parse the content to find [boot] section and systemd=true line
+        $inBootSection = $false
+        $lines = $wslConfContent -split "`n"
+
+        foreach ($line in $lines) {
+            $trimmedLine = $line.Trim()
+
+            # Skip empty lines and comments
+            if ([string]::IsNullOrWhiteSpace($trimmedLine) -or $trimmedLine.StartsWith('#')) {
+                continue
+            }
+
+            # Check for [boot] section
+            if ($trimmedLine -match '^\[boot\]') {
+                $inBootSection = $true
+                continue
+            }
+
+            # Check for new section (stop looking in [boot])
+            if ($trimmedLine -match '^\[.*\]') {
+                $inBootSection = $false
+                continue
+            }
+
+            # If in [boot] section, look for systemd=true line
+            if ($inBootSection -and $trimmedLine -match '^systemd\s*=\s*(.+)$') {
+                $value = $matches[1].Trim().ToLower()
+                return $value -eq "true"
+            }
+        }
+
+        # No systemd=true found in [boot] section
+        return $false
+    }
+    catch {
+        # wsl.conf doesn't exist or other error - return false
+        return $false
     }
 }
 
@@ -1124,12 +1239,13 @@ Docker requires WSL2. Upgrade with:
 "@
     }
 
-    # 4. Check systemd support
-    if (-not (Test-WslSystemd -DistroName $DistroName)) {
+    # 4. Check systemd configuration in wsl.conf
+    if (-not (Test-WslSystemdConfigured -DistroName $DistroName)) {
         throw @"
-Distribution '$DistroName' does not support systemd.
+Distribution '$DistroName' does not have systemd configured in /etc/wsl.conf.
 Docker Engine requires systemd for service management.
-Enable systemd in /etc/wsl.conf:
+
+Add the following to /etc/wsl.conf:
   [boot]
   systemd=true
 
@@ -1139,13 +1255,29 @@ Then restart the distribution:
 "@
     }
 
-    # 5. Check distribution type (Debian/Ubuntu only)
+    # 5. Check systemd is running
+    if (-not (Test-WslSystemd -DistroName $DistroName)) {
+        throw @"
+Distribution '$DistroName' does not have systemd running.
+Docker Engine requires systemd for service management.
+
+This may mean systemd failed to start. Check the following:
+  1. Verify systemd is configured in /etc/wsl.conf (see previous step)
+  2. Restart the distribution:
+       wsl.exe --terminate $DistroName
+       wsl.exe --distribution $DistroName
+  3. Check systemd status:
+       wsl.exe --distribution $DistroName systemctl --version
+"@
+    }
+
+    # 6. Check distribution type (Debian/Ubuntu only)
     $distroType = Get-WslDistroType -DistroName $DistroName
     if ($distroType -notin @("debian", "ubuntu")) {
         throw "Distribution '$DistroName' is not a Debian or Ubuntu distribution (detected: $distroType). Only Debian and Ubuntu distributions are currently supported for Docker setup."
     }
 
-    # 6. Detect or validate username
+    # 7. Detect or validate username
     if (-not $Username) {
         $Username = Get-WslDefaultUser -DistroName $DistroName
         if (-not $Username) {
@@ -1161,7 +1293,7 @@ Then run setup-docker again.
         }
     }
 
-    # 7. Check if Docker already installed
+    # 8. Check if Docker already installed
     if (Test-WslDockerInstalled -DistroName $DistroName) {
         throw @"
 Docker is already installed in '$DistroName'.

@@ -12,10 +12,21 @@
 - [x] Docker setup available via interactive menu option `[D] Setup Docker`
 - [x] Only Ubuntu/Debian (apt-based) distributions supported initially
 - [x] Validates WSL2 version (fails if WSL1)
+- [x] Requires systemd configured in `/etc/wsl.conf` (prerequisite):
+  ```ini
+  [boot]
+  systemd=true
+  ```
 - [x] Validates systemd support (fails if not available/enabled)
 - [x] Requires default user configured in `/etc/wsl.conf` (prerequisite: wsl-006)
 - [x] Auto-detects default user from `/etc/wsl.conf` and adds to `docker` group
 - [x] Checks if Docker is already installed (fails with clear message)
+- [x] Installs required prerequisites before Docker setup:
+  - `ca-certificates` (SSL certificate validation)
+  - `curl` (Download tool for GPG keys and scripts)
+  - `gnupg` (GPG key verification)
+  - `lsb-release` (Distribution information)
+  - `wget` (Alternative download tool)
 - [x] Installs Docker Engine components:
   - `docker-ce` (Docker Engine)
   - `docker-ce-cli` (Docker CLI)
@@ -82,7 +93,7 @@ sudo apt-get remove -y docker docker-engine docker.io containerd runc
 
 # 2. Update and install prerequisites
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg lsb-release
+sudo apt-get install -y ca-certificates curl gnupg lsb-release wget
 
 # 3. Add Docker's official GPG key
 sudo mkdir -p /etc/apt/keyrings

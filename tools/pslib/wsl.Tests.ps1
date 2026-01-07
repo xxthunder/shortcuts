@@ -1531,6 +1531,143 @@ default=admin
     }
 }
 
+Describe "Test-WslSystemdConfigured" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When wsl.conf does not exist" {
+        It "Should return false when wsl.conf is not found" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When systemd is configured in wsl.conf" {
+        It "Should return true when systemd=true is set in [boot] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=true`n[user]`ndefault=developer"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true when systemd=true with spaces around equals" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd = true"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true when systemd=true with extra whitespace" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`n  systemd  =  true  "
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+    }
+
+    Context "When systemd is not configured in wsl.conf" {
+        It "Should return false when [boot] section does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[user]`ndefault=developer"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemd is not set in [boot] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`n# systemd=true"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemd=false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=false"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when wsl.conf is empty" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When systemd setting is in different sections" {
+        It "Should only check [boot] section, not [other] sections" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[other]`nsystemd=true`n[boot]`nsystemd=false"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-WslSystemdConfigured -DistroName "" } | Should -Throw
+        }
+    }
+}
+
 Describe "Test-WslSystemd" {
     Context "When WSL is not installed" {
         It "Should throw an error" {
@@ -1819,23 +1956,54 @@ Describe "Install-WslDockerEngine" {
         }
     }
 
-    Context "Prerequisite validation - Systemd availability" {
-        It "Should throw when systemd is not available" {
+    Context "Prerequisite validation - Systemd configuration" {
+        It "Should throw when systemd is not configured in wsl.conf" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemd { $false }
+            Mock Test-WslSystemdConfigured { $false }
 
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*"
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*wsl.conf*"
         }
 
-        It "Should provide wsl.conf configuration in error message" {
+        It "Should provide wsl.conf configuration instructions in error message" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*[boot]*systemd=true*"
+        }
+
+        It "Should provide restart instructions in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl.exe --terminate*"
+        }
+    }
+
+    Context "Prerequisite validation - Systemd running" {
+        It "Should throw when systemd is not running" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $false }
 
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd=true*"
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*running*"
+        }
+
+        It "Should provide troubleshooting steps in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemctl --version*"
         }
     }
 
@@ -1844,6 +2012,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Arch") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "arch" }
 
@@ -1854,6 +2023,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
@@ -1869,6 +2039,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "ubuntu" }
             Mock Get-WslDefaultUser { "developer" }
@@ -1886,6 +2057,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
@@ -1897,6 +2069,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
@@ -1908,6 +2081,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
@@ -1923,6 +2097,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "autodetected" }
@@ -1942,6 +2117,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
@@ -1954,6 +2130,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
@@ -1968,6 +2145,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
@@ -2062,6 +2240,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
@@ -2108,6 +2287,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
