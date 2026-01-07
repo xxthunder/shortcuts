@@ -35,7 +35,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             return
         }
 
-        Write-Host "==> Preparing test environment..." -ForegroundColor Cyan
+        Write-Host "==> Preparing test environment ..." -ForegroundColor Cyan
         # Check if base distro already exists
         $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
@@ -48,7 +48,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
         # Only remove custom distro if it exists (test artifact)
         if ($script:customDistroName -in $existingDistros) {
-            Write-Host "    Removing existing $script:customDistroName..." -ForegroundColor Yellow
+            Write-Host "    Removing existing $script:customDistroName ..." -ForegroundColor Yellow
             wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
             Start-Sleep -Seconds 2
         }
@@ -56,12 +56,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     AfterAll {
         # Cleanup: Remove only test artifacts, preserve base distro
-        Write-Host "==> Cleaning up: Removing test distros after tests..." -ForegroundColor Cyan
+        Write-Host "==> Cleaning up: Removing test distros after tests ..." -ForegroundColor Cyan
         $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
         # Always remove custom distro (test artifact)
         if ($script:customDistroName -in $existingDistros) {
-            Write-Host "    Removing $script:customDistroName..." -ForegroundColor Yellow
+            Write-Host "    Removing $script:customDistroName ..." -ForegroundColor Yellow
             wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
         }
 
@@ -77,12 +77,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
 
             if ($script:baseDistroName -in $existingDistros) {
-                Write-Host "`n==> TEST: Using existing $script:baseDistroName..." -ForegroundColor Magenta
+                Write-Host "`n==> TEST: Using existing $script:baseDistroName ..." -ForegroundColor Magenta
                 # Verify it exists
                 $existingDistros | Should -Contain $script:baseDistroName
             }
             else {
-                Write-Host "`n==> TEST: Creating $script:baseDistroName..." -ForegroundColor Magenta
+                Write-Host "`n==> TEST: Creating $script:baseDistroName ..." -ForegroundColor Magenta
 
                 # Capture output
                 $output = & $script:wslManagerPath create $script:baseDistroName 2>&1 | Out-String
@@ -103,7 +103,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "Clone Distribution" {
         It "Should clone Debian to custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the base distribution exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
@@ -132,7 +132,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "Update Distribution" {
         It "Should update custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Updating $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Updating $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
@@ -158,7 +158,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "Setup User" {
         It "Should create test user in custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Setting up user in $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Setting up user in $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
@@ -200,7 +200,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "Setup Docker" {
         It "Should install Docker Engine in custom distro with user and print executed commands" {
-            Write-Host "`n==> TEST: Installing Docker in $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Installing Docker in $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
@@ -235,7 +235,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
 
         It "Should fail when trying to install Docker again (already installed)" {
-            Write-Host "`n==> TEST: Verifying Docker already installed error in $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Verifying Docker already installed error in $script:customDistroName ..." -ForegroundColor Magenta
 
             # Load the library
             . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
@@ -248,7 +248,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "List Distributions" {
         It "Should list distributions and show both base and custom distros" {
-            Write-Host "`n==> TEST: Listing distributions..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Listing distributions ..." -ForegroundColor Magenta
 
             # Call the script to display the list (for visual verification)
             & $script:wslManagerPath list
@@ -265,7 +265,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
     Context "Remove Distribution" {
         It "Should remove custom distro and print executed commands" {
-            Write-Host "`n==> TEST: Removing $script:customDistroName..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Removing $script:customDistroName ..." -ForegroundColor Magenta
 
             # Load the library to call Remove-WslDistro directly
             . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
@@ -286,7 +286,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
 
         It "Should preserve base distro (Debian is never removed)" {
-            Write-Host "`n==> TEST: Verifying $script:baseDistroName is preserved..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Verifying $script:baseDistroName is preserved ..." -ForegroundColor Magenta
 
             # Verify base distribution still exists
             $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }

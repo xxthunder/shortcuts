@@ -52,7 +52,7 @@ if ($TestPath.Count -eq 1) {
 }
 
 # Configure PSScriptAnalyzer via linter.Tests.ps1
-Write-Output "`nConfiguring PSScriptAnalyzer..."
+Write-Output "`nConfiguring PSScriptAnalyzer ..."
 $linterTestPath = Join-Path $PSScriptRoot "linter.Tests.ps1"
 
 # Pass test paths to linter via environment variable
@@ -138,7 +138,7 @@ if ($EnableCodeCoverage) {
     }
 }
 
-Write-Output "Starting Pester tests..."
+Write-Output "Starting Pester tests ..."
 Write-Output "PowerShell: $($PSVersionTable.PSVersion)"
 
 $testResult = Invoke-Pester -Configuration $testConfig

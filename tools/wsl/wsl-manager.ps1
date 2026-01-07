@@ -299,7 +299,7 @@ function Invoke-SetupUser {
     }
 
     Write-Host ""
-    Write-Host "Setting up user account in '$DistroName'..." -ForegroundColor Cyan
+    Write-Host "Setting up user account in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
     # Prompt for username
@@ -349,7 +349,7 @@ function Invoke-SetupDocker {
     )
 
     Write-Host ""
-    Write-Host "Setting up Docker in '$DistroName'..." -ForegroundColor Cyan
+    Write-Host "Setting up Docker in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
     try {

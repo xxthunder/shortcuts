@@ -166,7 +166,7 @@ function New-WslDistro {
     }
 
     if ($PSCmdlet.ShouldProcess($Name, "Create WSL distribution")) {
-        Write-Output "Creating WSL distribution '$Name'..."
+        Write-Output "Creating WSL distribution '$Name' ..."
         Invoke-CommandLine -CommandLine "wsl.exe --install --distribution $Name --no-launch"
         Write-Output "Successfully created '$Name'."
         Write-Output ""
@@ -247,7 +247,7 @@ function Remove-WslDistro {
 
     # Ask for confirmation using ShouldProcess
     if ($PSCmdlet.ShouldProcess($Name, "Remove WSL distribution")) {
-        Write-Output "Removing WSL distribution '$Name'..."
+        Write-Output "Removing WSL distribution '$Name' ..."
         Invoke-CommandLine -CommandLine "wsl.exe --unregister $Name"
         Write-Output "Successfully removed '$Name'."
     }
@@ -329,7 +329,7 @@ function Copy-WslDistro {
 
     if ($PSCmdlet.ShouldProcess($SourceName, "Clone WSL distribution to $TargetName")) {
         try {
-            Write-Output "Cloning WSL distribution '$SourceName' to '$TargetName'..."
+            Write-Output "Cloning WSL distribution '$SourceName' to '$TargetName' ..."
 
             # Create install directory if it doesn't exist
             if (-not (Test-Path $InstallPath)) {
@@ -337,11 +337,11 @@ function Copy-WslDistro {
             }
 
             # Export source distribution
-            Write-Output "Exporting '$SourceName'..."
+            Write-Output "Exporting '$SourceName' ..."
             Invoke-CommandLine -CommandLine "wsl.exe --export $SourceName `"$tempTarFile`""
 
             # Import as new distribution
-            Write-Output "Importing as '$TargetName'..."
+            Write-Output "Importing as '$TargetName' ..."
             Invoke-CommandLine -CommandLine "wsl.exe --import $TargetName `"$InstallPath`" `"$tempTarFile`""
 
             Write-Output "Successfully cloned '$SourceName' to '$TargetName'."
@@ -586,7 +586,7 @@ function Update-WslDistro {
     }
 
     if ($PSCmdlet.ShouldProcess($Name, "Update WSL distribution packages")) {
-        Write-Output "Updating WSL distribution '$Name'..."
+        Write-Output "Updating WSL distribution '$Name' ..."
 
         # Execute apt update && apt upgrade
         $updateCommand = "sudo apt update && sudo apt upgrade -y"
@@ -696,7 +696,7 @@ function New-WslUser {
             throw "User '$Username' already exists in distribution '$DistroName'."
         }
 
-        Write-Output "Creating user '$Username' in distribution '$DistroName'..."
+        Write-Output "User '$Username' does not exist in distribution '$DistroName'. Creating user ..."
 
         # Step 1: Create user with home directory
         $createUserCmd = "sudo useradd -m -s /bin/bash $Username"
@@ -1186,7 +1186,7 @@ Or verify your installation with:
         return $false
     }
 
-    Write-Information "Installing Docker Engine in '$DistroName'..."
+    Write-Information "Installing Docker Engine in '$DistroName' ..."
 
     # Docker installation workflow
 
@@ -1251,7 +1251,7 @@ Or verify your installation with:
 
         # Post-installation verification
         Write-Information ""
-        Write-Information "Verifying installation..."
+        Write-Information "Verifying installation ..."
 
         # Check Docker Engine version
         Write-Information "  -> Checking Docker Engine version"

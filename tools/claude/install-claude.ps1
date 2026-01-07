@@ -33,19 +33,19 @@ $ErrorActionPreference = "Stop"
 
 try {
     # Check if Scoop is installed
-    Write-Status "Checking for Scoop..."
+    Write-Status "Checking for Scoop ..."
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
         Write-Error "Scoop is not installed. Please install Scoop first!"
     }
     Write-Success "Scoop is installed"
 
     # Install or update Node.js via Scoop
-    Write-Status "Checking Node.js installation..."
+    Write-Status "Checking Node.js installation ..."
     if (Get-Command node -ErrorAction SilentlyContinue) {
         $nodeVersion = node --version
         Write-Information "  Current Node.js version: $nodeVersion"
 
-        Write-Status "Updating Node.js via Scoop..."
+        Write-Status "Updating Node.js via Scoop ..."
         scoop update nodejs 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Scoop update failed, but Node.js is already installed"
@@ -58,7 +58,7 @@ try {
             Write-Success "Node.js updated from $nodeVersion to $newNodeVersion"
         }
     } else {
-        Write-Status "Installing Node.js via Scoop..."
+        Write-Status "Installing Node.js via Scoop ..."
         scoop install nodejs
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to install Node.js"
@@ -67,7 +67,7 @@ try {
     }
 
     # Verify npm is available
-    Write-Status "Verifying npm installation..."
+    Write-Status "Verifying npm installation ..."
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Error "npm not found. Node.js installation may be incomplete."
     }
@@ -75,19 +75,19 @@ try {
     Write-Success "npm version: $npmVersion"
 
     # Install or update Claude Code CLI via npm
-    Write-Status "Checking Claude Code CLI installation..."
+    Write-Status "Checking Claude Code CLI installation ..."
     $claudePackage = "@anthropic-ai/claude-code"
     npm list -g $claudePackage --depth=0 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Information "  Claude Code CLI is already installed"
-        Write-Status "Updating Claude Code CLI..."
+        Write-Status "Updating Claude Code CLI ..."
         npm update -g $claudePackage
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to update Claude Code CLI"
         }
         Write-Success "Claude CLI updated"
     } else {
-        Write-Status "Installing Claude CLI..."
+        Write-Status "Installing Claude CLI ..."
         npm install -g @anthropic-ai/claude-code
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to install Claude CLI"
@@ -96,7 +96,7 @@ try {
     }
 
     # Verify Claude installation
-    Write-Status "Verifying Claude CLI installation..."
+    Write-Status "Verifying Claude CLI installation ..."
     if (Get-Command claude -ErrorAction SilentlyContinue) {
         $claudeVersion = claude --version 2>$null
         if ($LASTEXITCODE -eq 0) {
@@ -123,7 +123,7 @@ try {
 } finally {
     if (-not (Test-RunningInCIorTestEnvironment)) {
         Write-Information ""
-        Write-Information "Press any key to exit..."
+        Write-Information "Press any key to exit ..."
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
     Write-Information ""
