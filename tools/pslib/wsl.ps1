@@ -41,7 +41,6 @@ function Get-WslAvailableDistro {
     .DESCRIPTION
         Queries 'wsl.exe --list --online' to get available distributions.
         Uses language-independent parsing to work on systems with any locale.
-        Sets LC_ALL environment variable to ensure consistent output format.
 
     .OUTPUTS
         System.String[]
@@ -60,22 +59,10 @@ function Get-WslAvailableDistro {
     }
 
     try {
-        # Set locale to English for consistent output (primary approach)
-        $originalLcAll = $env:LC_ALL
-        $env:LC_ALL = "en_US.UTF-8"
-
         # Get available distributions
         $output = wsl.exe --list --online 2>&1
 
-        # Restore original locale
-        if ($null -ne $originalLcAll) {
-            $env:LC_ALL = $originalLcAll
-        }
-        else {
-            Remove-Item Env:\LC_ALL -ErrorAction SilentlyContinue
-        }
-
-        # Parse output using pattern matching (language-independent fallback)
+        # Parse output using pattern matching (language-independent)
         # Distribution names match pattern: alphanumeric, hyphens, underscores, dots
         $distros = @()
         $lines = $output -split "`n"
@@ -208,31 +195,16 @@ function Get-WslDistroList {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    # Set locale to English for consistent output
-    $originalLcAll = $env:LC_ALL
-    $env:LC_ALL = "en_US.UTF-8"
+    $distros = wsl.exe --list --quiet | ForEach-Object {
+        # Clean up WSL output: remove null chars (UTF-16), carriage returns, and trim whitespace
+        $_.Trim() -replace '\x00', '' -replace '\r', ''
+    } | Where-Object { $_ -ne "" }
 
-    try {
-        $distros = wsl.exe --list --quiet | ForEach-Object {
-            # Clean up WSL output: remove null chars (UTF-16), carriage returns, and trim whitespace
-            $_.Trim() -replace '\x00', '' -replace '\r', ''
-        } | Where-Object { $_ -ne "" }
-
-        if ($null -eq $distros) {
-            return @()
-        }
-
-        return $distros
+    if ($null -eq $distros) {
+        return @()
     }
-    finally {
-        # Restore original locale
-        if ($null -ne $originalLcAll) {
-            $env:LC_ALL = $originalLcAll
-        }
-        else {
-            Remove-Item Env:\LC_ALL -ErrorAction SilentlyContinue
-        }
-    }
+
+    return $distros
 }
 
 function Remove-WslDistro {
@@ -968,57 +940,42 @@ function Test-Wsl2Version {
         throw "Distribution '$DistroName' does not exist."
     }
 
-    # Set locale to English for consistent output
-    $originalLcAll = $env:LC_ALL
-    $env:LC_ALL = "en_US.UTF-8"
+    # Get WSL version list
+    $output = wsl.exe --list --verbose
 
-    try {
-        # Get WSL version list
-        $output = wsl.exe --list --verbose
+    # Parse the output to find the distribution and its version
+    $lines = $output -split "`n"
+    foreach ($line in $lines) {
+        # Clean up line (remove null chars, carriage returns, asterisk, trim)
+        $cleanLine = $line -replace '\x00', '' -replace '\r', '' -replace '\*', '' | ForEach-Object { $_.Trim() }
 
-        # Parse the output to find the distribution and its version
-        $lines = $output -split "`n"
-        foreach ($line in $lines) {
-            # Clean up line (remove null chars, carriage returns, asterisk, trim)
-            $cleanLine = $line -replace '\x00', '' -replace '\r', '' -replace '\*', '' | ForEach-Object { $_.Trim() }
+        # Skip empty lines and headers
+        if ([string]::IsNullOrWhiteSpace($cleanLine) -or $cleanLine -match '^NAME\s+STATE\s+VERSION') {
+            continue
+        }
 
-            # Skip empty lines and headers
-            if ([string]::IsNullOrWhiteSpace($cleanLine) -or $cleanLine -match '^NAME\s+STATE\s+VERSION') {
-                continue
-            }
+        # Split by whitespace to get fields
+        $fields = $cleanLine -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
-            # Split by whitespace to get fields
-            $fields = $cleanLine -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        # Need at least 3 fields: NAME, STATE, VERSION
+        if ($fields.Count -ge 3) {
+            $name = $fields[0]
+            $version = $fields[2]
 
-            # Need at least 3 fields: NAME, STATE, VERSION
-            if ($fields.Count -ge 3) {
-                $name = $fields[0]
-                $version = $fields[2]
-
-                # Check if this is our distribution
-                if ($name -eq $DistroName) {
-                    if ($version -eq "2") {
-                        return $true
-                    }
-                    else {
-                        return $false
-                    }
+            # Check if this is our distribution
+            if ($name -eq $DistroName) {
+                if ($version -eq "2") {
+                    return $true
+                }
+                else {
+                    return $false
                 }
             }
         }
+    }
 
-        # Distribution not found in output (shouldn't happen since we validated existence)
-        return $false
-    }
-    finally {
-        # Restore original locale
-        if ($null -ne $originalLcAll) {
-            $env:LC_ALL = $originalLcAll
-        }
-        else {
-            Remove-Item Env:\LC_ALL -ErrorAction SilentlyContinue
-        }
-    }
+    # Distribution not found in output (shouldn't happen since we validated existence)
+    return $false
 }
 
 function Test-WslDockerInstalled {

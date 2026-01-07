@@ -64,13 +64,6 @@ $InformationPreference = "Continue"
 # Stop on first error
 $ErrorActionPreference = "Stop"
 
-# Enforce English UI culture for consistent wsl.exe output across different Windows languages
-# Only on PowerShell 6.0+ to avoid type data loading issues in PowerShell 5.1
-if ($PSVersionTable.PSVersion.Major -ge 6) {
-    $script:OriginalUICulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
-    [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::new('en-US')
-}
-
 # Source dependencies
 . "$PSScriptRoot\..\pslib\utils.ps1"
 . "$PSScriptRoot\..\pslib\wsl.ps1"
@@ -733,8 +726,3 @@ if ($MyInvocation.InvocationName -ne '.') {
 }
 
 #endregion
-
-# Restore original UI culture (only if it was set)
-if ($PSVersionTable.PSVersion.Major -ge 6 -and $null -ne $script:OriginalUICulture) {
-    [System.Threading.Thread]::CurrentThread.CurrentUICulture = $script:OriginalUICulture
-}

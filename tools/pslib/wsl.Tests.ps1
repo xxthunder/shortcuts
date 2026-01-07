@@ -98,17 +98,6 @@ openSUSE-Leap-15.6          openSUSE Leap 15.6
             $result | Should -Contain "Oracle_Linux_8_10"
             $result | Should -Contain "openSUSE-Leap-15.6"
         }
-
-        It "Should set and restore LC_ALL environment variable" {
-            Mock Test-WslInstalled { $true }
-            Mock wsl { "Debian      Debian" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--online" }
-
-            $originalLcAll = $env:LC_ALL
-            Get-WslAvailableDistro
-            $afterLcAll = $env:LC_ALL
-
-            $afterLcAll | Should -Be $originalLcAll
-        }
     }
 }
 
@@ -145,17 +134,6 @@ Describe "Get-WslDistroList" {
             Get-WslDistroList
 
             Should -Invoke wsl.exe -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
-        }
-
-        It "Should set and restore LC_ALL environment variable" {
-            Mock Test-WslInstalled { $true }
-            Mock wsl { @("Debian") } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
-
-            $originalLcAll = $env:LC_ALL
-            Get-WslDistroList
-            $afterLcAll = $env:LC_ALL
-
-            $afterLcAll | Should -Be $originalLcAll
         }
     }
 }
@@ -1713,18 +1691,6 @@ Describe "Test-Wsl2Version" {
             $result = Test-Wsl2Version -DistroName "Debian"
 
             $result | Should -Be $false
-        }
-
-        It "Should set and restore LC_ALL environment variable" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock wsl { "* Debian    Running         2" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
-
-            $originalLcAll = $env:LC_ALL
-            Test-Wsl2Version -DistroName "Debian"
-            $afterLcAll = $env:LC_ALL
-
-            $afterLcAll | Should -Be $originalLcAll
         }
     }
 
