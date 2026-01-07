@@ -10,7 +10,7 @@
 
 - [x] Running `wsl-manager.ps1 update` without arguments shows interactive menu for distribution selection
 - [x] Support selection by number or name from the list
-- [x] Running update command executes `apt update && apt upgrade -y` in the selected distribution
+- [x] Running update command executes `apt update && apt upgrade -y && apt autoremove -y && apt autoclean` in the selected distribution
 - [x] Only Debian and Ubuntu (apt-based) distributions are supported
 - [x] Clear error message shown when attempting to update non-Debian/Ubuntu distributions
 - [x] If WSL is not installed, an appropriate error message is shown
@@ -18,6 +18,8 @@
 - [x] Progress and success messages are displayed during and after update
 - [x] Interactive menu includes [U] option for update command
 - [x] Distribution type is automatically detected via `/etc/os-release`
+- [x] Orphaned packages are automatically removed with `apt autoremove`
+- [x] APT cache is cleaned with `apt autoclean` to free disk space
 
 ## Technical Notes
 
@@ -30,8 +32,11 @@
   3. Prompt user to select distribution (if not specified)
   4. Detect distribution type using `Get-WslDistroType`
   5. Validate distribution is Debian or Ubuntu
-  6. Execute `sudo apt update && apt upgrade -y` via `Invoke-WslDistroCommand`
+  6. Execute `sudo apt update && apt upgrade -y && apt autoremove -y && apt autoclean` via `Invoke-WslDistroCommand`
   7. Display success message
+- **Cleanup operations**:
+  - `apt autoremove`: Removes packages that were automatically installed to satisfy dependencies but are no longer needed
+  - `apt autoclean`: Removes retrieved package files that can no longer be downloaded and are largely useless
 - Uses `Update-WslDistro` function with `SupportsShouldProcess` for confirmation
 - Interactive CLI wrapper provided by `Invoke-UpdateDistro`
 - Validates distribution exists before attempting update
@@ -46,6 +51,7 @@ grep "^ID=" /etc/os-release | cut -d= -f2
 ```
 
 Supported types:
+
 - **debian**: Debian-based distributions
 - **ubuntu**: Ubuntu-based distributions
 - **arch**: Arch Linux (not supported for updates)
@@ -55,6 +61,7 @@ Supported types:
 ### Quote Escaping
 
 Commands are executed via `wsl --distribution <name> -e bash -c "<command>"`:
+
 - Double quotes in commands are escaped: `"` → `\\"`
 - Quote removal handled in PowerShell using `.Trim('"')`
 - Avoids problematic bash command construction

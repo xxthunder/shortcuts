@@ -588,8 +588,8 @@ function Update-WslDistro {
     if ($PSCmdlet.ShouldProcess($Name, "Update WSL distribution packages")) {
         Write-Output "Updating WSL distribution '$Name' ..."
 
-        # Execute apt update && apt upgrade
-        $updateCommand = "sudo apt update && sudo apt upgrade -y"
+        # Execute apt update, upgrade, autoremove, and autoclean
+        $updateCommand = "sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt autoclean"
         Invoke-WslDistroCommand -DistroName $Name -Command $updateCommand
 
         Write-Output "Successfully updated '$Name'."

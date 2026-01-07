@@ -987,7 +987,7 @@ Describe "Update-WslDistro" {
             Update-WslDistro -Name "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt update && sudo apt upgrade -y*"
+                $Command -like "*apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt autoclean*"
             }
         }
 
@@ -1000,7 +1000,7 @@ Describe "Update-WslDistro" {
             Update-WslDistro -Name "Ubuntu" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt update && sudo apt upgrade -y*"
+                $Command -like "*apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt autoclean*"
             }
         }
 
