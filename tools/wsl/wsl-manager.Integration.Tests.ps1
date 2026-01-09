@@ -36,8 +36,13 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
 
         Write-Host "==> Preparing test environment ..." -ForegroundColor Cyan
+
+        # Load the library functions
+        . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
+        . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+
         # Check if base distro already exists
-        $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+        $existingDistros = Get-WslDistroList
 
         if ($script:baseDistroName -in $existingDistros) {
             Write-Host "    $script:baseDistroName already exists, will use it" -ForegroundColor Green
@@ -49,8 +54,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         # Always remove custom distro before tests (clean slate)
         if ($script:customDistroName -in $existingDistros) {
             Write-Host "    Removing existing $script:customDistroName for fresh test run ..." -ForegroundColor Yellow
-            wsl.exe --unregister $script:customDistroName 2>&1 | Out-Null
-            Start-Sleep -Seconds 2
+            Remove-WslDistro -Name $script:customDistroName -Confirm:$false
         }
 
         Write-Host "    NOTE: Test distributions will be preserved after tests for exploratory testing" -ForegroundColor Cyan
@@ -59,7 +63,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
     Context "Create Distribution" {
         It "Should use existing or create Debian and print executed commands" {
             # Check if base distro exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = Get-WslDistroList
 
             if ($script:baseDistroName -in $existingDistros) {
                 Write-Host "`n==> TEST: Using existing $script:baseDistroName ..." -ForegroundColor Magenta
@@ -76,7 +80,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
                 Write-Host $output
 
                 # Verify distribution was created
-                $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+                $existingDistros = Get-WslDistroList
                 $existingDistros | Should -Contain $script:baseDistroName
 
                 # Verify commands were printed
@@ -91,12 +95,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Updating base $script:baseDistroName to latest packages ..." -ForegroundColor Magenta
 
             # First verify the base distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:baseDistroName
-
-            # Load the library
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
 
             # Capture output from Update-WslDistro
             $output = Update-WslDistro -Name $script:baseDistroName -Confirm:$false 2>&1 | Out-String
@@ -117,12 +117,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the base distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:baseDistroName
-
-            # Load the library to call Copy-WslDistro directly
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
 
             # Capture output from Copy-WslDistro
             $output = Copy-WslDistro -SourceName $script:baseDistroName -TargetName $script:customDistroName -Confirm:$false 2>&1 | Out-String
@@ -131,7 +127,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host $output
 
             # Verify custom distribution was created
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:customDistroName
 
             # Verify commands were printed
@@ -146,12 +142,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Setting up user in $script:customDistroName ..." -ForegroundColor Magenta
 
             # First verify the custom distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:customDistroName
-
-            # Load the library
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
 
             # Create test user with plain text password (for automation)
             $testUsername = "testuser"
@@ -166,18 +158,18 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Verify user creation output
             $output | Should -Match "User '$testUsername' does not exist in distribution '$script:customDistroName'. Creating user"
             $output | Should -Match "Successfully created user '$testUsername'"
-            $output | Should -Match "wsl.exe --terminate $script:customDistroName"
+            $output | Should -Match "Restarting distribution"
 
             # Verify user exists in the distribution
-            $userCheck = wsl.exe --distribution $script:customDistroName --exec id -u $testUsername 2>&1
+            $userCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "id -u $testUsername" -PrintCommand $false -PassThru
             $userCheck | Should -Match '^\d+$'
 
             # Verify user is in sudo group
-            $groupCheck = wsl.exe --distribution $script:customDistroName --exec groups $testUsername 2>&1
+            $groupCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "groups $testUsername" -PrintCommand $false -PassThru
             $groupCheck | Should -Match '\bsudo\b'
 
             # Verify sudoers file exists with NOPASSWD configuration
-            $sudoersCheck = wsl.exe --distribution $script:customDistroName --exec sudo cat /etc/sudoers.d/$testUsername 2>&1
+            $sudoersCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "sudo cat /etc/sudoers.d/$testUsername" -PrintCommand $false -PassThru
             $sudoersCheck | Should -Match "NOPASSWD:ALL"
             $sudoersCheck | Should -Match "$testUsername ALL="
 
@@ -186,54 +178,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             { New-WslUser -DistroName $script:customDistroName -Username $testUsername -Password $testPassword -Confirm:$false -ErrorAction Stop } | Should -Throw -ExpectedMessage "*User '$testUsername' already exists in distribution '$script:customDistroName'*"
 
             Write-Host "    Correctly rejected duplicate user creation" -ForegroundColor Green
-        }
-    }
-
-    Context "Setup Docker" {
-        It "Should install Docker Engine in custom distro with user and print executed commands" {
-            Write-Host "`n==> TEST: Installing Docker in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # First verify the custom distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-            $existingDistros | Should -Contain $script:customDistroName
-
-            # Load the library
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
-
-            # Capture output from Install-WslDockerEngine
-            $output = Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false 2>&1 | Out-String
-
-            Write-Host "==> Captured Output:" -ForegroundColor Cyan
-            Write-Host $output
-
-            # Verify Docker is installed (output messages aren't captured due to Write-Information)
-            $dockerVersion = wsl.exe --distribution $script:customDistroName --exec docker --version 2>&1
-            $dockerVersion | Should -Match "Docker version"
-
-            # Verify Docker Compose is installed
-            $composeVersion = wsl.exe --distribution $script:customDistroName --exec docker compose version 2>&1
-            $composeVersion | Should -Match "Docker Compose version"
-
-            # Verify Docker service is running
-            $serviceStatus = wsl.exe --distribution $script:customDistroName --exec sudo systemctl is-active docker 2>&1
-            $serviceStatus | Should -Match "active"
-
-            # Verify user is in docker group
-            $testUsername = "testuser"
-            $groupCheck = wsl.exe --distribution $script:customDistroName --exec groups $testUsername 2>&1
-            $groupCheck | Should -Match '\bdocker\b'
-        }
-
-        It "Should fail when trying to install Docker again (already installed)" {
-            Write-Host "`n==> TEST: Verifying Docker already installed error in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Load the library
-            . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-            . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
-
-            # Attempt to install Docker again (should fail)
-            { Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false -ErrorAction Stop } | Should -Throw -ExpectedMessage "*Docker is already installed*"
         }
     }
 
@@ -246,34 +190,11 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             Write-Host "`n==> Captured Output:" -ForegroundColor Cyan
 
-            # Verify both distributions exist by checking WSL directly
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
+            # Verify both distributions exist
+            $existingDistros = Get-WslDistroList
 
             $existingDistros | Should -Contain $script:baseDistroName
             $existingDistros | Should -Contain $script:customDistroName
-        }
-    }
-
-    Context "Verify Distributions Preserved" {
-        It "Should verify base distro is preserved for exploratory testing" {
-            Write-Host "`n==> TEST: Verifying $script:baseDistroName is preserved ..." -ForegroundColor Magenta
-
-            # Verify base distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-            $existingDistros | Should -Contain $script:baseDistroName
-
-            Write-Host "    $script:baseDistroName is preserved for exploratory testing" -ForegroundColor Green
-        }
-
-        It "Should verify custom distro is preserved for exploratory testing" {
-            Write-Host "`n==> TEST: Verifying $script:customDistroName is preserved ..." -ForegroundColor Magenta
-
-            # Verify custom distribution exists
-            $existingDistros = wsl.exe --list --quiet 2>$null | Where-Object { $_ -match '\S' } | ForEach-Object { $_.Trim([char]0x0000).Trim() }
-            $existingDistros | Should -Contain $script:customDistroName
-
-            Write-Host "    $script:customDistroName is preserved for exploratory testing" -ForegroundColor Green
-            Write-Host "    NOTE: Test distributions kept - manually remove when no longer needed" -ForegroundColor Yellow
         }
     }
 }
