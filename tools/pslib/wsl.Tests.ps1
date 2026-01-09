@@ -1277,7 +1277,7 @@ Describe "New-WslUser" {
             New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
 
             Should -Invoke Write-Output -ParameterFilter {
-                $InputObject -like "*wsl.exe --terminate*"
+                $InputObject -like "*Restarting distribution*"
             }
         }
 
