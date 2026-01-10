@@ -703,7 +703,8 @@ function New-WslUser {
         Invoke-WslDistroCommand -DistroName $DistroName -Command $createUserCmd
 
         # Step 2: Set password
-        $setPasswordCmd = "echo `"$Username`:$plainPassword`" | sudo chpasswd"
+        # Use single quotes in bash to avoid escaping issues across PowerShell versions
+        $setPasswordCmd = "echo '${Username}:${plainPassword}' | sudo chpasswd"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $setPasswordCmd -PrintCommand $false -Silent $true
 
         # Step 3: Add user to sudo group
