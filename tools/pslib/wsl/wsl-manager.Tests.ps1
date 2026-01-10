@@ -7,8 +7,8 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\pslib\utils.ps1"
-    . "$PSScriptRoot\..\pslib\wsl.ps1"
+    . "$PSScriptRoot\..\utils\utils.ps1"
+    . "$PSScriptRoot\wsl.ps1"
     . "$PSScriptRoot\wsl-manager.ps1"
 
     # Create SecureString objects at top level for PowerShell 5.1 compatibility

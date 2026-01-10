@@ -104,10 +104,10 @@ Commands are executed via `wsl --distribution <name> -e bash -c "<command>"`:
 
 ## Dependencies
 
-- `tools/pslib/wsl.ps1` - WSL utility library
+- `tools/pslib/wsl/wsl.ps1` - WSL utility library
   - `Update-WslDistro` - Main update function
   - `Get-WslDistroType` - Distribution type detection
   - `Invoke-WslDistroCommand` - Command execution in WSL
-- `tools/pslib/utils.ps1` - Common utilities
-- `tools/wsl/wsl-manager.ps1` - CLI interface
+- `tools/pslib/utils/utils.ps1` - Common utilities
+- `tools/pslib/wsl/wsl-manager.ps1` - CLI interface
   - `Invoke-UpdateDistro` - Interactive update workflow

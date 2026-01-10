@@ -25,7 +25,8 @@
       "Bash(gh run download:*)",
       "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL|Tests Passed\" -Context 2,2)",
       "Bash(powershell:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

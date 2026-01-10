@@ -16,7 +16,7 @@
 
 ## Technical Notes
 
-- Use `Get-WslDistroList` from `tools/pslib/wsl.ps1`
+- Use `Get-WslDistroList` from `tools/pslib/wsl/wsl.ps1`
 - Handle UTF-16 encoding issues in WSL output
 - Follow project PowerShell guidelines
 
@@ -35,5 +35,5 @@
 
 ## Dependencies
 
-- `tools/pslib/wsl.ps1` - WSL utility library
-- `tools/pslib/utils.ps1` - Common utilities
+- `tools/pslib/wsl/wsl.ps1` - WSL utility library
+- `tools/pslib/utils/utils.ps1` - Common utilities

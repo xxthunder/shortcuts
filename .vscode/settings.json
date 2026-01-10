@@ -25,9 +25,12 @@
         "distroname",
         "distros",
         "dpkg",
+        "Keypirinha",
         "keyrings",
+        "logfile",
         "pacman",
         "pslib",
+        "scoopfile",
         "usermod"
     ]
 }

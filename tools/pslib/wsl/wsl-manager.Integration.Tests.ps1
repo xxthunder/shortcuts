@@ -38,8 +38,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         Write-Host "==> Preparing test environment ..." -ForegroundColor Cyan
 
         # Load the library functions
-        . (Join-Path $PSScriptRoot "..\pslib\wsl.ps1")
-        . (Join-Path $PSScriptRoot "..\pslib\utils.ps1")
+        . (Join-Path $PSScriptRoot "wsl.ps1")
+        . (Join-Path $PSScriptRoot "..\utils\utils.ps1")
 
         # Check if base distro already exists
         $existingDistros = Get-WslDistroList

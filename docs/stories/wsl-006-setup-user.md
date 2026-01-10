@@ -146,11 +146,11 @@ New-WslUser -DistroName "Debian" -Username "averylongusernamethatexceedsthirtytw
 
 ## Dependencies
 
-- `tools/pslib/wsl.ps1` - WSL utility library
+- `tools/pslib/wsl/wsl.ps1` - WSL utility library
   - `New-WslUser` - Main user creation function
   - `Invoke-WslDistroCommand` - Command execution in WSL
-- `tools/pslib/utils.ps1` - Common utilities
+- `tools/pslib/utils/utils.ps1` - Common utilities
   - `Test-RunningInCIorTestEnvironment` - CI/test environment detection
-- `tools/wsl/wsl-manager.ps1` - CLI interface
+- `tools/pslib/wsl/wsl-manager.ps1` - CLI interface
   - `Invoke-SetupUser` - Interactive user setup workflow for specified distribution
   - `Invoke-SetupUserInteractive` - Interactive menu handler with distribution selection

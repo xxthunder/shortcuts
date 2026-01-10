@@ -65,8 +65,8 @@ $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 # Source dependencies
-. "$PSScriptRoot\..\pslib\utils.ps1"
-. "$PSScriptRoot\..\pslib\wsl.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
+. "$PSScriptRoot\wsl.ps1"
 
 #region Functions
 

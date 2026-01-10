@@ -45,5 +45,5 @@
 
 ## Dependencies
 
-- `tools/pslib/wsl.ps1` - WSL utility library
-- `tools/pslib/utils.ps1` - Common utilities (Get-UserConfirmation)
+- `tools/pslib/wsl/wsl.ps1` - WSL utility library
+- `tools/pslib/utils/utils.ps1` - Common utilities (Get-UserConfirmation)

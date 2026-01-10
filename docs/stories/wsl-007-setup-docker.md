@@ -13,10 +13,12 @@
 - [x] Only Ubuntu/Debian (apt-based) distributions supported initially
 - [x] Validates WSL2 version (fails if WSL1)
 - [x] Requires systemd configured in `/etc/wsl.conf` (prerequisite):
+
   ```ini
   [boot]
   systemd=true
   ```
+
 - [x] Validates systemd support (fails if not available/enabled)
 - [x] Requires default user configured in `/etc/wsl.conf` (prerequisite: wsl-006)
 - [x] Auto-detects default user from `/etc/wsl.conf` and adds to `docker` group
@@ -322,7 +324,7 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 
 **Code dependencies:**
 
-- `tools/pslib/wsl.ps1` - WSL utility library
+- `tools/pslib/wsl/wsl.ps1` - WSL utility library
   - `Install-WslDockerEngine` - Main Docker installation function (new)
   - `Get-WslDistroType` - Distribution type detection (existing)
   - `Get-WslDefaultUser` - Read default user from wsl.conf (new helper)
@@ -330,9 +332,9 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
   - `Test-Wsl2Version` - Check WSL2 vs WSL1 (new helper)
   - `Test-WslDockerInstalled` - Check if Docker exists (new helper)
   - `Invoke-WslDistroCommand` - Command execution in WSL (existing)
-- `tools/pslib/utils.ps1` - Common utilities
+- `tools/pslib/utils/utils.ps1` - Common utilities
   - `Test-RunningInCIorTestEnvironment` - CI/test environment detection (existing)
-- `tools/wsl/wsl-manager.ps1` - CLI interface
+- `tools/pslib/wsl/wsl-manager.ps1` - CLI interface
   - `Invoke-SetupDocker` - Interactive Docker setup workflow (new)
 
 ## Implementation Tasks
@@ -340,13 +342,13 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 ### Phase 1: Helper Functions (TDD Approach)
 
 - [x] Write tests for `Get-WslDefaultUser` helper function
-- [x] Implement `Get-WslDefaultUser` in `tools/pslib/wsl.ps1`
+- [x] Implement `Get-WslDefaultUser` in `tools/pslib/wsl/wsl.ps1`
 - [x] Write tests for `Test-WslSystemd` helper function
-- [x] Implement `Test-WslSystemd` in `tools/pslib/wsl.ps1`
+- [x] Implement `Test-WslSystemd` in `tools/pslib/wsl/wsl.ps1`
 - [x] Write tests for `Test-Wsl2Version` helper function
-- [x] Implement `Test-Wsl2Version` in `tools/pslib/wsl.ps1`
+- [x] Implement `Test-Wsl2Version` in `tools/pslib/wsl/wsl.ps1`
 - [x] Write tests for `Test-WslDockerInstalled` helper function
-- [x] Implement `Test-WslDockerInstalled` in `tools/pslib/wsl.ps1`
+- [x] Implement `Test-WslDockerInstalled` in `tools/pslib/wsl/wsl.ps1`
 - [x] Run unit tests for all helper functions and verify they pass
 
 ### Phase 2: Main Installation Function
@@ -379,7 +381,7 @@ Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Confirm:$false
 pwsh -File ".\test\bin\test.ps1" -Unit
 
 # 3. Implement function (GREEN)
-# Edit: tools/pslib/wsl.ps1
+# Edit: tools/pslib/wsl/wsl.ps1
 
 # 4. Run test - should PASS
 pwsh -File ".\test\bin\test.ps1" -Unit
@@ -387,7 +389,7 @@ pwsh -File ".\test\bin\test.ps1" -Unit
 # 5. Refactor if needed (REFACTOR)
 
 # 6. Commit together
-git add tools/pslib/wsl.ps1 tools/pslib/wsl.Tests.ps1
+git add tools/pslib/wsl/wsl.ps1 tools/pslib/wsl.Tests.ps1
 git commit -m "feat: add function-name"
 ```
 

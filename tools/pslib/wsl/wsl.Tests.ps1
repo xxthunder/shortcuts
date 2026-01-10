@@ -4,7 +4,7 @@
 #>
 
 BeforeAll {
-    . "$PSScriptRoot\utils.ps1"
+    . "$PSScriptRoot\..\utils\utils.ps1"
     . "$PSScriptRoot\wsl.ps1"
 }
 
