@@ -27,7 +27,7 @@ $InformationPreference = "Continue"
 # Stop on first error
 $ErrorActionPreference = "Stop"
 
-. $PSScriptRoot\..\pslib\utils.ps1
+. $PSScriptRoot\..\pslib\utils\utils.ps1
 
 #region Main Logic
 
