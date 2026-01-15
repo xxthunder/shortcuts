@@ -70,7 +70,7 @@ if ($runUnitOnly) {
     $params.ExcludePattern = '*.Integration.Tests.ps1'
 } elseif ($runIntegrationOnly) {
     # Integration tests only: discover and use integration test files
-    Write-Output "Discovering integration tests..."
+    Write-Output "Discovering integration tests ..."
     $integrationTests = @(Get-ChildItem -Path $repoRoot -Filter "*.Integration.Tests.ps1" -Recurse |
         Select-Object -ExpandProperty FullName)
 

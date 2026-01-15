@@ -1,7 +1,7 @@
 {
     "recommendations": [
-        "johnpapa.vscode-peacock",
         "ms-vscode.powershell",
-        "thqby.vscode-autohotkey2-lsp"
+        "thqby.vscode-autohotkey2-lsp",
+        "anthropic.claude-code"
     ]
 }
