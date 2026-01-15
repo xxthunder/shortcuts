@@ -47,10 +47,10 @@ Based on plan.md project structure:
 
 **Purpose**: Ensure development environment is ready for implementation
 
-- [ ] T001 Verify Pester 5.7.1+ is installed (run `test/bin/init.ps1` if needed)
-- [ ] T002 Verify PSScriptAnalyzer 1.24.0+ is installed
-- [ ] T003 Run existing test suite to ensure baseline passes: `pwsh -File ".\test\bin\test.ps1" -Unit`
-- [ ] T004 Review constitution principles in `.specify/memory/constitution.md` to understand TDD requirements
+- [X] T001 Verify Pester 5.7.1+ is installed (run `test/bin/init.ps1` if needed)
+- [X] T002 Verify PSScriptAnalyzer 1.24.0+ is installed
+- [X] T003 Run existing test suite to ensure baseline passes: `pwsh -File ".\test\bin\test.ps1" -Unit`
+- [X] T004 Review constitution principles in `.specify/memory/constitution.md` to understand TDD requirements
 
 ---
 
@@ -68,7 +68,7 @@ Based on plan.md project structure:
 
 > **TDD REQUIREMENT**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T005 [P] [Item4] Add test case in `tools/pslib/wsl/wsl.Tests.ps1` for `New-WslUser` warning display
+- [X] T005 [P] [Item4] Add test case in `tools/pslib/wsl/wsl.Tests.ps1` for `New-WslUser` warning display
   - Mock `Invoke-WslDistroCommand` to simulate successful user creation
   - Verify `Write-Warning` is called with expected message about NOPASSWD
   - Use `Should -Invoke Write-Warning` to verify warning displayed
@@ -76,14 +76,14 @@ Based on plan.md project structure:
 
 ### Implementation for Work Item #4
 
-- [ ] T006 [Item4] Add NOPASSWD warning in `New-WslUser` function in `tools/pslib/wsl/wsl.ps1`
+- [X] T006 [Item4] Add NOPASSWD warning in `New-WslUser` function in `tools/pslib/wsl/wsl.ps1`
   - Locate the `New-WslUser` function (approximately line 599-740)
   - After successful user creation and before function return
   - Add: `Write-Warning "NOPASSWD sudo has been configured for '$Username'. This allows running commands as root without password prompt. Suitable for development environments but not recommended for production systems."`
   - Place warning after user creation success message but before restart instructions
   - Run test from T005, confirm it now PASSES
 
-- [ ] T007 [Item4] Verify integration test includes warning check in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+- [X] T007 [Item4] Verify integration test includes warning check in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
   - Add assertion to existing user creation integration test
   - Verify warning appears in integration scenario
   - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`

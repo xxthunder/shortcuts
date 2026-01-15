@@ -160,6 +160,10 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $output | Should -Match "Successfully created user '$testUsername'"
             $output | Should -Match "Restarting distribution"
 
+            # Verify NOPASSWD warning is displayed
+            $output | Should -Match "NOPASSWD sudo has been configured"
+            $output | Should -Match "allows running commands as root without password prompt"
+
             # Verify user exists in the distribution
             $userCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "id -u $testUsername" -PrintCommand $false -PassThru
             $userCheck | Should -Match '^\d+$'

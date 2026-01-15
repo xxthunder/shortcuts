@@ -1389,6 +1389,24 @@ Describe "New-WslUser" {
             { New-WslUser -DistroName "Debian" -Username "testuser" -Password "" } | Should -Throw
         }
     }
+
+    Context "NOPASSWD warning display" {
+        It "Should display warning about NOPASSWD sudo security implications" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+            Mock Write-Warning { }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Write-Warning -ParameterFilter {
+                $Message -like "*NOPASSWD sudo has been configured*" -and
+                $Message -like "*allows running commands as root without password prompt*" -and
+                $Message -like "*development environments*"
+            }
+        }
+    }
 }
 
 Describe "Get-WslDefaultUser" {

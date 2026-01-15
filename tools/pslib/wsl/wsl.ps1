@@ -717,6 +717,18 @@ function New-WslUser {
         $sudoersCmd = "echo '$Username ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$Username > /dev/null && sudo chmod 0440 /etc/sudoers.d/$Username"
         Invoke-WslDistroCommand -DistroName $DistroName -Command $sudoersCmd -PrintCommand $false -Silent $true
 
+        # Warn user about NOPASSWD sudo security implications
+        Write-Warning @"
+NOPASSWD sudo has been configured for user '$Username' in distribution '$DistroName'.
+
+This allows running commands as root without password prompt. This is convenient for development environments but reduces security.
+
+For production systems, consider:
+- Limiting NOPASSWD to specific commands only
+- Requiring password for sensitive operations
+- Using role-based access controls
+"@
+
         # Step 5: Set default user in wsl.conf and ensure systemd is configured
         # Check if systemd is running
         $systemdRunning = Test-WslSystemd -DistroName $DistroName
