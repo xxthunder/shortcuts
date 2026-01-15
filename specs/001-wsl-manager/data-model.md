@@ -480,6 +480,87 @@ if ($state -eq 'Running') {
 - State is always fetched fresh from WSL to ensure accuracy
 - Distribution list refreshed on each menu display
 
+---
+
+## WslDistroInfo: Detailed Distribution Information (Refactoring Addition)
+
+**Added**: 2026-01-14
+**Purpose**: Centralize all distribution information in a single data structure returned by `Get-WslDistroList -Detailed`
+
+### Data Structure Definition
+
+```powershell
+[PSCustomObject]@{
+    Name      = [string]    # Distribution name (e.g., "Debian", "Ubuntu-22.04")
+    State     = [string]    # Normalized state: "Running" or "Stopped"
+    Version   = [int]       # WSL version: 1 or 2
+    IsDefault = [bool]      # True if this is the default distribution (asterisk marker)
+}
+```
+
+### Field Specifications
+
+| Field | Type | Source | Description | Example |
+|-------|------|--------|-------------|---------|
+| `Name` | `string` | Column 1 of `wsl --list --verbose` | Unique distribution identifier | `"Ubuntu-22.04"` |
+| `State` | `string` | Column 2 of `wsl --list --verbose` | Normalized to "Running" or "Stopped" | `"Running"` |
+| `Version` | `int` | Column 3 of `wsl --list --verbose` | WSL version number | `2` |
+| `IsDefault` | `bool` | Asterisk marker (*) in `wsl --list --verbose` | Default distribution flag | `$true` |
+
+### State Normalization
+
+The `State` field is normalized from localized WSL output to one of two values:
+
+| Normalized Value | Patterns Matched |
+|------------------|------------------|
+| `"Running"` | `Running`, `Wird ausgeführt`, `En cours d'exécution`, `Wird`, `ausgeführt`, `cours`, `exécution`, `Ausführen` |
+| `"Stopped"` | Everything else (default fallback) |
+
+### Usage Examples
+
+```powershell
+# Get simple list (backward compatible)
+$names = Get-WslDistroList
+# Returns: @("Debian", "Ubuntu", "Ubuntu-22.04")
+
+# Get detailed information
+$distros = Get-WslDistroList -Detailed
+# Returns: @(
+#   [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+#   [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+#   [PSCustomObject]@{ Name = "Ubuntu-22.04"; State = "Stopped"; Version = 1; IsDefault = $false }
+# )
+
+# Find running distributions
+$running = Get-WslDistroList -Detailed | Where-Object { $_.State -eq 'Running' }
+
+# Find WSL2 distributions
+$wsl2 = Get-WslDistroList -Detailed | Where-Object { $_.Version -eq 2 }
+
+# Get default distribution
+$default = Get-WslDistroList -Detailed | Where-Object { $_.IsDefault }
+```
+
+### Consumers of WslDistroInfo
+
+After refactoring, the following functions will consume `Get-WslDistroList -Detailed`:
+
+| Function | Current Implementation | After Refactoring |
+|----------|------------------------|-------------------|
+| `Get-WslDistroState` | Calls `wsl --list --verbose` directly | Uses `Get-WslDistroList -Detailed` |
+| `Test-WslDistroRunning` | Calls `Get-WslDistroState` | Uses `Get-WslDistroList -Detailed` (optional optimization) |
+| `Test-Wsl2Version` | Calls `wsl --list --verbose` directly | Uses `Get-WslDistroList -Detailed` |
+
+### Benefits of Centralization
+
+1. **Single WSL call**: One call provides all information vs. multiple calls
+2. **Consistent parsing**: One implementation for null-char/localization handling
+3. **Better performance**: Cached result can be reused in single operation
+4. **Easier maintenance**: Bug fixes and improvements in one place
+5. **Richer data**: `IsDefault` field now available (previously discarded)
+
+---
+
 ## Summary
 
 This data model defines 5 core entities:

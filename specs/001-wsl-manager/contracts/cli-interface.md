@@ -877,6 +877,182 @@ Integration tests MUST verify:
 
 ---
 
+---
+
+## Library Function Contracts (Refactoring Addition)
+
+**Added**: 2026-01-14
+**Purpose**: Define contracts for refactored internal library functions
+
+### Get-WslDistroList (Extended)
+
+**Synopsis**: Gets installed WSL distributions, optionally with detailed information
+
+**Signature**:
+```powershell
+function Get-WslDistroList {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$Detailed
+    )
+}
+```
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `-Detailed` | Switch | No | When specified, returns WslDistroInfo objects instead of strings |
+
+**Output (Default)**:
+```powershell
+# Returns: string[]
+@("Debian", "Ubuntu", "Ubuntu-22.04")
+```
+
+**Output (-Detailed)**:
+```powershell
+# Returns: PSCustomObject[]
+@(
+    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+    [PSCustomObject]@{ Name = "Ubuntu-22.04"; State = "Stopped"; Version = 1; IsDefault = $false }
+)
+```
+
+**Behavior**:
+- Without `-Detailed`: Calls `wsl --list --quiet`, returns cleaned string array (current behavior)
+- With `-Detailed`: Calls `wsl --list --verbose`, parses all fields, returns WslDistroInfo objects
+- Throws if WSL is not installed
+- Returns empty array if no distributions installed
+
+**Error Conditions**:
+- WSL not installed: `throw "WSL is not installed. Please install WSL first."`
+
+---
+
+### Get-WslDistroState (Refactored)
+
+**Synopsis**: Gets the running state of a WSL distribution
+
+**Signature**:
+```powershell
+function Get-WslDistroState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+}
+```
+
+**Output**:
+```powershell
+# Returns: string - "Running" or "Stopped"
+"Running"
+```
+
+**Behavior After Refactoring**:
+```powershell
+# OLD: Directly calls wsl --list --verbose and parses
+# NEW: Uses Get-WslDistroList -Detailed
+function Get-WslDistroState {
+    param([string]$DistroName)
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = Get-WslDistroList -Detailed
+    $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+
+    if (-not $distro) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    return $distro.State
+}
+```
+
+**Error Conditions**:
+- WSL not installed: `throw "WSL is not installed. Please install WSL first."`
+- Distribution not found: `throw "Distribution '$DistroName' does not exist."`
+
+---
+
+### Test-Wsl2Version (Refactored)
+
+**Synopsis**: Tests if a WSL distribution is using WSL2
+
+**Signature**:
+```powershell
+function Test-Wsl2Version {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+}
+```
+
+**Output**:
+```powershell
+# Returns: bool
+$true  # if WSL2
+$false # if WSL1
+```
+
+**Behavior After Refactoring**:
+```powershell
+# OLD: Directly calls wsl --list --verbose and parses
+# NEW: Uses Get-WslDistroList -Detailed
+function Test-Wsl2Version {
+    param([string]$DistroName)
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = Get-WslDistroList -Detailed
+    $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+
+    if (-not $distro) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    return $distro.Version -eq 2
+}
+```
+
+**Error Conditions**:
+- WSL not installed: `throw "WSL is not installed. Please install WSL first."`
+- Distribution not found: `throw "Distribution '$DistroName' does not exist."`
+
+---
+
+### Backward Compatibility Contract
+
+The refactoring MUST maintain backward compatibility:
+
+| Function | Before | After | Breaking Change? |
+|----------|--------|-------|------------------|
+| `Get-WslDistroList` | Returns `string[]` | Returns `string[]` (unchanged) | No |
+| `Get-WslDistroList -Detailed` | N/A | Returns `PSCustomObject[]` | No (new feature) |
+| `Get-WslDistroState` | Returns `string` | Returns `string` (unchanged) | No |
+| `Test-Wsl2Version` | Returns `bool` | Returns `bool` (unchanged) | No |
+
+**Guarantees**:
+1. All existing callers of `Get-WslDistroList` continue to work
+2. All existing callers of `Get-WslDistroState` continue to work
+3. All existing callers of `Test-Wsl2Version` continue to work
+4. Error messages remain semantically identical
+5. Exit codes remain unchanged
+
+---
+
 ## Summary
 
 This CLI interface contract defines:

@@ -436,3 +436,163 @@ With research complete, proceed to Phase 1:
 3. Generate `quickstart.md` - Create getting started guide
 4. Update agent context - Add WSL Manager to agent-specific context files
 5. Re-evaluate Constitution Check - Verify design compliance
+
+---
+
+## Addendum: Distribution List Refactoring Research (2026-01-14)
+
+### Research Questions
+
+1. What WSL output formats must be supported?
+2. How do localized outputs differ across languages?
+3. What is the current parsing logic in each function?
+4. What edge cases need to be handled?
+
+### Detailed Findings
+
+#### 1. WSL Output Formats
+
+**`wsl --list --quiet`** - Returns distribution names only, one per line:
+```
+Debian
+Ubuntu
+Ubuntu-22.04
+```
+
+Characteristics:
+- UTF-16 encoding with null characters between ASCII chars
+- Carriage returns present
+- Simple format, easy to parse
+
+**`wsl --list --verbose`** - Returns detailed information in tabular format:
+```
+  NAME            STATE           VERSION
+* Debian          Running         2
+  Ubuntu          Stopped         2
+  Ubuntu-22.04    Running         1
+```
+
+Characteristics:
+- Header row with column names (localized)
+- Asterisk (*) marks default distribution
+- STATE column is localized
+- VERSION is numeric (1 or 2)
+- UTF-16 encoding with null characters
+- Column widths vary based on content
+
+#### 2. Localization Analysis - State Values by Language
+
+| Language | Running State | Stopped State |
+|----------|--------------|---------------|
+| English | Running | Stopped |
+| German | Wird ausgeführt | Beendet |
+| French | En cours d'exécution | Arrêté |
+
+Current approach: Pattern matching with known keywords:
+- Running patterns: `Running`, `Wird`, `ausgeführt`, `cours`, `exécution`, `Ausführen`
+- Stopped: Everything else (fallback)
+
+**Recommendation**: Keep pattern-based approach for robustness across unknown locales.
+
+#### 3. Current Parsing Logic Analysis
+
+**Get-WslDistroList (wsl.ps1:177-208)**:
+```powershell
+$distros = wsl.exe --list --quiet | ForEach-Object {
+    $_.Trim() -replace '\x00', '' -replace '\r', ''
+} | Where-Object { $_ -ne "" }
+```
+Returns: `string[]` of distribution names
+
+**Get-WslDistroState (wsl.ps1:546-648)**: Calls `wsl --list --verbose`, parses for state
+Returns: `'Running'` or `'Stopped'`
+
+**Test-Wsl2Version (wsl.ps1:1257-1340)**: Calls `wsl --list --verbose`, parses for version
+Returns: `$true` or `$false`
+
+#### 4. Code Duplication Summary
+
+| Logic | GetDistroList | GetDistroState | TestWsl2Version |
+|-------|---------------|----------------|-----------------|
+| Call wsl.exe | ✓ (--quiet) | ✓ (--verbose) | ✓ (--verbose) |
+| Null char removal | ✓ | ✓ | ✓ |
+| CR removal | ✓ | ✓ | ✓ |
+| Asterisk removal | N/A | ✓ | ✓ |
+| Line splitting | ✓ | ✓ | ✓ |
+| Header skipping | N/A | ✓ | ✓ |
+| State extraction | N/A | ✓ | N/A |
+| Version extraction | N/A | N/A | ✓ |
+
+**Key insight**: All verbose parsing shares 80% of the logic.
+
+#### 5. Edge Cases Identified
+
+1. **Empty distribution list**: No distributions installed
+2. **Default distribution marker**: Asterisk (*) at start of line
+3. **Distribution names with spaces**: Not supported by WSL, but should handle gracefully
+4. **Distribution names with special regex chars**: e.g., `Ubuntu-22.04` (hyphen, dot)
+5. **Header localization**: Column names vary by language
+6. **State localization**: Multiple patterns per language
+7. **Version values**: Currently only 1 or 2, but should handle future versions
+8. **Mixed WSL1/WSL2**: System can have both versions simultaneously
+
+#### 6. Recommended Data Model
+
+```powershell
+[PSCustomObject]@{
+    Name      = [string]    # Distribution name (e.g., "Debian")
+    State     = [string]    # Normalized state: "Running" or "Stopped"
+    Version   = [int]       # WSL version: 1 or 2
+    IsDefault = [bool]      # True if this is the default distribution
+}
+```
+
+Rationale:
+- `IsDefault` captures asterisk marker information (currently discarded)
+- Normalized state simplifies downstream logic
+- Integer version enables comparison operations
+
+### Refactoring Decisions
+
+#### Decision R1: Use `-Detailed` Switch for Backward Compatibility
+
+**Chosen**: Add `-Detailed` switch parameter to `Get-WslDistroList`
+
+**Rationale**:
+- Existing callers expect string array
+- New callers can opt-in to structured data
+- No breaking changes required
+
+**Alternatives considered**:
+- New function name (`Get-WslDistroInfo`) - Rejected: adds functions rather than reducing
+- Change return type unconditionally - Rejected: breaking change
+
+#### Decision R2: Single WSL Call for Detailed Info
+
+**Chosen**: Always parse `wsl --list --verbose` when `-Detailed` is specified
+
+**Rationale**:
+- Single call provides all information
+- Verbose output is superset of quiet output
+- Better performance (one WSL invocation vs. multiple)
+
+#### Decision R3: Keep Pattern-Based State Normalization
+
+**Chosen**: Expand pattern matching for localized states
+
+**Rationale**:
+- Already proven to work
+- Adding patterns is low-risk
+- No external locale dependency
+
+### Test Cases Required
+
+1. **Basic parsing**: English output with multiple distributions
+2. **Localized state**: German "Wird ausgeführt", French "En cours d'exécution"
+3. **Null character handling**: UTF-16 encoded output
+4. **Empty list**: No distributions installed
+5. **Default marker**: Verify IsDefault is set correctly
+6. **Mixed versions**: WSL1 and WSL2 distributions together
+7. **Regex characters in name**: Ubuntu-22.04, openSUSE-Leap-15.6
+8. **Single distribution**: Only one distribution installed
+9. **Backward compatibility**: Default call returns string array

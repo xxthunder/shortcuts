@@ -7,7 +7,9 @@
 
 **Organization**: Tasks are grouped by outstanding work items from plan.md. Each work item represents a complete, independently testable feature increment.
 
-**Phase 1 Scope**: This tasks file covers Items #1, #3, and #4 from plan.md. Item #2 (Docker Setup Refactoring) is deferred pending bash script design and will be generated in a separate Phase 2.
+**Scope**: This tasks file covers Items #1, #3, #4, and #5 from plan.md. Item #2 (Docker Setup Refactoring) is deferred pending bash script design and will be generated in a separate Phase 2.
+
+**Latest Update (2026-01-14)**: Added Work Item #5 - Centralize Distribution Information Parsing. This refactoring makes `Get-WslDistroList` the single source of truth for all distribution information, eliminating duplicate parsing code.
 
 ## Terminology Guide
 
@@ -21,6 +23,7 @@ This tasks file uses three levels of organization to maintain traceability:
 - **Work Item #1** implements **User Story 5** (P5) - Terminate Running Distribution
 - **Work Item #3** implements **User Story 6** (P6) - Update Distribution (state validation portion)
 - **Work Item #4** implements **User Story 7** (P7) - Setup User (NOPASSWD warning portion)
+- **Work Item #5** (NEW) - Internal refactoring to centralize distribution parsing (DRY principle)
 
 This separation allows:
 - **spec.md** to focus on user-facing features and acceptance criteria
@@ -92,11 +95,179 @@ Based on plan.md project structure:
 
 ---
 
-## Phase 3: Work Item #1 - Terminate Running Distribution (Priority: High) 🎯
+## Phase 3: Work Item #5 - Centralize Distribution Information Parsing (Priority: High - Foundational) 🎯
+
+**Goal**: Make `Get-WslDistroList` the single source of truth for all distribution information (Name, State, Version, IsDefault) by adding a `-Detailed` switch parameter. Refactor `Get-WslDistroState` and `Test-Wsl2Version` to use this centralized data.
+
+**Independent Test**: Call `Get-WslDistroList -Detailed` and verify it returns structured objects with all fields; verify `Get-WslDistroState` and `Test-Wsl2Version` return same results as before.
+
+**Estimated Effort**: 3-4 hours
+
+**Related Requirements**: Constitution Principle VI (DRY), research.md Addendum (2026-01-14)
+
+**Why This Matters**: Currently 3 functions independently parse `wsl --list` output with duplicate null-character cleaning and localization handling. This refactoring:
+1. Eliminates ~80% duplicate parsing code
+2. Single point for bug fixes and localization improvements
+3. Single WSL call vs. multiple calls for state+version checks
+4. Captures `IsDefault` field (currently discarded)
+
+### Tests for Work Item #5 - Get-WslDistroList -Detailed (MANDATORY - TDD)
+
+> **TDD REQUIREMENT**: Write these tests FIRST, ensure they FAIL before implementation
+
+- [X] T035 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` basic parsing in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` to return English output with 2 distributions
+  - Test output format: `"  NAME            STATE           VERSION`\n`* Debian          Running         2`\n`  Ubuntu          Stopped         2"`
+  - Verify returns array of PSCustomObjects
+  - Verify first object has: Name="Debian", State="Running", Version=2, IsDefault=$true
+  - Verify second object has: Name="Ubuntu", State="Stopped", Version=2, IsDefault=$false
+  - Run test, confirm it FAILS (parameter not yet implemented)
+
+- [X] T036 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` localized state (German) in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` with German output: `"  NAME            STATUS          VERSION`\n`* Debian          Wird ausgeführt 2`\n`  Ubuntu          Beendet         2"`
+  - Verify State is normalized: "Wird ausgeführt" → "Running", "Beendet" → "Stopped"
+  - Run test, confirm it FAILS
+
+- [X] T037 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` localized state (French) in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` with French output: `"  NOM             ÉTAT            VERSION`\n`* Debian          En cours d'exécution 2"`
+  - Verify State is normalized: "En cours d'exécution" → "Running"
+  - Run test, confirm it FAILS
+
+- [X] T038 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` UTF-16 null character handling in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` with embedded null chars: `"D`0e`0b`0i`0a`0n"`
+  - Verify null characters are cleaned from Name field
+  - Run test, confirm it FAILS
+
+- [X] T039 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` empty list in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` to return header only
+  - Verify returns empty array (not $null)
+  - Run test, confirm it FAILS
+
+- [X] T040 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` single distribution in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `wsl.exe --list --verbose` with only one distribution
+  - Verify returns array with one object (not just the object)
+  - Run test, confirm it FAILS
+
+- [X] T041 [P] [Item5] Add test case for `Get-WslDistroList -Detailed` WSL1 version in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock output with WSL1 distribution: `"  Ubuntu-18.04   Stopped         1"`
+  - Verify Version field is integer 1 (not string)
+  - Run test, confirm it FAILS
+
+- [X] T042 [P] [Item5] Add test case for backward compatibility of `Get-WslDistroList` (no parameter) in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Call `Get-WslDistroList` without `-Detailed`
+  - Verify returns string array (not objects)
+  - Verify existing behavior is unchanged
+  - Run test, should PASS (existing behavior preserved)
+
+### Implementation for Work Item #5 - Get-WslDistroList -Detailed
+
+- [X] T043 [Item5] Add `-Detailed` switch parameter to `Get-WslDistroList` in `tools/pslib/wsl/wsl.ps1`
+  - Locate `Get-WslDistroList` function (lines 177-208)
+  - Add parameter: `[switch]$Detailed`
+  - Keep existing logic for non-Detailed path (calls `wsl --list --quiet`)
+  - Add conditional: `if ($Detailed) { # new parsing logic }`
+  - Run test T042, confirm backward compatibility PASSES
+
+- [X] T044 [Item5] Implement verbose output parsing in `Get-WslDistroList -Detailed` in `tools/pslib/wsl/wsl.ps1`
+  - When `-Detailed` specified: Call `wsl.exe --list --verbose`
+  - Split output into lines
+  - For each line (after header):
+    - Remove null characters: `-replace '\x00', ''`
+    - Remove carriage returns: `-replace '\r', ''`
+    - Trim whitespace
+    - Skip header line (matches `NAME|STATE|VERSION|NOM|NOMBRE|STATUS`)
+    - Detect default marker (asterisk at line start)
+    - Remove asterisk: `-replace '^\*\s*', ''`
+    - Split by whitespace into fields
+    - Create PSCustomObject with: Name, State (normalized), Version (int), IsDefault
+  - Run tests T035-T041, confirm they all PASS
+
+- [X] T045 [Item5] Implement state normalization helper in `Get-WslDistroList` in `tools/pslib/wsl/wsl.ps1`
+  - Create private helper function or inline logic
+  - Running patterns: `Running`, `Wird`, `ausgeführt`, `cours`, `exécution`, `Ausführen`
+  - Return "Running" if pattern matches, "Stopped" otherwise
+  - Run tests T036, T037, confirm they PASS
+
+- [X] T046 [Item5] Update help documentation for `Get-WslDistroList` in `tools/pslib/wsl/wsl.ps1`
+  - Add `-Detailed` parameter description in .PARAMETER block
+  - Add example: `Get-WslDistroList -Detailed`
+  - Document return type difference: string[] vs PSCustomObject[]
+
+### Tests for Work Item #5 - Refactor Consumers (MANDATORY - TDD)
+
+- [X] T047 [P] [Item5] Add test case for refactored `Get-WslDistroState` in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `Get-WslDistroList -Detailed` to return array with target distribution
+  - Call `Get-WslDistroState -DistroName "Debian"`
+  - Verify it calls `Get-WslDistroList -Detailed` (not `wsl.exe` directly)
+  - Verify returns "Running" or "Stopped" string (unchanged behavior)
+  - Run test, confirm it FAILS (not yet refactored)
+
+- [X] T048 [P] [Item5] Add test case for refactored `Test-Wsl2Version` in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `Get-WslDistroList -Detailed` to return array with target distribution
+  - Call `Test-Wsl2Version -DistroName "Debian"` where Version=2
+  - Verify it calls `Get-WslDistroList -Detailed` (not `wsl.exe` directly)
+  - Verify returns $true (unchanged behavior)
+  - Call with Version=1 distribution, verify returns $false
+  - Run test, confirm it FAILS (not yet refactored)
+
+### Implementation for Work Item #5 - Refactor Consumers
+
+- [X] T049 [Item5] Refactor `Get-WslDistroState` to use `Get-WslDistroList -Detailed` in `tools/pslib/wsl/wsl.ps1`
+  - Locate `Get-WslDistroState` function (lines 546-648)
+  - Replace existing `wsl.exe --list --verbose` parsing with:
+    ```powershell
+    $distros = Get-WslDistroList -Detailed
+    $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+    if (-not $distro) { throw "Distribution '$DistroName' does not exist." }
+    return $distro.State
+    ```
+  - Keep existing error handling for WSL not installed
+  - Significantly simplify function (remove ~80 lines of parsing code)
+  - Run test T047, confirm it PASSES
+  - Run existing `Get-WslDistroState` tests (T008-T009), confirm they still PASS
+
+- [X] T050 [Item5] Refactor `Test-Wsl2Version` to use `Get-WslDistroList -Detailed` in `tools/pslib/wsl/wsl.ps1`
+  - Locate `Test-Wsl2Version` function (lines 1257-1340)
+  - Replace existing `wsl.exe --list --verbose` parsing with:
+    ```powershell
+    $distros = Get-WslDistroList -Detailed
+    $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+    if (-not $distro) { throw "Distribution '$DistroName' does not exist." }
+    return $distro.Version -eq 2
+    ```
+  - Keep existing error handling for WSL not installed
+  - Significantly simplify function (remove ~60 lines of parsing code)
+  - Run test T048, confirm it PASSES
+
+### Integration Tests for Work Item #5 (MANDATORY)
+
+- [X] T051 [Item5] Add integration test for `Get-WslDistroList -Detailed` in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+  - Call `Get-WslDistroList -Detailed` on real system
+  - Verify returns array of objects with expected properties
+  - Verify Name matches `Get-WslDistroList` (string version)
+  - Verify State is "Running" or "Stopped"
+  - Verify Version is 1 or 2
+  - Verify IsDefault is boolean
+  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+
+- [X] T052 [Item5] Verify no regressions in dependent functions in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+  - Run existing `Get-WslDistroState` integration tests
+  - Run existing `Test-Wsl2Version` integration tests (if any)
+  - Verify `Test-WslDistroRunning` still works (uses `Get-WslDistroState`)
+  - Verify `Stop-WslDistro` still works (uses `Test-WslDistroRunning`)
+  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+
+**Checkpoint**: Distribution list centralization is complete. `Get-WslDistroList -Detailed` is the single source of truth. Run full test suite to verify no regressions: `pwsh -File ".\test\bin\test.ps1"`
+
+---
+
+## Phase 4: Work Item #1 - Terminate Running Distribution (Priority: High)
 
 **Goal**: Implement ability to terminate (stop) running WSL distributions (User Story 5, FR-031, FR-032, FR-033)
 
 **Independent Test**: Start a WSL distribution, terminate it via the manager, verify it's stopped and can be restarted
+
+**Note**: This phase can now use `Get-WslDistroList -Detailed` from Work Item #5 for state checking.
 
 **Estimated Effort**: 2-3 hours
 
@@ -106,7 +277,7 @@ Based on plan.md project structure:
 
 > **TDD REQUIREMENT**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T008 [P] [Item1] Add test cases for `Get-WslDistroState` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T008 [P] [Item1] Add test cases for `Get-WslDistroState` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Test WSL not installed → throws error
   - Test distribution doesn't exist → throws error
   - Test running distribution → returns 'Running' (mock `wsl --list --verbose` with "Running" state)
@@ -115,7 +286,7 @@ Based on plan.md project structure:
   - Test null character cleaning in output
   - Run tests, confirm they FAIL (function not yet implemented)
 
-- [ ] T009 [P] [Item1] Add test cases for `Test-WslDistroRunning` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T009 [P] [Item1] Add test cases for `Test-WslDistroRunning` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Test WSL not installed → throws error
   - Test distribution doesn't exist → throws error
   - Test running distribution → returns $true (mock `Get-WslDistroState` to return 'Running')
@@ -220,7 +391,7 @@ Based on plan.md project structure:
 
 ---
 
-## Phase 4: Work Item #3 - Pre-Operation State Validation (Priority: Medium)
+## Phase 5: Work Item #3 - Pre-Operation State Validation (Priority: Medium)
 
 **Goal**: Add state validation to operations requiring stopped distributions (FR-030)
 
@@ -296,18 +467,18 @@ Based on plan.md project structure:
 
 ---
 
-## Phase 5: Polish & Cross-Cutting Concerns
+## Phase 6: Polish & Cross-Cutting Concerns
 
 **Purpose**: Final verification and documentation updates
 
-- [ ] T027 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\test.ps1" -Unit -Coverage`
-- [ ] T028 [P] Run full integration test suite: `pwsh -File ".\test\bin\test.ps1" -Integration`
-- [ ] T029 [P] Run linter checks: `pwsh -File ".\test\bin\linter.Tests.ps1"`
-- [ ] T030 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\test.ps1"`
-- [ ] T031 Update `specs/001-wsl-manager/quickstart.md` with terminate command examples
-- [ ] T032 Update CLI interface contract `specs/001-wsl-manager/contracts/cli-interface.md` to mark terminate as implemented
-- [ ] T033 Verify all acceptance criteria from spec.md are met for implemented user stories
-- [ ] T034 Run manual smoke test: Create → Setup User → Terminate → Clone → Update → Remove workflow
+- [ ] T053 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\test.ps1" -Unit -Coverage`
+- [ ] T054 [P] Run full integration test suite: `pwsh -File ".\test\bin\test.ps1" -Integration`
+- [ ] T055 [P] Run linter checks: `pwsh -File ".\test\bin\linter.Tests.ps1"`
+- [ ] T056 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\test.ps1"`
+- [ ] T057 Update `specs/001-wsl-manager/quickstart.md` with `Get-WslDistroList -Detailed` and terminate examples
+- [ ] T058 Update CLI interface contract `specs/001-wsl-manager/contracts/cli-interface.md` to mark terminate as implemented
+- [ ] T059 Verify all acceptance criteria from spec.md are met for implemented user stories
+- [ ] T060 Run manual smoke test: Create → Setup User → Terminate → Clone → Update → Remove workflow
 
 ---
 
@@ -317,15 +488,17 @@ Based on plan.md project structure:
 
 - **Setup (Phase 1)**: No dependencies - verify environment ready
 - **Work Item #4 (Phase 2)**: Can start immediately after Setup - Independent
-- **Work Item #1 (Phase 3)**: Can start immediately after Setup - Independent
-- **Work Item #3 (Phase 4)**: DEPENDS on Work Item #1 (needs `Test-WslDistroRunning` function)
-- **Polish (Phase 5)**: Depends on all work items being complete
+- **Work Item #5 (Phase 3)**: Can start immediately after Setup - **FOUNDATIONAL for other work items**
+- **Work Item #1 (Phase 4)**: DEPENDS on Work Item #5 (uses `Get-WslDistroList -Detailed` via `Get-WslDistroState`)
+- **Work Item #3 (Phase 5)**: DEPENDS on Work Item #1 (needs `Test-WslDistroRunning` function)
+- **Polish (Phase 6)**: Depends on all work items being complete
 
 ### Work Item Dependencies
 
 - **Work Item #4 (NOPASSWD Warning)**: No dependencies - Can start immediately
-- **Work Item #1 (Terminate Distribution)**: No dependencies - Can start immediately
-- **Work Item #3 (State Validation)**: REQUIRES Work Item #1 complete first
+- **Work Item #5 (Centralize Parsing)**: No dependencies - **Should be done first** (foundational)
+- **Work Item #1 (Terminate Distribution)**: REQUIRES Work Item #5 complete (for refactored `Get-WslDistroState`)
+- **Work Item #3 (State Validation)**: REQUIRES Work Item #1 complete (needs `Test-WslDistroRunning`)
 
 ### Within Each Work Item
 
@@ -338,17 +511,34 @@ Based on plan.md project structure:
 ### Parallel Opportunities
 
 - **Phase 1 (Setup)**: All tasks marked [P] can run in parallel (T001-T004)
-- **Work Items #1 and #4**: Can be worked on in parallel by different developers (no dependencies)
+- **Work Items #4 and #5**: Can be worked on in parallel by different developers
+- **Within Work Item #5**:
+  - T035-T042 (test writing for Get-WslDistroList -Detailed) can run in parallel
+  - T047, T048 (consumer refactor tests) can run in parallel
 - **Within Work Item #1**:
   - T008, T009, T010 (test writing) can run in parallel
   - T014 (manager test) can be written in parallel with helper function tests
 - **Within Work Item #3**:
   - T020, T021, T022 (test writing) can run in parallel
-- **Phase 5 (Polish)**:
-  - T027, T028, T029 (different test suites) can run in parallel
-  - T031, T032 (documentation) can run in parallel
+- **Phase 6 (Polish)**:
+  - T053, T054, T055 (different test suites) can run in parallel
+  - T057, T058 (documentation) can run in parallel
 
 ---
+
+## Parallel Example: Work Item #5 Tests
+
+```bash
+# Launch all test writing tasks for Work Item #5 together:
+Task: "Add test case for Get-WslDistroList -Detailed basic parsing in tools/pslib/wsl/wsl.Tests.ps1"
+Task: "Add test case for Get-WslDistroList -Detailed localized state (German) in tools/pslib/wsl/wsl.Tests.ps1"
+Task: "Add test case for Get-WslDistroList -Detailed localized state (French) in tools/pslib/wsl/wsl.Tests.ps1"
+Task: "Add test case for Get-WslDistroList -Detailed UTF-16 null character handling in tools/pslib/wsl/wsl.Tests.ps1"
+Task: "Add test case for Get-WslDistroList -Detailed empty list in tools/pslib/wsl/wsl.Tests.ps1"
+Task: "Add test case for backward compatibility of Get-WslDistroList in tools/pslib/wsl/wsl.Tests.ps1"
+
+# All these tests can be written simultaneously in different test blocks
+```
 
 ## Parallel Example: Work Item #1 Tests
 
@@ -370,26 +560,39 @@ Task: "Add test cases for Invoke-TerminateDistro in tools/pslib/wsl/wsl-manager.
 
 1. Complete Phase 1: Setup (T001-T004)
 2. Complete Work Item #4: NOPASSWD Warning (T005-T007) - 30 minutes
-3. Complete Work Item #1: Terminate Distribution (T008-T019) - 2-3 hours
-4. Complete Work Item #3: State Validation (T020-T026) - 2-3 hours
-5. Complete Phase 5: Polish (T027-T034)
-6. **TOTAL ESTIMATED TIME**: 5-7 hours
+3. Complete Work Item #5: Centralize Parsing (T035-T052) - **3-4 hours** ← NEW FOUNDATIONAL WORK
+4. Complete Work Item #1: Terminate Distribution (T008-T019) - 2-3 hours
+5. Complete Work Item #3: State Validation (T020-T026) - 2-3 hours
+6. Complete Phase 6: Polish (T053-T060)
+7. **TOTAL ESTIMATED TIME**: 8-11 hours
 
 ### Parallel Team Strategy
 
 With 2 developers:
 
 1. Both complete Phase 1: Setup together
-2. Split work items:
-   - **Developer A**: Work Item #1 (Terminate) - 2-3 hours
-   - **Developer B**: Work Item #4 (NOPASSWD Warning) - 30 minutes, then start Work Item #3 test writing
-3. After Developer A completes Work Item #1:
+2. Split initial work items:
+   - **Developer A**: Work Item #5 (Centralize Parsing) - 3-4 hours ← Critical path
+   - **Developer B**: Work Item #4 (NOPASSWD Warning) - 30 minutes
+3. After Developer A completes Work Item #5:
+   - **Developer A** continues to Work Item #1 (depends on #5)
+   - **Developer B** can write Work Item #1 tests in parallel
+4. After Developer A completes Work Item #1:
    - **Developer B** can complete Work Item #3 implementation (depends on #1)
-4. Both complete Phase 5: Polish together
+5. Both complete Phase 6: Polish together
+
+### Critical Path
+
+**Work Item #5 → Work Item #1 → Work Item #3** forms the critical path:
+- #5 provides `Get-WslDistroList -Detailed`
+- #1 uses it via `Get-WslDistroState` for `Test-WslDistroRunning`
+- #3 uses `Test-WslDistroRunning` for state validation
+
+Work Item #4 (NOPASSWD Warning) is independent and can be done anytime.
 
 ### Validation Checkpoints
 
-- After each work item: Run full test suite (`pwsh -File ".\test\bin\test.ps1"`)
+- After Work Item #5: Verify `Get-WslDistroList -Detailed` returns correct structure
 - After Work Item #1: Test terminate command manually
 - After Work Item #3: Test clone/remove/update with running distribution
 - Before final commit: Run both PowerShell 5.1 and 7.x test suites
@@ -404,7 +607,8 @@ With 2 developers:
 - **All tests must pass**: Before committing, run full test suite on both PowerShell versions
 - **Commit strategy**: Commit after each work item completes with all tests passing
 - **Constitutional compliance**: This implementation follows all 7 constitutional principles
-- **Phase 2 (Docker Refactoring)**: Deferred - will be added after bash script design complete
+- **Work Item #5 is foundational**: Complete this before starting Work Item #1 or #3
+- **Docker Refactoring (Work Item #2)**: Deferred - will be added after bash script design complete
 
 ---
 
@@ -418,3 +622,17 @@ With 2 developers:
 4. Additional design time: 15-30 minutes
 
 After design artifacts are complete, run `/speckit.tasks` again to generate Phase 2 tasks for Docker refactoring.
+
+---
+
+## Task Summary
+
+| Phase | Work Item | Tasks | Estimated Time |
+|-------|-----------|-------|----------------|
+| 1 | Setup | T001-T004 (4 tasks) | 15 minutes |
+| 2 | #4 NOPASSWD Warning | T005-T007 (3 tasks) | 30 minutes |
+| 3 | #5 Centralize Parsing | T035-T052 (18 tasks) | 3-4 hours |
+| 4 | #1 Terminate Distribution | T008-T019 (12 tasks) | 2-3 hours |
+| 5 | #3 State Validation | T020-T026 (7 tasks) | 2-3 hours |
+| 6 | Polish | T053-T060 (8 tasks) | 1 hour |
+| **Total** | | **52 tasks** | **8-11 hours** |

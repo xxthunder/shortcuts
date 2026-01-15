@@ -351,24 +351,113 @@ The following work items need to be converted to actionable tasks via `/speckit.
 
 ---
 
+#### 5. Centralize Distribution Information Parsing (Priority: High - Foundational) **[NEW 2026-01-14]**
+
+**Issue**: Multiple functions independently parse `wsl --list --verbose` output with duplicate logic:
+- `Get-WslDistroList` (lines 177-208) - parses `wsl --list --quiet` for names only
+- `Get-WslDistroState` (lines 546-648) - parses `wsl --list --verbose` for state
+- `Test-Wsl2Version` (lines 1257-1340) - parses `wsl --list --verbose` for version
+
+**Problems**:
+1. **Duplicate parsing logic**: ~80% code overlap between `Get-WslDistroState` and `Test-Wsl2Version`
+2. **Inconsistent handling**: Each function implements its own null-character cleaning and localization
+3. **Multiple WSL calls**: Checking state AND version requires two calls to `wsl.exe`
+4. **Maintenance burden**: Any change to WSL output format requires updates in 3 places
+5. **Lost data**: `IsDefault` flag (asterisk marker) currently discarded
+
+**Proposed Solution**: Make `Get-WslDistroList` the single source of truth
+
+1. Add `-Detailed` switch parameter to `Get-WslDistroList`
+   - Without `-Detailed`: Current behavior (returns string array of names)
+   - With `-Detailed`: Returns array of `WslDistroInfo` objects
+
+2. Define `WslDistroInfo` structure:
+   ```powershell
+   [PSCustomObject]@{
+       Name      = [string]    # Distribution name (e.g., "Debian")
+       State     = [string]    # Normalized: "Running" or "Stopped"
+       Version   = [int]       # WSL version: 1 or 2
+       IsDefault = [bool]      # True if default distribution (asterisk marker)
+   }
+   ```
+
+3. Refactor consumers to use `Get-WslDistroList -Detailed`:
+   ```powershell
+   # Refactored Get-WslDistroState
+   function Get-WslDistroState {
+       param([string]$DistroName)
+       $distros = Get-WslDistroList -Detailed
+       $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+       if (-not $distro) { throw "Distribution '$DistroName' does not exist." }
+       return $distro.State
+   }
+
+   # Refactored Test-Wsl2Version
+   function Test-Wsl2Version {
+       param([string]$DistroName)
+       $distros = Get-WslDistroList -Detailed
+       $distro = $distros | Where-Object { $_.Name -eq $DistroName }
+       if (-not $distro) { throw "Distribution '$DistroName' does not exist." }
+       return $distro.Version -eq 2
+   }
+   ```
+
+**Benefits**:
+- Single point for WSL output parsing and localization handling
+- Single WSL call for all distribution info (vs. multiple calls)
+- Consistent null-character and carriage-return cleaning
+- `IsDefault` field now available (previously discarded)
+- ~140 lines of duplicate code eliminated
+- Easier to add new fields in the future
+
+**Backward Compatibility**:
+- `Get-WslDistroList` without `-Detailed` returns string array (unchanged)
+- `Get-WslDistroState` returns same values ("Running" or "Stopped")
+- `Test-Wsl2Version` returns same values ($true or $false)
+- All existing callers continue to work without modification
+
+**Test Cases Required**:
+1. Basic parsing (English output with multiple distributions)
+2. Localized state (German "Wird ausgeführt", French "En cours d'exécution")
+3. UTF-16 null character handling
+4. Empty distribution list
+5. Default marker detection (IsDefault field)
+6. Mixed WSL1/WSL2 versions
+7. Special characters in distribution names (Ubuntu-22.04)
+8. Backward compatibility (string array return type)
+
+**Acceptance Criteria**:
+- `Get-WslDistroList -Detailed` returns correct WslDistroInfo objects
+- `Get-WslDistroState` and `Test-Wsl2Version` return identical results to before
+- All existing tests pass without modification
+- Constitution Principle VI (DRY) improved
+
+**Estimated Complexity**: Medium (3-4 hours including tests)
+
+**Dependencies**: Should be completed BEFORE Item #1 (Terminate Distribution) since `Get-WslDistroState` will be refactored
+
+---
+
 ### Summary of Outstanding Work
 
 | Item | Priority | Status | Complexity | Related User Stories |
 |------|----------|--------|------------|---------------------|
-| Terminate Distribution | High | Ready for Tasks | Medium | US-5 (P5) |
-| Docker Setup Refactoring | High | **DEFERRED** (needs design) | Medium-High | US-8 (P8) - Enhancement |
-| State Validation | Medium | Ready for Tasks | Low-Medium | US-3, US-4, US-6 (FR-030) |
-| NOPASSWD Warning | Low | Ready for Tasks | Low | US-7 (FR-029) |
+| #5 Centralize Parsing | **High - Foundational** | Ready for Tasks | Medium | DRY principle (internal) |
+| #1 Terminate Distribution | High | Ready for Tasks | Medium | US-5 (P5) |
+| #2 Docker Setup Refactoring | High | **DEFERRED** (needs design) | Medium-High | US-8 (P8) - Enhancement |
+| #3 State Validation | Medium | Ready for Tasks | Low-Medium | US-3, US-4, US-6 (FR-030) |
+| #4 NOPASSWD Warning | Low | Ready for Tasks | Low | US-7 (FR-029) |
 
-**Phase 1 Effort** (Items 1, 3, 4): 5-7 hours
+**Phase 1 Effort** (Items 1, 3, 4, 5): 8-11 hours
 **Phase 2 Effort** (Item 2 - after design): 4-6 hours
-**Total Estimated Effort**: 9-13 hours
+**Total Estimated Effort**: 12-17 hours
 
 **Current Implementation Order** (Phase 1):
-1. **Terminate Distribution** (unblocks state validation, highest user value)
-2. **State Validation** (depends on terminate, improves robustness)
-3. **NOPASSWD Warning** (quick win, low complexity)
-4. *Docker Setup Refactoring deferred to Phase 2* (needs bash script design first)
+1. **NOPASSWD Warning** (quick win, no dependencies)
+2. **Centralize Parsing** (foundational - enables cleaner state checking)
+3. **Terminate Distribution** (depends on #5, unblocks state validation)
+4. **State Validation** (depends on terminate)
+5. *Docker Setup Refactoring deferred to Phase 2* (needs bash script design first)
 
 ## Next Steps
 
@@ -376,20 +465,23 @@ This plan has completed Phases 0 and 1:
 - ✅ Phase 0: Research complete (see `research.md`)
 - ✅ Phase 1: Design artifacts complete (see `data-model.md`, `contracts/`, `quickstart.md`)
 
-**Ready to proceed with Phase 1 Implementation** (3 items ready):
-1. ✅ Item #1: Terminate Distribution - specifications complete
-2. ✅ Item #3: State Validation - specifications complete (depends on Item #1)
-3. ✅ Item #4: NOPASSWD Warning - specifications complete
-4. ⏸️ Item #2: Docker Refactoring - **DEFERRED** (needs bash script design)
+**Ready to proceed with Phase 1 Implementation** (4 items ready):
+1. ✅ Item #4: NOPASSWD Warning - specifications complete
+2. ✅ Item #5: Centralize Parsing - specifications complete (NEW - foundational)
+3. ✅ Item #1: Terminate Distribution - specifications complete (depends on #5)
+4. ✅ Item #3: State Validation - specifications complete (depends on #1)
+5. ⏸️ Item #2: Docker Refactoring - **DEFERRED** (needs bash script design)
 
 **To proceed with Phase 1**:
-1. Run `/speckit.tasks` to generate `tasks.md` for Items 1, 3, and 4
+1. Run `/speckit.tasks` to generate `tasks.md` for Items 1, 3, 4, and 5
    - Docker refactoring (Item #2) will be excluded from initial task generation
 2. Tasks will be broken down into:
    - Test writing tasks (TDD - write tests first)
    - Implementation tasks (write code to pass tests)
    - Integration tasks (update interactive menu, documentation)
 3. Run `/speckit.implement` to execute Phase 1 tasks systematically
+
+**Critical Path**: Item #5 (Centralize Parsing) → Item #1 (Terminate) → Item #3 (State Validation)
 
 **For Phase 2** (Docker Refactoring):
 - Complete bash script design (`install-docker.sh` contract)

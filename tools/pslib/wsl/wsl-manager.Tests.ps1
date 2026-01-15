@@ -758,4 +758,116 @@ Describe "Invoke-WslManager" {
             Should -Invoke Install-WslDockerEngine -Times 0
         }
     }
+
+    Context "When called with 'terminate' argument" {
+        It "Should prompt for distribution selection when Name is not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should display available distributions" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+        }
+
+        It "Should call Stop-WslDistro when Name is provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate" -Name "Debian"
+
+            Should -Invoke Stop-WslDistro -ParameterFilter {
+                $Name -eq "Debian" -and $Confirm -eq $false
+            }
+        }
+
+        It "Should support selection by number" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Alpine" }
+        }
+
+        It "Should reject invalid number selection" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+
+        It "Should warn when no distributions exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+            Mock Write-Host {}
+            Mock Stop-WslDistro {}
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+
+        It "Should handle terminate errors gracefully" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Stop-WslDistro { throw "Failed to terminate distribution" }
+
+            { Invoke-WslManager -Command "terminate" } | Should -Throw "*Failed to terminate*"
+        }
+    }
 }

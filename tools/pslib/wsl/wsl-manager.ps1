@@ -278,6 +278,74 @@ function Invoke-UpdateDistro {
     Update-WslDistro -Name $selectedName -Confirm:$false
 }
 
+function Invoke-TerminateDistro {
+    <#
+    .SYNOPSIS
+        Handles the terminate distribution workflow.
+    .PARAMETER Name
+        The name of the distribution to terminate. If not provided, user is prompted.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Name
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = @(Get-WslDistroList)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found to terminate."
+        return
+    }
+
+    # If Name is provided, use it directly
+    if (-not [string]::IsNullOrWhiteSpace($Name)) {
+        Stop-WslDistro -Name $Name -Confirm:$false
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Write-Host "  $index. $distro" -ForegroundColor White
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to terminate"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1]
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Terminate the distribution (skip confirmation since we're handling it interactively)
+    Stop-WslDistro -Name $selectedName -Confirm:$false
+}
+
 function Invoke-SetupUser {
     <#
     .SYNOPSIS
@@ -594,6 +662,7 @@ function Show-InteractiveMenu {
         Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [D] Setup Docker" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
+        Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
 
@@ -648,6 +717,15 @@ function Show-InteractiveMenu {
             "R" {
                 try {
                     Invoke-RemoveDistro
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
+            "T" {
+                try {
+                    Invoke-TerminateDistro
                 }
                 catch {
                     Write-ErrorMsg "$_"
@@ -709,6 +787,14 @@ function Invoke-WslManager {
             }
             else {
                 Invoke-SetupDocker -DistroName $Name
+            }
+        }
+        "terminate" {
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Invoke-TerminateDistro
+            }
+            else {
+                Invoke-TerminateDistro -Name $Name
             }
         }
         default {
