@@ -483,10 +483,49 @@ This plan has completed Phases 0 and 1:
 
 **Critical Path**: Item #5 (Centralize Parsing) → Item #1 (Terminate) → Item #3 (State Validation)
 
-**For Phase 2** (Docker Refactoring):
-- Complete bash script design (`install-docker.sh` contract)
-- Then run `/speckit.tasks` again to generate tasks for Item #2
-- Implement Docker refactoring separately
+---
+
+### Phase 2: Refactoring & Infrastructure (New Priorities for 2026-01-14)
+
+Based on project size (>1700 lines in `wsl.ps1` and >2800 lines in `wsl.Tests.ps1`) and new requirements, Phase 2 completely replaces the original Docker deployment plan with a structured refactoring and feature expansion approach.
+
+#### 1. Library Refactoring (Priority: High)
+**Goal**: Slice "monolithic" `wsl.ps1` and `wsl.Tests.ps1` into maintainable modules.
+**Approach**:
+- Create `tools/pslib/wsl/lib/` directory
+- Split `wsl.ps1` functions into logical groups:
+  - `lib/core.ps1`: Lifecycle (List, State, Stop, Remove) and Info (Type, Version, Validations)
+  - `lib/install.ps1`: Creation/Installation (New-WslDistro, Get-WslAvailableDistro)
+  - `lib/ops.ps1`: Operations (Copy, Update)
+  - `lib/user.ps1`: User management (New-WslUser, defaults)
+  - `lib/exec.ps1`: Execution commands (Invoke-*, scripts) - *base for next step*
+  - `lib/docker.ps1`: Docker-specific functions
+- Update `wsl.ps1` to be a loader script that dot-sources all files in `lib/`
+  - Maintains backward compatibility for consumers sourcing `wsl.ps1`
+- Split `wsl.Tests.ps1` similarly into `tests/core.Tests.ps1`, `tests/ops.Tests.ps1`, etc.
+
+#### 2. Enhanced Script Execution (Priority: High)
+**Goal**: Implement `Invoke-WslDistroScript` for executing scripts mapped from Windows filesystem.
+**Concept**:
+- wsl.exe automatically mounts the host CWD (e.g., `/mnt/c/...`) when invoked
+- `Invoke-WslDistroScript` takes a local Windows script path
+- Does NOT copy file to distro filesystem (assumes shared mount)
+- Logic:
+  - Verify script exists
+  - Verify CWD is mountable/accessible
+  - Execute `bash ./script.sh` relative to current location
+- **Benefits**: Simplifies file management, no cleanup of temp files needed, simpler debug cycle
+
+#### 3. Docker Setup Implementation (Priority: Medium)
+**Goal**: Implement robust Docker setup using the new `install-docker.sh` + `Invoke-WslDistroScript`.
+**Plan**:
+- Finalize `install-docker.sh` (already in `contracts/` and `scripts/`)
+- Remove old `Install-WslDockerEngine` logic (the "mess of PowerShell calling bash oneliners")
+- Implement new logic using `Invoke-WslDistroScript`
+- Pass arguments (`--distro-id` etc.) cleanly
+- Better error handling and verification
+
+---
 
 **Branch**: Implementation will continue on `001-wsl-manager`
 **Artifacts**: All plan artifacts available in `specs/001-wsl-manager/`

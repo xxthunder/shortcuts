@@ -482,6 +482,47 @@ Based on plan.md project structure:
 
 ---
 
+## Phase 7: Refactoring & Infrastructure (New Priorities)
+
+**Goal**: Slice "monolithic" `wsl.ps1` and `wsl.Tests.ps1` into maintainable modules and implement enhanced script execution.
+
+**Prerequisites**: Phase 6 complete.
+
+### Refactoring Work
+
+- [ ] T066 [P] Create directory structure `tools/pslib/wsl/lib`
+- [ ] T067 [P] Split `wsl.ps1` functions into modules:
+  - `tools/pslib/wsl/lib/core.ps1`: Test-WslInstalled, Get-WslDistroList, Get-WslDistroState, Test-WslDistroRunning, Get-WslDistroType, Test-Wsl2Version, Test-WslSystemd, Stop-WslDistro
+  - `tools/pslib/wsl/lib/install.ps1`: New-WslDistro, Get-WslAvailableDistro
+  - `tools/pslib/wsl/lib/ops.ps1`: Update-WslDistro, Copy-WslDistro, Remove-WslDistro, Get-WslIpAddress
+  - `tools/pslib/wsl/lib/user.ps1`: New-WslUser, Get-WslDefaultUser
+  - `tools/pslib/wsl/lib/exec.ps1`: Invoke-WslDistroCommand
+  - `tools/pslib/wsl/lib/docker.ps1`: Install-WslDockerEngine, Test-WslDockerInstalled
+- [ ] T068 [P] Update `wsl.ps1` to simply dot-source all files in `lib/`
+- [ ] T069 [P] Split `wsl.Tests.ps1` into corresponding test files in `tools/pslib/wsl/tests/` (create dir first)
+- [ ] T070 Verify all tests pass with refactored structure: `pwsh -File ".\test\bin\test.ps1" -Unit`
+
+### Enhanced Execution Work
+
+- [ ] T071 [P] Implement `Invoke-WslDistroScript` in `tools/pslib/wsl/lib/exec.ps1`
+  - Accepts `-ScriptPath` (Windows path), `-DistroName`, and `-Arguments`
+  - Validates script existence
+  - Converts Windows path to execution command (assuming CWD context)
+  - Executes via `wsl.exe`
+- [ ] T072 [P] Add unit tests for `Invoke-WslDistroScript` in `tools/pslib/wsl/tests/exec.Tests.ps1`
+
+### Docker Setup Work (Updated)
+
+- [ ] T073 [P] Finalize `tools/pslib/wsl/scripts/install-docker.sh` (ensure it's executable and correct)
+- [ ] T074 Refactor `Install-WslDockerEngine` in `tools/pslib/wsl/lib/docker.ps1`
+  - Use `Invoke-WslDistroScript` to run `install-docker.sh`
+  - Pass arguments correctly
+  - Handle exit codes
+  - Remove old manual steps
+- [ ] T075 Update Docker tests in `tools/pslib/wsl/tests/docker.Tests.ps1` to verify script execution pattern
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -599,32 +640,6 @@ Work Item #4 (NOPASSWD Warning) is independent and can be done anytime.
 
 ---
 
-## Notes
-
-- **[P] tasks**: Different files or test sections, no dependencies, can run in parallel
-- **[Item] label**: Maps task to specific work item from plan.md for traceability
-- **TDD is NON-NEGOTIABLE**: Constitution Principle I - tests MUST be written before implementation
-- **All tests must pass**: Before committing, run full test suite on both PowerShell versions
-- **Commit strategy**: Commit after each work item completes with all tests passing
-- **Constitutional compliance**: This implementation follows all 7 constitutional principles
-- **Work Item #5 is foundational**: Complete this before starting Work Item #1 or #3
-- **Docker Refactoring (Work Item #2)**: Deferred - will be added after bash script design complete
-
----
-
-## Deferred Work (Phase 2)
-
-**Work Item #2 - Docker Setup Refactoring** is intentionally excluded from this tasks file. It requires:
-
-1. Bash script design (`tools/pslib/wsl/scripts/install-docker.sh`)
-2. Script transfer pattern specification
-3. Exit code mapping table
-4. Additional design time: 15-30 minutes
-
-After design artifacts are complete, run `/speckit.tasks` again to generate Phase 2 tasks for Docker refactoring.
-
----
-
 ## Task Summary
 
 | Phase | Work Item | Tasks | Estimated Time |
@@ -635,4 +650,6 @@ After design artifacts are complete, run `/speckit.tasks` again to generate Phas
 | 4 | #1 Terminate Distribution | T008-T019 (12 tasks) | 2-3 hours |
 | 5 | #3 State Validation | T020-T026 (7 tasks) | 2-3 hours |
 | 6 | Polish | T053-T060 (8 tasks) | 1 hour |
-| **Total** | | **52 tasks** | **8-11 hours** |
+| 7 | Refactoring & Infrastructure | T066-T072 (7 tasks) | 2-3 hours |
+| 8 | Docker Setup | T073-T075 (3 tasks) | 2 hours |
+| **Total** | | **67 tasks** | **14-19 hours** |
