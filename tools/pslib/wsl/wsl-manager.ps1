@@ -14,7 +14,7 @@
 
 .PARAMETER Name
     The name of the distribution (used with create and clone commands).
-    For create: supports any distribution available from 'wsl --list --online'.
+    For create: supports any distribution available from 'wsl.exe --list --online'.
     For clone: the source distribution name to clone from.
     Examples: Debian, Ubuntu, Ubuntu-22.04, Ubuntu-24.04, kali-linux.
 
@@ -47,7 +47,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -65,8 +65,8 @@ $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 # Source dependencies
-. "$PSScriptRoot\..\pslib\utils.ps1"
-. "$PSScriptRoot\..\pslib\wsl.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
+. "$PSScriptRoot\wsl.ps1"
 
 #region Functions
 
@@ -162,7 +162,7 @@ function Invoke-CreateDistro {
             Write-Host "  - $distro" -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "Run 'wsl --list --online' to see all available distributions." -ForegroundColor Yellow
+        Write-Host "Run 'wsl.exe --list --online' to see all available distributions." -ForegroundColor Yellow
         return
     }
 
@@ -299,7 +299,7 @@ function Invoke-SetupUser {
     }
 
     Write-Host ""
-    Write-Host "Setting up user account in '$DistroName'..." -ForegroundColor Cyan
+    Write-Host "Setting up user account in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
     # Prompt for username
@@ -326,11 +326,47 @@ function Invoke-SetupUser {
         Write-Success "Successfully created user '$username' in '$DistroName'."
         Write-Host ""
         Write-Host "To apply the default user change, restart the distribution with:" -ForegroundColor Yellow
-        Write-Host "  wsl --terminate $DistroName" -ForegroundColor Yellow
+        Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
     }
     finally {
         # Clear the plain text password from memory
         $passwordPlain = $null
+    }
+}
+
+function Invoke-SetupDocker {
+    <#
+    .SYNOPSIS
+        Handles the Docker setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install Docker in.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    Write-Host ""
+    Write-Host "Setting up Docker in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    try {
+        # Install Docker Engine (skip confirmation since we're handling it interactively)
+        $result = Install-WslDockerEngine -DistroName $DistroName -Confirm:$false
+
+        if ($result) {
+            Write-Host ""
+            Write-Success "Successfully installed Docker in '$DistroName'."
+            Write-Host ""
+            Write-Host "To apply group membership changes, restart the distribution with:" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --distribution $DistroName" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        throw $_
     }
 }
 
@@ -386,6 +422,60 @@ function Invoke-SetupUserInteractive {
 
     # Setup user in the selected distribution
     Invoke-SetupUser -DistroName $selectedName
+}
+
+function Invoke-SetupDockerInteractive {
+    <#
+    .SYNOPSIS
+        Handles the Docker setup workflow interactively by prompting for distribution name.
+    #>
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = @(Get-WslDistroList)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Write-Host "  $index. $distro" -ForegroundColor White
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to setup Docker in"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1]
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Setup Docker in the selected distribution
+    Invoke-SetupDocker -DistroName $selectedName
 }
 
 function Invoke-CloneDistro {
@@ -502,6 +592,7 @@ function Show-InteractiveMenu {
         Write-Host "  [C] Clone distribution" -ForegroundColor White
         Write-Host "  [U] Update distribution" -ForegroundColor White
         Write-Host "  [S] Setup user account" -ForegroundColor White
+        Write-Host "  [D] Setup Docker" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
@@ -539,6 +630,15 @@ function Show-InteractiveMenu {
             "S" {
                 try {
                     Invoke-SetupUserInteractive
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
+            "D" {
+                try {
+                    Invoke-SetupDockerInteractive
                 }
                 catch {
                     Write-ErrorMsg "$_"
@@ -602,6 +702,14 @@ function Invoke-WslManager {
         }
         "setup-user" {
             Invoke-SetupUser -DistroName $Name
+        }
+        "setup-docker" {
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Invoke-SetupDockerInteractive
+            }
+            else {
+                Invoke-SetupDocker -DistroName $Name
+            }
         }
         default {
             Show-InteractiveMenu

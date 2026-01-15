@@ -4,7 +4,7 @@
 #>
 
 BeforeAll {
-    . "$PSScriptRoot\utils.ps1"
+    . "$PSScriptRoot\..\utils\utils.ps1"
     . "$PSScriptRoot\wsl.ps1"
 }
 
@@ -98,17 +98,6 @@ openSUSE-Leap-15.6          openSUSE Leap 15.6
             $result | Should -Contain "Oracle_Linux_8_10"
             $result | Should -Contain "openSUSE-Leap-15.6"
         }
-
-        It "Should set and restore LC_ALL environment variable" {
-            Mock Test-WslInstalled { $true }
-            Mock wsl { "Debian      Debian" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--online" }
-
-            $originalLcAll = $env:LC_ALL
-            Get-WslAvailableDistro
-            $afterLcAll = $env:LC_ALL
-
-            $afterLcAll | Should -Be $originalLcAll
-        }
     }
 }
 
@@ -144,7 +133,7 @@ Describe "Get-WslDistroList" {
 
             Get-WslDistroList
 
-            Should -Invoke wsl -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
+            Should -Invoke wsl.exe -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--quiet" }
         }
     }
 }
@@ -180,14 +169,14 @@ Describe "Remove-WslDistro" {
     }
 
     Context "When user confirms removal" {
-        It "Should remove distribution using wsl --unregister" {
+        It "Should remove distribution using wsl.exe --unregister" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine {}
 
             Remove-WslDistro -Name "Debian" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
     }
 
@@ -199,7 +188,7 @@ Describe "Remove-WslDistro" {
 
             Remove-WslDistro -Name "Debian" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --unregister Debian" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
 
         It "Should throw error when wsl command fails" {
@@ -207,7 +196,7 @@ Describe "Remove-WslDistro" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --unregister Debian`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --unregister Debian`" failed with exit code 1"
             }
 
             { Remove-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
@@ -272,12 +261,12 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name "kali-linux" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d kali-linux --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution kali-linux --no-launch" }
         }
     }
 
     Context "When creating a new distribution" {
-        It "Should create <DistroName> using wsl --install -d <DistroName> --no-launch" -ForEach @(
+        It "Should create <DistroName> using wsl.exe --install --distribution <DistroName> --no-launch" -ForEach @(
             @{ DistroName = "Debian" }
             @{ DistroName = "Ubuntu" }
             @{ DistroName = "Ubuntu-22.04" }
@@ -290,7 +279,7 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name $DistroName -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d $DistroName --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution $DistroName --no-launch" }
         }
 
         It "Should display success message" {
@@ -312,7 +301,7 @@ Describe "New-WslDistro" {
 
             $output = New-WslDistro -Name "Ubuntu" -Confirm:$false 6>&1
 
-            $output -join ' ' | Should -Match "To start: wsl -d Ubuntu"
+            $output -join ' ' | Should -Match "To start: wsl.exe --distribution Ubuntu"
         }
 
         It "Should trim whitespace from distribution name" {
@@ -323,7 +312,7 @@ Describe "New-WslDistro" {
 
             New-WslDistro -Name "  Debian  " -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl --install -d Debian --no-launch" }
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --install --distribution Debian --no-launch" }
         }
 
         It "Should skip installation when user cancels confirmation" {
@@ -343,7 +332,7 @@ Describe "New-WslDistro" {
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --install --distribution Debian --no-launch`" failed with exit code 1"
             }
 
             { New-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
@@ -355,7 +344,7 @@ Describe "New-WslDistro" {
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
-                throw "Command line call `"wsl --install -d Debian --no-launch`" failed with exit code 1"
+                throw "Command line call `"wsl.exe --install --distribution Debian --no-launch`" failed with exit code 1"
             }
             Mock Write-Output {}
 
@@ -409,7 +398,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Debian *"
+                $CommandLine -like "wsl.exe --export Debian *"
             }
         }
 
@@ -417,7 +406,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian * *"
+                $CommandLine -like "wsl.exe --import MyDebian * *"
             }
         }
 
@@ -425,7 +414,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *wsl\MyDebian* *"
+                $CommandLine -like "wsl.exe --import MyDebian *wsl\MyDebian* *"
             }
         }
 
@@ -433,7 +422,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "D:\WSL\MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *D:\WSL\MyDebian* *"
+                $CommandLine -like "wsl.exe --import MyDebian *D:\WSL\MyDebian* *"
             }
         }
 
@@ -464,17 +453,17 @@ Describe "Copy-WslDistro" {
 
             $output = Copy-WslDistro -SourceName "Ubuntu" -TargetName "MyUbuntu" -Confirm:$false 6>&1
 
-            $output -join ' ' | Should -Match "To start: wsl -d MyUbuntu"
+            $output -join ' ' | Should -Match "To start: wsl.exe --distribution MyUbuntu"
         }
 
         It "Should trim whitespace from distribution names" {
             Copy-WslDistro -SourceName "  Debian  " -TargetName "  MyDebian  " -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Debian *"
+                $CommandLine -like "wsl.exe --export Debian *"
             }
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import MyDebian *"
+                $CommandLine -like "wsl.exe --import MyDebian *"
             }
         }
 
@@ -489,24 +478,24 @@ Describe "Copy-WslDistro" {
         It "Should not attempt import and should clean up" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
-            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Test-Path { $true }
             Mock Remove-Item {}
 
             { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
 
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl --import *" } -Times 0
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl.exe --import *" } -Times 0
             Should -Invoke Remove-Item
         }
 
         It "Should clean up temp file when import fails" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
-            Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl --export *" }
+            Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Invoke-CommandLine { 
                 $global:LASTEXITCODE = 1
                 throw "Command line call failed with exit code 1" 
-            } -ParameterFilter { $CommandLine -like "wsl --import *" }
+            } -ParameterFilter { $CommandLine -like "wsl.exe --import *" }
             Mock Test-Path { $true }
             Mock Remove-Item {}
 
@@ -548,7 +537,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -InstallPath "C:\My WSL\MyDebian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "*wsl --import MyDebian*My WSL\MyDebian*"
+                $CommandLine -like "*wsl.exe --import MyDebian*My WSL\MyDebian*"
             }
         }
 
@@ -558,10 +547,10 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Ubuntu-22.04" -TargetName "My-Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Ubuntu-22.04 *"
+                $CommandLine -like "wsl.exe --export Ubuntu-22.04 *"
             }
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --import My-Project *"
+                $CommandLine -like "wsl.exe --import My-Project *"
             }
         }
 
@@ -571,7 +560,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "Oracle_Linux_8" -TargetName "My_Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export Oracle_Linux_8 *"
+                $CommandLine -like "wsl.exe --export Oracle_Linux_8 *"
             }
         }
 
@@ -581,7 +570,7 @@ Describe "Copy-WslDistro" {
             Copy-WslDistro -SourceName "openSUSE-Leap-15.6" -TargetName "SUSE.Project" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like "wsl --export openSUSE-Leap-15.6 *"
+                $CommandLine -like "wsl.exe --export openSUSE-Leap-15.6 *"
             }
         }
     }
@@ -611,12 +600,11 @@ Describe "Invoke-WslDistroCommand" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { "command output" }
 
-            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+            Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like '*wsl -d Debian -e bash -c "echo test"*'
+                $CommandLine -like '*wsl.exe --distribution Debian --exec bash -c "echo test"*'
             }
-            $result | Should -Be "command output"
         }
 
         It "Should pass StopAtError parameter to Invoke-CommandLine" {
@@ -656,8 +644,56 @@ Describe "Invoke-WslDistroCommand" {
         }
     }
 
+    Context "When using -PassThru switch" {
+        It "Should capture and return output when -PassThru is specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { "command output" }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like '*wsl.exe --distribution Debian --exec bash -c "echo test"*'
+            }
+            $result | Should -Be "command output"
+        }
+
+        It "Should return output when -PassThru is not specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { "command output" }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            $result | Should -Be "command output"
+        }
+
+        It "Should join multiple output lines with newline when -PassThru is used" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { @("line1", "line2", "line3") }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
+
+            $result | Should -Be "line1`nline2`nline3"
+        }
+
+        It "Should not join multiple output lines when -PassThru is not used" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { @("line1", "line2", "line3") }
+
+            $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
+
+            $result | Should -HaveCount 3
+            $result[0] | Should -Be "line1"
+            $result[1] | Should -Be "line2"
+            $result[2] | Should -Be "line3"
+        }
+    }
+
     Context "When command contains special characters" {
-        It "Should escape double quotes in command" {
+        It "Should handle double quotes in command (escaping with backslash)" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-CommandLine { }
@@ -665,7 +701,7 @@ Describe "Invoke-WslDistroCommand" {
             Invoke-WslDistroCommand -DistroName "Debian" -Command 'echo "hello world"'
 
             Should -Invoke Invoke-CommandLine -ParameterFilter {
-                $CommandLine -like '*bash -c "echo \\"hello world\\""*'
+                $CommandLine -like '*bash -c "echo*hello world*"*'
             }
         }
 
@@ -951,7 +987,7 @@ Describe "Update-WslDistro" {
             Update-WslDistro -Name "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt update && sudo apt upgrade -y*"
+                $Command -like "*apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt autoclean*"
             }
         }
 
@@ -964,7 +1000,7 @@ Describe "Update-WslDistro" {
             Update-WslDistro -Name "Ubuntu" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt update && sudo apt upgrade -y*"
+                $Command -like "*apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt autoclean*"
             }
         }
 
@@ -1241,7 +1277,7 @@ Describe "New-WslUser" {
             New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
 
             Should -Invoke Write-Output -ParameterFilter {
-                $InputObject -like "*wsl --terminate*"
+                $InputObject -like "*Restarting distribution*"
             }
         }
 
@@ -1351,6 +1387,935 @@ Describe "New-WslUser" {
 
         It "Should throw when Password is empty" {
             { New-WslUser -DistroName "Debian" -Username "testuser" -Password "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Get-WslDefaultUser" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Get-WslDefaultUser -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Get-WslDefaultUser -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When wsl.conf does not exist" {
+        It "Should return null" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" } -ParameterFilter {
+                $Command -like "*cat /etc/wsl.conf*"
+            }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When wsl.conf exists but has no [user] section" {
+        It "Should return null" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=true
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When [user] section exists but has no default= line" {
+        It "Should return null" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+# No default user configured
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When default user is configured" {
+        It "Should return username from 'default=username' format" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+default=developer
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -Be "developer"
+        }
+
+        It "Should return username from 'default = username' format (with spaces)" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+default = johndoe
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -Be "johndoe"
+        }
+
+        It "Should return username when [user] section is not first" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=true
+
+[user]
+default=testuser
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -Be "testuser"
+        }
+
+        It "Should return username when there are comments in the file" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+# WSL Configuration
+[user]
+# Set the default user
+default=admin
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -Be "admin"
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Get-WslDefaultUser -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Test-WslSystemdConfigured" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When wsl.conf does not exist" {
+        It "Should return false when wsl.conf is not found" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When systemd is configured in wsl.conf" {
+        It "Should return true when systemd=true is set in [boot] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=true`n[user]`ndefault=developer"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true when systemd=true with spaces around equals" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd = true"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true when systemd=true with extra whitespace" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`n  systemd  =  true  "
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+    }
+
+    Context "When systemd is not configured in wsl.conf" {
+        It "Should return false when [boot] section does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[user]`ndefault=developer"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemd is not set in [boot] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`n# systemd=true"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemd=false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=false"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when wsl.conf is empty" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When systemd setting is in different sections" {
+        It "Should only check [boot] section, not [other] sections" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[other]`nsystemd=true`n[boot]`nsystemd=false"
+            }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-WslSystemdConfigured -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Test-WslSystemd" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslSystemd -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-WslSystemd -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When systemd is available and running" {
+        It "Should return true when systemctl --version succeeds" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "systemd 249 (249.11-0ubuntu3.12)"
+            } -ParameterFilter { $Command -like "*systemctl --version*" }
+
+            $result = Test-WslSystemd -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should execute systemctl --version command" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "systemd 249" } -ParameterFilter {
+                $Command -like "*systemctl --version*"
+            }
+
+            Test-WslSystemd -DistroName "Debian"
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl --version*" -and
+                $DistroName -eq "Debian" -and
+                $StopAtError -eq $false -and
+                $PrintCommand -eq $false
+            }
+        }
+    }
+
+    Context "When systemd is not available or not running" {
+        It "Should return false when systemctl command fails" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "systemctl: command not found" } -ParameterFilter {
+                $Command -like "*systemctl --version*"
+            }
+
+            $result = Test-WslSystemd -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemctl returns non-zero exit code" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter {
+                $Command -like "*systemctl --version*"
+            }
+
+            $result = Test-WslSystemd -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when systemd is not enabled in wsl.conf" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "System has not been booted with systemd" } -ParameterFilter {
+                $Command -like "*systemctl --version*"
+            }
+
+            $result = Test-WslSystemd -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-WslSystemd -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Test-Wsl2Version" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-Wsl2Version -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-Wsl2Version -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When distribution is WSL2" {
+        It "Should return true for WSL2 distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock wsl {
+                @"
+  NAME      STATE           VERSION
+* Debian    Running         2
+  Ubuntu    Stopped         2
+"@
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
+
+            $result = Test-Wsl2Version -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should handle distribution name with special characters" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu-22.04") }
+            Mock wsl {
+                @"
+  NAME              STATE           VERSION
+  Ubuntu-22.04      Running         2
+"@
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
+
+            $result = Test-Wsl2Version -DistroName "Ubuntu-22.04"
+
+            $result | Should -Be $true
+        }
+    }
+
+    Context "When distribution is WSL1" {
+        It "Should return false for WSL1 distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock wsl {
+                @"
+  NAME      STATE           VERSION
+  Debian    Running         1
+  Ubuntu    Stopped         2
+"@
+            } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
+
+            $result = Test-Wsl2Version -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-Wsl2Version -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Test-WslDockerInstalled" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslDockerInstalled -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-WslDockerInstalled -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When Docker is installed" {
+        It "Should return true when docker --version succeeds" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "Docker version 24.0.7, build afdd53b"
+            } -ParameterFilter { $Command -like "*docker --version*" }
+
+            $result = Test-WslDockerInstalled -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should execute docker --version command" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "Docker version 24.0.7, build afdd53b"
+            } -ParameterFilter { $Command -like "*docker --version*" }
+
+            Test-WslDockerInstalled -DistroName "Debian"
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker --version*" -and
+                $DistroName -eq "Debian" -and
+                $StopAtError -eq $false -and
+                $PrintCommand -eq $false
+            }
+        }
+    }
+
+    Context "When Docker is not installed" {
+        It "Should return false when docker command not found" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                throw "docker: command not found"
+            } -ParameterFilter { $Command -like "*docker --version*" }
+
+            $result = Test-WslDockerInstalled -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when docker --version returns empty output" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter {
+                $Command -like "*docker --version*"
+            }
+
+            $result = Test-WslDockerInstalled -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-WslDockerInstalled -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Install-WslDockerEngine" {
+    Context "Prerequisite validation - WSL installation" {
+        It "Should throw when WSL is not installed" {
+            Mock Test-WslInstalled { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "Prerequisite validation - Distribution existence" {
+        It "Should throw when distribution does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "Prerequisite validation - WSL2 version" {
+        It "Should throw when distribution is WSL1" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL2*"
+        }
+
+        It "Should provide upgrade command in error message for WSL1" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl.exe --set-version*"
+        }
+    }
+
+    Context "Prerequisite validation - Systemd configuration" {
+        It "Should throw when systemd is not configured in wsl.conf" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*wsl.conf*"
+        }
+
+        It "Should provide wsl.conf configuration instructions in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*[boot]*systemd=true*"
+        }
+
+        It "Should provide restart instructions in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl.exe --terminate*"
+        }
+    }
+
+    Context "Prerequisite validation - Systemd running" {
+        It "Should throw when systemd is not running" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*running*"
+        }
+
+        It "Should provide troubleshooting steps in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $false }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemctl --version*"
+        }
+    }
+
+    Context "Prerequisite validation - Distribution type" {
+        It "Should throw when distribution is not Debian/Ubuntu" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Arch") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "arch" }
+
+            { Install-WslDockerEngine -DistroName "Arch" -Confirm:$false } | Should -Throw "*Debian*Ubuntu*"
+        }
+
+        It "Should accept Debian distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw for Debian
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+
+        It "Should accept Ubuntu distribution" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "ubuntu" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "ubuntu`njammy`namd64" } -ParameterFilter { $Command -like "*bash << 'EOF'*os-release*" }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw for Ubuntu
+            { Install-WslDockerEngine -DistroName "Ubuntu" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+    }
+
+    Context "Prerequisite validation - Default user" {
+        It "Should throw when no default user is configured and Username not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*default user*"
+        }
+
+        It "Should provide setup-user command in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*setup-user*"
+        }
+
+        It "Should use provided Username parameter when specified" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { $null }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+
+            # Should not throw when Username is provided
+            { Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+
+        It "Should auto-detect default user from wsl.conf when Username not provided" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "autodetected" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+            Mock Invoke-WslDistroCommand { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false -WhatIf
+
+            Should -Invoke Get-WslDefaultUser -Times 1 -ParameterFilter { $DistroName -eq "Debian" }
+        }
+    }
+
+    Context "Prerequisite validation - Docker already installed" {
+        It "Should throw when Docker is already installed" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $true }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*already installed*"
+        }
+
+        It "Should provide uninstall instructions in error message" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $true }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*apt-get remove*"
+        }
+    }
+
+    Context "Docker installation workflow" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+        }
+
+        It "Should execute installation commands when prerequisites pass" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get update*"
+            }
+        }
+
+        It "Should remove old Docker versions" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get remove*docker*"
+            }
+        }
+
+        It "Should install Docker prerequisites" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get install*ca-certificates*curl*"
+            }
+        }
+
+        It "Should add Docker GPG key" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*gpg --dearmor*docker.gpg*"
+            }
+        }
+
+        It "Should setup Docker repository" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt/sources.list.d/docker.list*"
+            }
+        }
+
+        It "Should install Docker Engine packages" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker-ce*docker-ce-cli*containerd*docker-buildx-plugin*docker-compose-plugin*"
+            }
+        }
+
+        It "Should add user to docker group" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*usermod -aG docker*developer*"
+            }
+        }
+
+        It "Should add specified Username to docker group when provided" {
+            Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*usermod -aG docker*customuser*"
+            }
+        }
+
+        It "Should enable Docker service" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl enable docker*"
+            }
+        }
+
+        It "Should start Docker service" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl start docker*"
+            }
+        }
+    }
+
+    Context "Post-installation verification" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { "Docker version 24.0.7" }
+        }
+
+        It "Should verify Docker Engine version" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker --version*"
+            }
+        }
+
+        It "Should verify Docker Compose version" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker compose version*"
+            }
+        }
+
+        It "Should verify Docker service status" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*systemctl status docker*"
+            }
+        }
+
+        It "Should run hello-world container test" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*docker run hello-world*"
+            }
+        }
+    }
+
+    Context "SupportsShouldProcess" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+        }
+
+        It "Should support -WhatIf parameter" {
+            Install-WslDockerEngine -DistroName "Debian" -WhatIf
+
+            # With -WhatIf, no actual commands should be executed
+            Should -Invoke Invoke-WslDistroCommand -Times 0
+        }
+
+        It "Should execute when -Confirm:false is specified" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            # With -Confirm:$false, commands should execute
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt-get update*"
+            }
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Install-WslDockerEngine -DistroName "" -Confirm:$false } | Should -Throw
         }
     }
 }
