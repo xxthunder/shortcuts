@@ -22,9 +22,32 @@ This document provides technical guidelines for AI agents working on the Shortcu
 - `config/`: Configuration files
 - `tools/`: Tool-specific utilities and installers
 - `tools/pslib/`: Shared PowerShell library (reusable functions)
+  - `utils/`: Utility functions (`utils.ps1`)
+  - `wsl/`: WSL-specific functions and tools (`wsl.ps1`, `wsl-manager.ps1`, etc.)
 - `links/`: Keypirinha link definitions (.url files)
 - `test/`: Test files and test utilities
 - `.bootstrap/`: Bootstrap system for initial setup
+
+#### PowerShell Script Wrapper Convention
+
+**Executable PowerShell scripts should have a `.bat` wrapper in the same directory.**
+
+This allows scripts to be executed directly from the command line or Keypirinha without requiring the full `pwsh -File` syntax.
+
+**Example:**
+
+```text
+tools/pslib/wsl/
+├── wsl-manager.ps1      # The actual PowerShell script
+└── wsl-manager.bat      # Wrapper that calls: pwsh -ExecutionPolicy Bypass -File %~dp0wsl-manager.ps1 %*
+```
+
+**Benefits:**
+
+- Users can run `wsl-manager` instead of `pwsh -File path/to/wsl-manager.ps1`
+- Batch wrapper handles PowerShell execution policy
+- Arguments are passed through automatically via `%*`
+- Consistent user experience across all executable scripts
 
 ## Coding Guidelines
 
@@ -51,7 +74,7 @@ When working with PowerShell code in this project, follow these guidelines:
 
 To discover available functions:
 
-1. **Read the library files** in `tools/pslib/` (e.g., `utils.ps1`, `wsl.ps1`)
+1. **Read the library files** in `tools/pslib/utils/` and `tools/pslib/wsl/` (e.g., `utils.ps1`, `wsl.ps1`, `wsl-manager.ps1`)
 2. **Check function documentation** - Each function has synopsis and examples
 3. **Look at test files** (`*.Tests.ps1`) to see usage patterns
 4. **Use Get-Help** after sourcing the library: `Get-Help Invoke-CommandLine -Full`
@@ -89,7 +112,7 @@ See "Script Structure" section below for the complete template.
 
 #### 3. Environment Awareness
 
-Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils.ps1`:
+Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils/utils.ps1`:
 
 ```powershell
 if (Test-RunningInCIorTestEnvironment) {
@@ -432,7 +455,7 @@ When calling PowerShell scripts through the Bash tool:
 
 **Example workflow in AI agent:**
 
-```
+```text
 # Step 1: Verify test script exists
 Bash(Test-Path ".\test\bin\test.ps1")
 
@@ -543,13 +566,13 @@ Edit tools/pslib/wsl.Tests.ps1  # Update parameter filter
 pwsh -File ".\test\bin\test.ps1" -Unit  # Expected: 1 failure
 
 # 3. Update implementation
-Edit tools/pslib/wsl.ps1  # Change the command
+Edit tools/pslib/wsl/wsl.ps1  # Change the command
 
 # 4. Run tests - should PASS
 pwsh -File ".\test\bin\test.ps1" -Unit  # Expected: all pass
 
 # 5. Commit both together
-git add tools/pslib/wsl.ps1 tools/pslib/wsl.Tests.ps1
+git add tools/pslib/wsl/wsl.ps1 tools/pslib/wsl.Tests.ps1
 git commit -m "refactor: update Get-WslDistroType command"
 ```
 
@@ -564,6 +587,7 @@ git commit -m "refactor: update Get-WslDistroType command"
 3. **Run linter**: Tests include PSScriptAnalyzer checks automatically
 
 **Never commit if:**
+
 - Any unit test fails
 - Any integration test fails
 - You changed a function but didn't update its tests

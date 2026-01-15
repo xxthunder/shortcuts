@@ -19,3 +19,7 @@ __pycache__/
 
 # Test results
 /test/out
+
+# Claude Code temporary files
+tmpclaude-*
+.claude/settings.local.json
