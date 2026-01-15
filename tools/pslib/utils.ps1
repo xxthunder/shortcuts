@@ -263,6 +263,115 @@ function Get-UserConfirmation {
     }
 }
 
+function Install-NpmPackage {
+    <#
+    .SYNOPSIS
+        Installs or updates a global npm package, ensuring Node.js is installed via Scoop.
+
+    .DESCRIPTION
+        This function checks if Scoop is installed, ensures Node.js is installed/updated via Scoop,
+        verifies npm availability, and then installs or updates the specified npm package globally.
+
+    .PARAMETER PackageName
+        The name of the npm package to install (e.g., "@anthropic-ai/claude-code").
+
+    .PARAMETER CheckCommand
+        Optional. A command to check after installation to verify success (e.g., "claude").
+        If not provided, the package installation is considered verified if npm install succeeds.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$CheckCommand
+    )
+
+    # Check if Scoop is installed
+    Write-Status "Checking for Scoop..."
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Error "Scoop is not installed. Please install Scoop first!"
+        return
+    }
+    Write-Success "Scoop is installed"
+
+    # Install or update Node.js via Scoop
+    Write-Status "Checking Node.js installation..."
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $nodeVersion = node --version
+        Write-Information "  Current Node.js version: $nodeVersion"
+
+        Write-Status "Updating Node.js via Scoop..."
+        # We don't use 'scoop update nodejs' directly because we want to handle failures gracefully
+        Invoke-CommandLine -CommandLine "scoop update nodejs" -StopAtError $false -PrintCommand $false -Silent $true
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Scoop update failed, but Node.js is already installed"
+        }
+
+        $newNodeVersion = node --version
+        if ($nodeVersion -eq $newNodeVersion) {
+            Write-Success "Node.js is up to date ($newNodeVersion)"
+        } else {
+            Write-Success "Node.js updated from $nodeVersion to $newNodeVersion"
+        }
+    } else {
+        Write-Status "Installing Node.js via Scoop..."
+        Invoke-CommandLine -CommandLine "scoop install nodejs" -StopAtError $true
+        Write-Success "Node.js installed"
+    }
+
+    # Verify npm is available
+    Write-Status "Verifying npm installation..."
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "npm not found. Node.js installation may be incomplete."
+        return
+    }
+    $npmVersion = npm --version
+    Write-Success "npm version: $npmVersion"
+
+    # Install or update the Package via npm
+    Write-Status "Checking $PackageName installation..."
+
+    # Check if package is installed globally
+    $isInstalled = $false
+    try {
+        Invoke-CommandLine -CommandLine "npm list -g $PackageName --depth=0" -StopAtError $false -Silent $true
+        if ($LASTEXITCODE -eq 0) {
+            $isInstalled = $true
+        }
+    } catch {
+        # Ignore errors from npm list
+        $null = $_
+    }
+
+    if ($isInstalled) {
+        Write-Information "  $PackageName is already installed"
+        Write-Status "Updating $PackageName..."
+        Invoke-CommandLine -CommandLine "npm update -g $PackageName" -StopAtError $true
+        Write-Success "$PackageName updated"
+    } else {
+        Write-Status "Installing $PackageName..."
+        Invoke-CommandLine -CommandLine "npm install -g $PackageName" -StopAtError $true
+        Write-Success "$PackageName installed"
+    }
+
+    # Verify installation if CheckCommand is provided
+    if (-not [string]::IsNullOrEmpty($CheckCommand)) {
+        Write-Status "Verifying $CheckCommand installation..."
+        if (Get-Command $CheckCommand -ErrorAction SilentlyContinue) {
+            $cmdVersion = & $CheckCommand --version
+            if ($null -ne $cmdVersion) {
+                 Write-Success "$CheckCommand version: $cmdVersion"
+            } else {
+                 Write-Success "$CheckCommand is available"
+            }
+        } else {
+            Write-Warning "$CheckCommand command not found even after installation."
+        }
+    }
+}
+
 #region Console Output Helpers
 
 function Write-Status {

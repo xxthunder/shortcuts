@@ -559,3 +559,120 @@ Describe "Write-ErrorMsg" {
         }
     }
 }
+
+Describe "Install-NpmPackage" {
+    Context "When Scoop is missing" {
+        It "Should throw an error" {
+            Mock Get-Command -MockWith { return $null }
+            Mock Write-Error {}
+            Mock Write-Status {}
+            Mock Write-Success {}
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Write-Error -ParameterFilter { $Message -match "Scoop is not installed" }
+        }
+    }
+
+    Context "When Scoop is installed" {
+        BeforeEach {
+            # Default mock for any Get-Command call not explicitly mocked
+            Mock Get-Command -MockWith { return $null }
+            Mock Get-Command -ParameterFilter { $Name -eq 'scoop' } -MockWith { return $true }
+            Mock Write-Status {}
+            Mock Write-Success {}
+            Mock Write-Information {}
+            Mock Write-Warning {}
+            Mock Write-Error {}
+            Mock Invoke-CommandLine {}
+        }
+
+        It "Should update nodejs if already installed" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $true }
+            Mock node -MockWith { return "v14.0.0" }
+            # Mock npm list to fail, simulating package not installed
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm list" } -MockWith { $global:LASTEXITCODE = 1 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop update nodejs" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm install" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock npm -MockWith { return "6.0.0" }
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "scoop update nodejs" }
+        }
+
+        It "Should install nodejs if not installed" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $null }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $true }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop install nodejs" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm list" } -MockWith { $global:LASTEXITCODE = 1 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm install" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock npm -MockWith { return "6.0.0" }
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "scoop install nodejs" }
+        }
+
+        It "Should throw error if npm is missing after nodejs install" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $null }
+            Mock node -MockWith { return "v14.0.0" }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop update nodejs" } -MockWith { $global:LASTEXITCODE = 0 }
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Write-Error -ParameterFilter { $Message -match "npm not found" }
+        }
+
+        It "Should install package if not present" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $true }
+            Mock node -MockWith { return "v14.0.0" }
+            Mock npm -MockWith { return "6.0.0" }
+
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm list" } -MockWith { $global:LASTEXITCODE = 1 } # Not installed
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm install" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop update" } -MockWith { $global:LASTEXITCODE = 0 }
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm install -g test-package" }
+        }
+
+        It "Should update package if already present" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $true }
+            Mock node -MockWith { return "v14.0.0" }
+            Mock npm -MockWith { return "6.0.0" }
+
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm list" } -MockWith { $global:LASTEXITCODE = 0 } # Installed
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm update" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop update" } -MockWith { $global:LASTEXITCODE = 0 }
+
+            Install-NpmPackage -PackageName "test-package"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm update -g test-package" }
+        }
+
+        It "Should verify installation using CheckCommand" {
+            Mock Get-Command -ParameterFilter { $Name -eq 'node' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'npm' } -MockWith { return $true }
+            Mock Get-Command -ParameterFilter { $Name -eq 'testcmd' } -MockWith { return $true }
+            Mock node -MockWith { return "v14.0.0" }
+            Mock npm -MockWith { return "6.0.0" }
+
+            # Define a dummy function to be called
+            function testcmd { return "1.0.0" }
+
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm list" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "npm update" } -MockWith { $global:LASTEXITCODE = 0 }
+            Mock Invoke-CommandLine -ParameterFilter { $CommandLine -match "scoop update" } -MockWith { $global:LASTEXITCODE = 0 }
+
+            Install-NpmPackage -PackageName "test-package" -CheckCommand "testcmd"
+
+            # If we reached here without error, testing calling the command worked
+        }
+    }
+}
