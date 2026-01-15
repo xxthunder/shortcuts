@@ -47,7 +47,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "terminate", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -295,10 +295,17 @@ function Invoke-TerminateDistro {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    # Get running distributions
+    $allDistros = @(Get-WslDistroList)
+    $runningDistros = @()
+    foreach ($distro in $allDistros) {
+        if (Test-WslDistroRunning -DistroName $distro) {
+            $runningDistros += $distro
+        }
+    }
 
-    if ($distros.Count -eq 0) {
-        Write-WarningMsg "No WSL distributions found to terminate."
+    if ($runningDistros.Count -eq 0) {
+        Write-WarningMsg "No running WSL distributions found."
         return
     }
 
@@ -308,11 +315,16 @@ function Invoke-TerminateDistro {
         return
     }
 
-    # Show available distributions
+    # CI/Test Environment Check
+    if (Test-RunningInCIorTestEnvironment) {
+        throw "Cannot run interactive 'terminate' command in CI/Test environment. Please provide -Name parameter."
+    }
+
+    # Show running distributions
     Write-Host ""
-    Write-Host "Available distributions:" -ForegroundColor Cyan
+    Write-Host "Running distributions:" -ForegroundColor Cyan
     $index = 1
-    foreach ($distro in $distros) {
+    foreach ($distro in $runningDistros) {
         Write-Host "  $index. $distro" -ForegroundColor White
         $index++
     }
@@ -330,19 +342,24 @@ function Invoke-TerminateDistro {
     $selectedName = $null
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
-        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-            $selectedName = $distros[$selectionNum - 1]
+        if ($selectionNum -ge 1 -and $selectionNum -le $runningDistros.Count) {
+            $selectedName = $runningDistros[$selectionNum - 1]
         }
         else {
-            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($runningDistros.Count)."
             return
         }
     }
     else {
+        # Assume selection is a name
         $selectedName = $selection
     }
 
-    # Terminate the distribution (skip confirmation since we're handling it interactively)
+    if ($selectedName -notin $runningDistros) {
+        Write-ErrorMsg "Distribution '$selectedName' is not in the list of running distributions."
+        return
+    }
+
     Stop-WslDistro -Name $selectedName -Confirm:$false
 }
 

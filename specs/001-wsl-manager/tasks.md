@@ -294,7 +294,7 @@ Based on plan.md project structure:
   - Verify it calls `Get-WslDistroState` internally
   - Run tests, confirm they FAIL (function not yet implemented)
 
-- [ ] T010 [P] [Item1] Add test cases for `Stop-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T010 [P] [Item1] Add test cases for `Stop-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Test WSL not installed → throws error
   - Test distribution doesn't exist → throws error
   - Test already stopped distribution → informational message (no error)
@@ -306,7 +306,7 @@ Based on plan.md project structure:
 
 ### Implementation for Work Item #1 - Helper Functions
 
-- [ ] T011 [Item1] Implement `Get-WslDistroState` function in `tools/pslib/wsl/wsl.ps1`
+- [X] T011 [Item1] Implement `Get-WslDistroState` function in `tools/pslib/wsl/wsl.ps1`
   - Add function after `Get-WslDistroType` (approximately line 535)
   - Parse `wsl --list --verbose` output for state column
   - Handle localized output using pattern matching (Running|Stopped|Wird ausgeführt|Arrêté|En cours|etc.)
@@ -315,7 +315,7 @@ Based on plan.md project structure:
   - Add help documentation with SYNOPSIS, DESCRIPTION, EXAMPLES
   - Run tests from T008, confirm they now PASS
 
-- [ ] T012 [Item1] Implement `Test-WslDistroRunning` function in `tools/pslib/wsl/wsl.ps1`
+- [X] T012 [Item1] Implement `Test-WslDistroRunning` function in `tools/pslib/wsl/wsl.ps1`
   - Add function after `Get-WslDistroState`
   - Call `Get-WslDistroState` internally
   - Return `$true` if state is 'Running', `$false` if 'Stopped'
@@ -323,7 +323,7 @@ Based on plan.md project structure:
   - Add help documentation with SYNOPSIS, DESCRIPTION, EXAMPLES
   - Run tests from T009, confirm they now PASS
 
-- [ ] T013 [Item1] Implement `Stop-WslDistro` function in `tools/pslib/wsl/wsl.ps1`
+- [X] T013 [Item1] Implement `Stop-WslDistro` function in `tools/pslib/wsl/wsl.ps1`
   - Add function after `Test-WslDistroRunning`
   - Use `[CmdletBinding(SupportsShouldProcess)]` for confirmation prompts
   - Validate: WSL installed, distribution exists
@@ -337,7 +337,7 @@ Based on plan.md project structure:
 
 ### Tests for Work Item #1 - Manager Integration (MANDATORY - TDD)
 
-- [ ] T014 [P] [Item1] Add test cases for `Invoke-TerminateDistro` in `tools/pslib/wsl/wsl-manager.Tests.ps1`
+- [X] T014 [P] [Item1] Add test cases for `Invoke-TerminateDistro` in `tools/pslib/wsl/wsl-manager.Tests.ps1`
   - Test interactive selection by number (mock user selects "1")
   - Test interactive selection by name (mock user enters "Debian")
   - Test no running distributions → displays message
@@ -348,11 +348,11 @@ Based on plan.md project structure:
 
 ### Implementation for Work Item #1 - Manager Integration
 
-- [ ] T015 [Item1] Add "terminate" to ValidateSet in `tools/pslib/wsl/wsl-manager.ps1`
+- [X] T015 [Item1] Add "terminate" to ValidateSet in `tools/pslib/wsl/wsl-manager.ps1`
   - Locate param block at line 50
   - Add "terminate" to ValidateSet: `[ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "terminate", "")]`
 
-- [ ] T016 [Item1] Implement `Invoke-TerminateDistro` function in `tools/pslib/wsl/wsl-manager.ps1`
+- [X] T016 [Item1] Implement `Invoke-TerminateDistro` function in `tools/pslib/wsl/wsl-manager.ps1`
   - Add function after `Invoke-SetupDockerInteractive` (approximately line 479)
   - Check if WSL is installed
   - Get list of running distributions (filter using `Test-WslDistroRunning`)
@@ -364,12 +364,12 @@ Based on plan.md project structure:
   - Handle errors gracefully
   - Run tests from T014, confirm they now PASS
 
-- [ ] T017 [Item1] Add terminate command handler in `Invoke-WslManager` function in `tools/pslib/wsl/wsl-manager.ps1`
+- [X] T017 [Item1] Add terminate command handler in `Invoke-WslManager` function in `tools/pslib/wsl/wsl-manager.ps1`
   - Locate the switch statement (approximately line 687-717)
   - Add case for "terminate": `"terminate" { Invoke-TerminateDistro }`
   - Ensure consistency with other command handlers
 
-- [ ] T018 [Item1] Add "[T] Terminate running distribution" to interactive menu in `tools/pslib/wsl/wsl-manager.ps1`
+- [X] T018 [Item1] Add "[T] Terminate running distribution" to interactive menu in `tools/pslib/wsl/wsl-manager.ps1`
   - Locate `Show-InteractiveMenu` function (approximately line 560-668)
   - Add menu option after "[D] Setup Docker" (approximately line 595)
   - Add: `Write-Host "  [T] Terminate running distribution" -ForegroundColor White`
@@ -379,7 +379,7 @@ Based on plan.md project structure:
 
 ### Integration Tests for Work Item #1 (MANDATORY - TDD)
 
-- [ ] T019 [Item1] Add integration test for terminate command in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+- [X] T019 [Item1] Add integration test for terminate command in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
   - Start a test WSL distribution
   - Execute: `.\tools\pslib\wsl\wsl-manager.ps1 terminate <name>`
   - Verify distribution is stopped (check `wsl --list --verbose`)

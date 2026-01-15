@@ -760,6 +760,11 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'terminate' argument" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Test-WslDistroRunning { $true }
+        }
+
         It "Should prompt for distribution selection when Name is not provided" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian", "Ubuntu") }
@@ -852,11 +857,12 @@ Describe "Invoke-WslManager" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @() }
             Mock Write-Host {}
+            Mock Write-WarningMsg {}
             Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "terminate"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No running * distributions*" }
             Should -Invoke Stop-WslDistro -Times 0
         }
 
@@ -871,3 +877,129 @@ Describe "Invoke-WslManager" {
         }
     }
 }
+
+Describe "Invoke-TerminateDistro" {
+    Context "When WSL is not installed" {
+        It "Should throw error and return" {
+            Mock Test-WslInstalled { $false }
+
+            { Invoke-TerminateDistro } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When no distributions are running" {
+        It "Should display informational message and return" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+            Mock Test-WslDistroRunning { $false }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No running * distributions*" }
+        }
+    }
+
+    Context "When running in CI environment" {
+        It "Should throw error if Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-WslDistroRunning { $true }
+
+            { Invoke-TerminateDistro } | Should -Throw "*Cannot run interactive*"
+        }
+
+        It "Should proceed if Name is provided" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-WslDistroRunning { $true }
+            Mock Stop-WslDistro { }
+
+            Invoke-TerminateDistro -Name "Debian"
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
+        }
+    }
+
+    Context "When distributions are running" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+            Mock Test-WslDistroRunning {
+                param($DistroName)
+                if ($DistroName -eq "Debian") { return $true }
+                if ($DistroName -eq "Ubuntu") { return $true }
+                return $false
+            }
+            Mock Write-Host {}
+            Mock Stop-WslDistro {}
+        }
+
+        It "Should list only running distributions" {
+            Mock Read-Host { "1" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -match "1.*Debian" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -match "2.*Ubuntu" }
+        }
+
+        It "Should handle selection by number (1)" {
+            Mock Read-Host { "1" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should handle selection by number (2)" {
+            Mock Read-Host { "2" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+
+        It "Should handle selection by name" {
+            Mock Read-Host { "Ubuntu" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+
+        It "Should handle cancellation (empty input)" {
+            Mock Read-Host { "" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Cancelling*" }
+        }
+
+        It "Should handle invalid number" {
+            Mock Read-Host { "99" }
+            Mock Write-Host {}
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+        }
+
+        It "Should handle non-running distribution name" {
+            Mock Read-Host { "Alpine" }
+            Mock Write-Host {}
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not in the list*" }
+        }
+    }
+}
+
