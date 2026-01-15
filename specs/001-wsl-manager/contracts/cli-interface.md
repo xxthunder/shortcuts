@@ -273,7 +273,7 @@ Error: Distribution 'MyProject' does not exist.
 
 ### 5. Terminate Distribution
 
-**Command**: `terminate`
+**Command**: `terminate` (Implemented)
 
 **Synopsis**: Stop a running WSL distribution
 

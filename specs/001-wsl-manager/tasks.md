@@ -407,21 +407,21 @@ Based on plan.md project structure:
 
 > **TDD REQUIREMENT**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T020 [P] [Item3] Add state validation test for `Update-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T020 [P] [Item3] Add state validation test for `Update-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Mock `Test-WslDistroRunning` to return $true (distribution running)
   - Call `Update-WslDistro -Name "Debian"`
   - Verify it throws error with message: "Distribution 'Debian' is running. Stop it first with: wsl --terminate Debian"
   - Verify apt update is NOT called when distribution is running
   - Run test, confirm it FAILS (validation not yet implemented)
 
-- [ ] T021 [P] [Item3] Add state validation test for `Copy-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T021 [P] [Item3] Add state validation test for `Copy-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Mock `Test-WslDistroRunning` to return $true for source distribution
   - Call `Copy-WslDistro -SourceName "Debian" -TargetName "MyProject"`
   - Verify it throws error with message: "Distribution 'Debian' is running. Stop it first with: wsl --terminate Debian"
   - Verify export is NOT called when distribution is running
   - Run test, confirm it FAILS (validation not yet implemented)
 
-- [ ] T022 [P] [Item3] Add state validation test for `Remove-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T022 [P] [Item3] Add state validation test for `Remove-WslDistro` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Mock `Test-WslDistroRunning` to return $true (distribution running)
   - Call `Remove-WslDistro -Name "TestProject" -Confirm:$false`
   - Verify it throws error with message: "Distribution 'TestProject' is running. Stop it first with: wsl --terminate TestProject"
@@ -430,21 +430,21 @@ Based on plan.md project structure:
 
 ### Implementation for Work Item #3
 
-- [ ] T023 [Item3] Add state validation to `Update-WslDistro` in `tools/pslib/wsl/wsl.ps1`
+- [X] T023 [Item3] Add state validation to `Update-WslDistro` in `tools/pslib/wsl/wsl.ps1`
   - Locate `Update-WslDistro` function (approximately line 536-597)
   - After distribution existence check (around line 576-578)
   - Add state check: `if (Test-WslDistroRunning -Name $Name) { throw "Distribution '$Name' is running. Stop it first with: wsl --terminate $Name" }`
   - Ensure error is thrown BEFORE any apt operations
   - Run test from T020, confirm it now PASSES
 
-- [ ] T024 [Item3] Add state validation to `Copy-WslDistro` in `tools/pslib/wsl/wsl.ps1`
+- [X] T024 [Item3] Add state validation to `Copy-WslDistro` in `tools/pslib/wsl/wsl.ps1`
   - Locate `Copy-WslDistro` function (approximately line 830-930)
   - After source distribution existence check
   - Add state check: `if (Test-WslDistroRunning -Name $SourceName) { throw "Distribution '$SourceName' is running. Stop it first with: wsl --terminate $SourceName" }`
   - Ensure error is thrown BEFORE export operation
   - Run test from T021, confirm it now PASSES
 
-- [ ] T025 [Item3] Add state validation to `Remove-WslDistro` in `tools/pslib/wsl/wsl.ps1`
+- [X] T025 [Item3] Add state validation to `Remove-WslDistro` in `tools/pslib/wsl/wsl.ps1`
   - Locate `Remove-WslDistro` function (approximately line 764-828)
   - After distribution existence check (around line 779-781)
   - Add state check: `if (Test-WslDistroRunning -Name $Name) { throw "Distribution '$Name' is running. Stop it first with: wsl --terminate $Name" }`
@@ -453,7 +453,7 @@ Based on plan.md project structure:
 
 ### Integration Tests for Work Item #3 (MANDATORY - TDD)
 
-- [ ] T026 [Item3] Add integration test for state validation in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+- [X] T026 [Item3] Add integration test for state validation in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
   - Create and start a test WSL distribution
   - Attempt to update while running → verify error message
   - Attempt to clone while running → verify error message
@@ -471,14 +471,14 @@ Based on plan.md project structure:
 
 **Purpose**: Final verification and documentation updates
 
-- [ ] T053 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\test.ps1" -Unit -Coverage`
-- [ ] T054 [P] Run full integration test suite: `pwsh -File ".\test\bin\test.ps1" -Integration`
-- [ ] T055 [P] Run linter checks: `pwsh -File ".\test\bin\linter.Tests.ps1"`
-- [ ] T056 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\test.ps1"`
-- [ ] T057 Update `specs/001-wsl-manager/quickstart.md` with `Get-WslDistroList -Detailed` and terminate examples
-- [ ] T058 Update CLI interface contract `specs/001-wsl-manager/contracts/cli-interface.md` to mark terminate as implemented
-- [ ] T059 Verify all acceptance criteria from spec.md are met for implemented user stories
-- [ ] T060 Run manual smoke test: Create → Setup User → Terminate → Clone → Update → Remove workflow
+- [X] T053 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\test.ps1" -Unit -Coverage`
+- [X] T054 [P] Run full integration test suite: `pwsh -File ".\test\bin\test.ps1" -Integration`
+- [X] T055 [P] Run linter checks: `pwsh -File ".\test\bin\linter.Tests.ps1"`
+- [X] T056 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\test.ps1"`
+- [X] T057 Update `specs/001-wsl-manager/quickstart.md` with `Get-WslDistroList -Detailed` and terminate examples
+- [X] T058 Update CLI interface contract `specs/001-wsl-manager/contracts/cli-interface.md` to mark terminate as implemented
+- [X] T059 Verify all acceptance criteria from spec.md are met for implemented user stories
+- [X] T060 Run manual smoke test: Create → Setup User → Terminate → Clone → Update → Remove workflow
 
 ---
 

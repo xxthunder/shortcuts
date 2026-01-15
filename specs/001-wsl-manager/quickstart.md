@@ -55,8 +55,9 @@ wsl-manager  # If .bat wrapper is in PATH
 
 ```text
 === Installed WSL Distributions ===
-1. Debian
-2. Ubuntu-22.04
+  NAME            STATE           VERSION
+* Debian          Running         2
+  Ubuntu-22.04    Stopped         2
 
 Available commands:
   [I] Install new distribution
@@ -82,7 +83,7 @@ Enter your choice: _
 Run specific commands directly without the interactive menu:
 
 ```powershell
-# List all installed distributions
+# List all installed distributions (shows state, version, and default status)
 wsl-manager list
 
 # Create a new distribution
@@ -91,7 +92,7 @@ wsl-manager create Debian
 # Clone a distribution
 wsl-manager clone Debian MyProject
 
-# Update packages
+# Update packages (requires distribution to be stopped)
 wsl-manager update Debian
 
 # Setup a user account
@@ -103,7 +104,7 @@ wsl-manager setup-docker Debian -Confirm:$false
 # Terminate a running distribution
 wsl-manager terminate Debian
 
-# Remove a distribution
+# Remove a distribution (requires distribution to be stopped)
 wsl-manager remove MyProject -Confirm:$false
 ```
 
