@@ -148,6 +148,12 @@ A developer wants to create a default user account with sudo privileges in their
 
 ### User Story 8 - Setup Docker Engine (Priority: P8)
 
+> **Implementation Status**: Docker Engine installation is **functionally complete and working** in the current codebase. This user story's acceptance scenarios are satisfied.
+>
+> **Phase 2 Enhancement (Deferred)**: Refactoring the Docker installation from PowerShell-calling-bash-oneliners to a single clean bash script is planned but not required for Phase 1. See plan.md section "Docker Setup Refactoring (DEFERRED)" for details on this code quality improvement.
+>
+> **Impact**: Users can install Docker successfully today. The refactoring is an internal code improvement that won't change user-facing behavior or acceptance criteria.
+
 A developer wants to install Docker Engine in their WSL distribution with a single command so they can run containers for development without manual Docker configuration.
 
 **Why this priority**: Docker setup is an advanced configuration for specific workflows. Not all developers need Docker, making this the lowest priority core feature.

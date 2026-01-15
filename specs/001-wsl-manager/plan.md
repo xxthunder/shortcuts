@@ -341,7 +341,7 @@ The following work items need to be converted to actionable tasks via `/speckit.
    ```powershell
    Write-Warning "NOPASSWD sudo has been configured for '$Username'. This allows running commands as root without password prompt. Suitable for development environments but not recommended for production systems."
    ```
-2. Display warning only once (not on every operation)
+2. Display warning once per user creation operation (displayed every time `New-WslUser` is called, not on subsequent operations with that created user account)
 3. Update tests to verify warning is displayed
 4. Update documentation to mention NOPASSWD implications
 
