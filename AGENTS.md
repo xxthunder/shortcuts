@@ -292,8 +292,11 @@ pwsh -File ".\test\bin\test.ps1" -Unit -Coverage
 # Run integration tests with code coverage
 pwsh -File ".\test\bin\test.ps1" -Integration -Coverage
 
-# Run specific test file
-Invoke-Pester -Path ".\path\to\script.Tests.ps1"
+# Run specific test file (PowerShell 7.x)
+pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
+
+# Run specific test file (PowerShell 5.1)
+powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
 
 # PowerShell 5.1 compatibility testing
 powershell -File ".\test\bin\test.ps1" -Unit
@@ -433,8 +436,11 @@ Bash(pwsh -File ".\test\bin\test.ps1" -Unit -Coverage)
 # Run integration tests with coverage
 Bash(pwsh -File ".\test\bin\test.ps1" -Integration -Coverage)
 
-# Run specific test file
+# Run specific test file (PowerShell 7.x)
 Bash(pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")
+
+# Run specific test file (PowerShell 5.1)
+Bash(powershell -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'")
 
 # Run linter checks
 Bash(pwsh -File ".\test\bin\linter.Tests.ps1")

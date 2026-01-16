@@ -1,174 +1,205 @@
+#Requires -Version 5.1
+
 <#
+.SYNOPSIS
+    Integration tests for Install-NpmPackage function in utils.ps1
+
 .DESCRIPTION
-    Integration tests for utils.ps1 Install-NpmPackage function.
-    These tests execute real installations against npm and verify the complete workflow.
+    Integration tests that verify Install-NpmPackage function with real npm operations.
+    Tests the complete workflow including clean install, update/reinstall, and command verification.
 
-    Test workflow:
-    1. Install a small npm package (cowsay) for the first time (clean install on CI)
-    2. Run install again to verify update logic works
-    3. Verify the package command is available
-
-    WARNING: These tests will install and uninstall npm packages globally.
-    Test package: cowsay (small package ~71KB)
+    Test package: cowsay (small, stable package ~71KB)
 
     REQUIREMENTS:
     - Scoop must be installed
     - Internet connection required
+
+    WARNING: These tests perform real npm operations (install/uninstall globally)
 #>
 
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Integration tests use Write-Host for user feedback during manual test runs.')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File is UTF-8 without BOM, which is standard for cross-platform compatibility.')]
+[CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Integration tests use Write-Host for user feedback')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'UTF-8 without BOM is standard for cross-platform')]
 param()
 
-Describe "Install-NpmPackage Integration Tests" -Tag "Integration" -Skip:(-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-    BeforeAll {
-        # Use a small, stable package for testing
-        $script:testPackageName = "cowsay"
-        $script:testCommand = "cowsay"
-        $script:utilsPath = Join-Path $PSScriptRoot "utils.ps1"
+BeforeAll {
+    # Source the utilities module
+    $script:utilsPath = Join-Path $PSScriptRoot "utils.ps1"
+    . $script:utilsPath
 
-        # Load the utilities
-        . $script:utilsPath
+    # Test package configuration
+    $script:testPackageName = "cowsay"
+    $script:testCommand = "cowsay"
 
-        Write-Host "==> Preparing test environment..." -ForegroundColor Cyan
-        Write-Host "    Scoop is installed" -ForegroundColor Green
-
-        # Verify Node.js is available (will be installed by Install-NpmPackage if needed)
-        if (Get-Command node -ErrorAction SilentlyContinue) {
-            $nodeVersion = node --version
-            Write-Host "    Node.js $nodeVersion is installed" -ForegroundColor Green
-        }
-        else {
-            Write-Host "    Node.js not found, will be installed during test" -ForegroundColor Yellow
-        }
-
-        # Check if test package already exists and uninstall it for clean test
-        Write-Host "    Checking for existing $script:testPackageName installation..." -ForegroundColor Yellow
+    # Helper function to check if npm package is installed
+    function script:Test-NpmPackageInstalled {
+        param([string]$PackageName)
         try {
-            $null = npm list -g $script:testPackageName --depth=0 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "    Uninstalling existing $script:testPackageName for clean test..." -ForegroundColor Yellow
-                npm uninstall -g $script:testPackageName 2>&1 | Out-Null
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "    Successfully uninstalled $script:testPackageName" -ForegroundColor Green
-                }
-            }
-            else {
-                Write-Host "    $script:testPackageName is not installed (clean state)" -ForegroundColor Green
-            }
+            $null = npm list -g $PackageName --depth=0 2>&1
+            return ($LASTEXITCODE -eq 0)
         }
         catch {
-            # Silently continue if npm is not installed yet or check fails
-            Write-Verbose "Could not check for existing installation: $_"
+            return $false
         }
     }
 
-    AfterAll {
-        # Cleanup: Uninstall test package
-        Write-Host "==> Cleaning up: Removing test package..." -ForegroundColor Cyan
-        if (Get-Command npm -ErrorAction SilentlyContinue) {
-            try {
-                $null = npm list -g $script:testPackageName --depth=0 2>&1
+    # Helper function to uninstall npm package
+    function script:Uninstall-NpmPackage {
+        param([string]$PackageName)
+        try {
+            if (Test-NpmPackageInstalled -PackageName $PackageName) {
+                Write-Host "    Uninstalling $PackageName..." -ForegroundColor Yellow
+                $null = npm uninstall -g $PackageName 2>&1
                 if ($LASTEXITCODE -eq 0) {
-                    Write-Host "    Uninstalling $script:testPackageName..." -ForegroundColor Yellow
-                    npm uninstall -g $script:testPackageName 2>&1 | Out-Null
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "    Successfully removed $script:testPackageName" -ForegroundColor Green
-                    }
+                    Write-Host "    Successfully uninstalled $PackageName" -ForegroundColor Green
+                    return $true
                 }
             }
-            catch {
-                # Silently continue if cleanup fails
-                Write-Verbose "Could not uninstall test package: $_"
-            }
+            return $false
+        }
+        catch {
+            Write-Verbose "Failed to uninstall $PackageName : $_"
+            return $false
         }
     }
 
-    Context "First Installation (Clean Install)" {
-        It "Should install npm package from clean state and print executed commands" {
-            Write-Host "`n==> TEST: Installing $script:testPackageName (clean install)..." -ForegroundColor Magenta
+    # Setup: Ensure clean test state
+    Write-Host "==> Preparing test environment..." -ForegroundColor Cyan
 
-            $packageName = $script:testPackageName
-            $commandName = $script:testCommand
+    # Check Scoop
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Host "    Scoop not installed - tests will be skipped" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "    Scoop is installed" -ForegroundColor Green
+    }
 
-            # Verify package is not installed before test
-            $wasInstalled = $false
-            try {
-                $null = npm list -g $packageName --depth=0 2>&1
-                $wasInstalled = ($LASTEXITCODE -eq 0)
+    # Check Node.js
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $nodeVersion = node --version 2>&1
+        Write-Host "    Node.js $nodeVersion is installed" -ForegroundColor Green
+    }
+    else {
+        Write-Host "    Node.js not found - will be installed by Install-NpmPackage" -ForegroundColor Yellow
+    }
+
+    # Clean existing test package
+    Write-Host "    Checking for existing $script:testPackageName installation..." -ForegroundColor Yellow
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        $null = Uninstall-NpmPackage -PackageName $script:testPackageName
+    }
+}
+
+AfterAll {
+    # Cleanup: Remove test package
+    Write-Host "`n==> Cleaning up test environment..." -ForegroundColor Cyan
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        $null = Uninstall-NpmPackage -PackageName $script:testPackageName
+    }
+}
+
+Describe "Install-NpmPackage" -Tag "Integration" {
+
+    BeforeAll {
+        # Skip all tests if Scoop is not installed
+        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+            Set-ItResult -Skipped -Because "Scoop is required but not installed"
+        }
+    }
+
+    Context "When package is not installed" {
+
+        BeforeAll {
+            # Ensure package is not installed
+            if (Get-Command npm -ErrorAction SilentlyContinue) {
+                $null = Uninstall-NpmPackage -PackageName $script:testPackageName
             }
-            catch {
-                # Expected if npm is not installed yet
-                Write-Verbose "Could not check package status: $_"
-            }
+        }
 
-            if ($wasInstalled) {
-                Write-Host "    Note: Package was already installed, uninstalling for clean test..." -ForegroundColor Yellow
-                npm uninstall -g $packageName 2>&1 | Out-Null
-            }
+        It "Should install package from clean state" {
+            Write-Host "`n==> TEST: Clean install of $script:testPackageName" -ForegroundColor Magenta
 
-            # Run Install-NpmPackage (output goes to console via Write-Host)
-            Install-NpmPackage -PackageName $packageName -CheckCommand $commandName
+            # Verify package is not installed
+            $isInstalled = Test-NpmPackageInstalled -PackageName $script:testPackageName
+            $isInstalled | Should -Be $false -Because "Package should not be installed yet"
 
-            Write-Host "==> Verifying installation..." -ForegroundColor Cyan
+            # Execute installation
+            { Install-NpmPackage -PackageName $script:testPackageName -CheckCommand $script:testCommand } | Should -Not -Throw
 
             # Verify installation succeeded
-            $null = npm list -g $packageName --depth=0 2>&1
-            $LASTEXITCODE | Should -Be 0 -Because "Package should be installed after running Install-NpmPackage"
+            $isInstalled = Test-NpmPackageInstalled -PackageName $script:testPackageName
+            $isInstalled | Should -Be $true -Because "Package should be installed after Install-NpmPackage"
+
+            Write-Host "    [OK] Package installed successfully" -ForegroundColor Green
+        }
+
+        It "Should make command available after installation" {
+            Write-Host "`n==> TEST: Command availability check" -ForegroundColor Magenta
 
             # Verify command is available
-            Get-Command $commandName -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+            $command = Get-Command $script:testCommand -ErrorAction SilentlyContinue
+            $command | Should -Not -BeNullOrEmpty -Because "Command should be available after installation"
 
-            Write-Host "    ✓ Package installed successfully" -ForegroundColor Green
+            Write-Host "    [OK] Command $script:testCommand is available" -ForegroundColor Green
         }
     }
 
-    Context "Second Installation (Update/Verify)" {
-        It "Should handle already-installed package and verify/update it" {
-            Write-Host "`n==> TEST: Running Install-NpmPackage again (should update/verify)..." -ForegroundColor Magenta
+    Context "When package is already installed" {
 
-            $packageName = $script:testPackageName
-            $commandName = $script:testCommand
+        BeforeAll {
+            # Ensure package is installed
+            if (-not (Test-NpmPackageInstalled -PackageName $script:testPackageName)) {
+                Install-NpmPackage -PackageName $script:testPackageName -CheckCommand $script:testCommand
+            }
+        }
 
-            # Verify package is already installed from previous test
-            $null = npm list -g $packageName --depth=0 2>&1
-            $LASTEXITCODE | Should -Be 0 -Because "Package should still be installed from previous test"
+        It "Should handle already installed package and update it" {
+            Write-Host "`n==> TEST: Update already installed package" -ForegroundColor Magenta
 
-            # Run Install-NpmPackage again (output goes to console via Write-Host)
-            Install-NpmPackage -PackageName $packageName -CheckCommand $commandName
+            # Verify package is already installed
+            $isInstalled = Test-NpmPackageInstalled -PackageName $script:testPackageName
+            $isInstalled | Should -Be $true -Because "Package should be installed from previous test"
 
-            Write-Host "==> Verifying package is still installed and functional..." -ForegroundColor Cyan
+            # Execute update
+            { Install-NpmPackage -PackageName $script:testPackageName -CheckCommand $script:testCommand } | Should -Not -Throw
 
             # Verify package is still installed
-            $null = npm list -g $packageName --depth=0 2>&1
-            $LASTEXITCODE | Should -Be 0 -Because "Package should still be installed after update"
+            $isInstalled = Test-NpmPackageInstalled -PackageName $script:testPackageName
+            $isInstalled | Should -Be $true -Because "Package should still be installed after update"
 
-            # Verify command is still available
-            Get-Command $commandName -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+            Write-Host "    [OK] Package updated successfully" -ForegroundColor Green
+        }
 
-            Write-Host "    ✓ Package updated/verified successfully" -ForegroundColor Green
+        It "Should keep command available after update" {
+            Write-Host "`n==> TEST: Command persistence check" -ForegroundColor Magenta
+
+            # Verify command still works
+            $command = Get-Command $script:testCommand -ErrorAction SilentlyContinue
+            $command | Should -Not -BeNullOrEmpty -Because "Command should remain available after update"
+
+            Write-Host "    [OK] Command $script:testCommand still available" -ForegroundColor Green
         }
     }
 
-    Context "Command Verification" {
-        It "Should have working package command after installation" {
-            Write-Host "`n==> TEST: Verifying $script:testCommand works..." -ForegroundColor Magenta
+    Context "When verifying command execution" {
 
-            # Verify command exists
-            $command = Get-Command $script:testCommand -ErrorAction SilentlyContinue
-            $command | Should -Not -BeNullOrEmpty
+        BeforeAll {
+            # Ensure package is installed
+            if (-not (Test-NpmPackageInstalled -PackageName $script:testPackageName)) {
+                Install-NpmPackage -PackageName $script:testPackageName -CheckCommand $script:testCommand
+            }
+        }
 
-            # Verify command can execute (cowsay --version or similar)
-            try {
-                $result = & $script:testCommand "Test" 2>&1
-                $result | Should -Not -BeNullOrEmpty
-                Write-Host "    $script:testCommand executed successfully" -ForegroundColor Green
-            }
-            catch {
-                # Some commands might not support test arguments, just verify it exists
-                Write-Verbose "Command check skipped: $_"
-                Write-Host "    $script:testCommand exists (execution test skipped)" -ForegroundColor Yellow
-            }
+        It "Should execute installed command successfully" {
+            Write-Host "`n==> TEST: Command execution verification" -ForegroundColor Magenta
+
+            # Execute command with test input
+            $result = & $script:testCommand "Test" 2>&1
+            
+            # Verify command execution didn't throw
+            $result | Should -Not -BeNullOrEmpty -Because "Command should produce output"
+
+            Write-Host "    [OK] Command executed successfully" -ForegroundColor Green
         }
     }
 }

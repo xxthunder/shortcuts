@@ -85,8 +85,11 @@ All PowerShell code in this library must be tested using **Pester**, the standar
   # Run all tests (recommended)
   pwsh -File .\test\bin\test.ps1
 
-  # Run specific test file
-  Invoke-Pester -Path .\path\to\script.Tests.ps1
+  # Run specific test file (PowerShell 7.x)
+  pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
+
+  # Run specific test file (PowerShell 5.1)
+  powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
 
   # Test on PowerShell 5.1 for compatibility
   powershell -File .\test\bin\test.ps1
