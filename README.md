@@ -396,39 +396,43 @@ The project supports testing on both **PowerShell 5.1** and **PowerShell 7.x** t
 
 ```powershell
 # Step 1: Run unit tests first (faster feedback)
-pwsh -File .\test\bin\test.ps1 -Unit
+pwsh -File .\test\bin\testrunner.ps1 -Unit
 
 # Step 2: Run integration tests when necessary (e.g., before committing)
-pwsh -File .\test\bin\test.ps1 -Integration
+pwsh -File .\test\bin\testrunner.ps1 -Integration
 ```
 
 **Run all tests (CI/comprehensive testing):**
 
 ```powershell
 # PowerShell 7.x (recommended)
-pwsh -File .\test\bin\test.ps1
+pwsh -File .\test\bin\testrunner.ps1
 
 # PowerShell 5.1 (for compatibility testing)
-powershell -File .\test\bin\test.ps1
+powershell -File .\test\bin\testrunner.ps1
 ```
 
 **Run tests with code coverage:**
 
 ```powershell
 # All tests with coverage
-pwsh -File .\test\bin\test.ps1 -Coverage
+pwsh -File .\test\bin\testrunner.ps1 -Coverage
 
 # Unit tests with coverage
-pwsh -File .\test\bin\test.ps1 -Unit -Coverage
+pwsh -File .\test\bin\testrunner.ps1 -Unit -Coverage
 
 # Integration tests with coverage
-pwsh -File .\test\bin\test.ps1 -Integration -Coverage
+pwsh -File .\test\bin\testrunner.ps1 -Integration -Coverage
 ```
 
 **Run tests for specific paths:**
 
 ```powershell
-pwsh -File .\test\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+# Run all tests in a directory
+pwsh -File .\test\bin\testrunner.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+
+# Run a specific test file
+pwsh -File .\test\bin\testrunner.ps1 -TestPath "tools\pslib\utils\utils.Tests.ps1"
 ```
 
 **Important Notes:**
@@ -436,7 +440,7 @@ pwsh -File .\test\bin\test.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
 - Always run tests **without** the `CI` environment variable set (unless testing CI-specific behavior)
 - The test suite automatically detects Pester environment and handles non-interactive scenarios
 - Tests should pass on both PowerShell 5.1 and 7.x for CI compatibility
-- Path must be quoted when passed to `-File` parameter (e.g., `".\test\bin\test.ps1"`)
+- Path must be quoted when passed to `-File` parameter (e.g., `".\test\bin\testrunner.ps1"`)
 
 #### Code Quality Checks
 
@@ -448,7 +452,7 @@ The test suite automatically runs PSScriptAnalyzer on all PowerShell files befor
 
 #### Test Structure
 
-- `test/bin/test.ps1` - Unified test runner script with switches:
+- `test/bin/testrunner.ps1` - Unified test runner script with switches:
   - No switches: Run all tests (unit + integration) - used in CI/GitHub Actions
   - `-Unit`: Run only unit tests (faster feedback) - local development
   - `-Integration`: Run only integration tests - local development

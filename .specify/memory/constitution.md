@@ -134,7 +134,7 @@ Follow-up TODOs:
 ### Unit Test Gate
 
 ```powershell
-pwsh -File ".\test\bin\test.ps1" -Unit
+pwsh -File ".\test\bin\testrunner.ps1" -Unit
 ```
 
 All unit tests MUST pass.
@@ -142,7 +142,7 @@ All unit tests MUST pass.
 ### Integration Test Gate (if integration points modified)
 
 ```powershell
-pwsh -File ".\test\bin\test.ps1" -Integration
+pwsh -File ".\test\bin\testrunner.ps1" -Integration
 ```
 
 All integration tests MUST pass.
@@ -157,10 +157,10 @@ Tests MUST pass on both PowerShell 5.1 and PowerShell 7.x:
 
 ```powershell
 # PowerShell 7.x
-pwsh -File ".\test\bin\test.ps1"
+pwsh -File ".\test\bin\testrunner.ps1"
 
 # PowerShell 5.1
-powershell -File ".\test\bin\test.ps1"
+powershell -File ".\test\bin\testrunner.ps1"
 ```
 
 ## Governance

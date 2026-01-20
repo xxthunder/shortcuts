@@ -168,7 +168,7 @@ tools/pslib/
 test/
 ├── bin/
 │   ├── init.ps1            # Test environment initialization
-│   ├── test.ps1            # Test runner (unit + integration)
+│   ├── testrunner.ps1      # Test runner (unit + integration)
 │   └── linter.Tests.ps1    # PSScriptAnalyzer checks
 └── out/                    # Test output directory (coverage, results)
 

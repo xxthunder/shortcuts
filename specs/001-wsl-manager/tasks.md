@@ -52,7 +52,8 @@ Based on plan.md project structure:
 
 - [X] T001 Verify Pester 5.7.1+ is installed (run `test/bin/init.ps1` if needed)
 - [X] T002 Verify PSScriptAnalyzer 1.24.0+ is installed
-- [X] T003 Run existing test suite to ensure baseline passes: `pwsh -File ".\test\bin\test.ps1" -Unit`
+- [X] T003 Run existing test suite to ensure baseline passes: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
+- [X] T003b Establish robust testing infrastructure (custom runner, linter integration, pre-commit hooks)
 - [X] T004 Review constitution principles in `.specify/memory/constitution.md` to understand TDD requirements
 
 ---
@@ -89,7 +90,7 @@ Based on plan.md project structure:
 - [X] T007 [Item4] Verify integration test includes warning check in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
   - Add assertion to existing user creation integration test
   - Verify warning appears in integration scenario
-  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
 **Checkpoint**: NOPASSWD warning is displayed and tested. Run full test suite to verify no regressions.
 
@@ -248,16 +249,16 @@ Based on plan.md project structure:
   - Verify State is "Running" or "Stopped"
   - Verify Version is 1 or 2
   - Verify IsDefault is boolean
-  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
 - [X] T052 [Item5] Verify no regressions in dependent functions in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
   - Run existing `Get-WslDistroState` integration tests
   - Run existing `Test-Wsl2Version` integration tests (if any)
   - Verify `Test-WslDistroRunning` still works (uses `Get-WslDistroState`)
   - Verify `Stop-WslDistro` still works (uses `Test-WslDistroRunning`)
-  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
-**Checkpoint**: Distribution list centralization is complete. `Get-WslDistroList -Detailed` is the single source of truth. Run full test suite to verify no regressions: `pwsh -File ".\test\bin\test.ps1"`
+**Checkpoint**: Distribution list centralization is complete. `Get-WslDistroList -Detailed` is the single source of truth. Run full test suite to verify no regressions: `pwsh -File ".\test\bin\testrunner.ps1"`
 
 ---
 
@@ -385,9 +386,9 @@ Based on plan.md project structure:
   - Verify distribution is stopped (check `wsl --list --verbose`)
   - Verify distribution can be restarted
   - Clean up test distribution
-  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
-**Checkpoint**: Terminate functionality is complete. Run full test suite to verify: `pwsh -File ".\test\bin\test.ps1"`
+**Checkpoint**: Terminate functionality is complete. Run full test suite to verify: `pwsh -File ".\test\bin\testrunner.ps1"`
 
 ---
 
@@ -461,7 +462,7 @@ Based on plan.md project structure:
   - Terminate distribution
   - Verify operations succeed after termination
   - Clean up test distribution
-  - Run: `pwsh -File ".\test\bin\test.ps1" -Integration`
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
 **Checkpoint**: State validation is complete. All operations correctly enforce stopped state requirement.
 
@@ -471,10 +472,10 @@ Based on plan.md project structure:
 
 **Purpose**: Final verification and documentation updates
 
-- [X] T053 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\test.ps1" -Unit -Coverage`
-- [X] T054 [P] Run full integration test suite: `pwsh -File ".\test\bin\test.ps1" -Integration`
+- [X] T053 [P] Run full unit test suite with coverage: `pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage`
+- [X] T054 [P] Run full integration test suite: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 - [X] T055 [P] Run linter checks: `pwsh -File ".\test\bin\linter.Tests.ps1"`
-- [X] T056 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\test.ps1"`
+- [X] T056 Verify PowerShell 5.1 compatibility: `powershell -File ".\test\bin\testrunner.ps1"`
 - [X] T057 Update `specs/001-wsl-manager/quickstart.md` with `Get-WslDistroList -Detailed` and terminate examples
 - [X] T058 Update CLI interface contract `specs/001-wsl-manager/contracts/cli-interface.md` to mark terminate as implemented
 - [X] T059 Verify all acceptance criteria from spec.md are met for implemented user stories
@@ -500,7 +501,7 @@ Based on plan.md project structure:
   - `tools/pslib/wsl/lib/docker.ps1`: Install-WslDockerEngine, Test-WslDockerInstalled
 - [ ] T068 [P] Update `wsl.ps1` to simply dot-source all files in `lib/`
 - [ ] T069 [P] Split `wsl.Tests.ps1` into corresponding test files in `tools/pslib/wsl/tests/` (create dir first)
-- [ ] T070 Verify all tests pass with refactored structure: `pwsh -File ".\test\bin\test.ps1" -Unit`
+- [ ] T070 Verify all tests pass with refactored structure: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
 
 ### Enhanced Execution Work
 

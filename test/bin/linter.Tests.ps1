@@ -8,7 +8,7 @@
     (semicolon-separated list). Falls back to test/bin directory if not set.
 
 .NOTES
-    This test file is typically invoked by test.ps1, not run directly.
+    This test file is typically invoked by testrunner.ps1, not run directly.
 #>
 
 #Requires -Version 5.1
@@ -40,6 +40,14 @@ BeforeDiscovery {
             } elseif (Test-Path $resolvedPath -PathType Leaf) {
                 if ($resolvedPath -like "*.ps1") {
                     $toBeAnalysed += $resolvedPath
+
+                    # If targeting a test file directly, also lint the associated implementation file
+                    if ($resolvedPath -match '\.Tests\.ps1$') {
+                        $implPath = $resolvedPath -replace '\.Tests\.ps1$', '.ps1'
+                        if (Test-Path $implPath) {
+                            $toBeAnalysed += $implPath
+                        }
+                    }
                 }
             }
         }

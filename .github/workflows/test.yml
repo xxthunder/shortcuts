@@ -34,7 +34,7 @@ jobs:
         continue-on-error: true # Essential for aggregating results later
         shell: cmd
         run: |
-          ${{ matrix.shell }} -Command ".\test\bin\test.ps1 -Coverage"
+          ${{ matrix.shell }} -Command ".\test\bin\testrunner.ps1 -Coverage"
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         with:

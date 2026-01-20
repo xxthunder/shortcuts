@@ -83,7 +83,7 @@ All PowerShell code in this library must be tested using **Pester**, the standar
 - **Running tests**:
   ```powershell
   # Run all tests (recommended)
-  pwsh -File .\test\bin\test.ps1
+  pwsh -File .\test\bin\testrunner.ps1
 
   # Run specific test file (PowerShell 7.x)
   pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
@@ -92,7 +92,7 @@ All PowerShell code in this library must be tested using **Pester**, the standar
   powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
 
   # Test on PowerShell 5.1 for compatibility
-  powershell -File .\test\bin\test.ps1
+  powershell -File .\test\bin\testrunner.ps1
   ```
 
 #### Pester Test Structure
@@ -163,10 +163,10 @@ Always run tests on both PowerShell versions before creating a pull request:
 
 ```powershell
 # Test on PowerShell 7.x
-pwsh -File .\test\bin\test.ps1
+pwsh -File .\test\bin\testrunner.ps1
 
 # Test on PowerShell 5.1
-powershell -File .\test\bin\test.ps1
+powershell -File .\test\bin\testrunner.ps1
 ```
 
 The CI pipeline runs tests on both versions and will fail if either version encounters errors.

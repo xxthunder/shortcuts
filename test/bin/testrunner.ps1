@@ -2,211 +2,256 @@
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.7.1'}
 #Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.24.0'}
 
+<#
+.SYNOPSIS
+    Runs tests based on specified test type(s) and paths.
+
+.DESCRIPTION
+    Executes Pester tests with support for filtering by type (Unit/Integration),
+    custom paths, and code coverage.
+
+    - Default search paths: 'tools' and 'test' directories.
+    - Use -Unit to run only unit tests (excludes *.Integration.Tests.ps1).
+    - Use -Integration to run only integration tests (*.Integration.Tests.ps1).
+    - Use -TestPath to specify custom search directories or files.
+
+.PARAMETER TestPath
+    One or more paths to search for tests. Defaults to 'tools' and 'test' if not provided.
+
+.PARAMETER Unit
+    Run unit tests only (excludes integration tests).
+
+.PARAMETER Integration
+    Run integration tests only.
+
+.PARAMETER ReportPath
+    Path to generate the JUnit XML test report.
+
+.PARAMETER Verbosity
+    Pester output verbosity (e.g., 'Detailed', 'Normal', 'Minimal').
+
+.PARAMETER Filter
+    Pester test filter (Tag).
+
+.PARAMETER ExcludePattern
+    Pattern to exclude test files.
+
+.PARAMETER Coverage
+    Enable code coverage analysis and generate reports.
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -Unit
+
+    Runs unit tests in default paths (tools, test).
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -Integration
+
+    Runs integration tests in default paths.
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -TestPath "tools/pslib"
+
+    Runs all tests in tools/pslib.
+#>
+
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File contains Unicode emojis for CI/PR summaries. UTF-8 encoding is properly handled.')]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [string[]]$TestPath,
-    [string]$ReportPath = (Join-Path $PSScriptRoot "..\out\junit.xml"),
+    [string]$ReportPath,
     [string]$Verbosity = 'Detailed',
     [string]$Filter,
     [string]$ExcludePattern,
-    [switch]$EnableCodeCoverage = $false
+    [switch]$Coverage = $false,
+    [switch]$Unit,
+    [switch]$Integration
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Validate provided test paths
-if ($TestPath) {
-    $invalidPaths = @()
-    $repoRoot = Join-Path $PSScriptRoot "..\.."
-    foreach ($path in $TestPath) {
-        $resolvedPath = if ([System.IO.Path]::IsPathRooted($path)) {
-            $path
-        } else {
-            Join-Path $repoRoot $path
-        }
-
-        if (-not (Test-Path $resolvedPath)) {
-            $invalidPaths += $path
-        }
+if (-not $ReportPath) {
+    if ($PSScriptRoot) {
+        $ReportPath = Join-Path $PSScriptRoot "..\out\junit.xml"
+    } else {
+        # Fallback if PSScriptRoot is somehow empty (e.g. interactive without context)
+        $ReportPath = Join-Path (Get-Location) "..\out\junit.xml"
     }
+}
 
-    if ($invalidPaths.Count -gt 0) {
-        Write-Host "Error: The following test paths do not exist:" -ForegroundColor Red
-        foreach ($invalid in $invalidPaths) {
-            Write-Host "  - $invalid" -ForegroundColor Red
-        }
+# Source dependencies
+. "$PSScriptRoot\lib\TestConfiguration.ps1"
+
+if ($MyInvocation.InvocationName -ne '.') {
+    $repoRoot = Join-Path $PSScriptRoot "..\.."
+
+    try {
+        $config = Get-TestConfiguration -TestPath $TestPath -RunUnit:$Unit -RunIntegration:$Integration -ExcludePattern $ExcludePattern -RepoRoot $repoRoot
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
         exit 1
     }
-}
 
-# Display test path(s)
-if ($TestPath.Count -eq 1) {
-    Write-Output "Running tests in: $($TestPath[0])"
-} else {
-    Write-Output "Running tests in $($TestPath.Count) path(s):"
-    foreach ($path in $TestPath) {
-        Write-Output "  - $path"
+    $finalTestPaths = $config.TestPaths
+
+    if (-not $finalTestPaths -or $finalTestPaths.Count -eq 0) {
+        Write-Warning "No tests found to run."
+        exit 0
     }
-}
 
-# Configure PSScriptAnalyzer via linter.Tests.ps1
-Write-Output "`nConfiguring PSScriptAnalyzer ..."
-$linterTestPath = Join-Path $PSScriptRoot "linter.Tests.ps1"
-
-# Pass test paths to linter via environment variable
-$env:PESTER_LINT_PATHS = $TestPath -join ';'
-Write-Output "Paths to analyze: $($env:PESTER_LINT_PATHS)"
-
-# Add linter tests to run before regular tests
-$TestPath = @($linterTestPath) + $TestPath
-Write-Output "Linter tests will run from: $linterTestPath"
-
-# Ensure output directory exists
-$reportDir = Split-Path $ReportPath -Parent
-if (-not (Test-Path $reportDir)) {
-    New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
-}
-
-# Define files for code coverage analysis (only files with tests)
-# Dynamically discover source files based on existing test files
-$repoRoot = Join-Path $PSScriptRoot "..\.."
-$testFiles = Get-ChildItem -Path $repoRoot -Filter "*.Tests.ps1" -Recurse
-
-$coveragePaths = @()
-foreach ($testFile in $testFiles) {
-    # Infer source file name (e.g., utils.Tests.ps1 -> utils.ps1)
-    $sourceName = $testFile.Name -replace '\.Tests\.ps1$', '.ps1'
-    $sourcePath = Join-Path $testFile.DirectoryName $sourceName
-
-    if (Test-Path $sourcePath) {
-        $coveragePaths += $sourcePath
-    }
-}
-
-# Configure Pester
-$psVersion = $PSVersionTable.PSVersion.ToString()
-$pesterConfig = @{
-    Run    = @{
-        Path     = $TestPath
-        PassThru = $true
-    }
-    Filter = @{
-        Tag = $Filter
-    }
-    Output = @{
-        Verbosity = $Verbosity
-    }
-    TestResult = @{
-        Enabled       = $true
-        OutputPath    = $ReportPath
-        OutputFormat  = 'JUnitXml'
-        TestSuiteName = "Pester Tests (PowerShell $psVersion)"
-    }
-}
-
-# Add exclude pattern if provided
-if ($ExcludePattern) {
-    # Get all test files matching the exclude pattern
-    $repoRoot = Join-Path $PSScriptRoot "..\.."
-    $excludePaths = @(Get-ChildItem -Path $repoRoot -Filter $ExcludePattern -Recurse |
-        Select-Object -ExpandProperty FullName)
-
-    if ($excludePaths.Count -gt 0) {
-        $pesterConfig.Run.ExcludePath = $excludePaths
-        Write-Output "Excluding $($excludePaths.Count) test file(s) matching pattern: $ExcludePattern"
-    }
-}
-
-$testConfig = New-PesterConfiguration -Hashtable $pesterConfig
-
-# Add code coverage configuration if enabled
-if ($EnableCodeCoverage) {
-    $coverageXmlPath = Join-Path $reportDir "coverage.xml"
-    $testConfig.CodeCoverage.Enabled = $true
-    $testConfig.CodeCoverage.Path = $coveragePaths
-    $testConfig.CodeCoverage.OutputFormat = 'JaCoCo'
-    $testConfig.CodeCoverage.OutputPath = $coverageXmlPath
-    $testConfig.CodeCoverage.OutputEncoding = 'UTF8'
-
-    Write-Output "`nCode coverage enabled"
-    Write-Output "Coverage XML will be generated at: $coverageXmlPath"
-    Write-Output "Files under coverage:"
-    foreach ($path in $coveragePaths) {
-        Write-Output "  - $path"
-    }
-}
-
-Write-Output "Starting Pester tests ..."
-Write-Output "PowerShell: $($PSVersionTable.PSVersion)"
-
-$testResult = Invoke-Pester -Configuration $testConfig
-
-# Cleanup environment variable
-if ($env:PESTER_LINT_PATHS) {
-    Remove-Item -Path "Env:\PESTER_LINT_PATHS" -ErrorAction SilentlyContinue
-}
-
-if (Test-Path $ReportPath) {
-    Write-Output "Test report generated at: $ReportPath"
-} else {
-    Write-Warning "Test report was not generated at: $ReportPath"
-}
-
-Write-Output "`nTest Summary:"
-Write-Output "  Total: $($testResult.TotalCount)"
-Write-Output "  Passed: $($testResult.PassedCount)"
-Write-Output "  Failed: $($testResult.FailedCount)"
-Write-Output "  Skipped: $($testResult.SkippedCount)"
-
-if ($testResult.FailedCount -gt 0) {
-    Write-Error "Tests failed! Failed count: $($testResult.FailedCount)"
-}
-
-# Display coverage summary if enabled
-if ($EnableCodeCoverage -and $testResult.CodeCoverage) {
-    $coverage = $testResult.CodeCoverage
-
-    # Pester 5.x uses different property names
-    # Try to get values from available properties
-    if ($null -ne $coverage.CommandsExecutedCount) {
-        $coveredCommands = $coverage.CommandsExecutedCount
-        $totalCommands = $coverage.CommandsAnalyzedCount
-    } elseif ($null -ne $coverage.NumberOfCommandsExecuted) {
-        $coveredCommands = $coverage.NumberOfCommandsExecuted
-        $totalCommands = $coverage.NumberOfCommandsAnalyzed
+    # Display test path(s)
+    if ($finalTestPaths.Count -eq 1) {
+        Write-Output "Running tests in: $($finalTestPaths[0])"
     } else {
-        # Fallback: count from Hit and Missed commands
-        $coveredCommands = ($coverage.HitCommands | Measure-Object).Count
-        $missedCommands = ($coverage.MissedCommands | Measure-Object).Count
-        $totalCommands = $coveredCommands + $missedCommands
+        Write-Output "Running tests in $($finalTestPaths.Count) path(s):"
+        foreach ($path in $finalTestPaths) {
+            # Shorten output if it's a file list
+            if ($path.Contains($repoRoot)) {
+                $relativePath = $path -replace [regex]::Escape($repoRoot), '.'
+                Write-Output "  - $relativePath"
+            } else {
+                Write-Output "  - $path"
+            }
+        }
+        if ($finalTestPaths.Count -gt 20) { Write-Output "  ... (list truncated)" }
     }
 
-    $coveragePercent = if ($totalCommands -gt 0) {
-        [math]::Round(($coveredCommands / $totalCommands) * 100, 2)
+    # Configure PSScriptAnalyzer via linter.Tests.ps1
+    $linterTestPath = Join-Path $PSScriptRoot "linter.Tests.ps1"
+
+    # Pass test paths via env var like before.
+    $env:PESTER_LINT_PATHS = $finalTestPaths -join ';'
+
+    # Add linter to HEAD of test list
+    $runList = @($linterTestPath) + $finalTestPaths
+
+    # Ensure output directory exists
+    $reportDir = Split-Path $ReportPath -Parent
+    if (-not (Test-Path $reportDir)) {
+        New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+    }
+
+    # Code Coverage Logic
+    # Dynamically discover source files based on existing test files
+    # Keeping existing logic: scan all tests in repo to decide potential coverage files
+    $coveragePaths = @()
+    if ($Coverage) {
+        $testFiles = Get-ChildItem -Path $repoRoot -Filter "*.Tests.ps1" -Recurse
+
+        foreach ($testFile in $testFiles) {
+            $sourceName = $testFile.Name -replace '\.Tests\.ps1$', '.ps1'
+            $sourcePath = Join-Path $testFile.DirectoryName $sourceName
+
+            if (Test-Path $sourcePath) {
+                $coveragePaths += $sourcePath
+            }
+        }
+    }
+
+    # Configure Pester
+    $psVersion = $PSVersionTable.PSVersion.ToString()
+    $pesterConfig = @{
+        Run        = @{
+            Path        = $runList
+            PassThru    = $true
+            ExcludePath = $config.ExcludePaths
+        }
+        Filter     = @{
+            Tag = $Filter
+        }
+        Output     = @{
+            Verbosity = $Verbosity
+        }
+        TestResult = @{
+            Enabled       = $true
+            OutputPath    = $ReportPath
+            OutputFormat  = 'JUnitXml'
+            TestSuiteName = "Pester Tests (PowerShell $psVersion)"
+        }
+    }
+
+    $testConfig = New-PesterConfiguration -Hashtable $pesterConfig
+
+    # Add code coverage configuration if enabled
+    if ($Coverage) {
+        $coverageXmlPath = Join-Path $reportDir "coverage.xml"
+        $testConfig.CodeCoverage.Enabled = $true
+        $testConfig.CodeCoverage.Path = $coveragePaths
+        $testConfig.CodeCoverage.OutputFormat = 'JaCoCo'
+        $testConfig.CodeCoverage.OutputPath = $coverageXmlPath
+        $testConfig.CodeCoverage.OutputEncoding = 'UTF8'
+
+        Write-Output "`nCode coverage enabled"
+        Write-Output "Coverage XML will be generated at: $coverageXmlPath"
+    }
+
+    Write-Output "Starting Pester tests ..."
+    if ($config.ExcludePaths) {
+        Write-Output "Excluding $($config.ExcludePaths.Count) file(s) from run."
+        # Uncomment for deep debugging
+        # $config.ExcludePaths | ForEach-Object { Write-Output "  Exclude: $_" }
+    }
+    Write-Output "PowerShell: $($PSVersionTable.PSVersion)"
+
+    $testResult = Invoke-Pester -Configuration $testConfig
+
+    if ($env:PESTER_LINT_PATHS) {
+        Remove-Item -Path "Env:\PESTER_LINT_PATHS" -ErrorAction SilentlyContinue
+    }
+
+    if (Test-Path $ReportPath) {
+        Write-Output "Test report generated at: $ReportPath"
     } else {
-        0
+        Write-Warning "Test report was not generated at: $ReportPath"
     }
 
-    Write-Output "`nCode Coverage Summary:"
-    Write-Output "  Commands Analyzed: $totalCommands"
-    Write-Output "  Commands Executed: $coveredCommands"
-    Write-Output "  Coverage: $coveragePercent%"
+    Write-Output "`nTest Summary:"
+    Write-Output "  Total: $($testResult.TotalCount)"
+    Write-Output "  Passed: $($testResult.PassedCount)"
+    Write-Output "  Failed: $($testResult.FailedCount)"
+    Write-Output "  Skipped: $($testResult.SkippedCount)"
 
-    if (Test-Path $coverageXmlPath) {
-        Write-Output "`nCoverage XML report generated at: $coverageXmlPath"
+    if ($testResult.FailedCount -gt 0) {
+        Write-Error "Tests failed! Failed count: $($testResult.FailedCount)"
     }
 
-    # Generate markdown summary for CI/PR comments
-    $summaryPath = Join-Path $reportDir "test-summary.md"
-    $testStatus = if ($testResult.FailedCount -gt 0) { '❌' } else { '✅' }
-    $coverageEmoji = if ($coveragePercent -ge 80) { '✅' } elseif ($coveragePercent -ge 60) { '⚠️' } else { '❌' }
+    if ($Coverage -and $testResult.CodeCoverage) {
+        $coverage = $testResult.CodeCoverage
 
-    # Calculate execution time
-    $executionTime = [math]::Round($testResult.Duration.TotalSeconds, 2)
+        if ($null -ne $coverage.CommandsExecutedCount) {
+            $coveredCommands = $coverage.CommandsExecutedCount
+            $totalCommands = $coverage.CommandsAnalyzedCount
+        } elseif ($null -ne $coverage.NumberOfCommandsExecuted) {
+            $coveredCommands = $coverage.NumberOfCommandsExecuted
+            $totalCommands = $coverage.NumberOfCommandsAnalyzed
+        } else {
+            $coveredCommands = ($coverage.HitCommands | Measure-Object).Count
+            $missedCommands = ($coverage.MissedCommands | Measure-Object).Count
+            $totalCommands = $coveredCommands + $missedCommands
+        }
 
-    $markdownContent = @"
+        $coveragePercent = if ($totalCommands -gt 0) {
+            [math]::Round(($coveredCommands / $totalCommands) * 100, 2)
+        } else {
+            0
+        }
+
+        Write-Output "`nCode Coverage Summary:"
+        Write-Output "  Commands Analyzed: $totalCommands"
+        Write-Output "  Commands Executed: $coveredCommands"
+        Write-Output "  Coverage: $coveragePercent%"
+
+        if (Test-Path $coverageXmlPath) {
+            Write-Output "`nCoverage XML report generated at: $coverageXmlPath"
+        }
+
+        $summaryPath = Join-Path $reportDir "test-summary.md"
+        $testStatus = if ($testResult.FailedCount -gt 0) { '❌' } else { '✅' }
+        $coverageEmoji = if ($coveragePercent -ge 80) { '✅' } elseif ($coveragePercent -ge 60) { '⚠️' } else { '❌' }
+        $executionTime = [math]::Round($testResult.Duration.TotalSeconds, 2)
+
+        $markdownContent = @"
 # $testStatus Test Results (PowerShell $($PSVersionTable.PSVersion))
 
 ## Test Summary
@@ -226,12 +271,13 @@ if ($EnableCodeCoverage -and $testResult.CodeCoverage) {
 | Commands | $coveredCommands/$totalCommands ($coveragePercent%) |
 "@
 
-    $markdownContent | Out-File -FilePath $summaryPath -Encoding UTF8 -Force
-    Write-Output "`nTest summary markdown generated at: $summaryPath"
-}
+        $markdownContent | Out-File -FilePath $summaryPath -Encoding UTF8 -Force
+        Write-Output "`nTest summary markdown generated at: $summaryPath"
+    }
 
-if ($testResult.FailedCount -gt 0) {
-    Exit 1
-} else {
-    Exit 0
+    if ($testResult.FailedCount -gt 0) {
+        Exit 1
+    } else {
+        Exit 0
+    }
 }
