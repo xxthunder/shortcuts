@@ -22,6 +22,11 @@
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'UTF-8 without BOM is standard for cross-platform')]
 param()
 
+BeforeDiscovery {
+    # Evaluate skip conditions at discovery time
+    $script:skipTests = -not (Get-Command scoop -ErrorAction SilentlyContinue)
+}
+
 BeforeAll {
     # Source the utilities module
     $script:utilsPath = Join-Path $PSScriptRoot "utils.ps1"
@@ -63,49 +68,13 @@ BeforeAll {
         }
     }
 
-    # Setup: Ensure clean test state
-    Write-Host "==> Preparing test environment..." -ForegroundColor Cyan
-
-    # Check Scoop
-    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Write-Host "    Scoop not installed - tests will be skipped" -ForegroundColor Yellow
-    }
-    else {
-        Write-Host "    Scoop is installed" -ForegroundColor Green
-    }
-
-    # Check Node.js
-    if (Get-Command node -ErrorAction SilentlyContinue) {
-        $nodeVersion = node --version 2>&1
-        Write-Host "    Node.js $nodeVersion is installed" -ForegroundColor Green
-    }
-    else {
-        Write-Host "    Node.js not found - will be installed by Install-NpmPackage" -ForegroundColor Yellow
-    }
-
-    # Clean existing test package
-    Write-Host "    Checking for existing $script:testPackageName installation..." -ForegroundColor Yellow
+    # Setup: Ensure clean test state by uninstalling the test package
     if (Get-Command npm -ErrorAction SilentlyContinue) {
         $null = Uninstall-NpmPackage -PackageName $script:testPackageName
     }
 }
 
-AfterAll {
-    # Cleanup: Remove test package
-    Write-Host "`n==> Cleaning up test environment..." -ForegroundColor Cyan
-    if (Get-Command npm -ErrorAction SilentlyContinue) {
-        $null = Uninstall-NpmPackage -PackageName $script:testPackageName
-    }
-}
-
-Describe "Install-NpmPackage" -Tag "Integration" {
-
-    BeforeAll {
-        # Skip all tests if Scoop is not installed
-        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-            Set-ItResult -Skipped -Because "Scoop is required but not installed"
-        }
-    }
+Describe "Install-NpmPackage" -Tag "Integration" -Skip:$script:skipTests {
 
     Context "When package is not installed" {
 
@@ -195,7 +164,7 @@ Describe "Install-NpmPackage" -Tag "Integration" {
 
             # Execute command with test input
             $result = & $script:testCommand "Test" 2>&1
-            
+
             # Verify command execution didn't throw
             $result | Should -Not -BeNullOrEmpty -Because "Command should produce output"
 
