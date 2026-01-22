@@ -51,9 +51,23 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    $script:baseDistroName not found, will create it during tests" -ForegroundColor Yellow
         }
 
+        # Terminate base distro if it's running (required for update/clone operations)
+        if ($script:baseDistroName -in $existingDistros) {
+            $baseState = Get-WslDistroState -DistroName $script:baseDistroName
+            if ($baseState -eq "Running") {
+                Write-Host "    Stopping $script:baseDistroName before tests ..." -ForegroundColor Yellow
+                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+            }
+        }
+
         # Always remove custom distro before tests (clean slate)
         if ($script:customDistroName -in $existingDistros) {
             Write-Host "    Removing existing $script:customDistroName for fresh test run ..." -ForegroundColor Yellow
+            # Stop it first if running
+            $customState = Get-WslDistroState -DistroName $script:customDistroName
+            if ($customState -eq "Running") {
+                Stop-WslDistro -Name $script:customDistroName -Confirm:$false
+            }
             Remove-WslDistro -Name $script:customDistroName -Confirm:$false
         }
 
