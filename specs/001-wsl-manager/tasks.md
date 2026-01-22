@@ -258,6 +258,33 @@ Based on plan.md project structure:
   - Verify `Stop-WslDistro` still works (uses `Test-WslDistroRunning`)
   - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
+- [ ] T052b [Item5] Add localization integration test in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1` (FR-020)
+  - If Windows language is non-English (detected via `Get-WinSystemLocale`):
+    - Run `Get-WslDistroList -Detailed` on real system
+    - Verify State field is normalized to "Running" or "Stopped" (not localized value)
+    - Verify function handles non-English WSL output correctly
+  - If English system: Add comment noting manual testing on localized system required
+  - Documents FR-020 (localized output handling) verification
+  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
+
+### Defensive Parsing Tests (Edge Case Coverage)
+
+- [ ] T052c [P] Add malformed wsl.conf test for `Get-WslDefaultUser` in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `Invoke-WslDistroCommand` to return malformed INI content:
+    - Missing closing bracket: `[user`
+    - Invalid characters: `default = user@#$%`
+    - Empty sections: `[user]\n\n[boot]`
+    - Duplicate keys: `default=user1\ndefault=user2`
+  - Verify function returns $null (graceful failure)
+  - Verify function does not throw exception
+  - Run test, confirm behavior is defensive
+
+- [ ] T052d [P] Add malformed wsl.conf test for `Test-WslSystemdConfigured` in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock `Invoke-WslDistroCommand` to return malformed INI content
+  - Verify function returns $false (graceful failure)
+  - Verify function does not throw exception
+  - Run test, confirm behavior is defensive
+
 **Checkpoint**: Distribution list centralization is complete. `Get-WslDistroList -Detailed` is the single source of truth. Run full test suite to verify no regressions: `pwsh -File ".\test\bin\testrunner.ps1"`
 
 ---
@@ -269,6 +296,13 @@ Based on plan.md project structure:
 **Independent Test**: Start a WSL distribution, terminate it via the manager, verify it's stopped and can be restarted
 
 **Note**: This phase can now use `Get-WslDistroList -Detailed` from Work Item #5 for state checking.
+
+**Function Naming**: PowerShell convention requires approved verbs. `Stop-WslDistro` is the function name (using approved verb "Stop"), while "terminate" is the user-facing terminology matching WSL CLI (`wsl --terminate`). Both refer to the same operation.
+
+**Key Deliverables**:
+- Library function: `Stop-WslDistro` in `tools/pslib/wsl/wsl.ps1`
+- Manager command: `terminate` in `wsl-manager.ps1` CLI
+- Interactive menu: "[T] Terminate running distribution"
 
 **Estimated Effort**: 2-3 hours
 
@@ -325,6 +359,8 @@ Based on plan.md project structure:
   - Run tests from T009, confirm they now PASS
 
 - [X] T013 [Item1] Implement `Stop-WslDistro` function in `tools/pslib/wsl/wsl.ps1`
+  - Function name: `Stop-WslDistro` (PowerShell approved verb)
+  - Help documentation should mention: "Terminates (stops) a running WSL distribution using `wsl --terminate <name>`"
   - Add function after `Test-WslDistroRunning`
   - Use `[CmdletBinding(SupportsShouldProcess)]` for confirmation prompts
   - Validate: WSL installed, distribution exists
@@ -489,9 +525,44 @@ Based on plan.md project structure:
 
 **Prerequisites**: Phase 6 complete.
 
-### Refactoring Work
+**Acceptance Criteria**:
+1. **Backward Compatibility**: All existing consumers of `wsl.ps1` work without modification
+   - `wsl-manager.ps1` continues to function identically
+   - All 28 functions remain accessible via `. tools/pslib/wsl/wsl.ps1`
+   - External scripts sourcing `wsl.ps1` are unaffected
+2. **Module Structure**: Functions logically grouped into 6 module files (`core.ps1`, `install.ps1`, `ops.ps1`, `user.ps1`, `exec.ps1`, `docker.ps1`)
+3. **Test Organization**: Test files mirror module structure in `tests/` directory
+4. **Test Coverage**: All existing tests pass without modification (100% backward compatibility)
+5. **Linter Clean**: All module files pass PSScriptAnalyzer checks
+6. **Documentation Updated**: Help comments updated to reflect new file locations
 
-- [ ] T066 [P] Create directory structure `tools/pslib/wsl/lib`
+**Definition of Done**:
+- [ ] `wsl.ps1` successfully dot-sources all `lib/*.ps1` files
+- [ ] All unit tests pass: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
+- [ ] All integration tests pass: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
+- [ ] PowerShell 5.1 compatibility verified: `powershell -File ".\test\bin\testrunner.ps1"`
+- [ ] Git history shows tests committed before refactoring (TDD compliance)
+- [ ] Code review confirms no functional changes, only structural reorganization
+
+### Refactoring Work - Tests (MANDATORY - TDD)
+
+> **TDD REQUIREMENT**: Write these tests FIRST, ensure they PASS for backward compatibility
+
+- [ ] T066-test [P] Add backward compatibility tests for module structure in `tools/pslib/wsl/wsl.Tests.ps1`
+  - Mock existing `wsl.ps1` dot-sourcing behavior
+  - Verify all 28 functions remain accessible after refactoring
+  - Test that existing callers (like `wsl-manager.ps1`) work unchanged
+  - Run test, confirm it PASSES with current monolithic structure
+
+- [ ] T067-test [P] Add tests for individual module files in `tools/pslib/wsl/tests/`
+  - Create test files: `core.Tests.ps1`, `install.Tests.ps1`, `ops.Tests.ps1`, `user.Tests.ps1`, `exec.Tests.ps1`, `docker.Tests.ps1`
+  - Copy existing test cases to appropriate module test files
+  - Run tests, confirm they PASS with current structure
+
+### Refactoring Work - Implementation
+
+- [ ] T066 [P] Create directory structure `tools/pslib/wsl/lib` and `tools/pslib/wsl/tests`
+
 - [ ] T067 [P] Split `wsl.ps1` functions into modules:
   - `tools/pslib/wsl/lib/core.ps1`: Test-WslInstalled, Get-WslDistroList, Get-WslDistroState, Test-WslDistroRunning, Get-WslDistroType, Test-Wsl2Version, Test-WslSystemd, Stop-WslDistro
   - `tools/pslib/wsl/lib/install.ps1`: New-WslDistro, Get-WslAvailableDistro
@@ -499,28 +570,78 @@ Based on plan.md project structure:
   - `tools/pslib/wsl/lib/user.ps1`: New-WslUser, Get-WslDefaultUser
   - `tools/pslib/wsl/lib/exec.ps1`: Invoke-WslDistroCommand
   - `tools/pslib/wsl/lib/docker.ps1`: Install-WslDockerEngine, Test-WslDockerInstalled
-- [ ] T068 [P] Update `wsl.ps1` to simply dot-source all files in `lib/`
-- [ ] T069 [P] Split `wsl.Tests.ps1` into corresponding test files in `tools/pslib/wsl/tests/` (create dir first)
-- [ ] T070 Verify all tests pass with refactored structure: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
 
-### Enhanced Execution Work
+- [ ] T068 [P] Update `wsl.ps1` to dot-source all files in `lib/`
+  - Verify T066-test still passes (backward compatibility maintained)
+
+- [ ] T069 [P] Move test cases to corresponding files in `tools/pslib/wsl/tests/`
+  - Verify T067-test passes with new structure
+
+- [ ] T070 Verify all tests pass with refactored structure: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
+  - All T066-test and T067-test assertions must pass
+
+### Enhanced Execution Work - Tests (MANDATORY - TDD)
+
+- [ ] T071-test [P] Add test cases for `Invoke-WslDistroScript` in `tools/pslib/wsl/tests/exec.Tests.ps1`
+  - Test script path validation:
+    - Script exists → proceeds to execution
+    - Script doesn't exist → throws "Script not found: <path>"
+  - Test CWD mountability detection:
+    - CWD on C: drive → converts to /mnt/c/...
+    - CWD on network path (\\server\share) → throws "Current directory is not accessible from WSL"
+    - CWD on system directory (C:\Windows\System32) → proceeds (mountable)
+  - Test WSL execution:
+    - Mock `wsl.exe` to return success (exit 0)
+    - Mock `wsl.exe` to return failure (exit 1)
+  - Test argument passing:
+    - No arguments → executes script only
+    - Multiple arguments → passes correctly to script
+  - Mock `Test-Path`, `Get-Location`, `wsl.exe` execution
+  - Run tests, confirm they FAIL (function not yet implemented)
+
+### Enhanced Execution Work - Implementation
 
 - [ ] T071 [P] Implement `Invoke-WslDistroScript` in `tools/pslib/wsl/lib/exec.ps1`
   - Accepts `-ScriptPath` (Windows path), `-DistroName`, and `-Arguments`
-  - Validates script existence
-  - Converts Windows path to execution command (assuming CWD context)
-  - Executes via `wsl.exe`
-- [ ] T072 [P] Add unit tests for `Invoke-WslDistroScript` in `tools/pslib/wsl/tests/exec.Tests.ps1`
+  - Validates script existence on Windows filesystem
+  - Validates CWD is on a mountable drive (C:, D:, etc. - not network paths, not system dirs)
+  - Throws clear error if CWD is not mountable: "Current directory '<path>' is not accessible from WSL. Change to a local drive (C:\, D:\, etc.) and retry"
+  - Converts Windows path to WSL mount path (e.g., C:\Users\... → /mnt/c/Users/...)
+  - Executes via `wsl.exe -d <DistroName> bash <converted-path> <arguments>`
+  - Returns exit code and output from script execution
+  - Run tests from T071-test, confirm they PASS
 
-### Docker Setup Work (Updated)
+- [ ] T072 Integration test for `Invoke-WslDistroScript` in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+  - Create test script in temp location
+  - Execute via `Invoke-WslDistroScript` with real WSL distribution
+  - Verify output matches expected result
+  - Clean up test script
+
+### Docker Setup Work - Tests (MANDATORY - TDD)
+
+- [ ] T073-test [P] Add tests for refactored `Install-WslDockerEngine` in `tools/pslib/wsl/tests/docker.Tests.ps1`
+  - Mock `Invoke-WslDistroScript` execution
+  - Verify correct script path passed
+  - Verify arguments correctly formatted
+  - Verify exit code handling
+  - Run tests, confirm they FAIL (refactoring not yet done)
+
+### Docker Setup Work - Implementation
 
 - [ ] T073 [P] Finalize `tools/pslib/wsl/scripts/install-docker.sh` (ensure it's executable and correct)
+
 - [ ] T074 Refactor `Install-WslDockerEngine` in `tools/pslib/wsl/lib/docker.ps1`
   - Use `Invoke-WslDistroScript` to run `install-docker.sh`
-  - Pass arguments correctly
-  - Handle exit codes
-  - Remove old manual steps
-- [ ] T075 Update Docker tests in `tools/pslib/wsl/tests/docker.Tests.ps1` to verify script execution pattern
+  - Pass arguments correctly: `--distro-id`, `--codename`, `--arch`, `--username`
+  - Handle exit codes: 0=success, 1=prereq failure, 2=install failure, 3=verification failure
+  - Remove old manual steps (lines 1329-1407)
+  - Run tests from T073-test, confirm they PASS
+
+- [ ] T075 Integration test for Docker setup in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+  - Execute refactored Docker installation on test distribution
+  - Verify Docker Engine installed and running
+  - Verify hello-world container test passes
+  - Clean up test distribution
 
 ---
 

@@ -147,7 +147,7 @@ specs/001-wsl-manager/
 ├── quickstart.md        # Phase 1 output (getting started guide)
 ├── contracts/
 │   └── cli-interface.md # CLI commands, parameters, outputs
-└── tasks.md             # Phase 2 output (NOT YET CREATED - /speckit.tasks command)
+└── tasks.md             # Phase 2 output (COMPLETE - see file for 67 tasks)
 ```
 
 ### Source Code (repository root)
@@ -202,6 +202,8 @@ The following work items need to be converted to actionable tasks via `/speckit.
 #### 1. Missing Core Functionality (Priority: High)
 
 **User Story 5: Terminate Running Distribution (P5)**
+
+**Note**: "Terminate" (user-facing terminology matching WSL CLI) is implemented via `Stop-WslDistro` function (PowerShell verb-noun convention). Both terms refer to the same operation: stopping a running distribution with `wsl --terminate <name>`.
 
 **Current State**: Partially implemented
 - `wsl --terminate` commands referenced in error messages
@@ -461,9 +463,10 @@ The following work items need to be converted to actionable tasks via `/speckit.
 
 ## Next Steps
 
-This plan has completed Phases 0 and 1:
+This plan has completed Phases 0, 1, and task generation:
 - ✅ Phase 0: Research complete (see `research.md`)
 - ✅ Phase 1: Design artifacts complete (see `data-model.md`, `contracts/`, `quickstart.md`)
+- ✅ Phase 2: Task generation complete (see `tasks.md` - 67 tasks for Phases 1-7)
 
 **Ready to proceed with Phase 1 Implementation** (4 items ready):
 1. ✅ Item #4: NOPASSWD Warning - specifications complete

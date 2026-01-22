@@ -66,7 +66,7 @@ A developer wants to clone an existing WSL distribution with a custom name so th
 3. **Given** a distribution exists, **When** user attempts to clone it with a name that already exists, **Then** an error message indicates the target name is unavailable
 4. **Given** a distribution is cloned, **When** files are modified in the clone, **Then** the source distribution remains unchanged
 5. **Given** a distribution with configured user and Docker is cloned, **When** the clone is started, **Then** the user account and Docker installation are immediately available without reconfiguration
-6. **Given** a distribution is running, **When** user attempts to clone it, **Then** error message directs user to stop distribution with `wsl --terminate <name>` command
+6. **Given** a distribution is running, **When** user attempts to clone it, **Then** error message enforces stopped state requirement (see Edge Cases: "operations on running distributions")
 
 ---
 
@@ -84,7 +84,7 @@ A developer wants to remove unused WSL distributions so they can free disk space
 2. **Given** multiple distributions exist, **When** user selects one to remove by number or name, **Then** only the selected distribution is removed
 3. **Given** a distribution exists, **When** user attempts to remove it in non-interactive mode, **Then** confirmation can be skipped with appropriate flag
 4. **Given** a distribution doesn't exist, **When** user attempts to remove it, **Then** an error message indicates the distribution wasn't found
-5. **Given** a distribution is running, **When** user attempts to remove it, **Then** error message directs user to stop distribution with `wsl --terminate <name>` command
+5. **Given** a distribution is running, **When** user attempts to remove it, **Then** error message enforces stopped state requirement (see Edge Cases: "operations on running distributions")
 
 ---
 
@@ -122,7 +122,7 @@ A developer wants to update packages in their Debian or Ubuntu WSL distributions
 3. **Given** an Arch Linux distribution exists, **When** user attempts to update it, **Then** an error message explains only Debian/Ubuntu distributions are supported
 4. **Given** no distributions exist, **When** user runs update command, **Then** a warning message is displayed
 5. **Given** a distribution needs updates, **When** update completes, **Then** apt cache is cleaned to free disk space
-6. **Given** a distribution is running, **When** user attempts to update it, **Then** error message directs user to stop distribution with `wsl --terminate <name>` command
+6. **Given** a distribution is running, **When** user attempts to update it, **Then** error message enforces stopped state requirement (see Edge Cases: "operations on running distributions")
 
 ---
 
@@ -143,6 +143,7 @@ A developer wants to create a default user account with sudo privileges in their
 5. **Given** username validation, **When** user provides invalid username (uppercase, special chars, >32 chars), **Then** clear error message explains requirements
 6. **Given** a user already exists, **When** attempting to create it again, **Then** an error message indicates the user exists
 7. **Given** user account creation begins, **When** NOPASSWD sudo will be configured, **Then** a brief warning is displayed about security implications for development environments
+8. **Given** a distribution has malformed /etc/wsl.conf, **When** user creates an account, **Then** account is created successfully and wsl.conf is overwritten with valid configuration
 
 ---
 
@@ -150,9 +151,11 @@ A developer wants to create a default user account with sudo privileges in their
 
 > **Implementation Status**: Docker Engine installation is **functionally complete and working** in the current codebase. This user story's acceptance scenarios are satisfied.
 >
-> **Phase 2 Refactoring**: Refactoring the Docker installation from PowerShell-calling-bash-oneliners to a single clean bash script is **ACTIVE** and scheduled for implementation (see plan.md Phase 2).
+> **Code Quality Note**: While functionally complete, the current implementation (see plan.md Item #2, lines 243-300) consists of ~15 separate PowerShell-to-bash calls that make it difficult to maintain. This is internal technical debt that does not affect users.
 >
-> **Impact**: Users can install Docker successfully today. The refactoring is an internal code quality improvement that ensures long-term maintainability.
+> **Phase 7 Refactoring**: Refactoring the Docker installation to use a single clean bash script (`install-docker.sh`) is **DEFERRED** pending bash script design completion (see plan.md Phase 2, now Phase 7).
+>
+> **Impact**: Users can install Docker successfully today. The refactoring is an internal code quality improvement that ensures long-term maintainability without changing user-facing behavior.
 
 A developer wants to install Docker Engine in their WSL distribution with a single command so they can run containers for development without manual Docker configuration.
 
@@ -196,10 +199,10 @@ A developer wants to run the WSL manager without remembering command syntax so t
 - How does the system handle extremely long distribution names or invalid characters?
 - What happens when cloning a distribution and disk space is insufficient?
 - How does the system handle interrupted operations (e.g., network failure during creation)? → System fails immediately, leaves system in safe state, prompts user to retry
-- What happens when attempting to update a distribution while it's running? → System requires distribution to be stopped first, fails with message directing user to run `wsl --terminate <name>`
-- How does the system handle non-English Windows systems (localized WSL output)?
+- **What happens when attempting operations on running distributions?** → System enforces stopped state requirement (FR-030) for clone, remove, and update operations. Error message directs user to stop distribution with `wsl --terminate <name>` command. See User Story 5 (Terminate) for stopping distributions.
+- How does the system handle non-English Windows systems (localized WSL output)? → System normalizes localized state strings ("Wird ausgeführt", "En cours d'exécution") to English equivalents ("Running", "Stopped") - tested in T036-T037, T052b
 - What happens when user permissions prevent distribution management?
-- How does the system behave when /etc/wsl.conf has malformed content?
+- How does the system behave when /etc/wsl.conf has malformed content? → Functions reading wsl.conf (`Get-WslDefaultUser`, `Test-WslSystemdConfigured`) use defensive parsing with try/catch. Malformed content returns null/$false (graceful degradation) rather than throwing errors. System continues operation using defaults.
 - What happens during Docker installation if network is unavailable? → System fails immediately with clear error, prompts user to retry when network available
 - How does the system handle systemd not starting properly after configuration?
 - What happens when terminating a distribution that has active processes or unsaved work?
@@ -250,6 +253,28 @@ A developer wants to run the WSL manager without remembering command syntax so t
 - **Distribution Type**: Classification of distributions by package manager family (debian, ubuntu, arch, rhel, unknown)
 - **Installation Configuration**: WSL distribution settings in /etc/wsl.conf, including default user and systemd configuration
 
+### Terminology
+
+**Consistent terms used throughout this specification:**
+
+- **Terminate / Stop**: Stopping a running WSL distribution using `wsl --terminate <name>`. These terms are used interchangeably:
+  - User-facing: "Terminate" (matches WSL CLI command terminology)
+  - Function name: `Stop-WslDistro` (matches PowerShell verb-noun convention)
+  - User Story 5 title: "Terminate Running Distribution"
+  - Both refer to the same operation: immediately stopping a distribution
+
+- **Distribution / Distro**: A Linux distribution instance managed by WSL
+
+- **Create / Install**: Creating a new WSL distribution from Microsoft Store catalog
+
+- **Clone / Copy**: Duplicating an existing distribution to a new name
+  - User-facing: "Clone" (clearer intent)
+  - Function name: `Copy-WslDistro` (matches PowerShell convention)
+
+- **Remove / Unregister**: Deleting a WSL distribution
+  - User-facing: "Remove"
+  - WSL command: `wsl --unregister <name>`
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -258,14 +283,35 @@ A developer wants to run the WSL manager without remembering command syntax so t
 - **SC-002**: Users can create any WSL distribution available from Microsoft in under 5 minutes (network dependent)
 - **SC-003**: Users can clone an existing distribution to a new name in under 3 minutes for typical 5GB distributions
 - **SC-004**: All operations provide clear success or failure feedback with actionable next steps
-- **SC-005**: Error messages guide users to resolution in 90% of failure scenarios without external documentation
+- **SC-005**: Error messages guide users to resolution in most failure scenarios without external documentation
+  - **Primary failure scenarios** (must have actionable error messages):
+    1. WSL not installed → "WSL is not installed. Install with: wsl --install"
+    2. Distribution doesn't exist → "Distribution '<name>' not found. Run 'list' to see available distributions"
+    3. Distribution already exists → "Distribution '<name>' already exists. Choose a different name"
+    4. Distribution is running → "Distribution '<name>' is running. Stop it first with: wsl --terminate <name>"
+    5. Invalid username format → "Username must be lowercase, alphanumeric, max 32 chars. Examples: developer, john_doe"
+    6. WSL2 required for Docker → "Docker requires WSL2. Upgrade with: wsl --set-version <name> 2"
+    7. Systemd not configured → "Docker requires systemd. Configure in /etc/wsl.conf: [boot]\nsystemd=true"
+    8. Network unavailable during download → "Network connection failed. Check internet connection and retry"
+    9. Insufficient disk space → "Insufficient disk space for operation. Free up space and retry"
+    10. Docker already installed → "Docker is already installed (version X.Y.Z). Run 'docker --version' to verify"
+  - **Secondary scenarios** (graceful degradation):
+    - Localized WSL output (non-English) → Handled transparently via pattern matching
+    - User cancels confirmation prompt → "Operation cancelled" with clean exit
+    - Missing prerequisites (no default user for Docker) → "No default user configured. Run 'setup-user' first"
+  - **Validation**: All error messages tested in unit tests with clear, actionable guidance
+  - **Success metric**: Zero GitHub issues reporting unclear error messages in first 6 months of use
 - **SC-006**: Docker setup completes successfully on clean Ubuntu/Debian distributions in under 10 minutes
 - **SC-007**: User account creation completes in under 30 seconds with immediate confirmation
 - **SC-008**: Package updates complete successfully on Debian/Ubuntu distributions without manual intervention
 - **SC-009**: System handles non-English Windows environments without failures (localized WSL output)
 - **SC-010**: All destructive operations (remove) require explicit confirmation in interactive mode
 - **SC-011**: Tool works correctly in both PowerShell 5.1 and PowerShell 7.x environments
-- **SC-012**: 95% of users successfully complete their intended operation on first attempt without errors
+- **SC-012**: Users successfully complete their intended operations without requiring external documentation
+  - Clear error messages guide users to resolution in most failure scenarios (see SC-005)
+  - Interactive menu provides command discoverability (see SC-001)
+  - Operations provide clear feedback with actionable next steps (see SC-004)
+  - Validation: Manual testing of common workflows + user acceptance testing
 - **SC-013**: Users can terminate a running distribution in under 5 seconds with immediate confirmation
 
 ## Assumptions
