@@ -60,6 +60,43 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         Write-Host "    NOTE: Test distributions will be preserved after tests for exploratory testing" -ForegroundColor Cyan
     }
 
+    AfterAll {
+        # Ensure test distributions are stopped after tests to prevent failures on next run
+        Write-Host "`n==> Cleaning up test environment ..." -ForegroundColor Cyan
+
+        $existingDistros = Get-WslDistroList
+
+        # Stop custom distro if it's running
+        if ($script:customDistroName -in $existingDistros) {
+            try {
+                $state = Get-WslDistroState -DistroName $script:customDistroName
+                if ($state -eq "Running") {
+                    Write-Host "    Stopping $script:customDistroName ..." -ForegroundColor Yellow
+                    Stop-WslDistro -Name $script:customDistroName -Confirm:$false
+                }
+            }
+            catch {
+                Write-Host "    Warning: Could not stop $script:customDistroName : $_" -ForegroundColor Yellow
+            }
+        }
+
+        # Stop base distro if it's running
+        if ($script:baseDistroName -in $existingDistros) {
+            try {
+                $state = Get-WslDistroState -DistroName $script:baseDistroName
+                if ($state -eq "Running") {
+                    Write-Host "    Stopping $script:baseDistroName ..." -ForegroundColor Yellow
+                    Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+                }
+            }
+            catch {
+                Write-Host "    Warning: Could not stop $script:baseDistroName : $_" -ForegroundColor Yellow
+            }
+        }
+
+        Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
+    }
+
     Context "Create Distribution" {
         It "Should use existing or create Debian and print executed commands" {
             # Check if base distro exists
@@ -338,8 +375,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
 
-            # Verify the output contains "not running" message (Optional, output capture flaky)
-            $output | Should -Match "not running"
+            # Verify the output contains "No running" message (from Invoke-TerminateDistro when no distros are running)
+            $output | Should -Match "No running"
 
             # Verify the distribution is still stopped (not an error)
             $finalState = Get-WslDistroState -DistroName $script:customDistroName
