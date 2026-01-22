@@ -249,259 +249,46 @@ try {
 
 ### Testing Requirements
 
-All PowerShell code must include **Pester tests**. See `tools/pslib/AGENTS.md` for detailed testing guidelines.
+All PowerShell code must include **Pester tests**.
+
+**For comprehensive Pester test execution guidance, use the `pester-exec` skill** (`.claude/skills/pester-exec/`).
+
+The skill covers:
+
+- Running unit tests (`-Unit`), integration tests (`-Integration`), and coverage (`-Coverage`)
+- PowerShell 5.1 and 7.x compatibility testing
+- AI agent patterns for calling PowerShell from Bash
+- GitHub Actions CI/CD patterns
+- TDD workflow and pre-commit checks
 
 #### Quick Reference
 
-**Test files:** `*.Tests.ps1` (located alongside source files)
+```bash
+# Unit tests (fast feedback)
+pwsh -File ".\test\bin\testrunner.ps1" -Unit
+
+# Integration tests
+pwsh -File ".\test\bin\testrunner.ps1" -Integration
+
+# All tests with coverage
+pwsh -File ".\test\bin\testrunner.ps1" -Coverage
+
+# PowerShell 5.1 compatibility
+powershell -File ".\test\bin\testrunner.ps1"
+```
 
 **Test types:**
 
-- **Unit tests**: `*.Tests.ps1` - Fast, isolated tests with mocked dependencies
-- **Integration tests**: `*.Integration.Tests.ps1` - Tests that interact with real systems (WSL, file system, etc.)
-
-**Local development workflow:**
-
-1. Run unit tests first (`testrunner.ps1 -Unit`) - provides fast feedback
-2. Run integration tests afterwards (`testrunner.ps1 -Integration`) - when necessary or before committing
-3. Both test suites should pass before pushing to remote
-
-**CI/GitHub Actions workflow:**
-
-- Use `testrunner.ps1` (no switches) to run all tests (unit + integration) in a single pass
-
-**Running tests:**
-
-```powershell
-# Local development workflow (recommended):
-# Step 1: Run unit tests first (faster feedback)
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
-
-# Step 2: Run integration tests afterwards when necessary
-pwsh -File ".\test\bin\testrunner.ps1" -Integration
-
-# CI/GitHub Actions - Run all tests (unit + integration)
-pwsh -File ".\test\bin\testrunner.ps1"
-
-# Run all tests with code coverage (PowerShell 7.x)
-pwsh -File ".\test\bin\testrunner.ps1" -Coverage
-
-# Run unit tests with code coverage
-pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage
-
-# Run integration tests with code coverage
-pwsh -File ".\test\bin\testrunner.ps1" -Integration -Coverage
-
-# Run specific test file (PowerShell 7.x)
-pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
-
-# Run specific test file (PowerShell 5.1)
-powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
-
-# PowerShell 5.1 compatibility testing
-powershell -File ".\test\bin\testrunner.ps1" -Unit
-powershell -File ".\test\bin\testrunner.ps1" -Integration
-powershell -File ".\test\bin\testrunner.ps1"
-```
-
-**Code Coverage:**
-
-The test suite supports code coverage analysis via the `-Coverage` switch. When enabled, it:
-
-- Generates a JaCoCo XML coverage report at `test/out/coverage.xml`
-- Outputs a coverage summary to the console
-- Creates a markdown summary at `test/out/test-summary.md` for CI/PR comments
-- Only analyzes files that have corresponding test files
-
-Coverage reports include:
-
-- Commands analyzed vs executed
-- Coverage percentage
-- Detailed line-by-line coverage in the XML report
+- `*.Tests.ps1` - Unit tests (mocked dependencies)
+- `*.Integration.Tests.ps1` - Integration tests (real systems)
 
 **Testing requirements:**
 
-- Mock external dependencies (file system, commands, environment)
+- Mock external dependencies
 - Test both success and failure paths
-- Test CI and interactive environment behavior separately (see "Environment Awareness" section)
 - Ensure tests pass on both PowerShell 5.1 and 7.x
-- Use PowerShell 5.1-compatible syntax (avoid features introduced in PowerShell 6.0+)
 
-### Calling PowerShell from Bash Tool (AI Agents)
-
-When using AI agents (like Claude Code) that execute PowerShell commands through a Bash tool, follow these guidelines to avoid command failures:
-
-#### Path Quoting Rules
-
-**ALWAYS quote file paths** when calling PowerShell through bash. Windows paths contain backslashes which must be properly escaped.
-
-**Correct usage:**
-
-```bash
-# PowerShell 7.x - quote the entire path
-pwsh -File ".\test\bin\testrunner.ps1"
-pwsh -File ".\test\bin\testrunner.ps1" -Coverage
-
-# PowerShell 5.1 - quote the entire path
-powershell -File ".\test\bin\testrunner.ps1"
-powershell -File ".\test\bin\testrunner.ps1" -Coverage
-
-# Running specific test files
-pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
-```
-
-**Incorrect usage (will fail):**
-
-```bash
-# Missing quotes - WRONG
-pwsh -File .\test\bin\testrunner.ps1
-
-# Backslashes not handled properly - WRONG
-pwsh -File .testsbintestrunner.ps1
-```
-
-#### PowerShell Version Selection
-
-- **pwsh**: PowerShell 7.x (recommended for modern features)
-- **powershell**: PowerShell 5.1 (for compatibility testing)
-
-#### PowerShell Piping and Cmdlets
-
-**CRITICAL:** When using PowerShell cmdlets or piping commands, you MUST execute the entire pipeline within PowerShell using `-Command`, NOT by piping in bash.
-
-**The Problem:**
-
-When you call PowerShell from bash and try to pipe the output to a PowerShell cmdlet, the pipe happens in the **bash context**, not PowerShell. Bash doesn't know about PowerShell cmdlets like `Select-String`, `Where-Object`, etc.
-
-**Incorrect usage (will fail):**
-
-```bash
-# This tries to pipe in BASH, not PowerShell - WRONG
-pwsh -File ".\test\bin\testrunner.ps1" | Select-String -Pattern "Error"
-
-# Bash tries to find 'Select-String' as a bash command and fails
-```
-
-**Correct usage:**
-
-```bash
-# Option 1: Use -Command to run the entire pipeline in PowerShell
-pwsh -Command ".\test\bin\testrunner.ps1 | Select-String -Pattern 'Error'"
-
-# Option 2: Use -Command with cmdlet pipeline
-pwsh -Command "Get-Content '.\logfile.txt' | Where-Object { $_ -match 'Error' }"
-
-# Option 3: Filter within the PowerShell script itself (preferred for complex logic)
-# Modify the script to do the filtering, or create a wrapper script
-```
-
-**Examples of PowerShell cmdlets that MUST be inside `-Command`:**
-
-- `Select-String` (use `grep` in bash if you need to pipe bash-to-bash)
-- `Where-Object`
-- `Select-Object`
-- `ForEach-Object`
-- `Measure-Object`
-- Any PowerShell-specific cmdlet
-
-**When to use bash piping vs PowerShell piping:**
-
-```bash
-# Bash-to-bash piping (using bash/unix tools) - OK
-pwsh -File ".\script.ps1" | grep "Error"
-
-# PowerShell-to-PowerShell piping - use -Command
-pwsh -Command ".\script.ps1 | Select-String 'Error'"
-```
-
-#### Common Commands via Bash
-
-```bash
-# Local development workflow (recommended):
-# Run unit tests first (faster feedback)
-Bash(pwsh -File ".\test\bin\testrunner.ps1" -Unit)
-
-# Run integration tests afterwards when necessary
-Bash(pwsh -File ".\test\bin\testrunner.ps1" -Integration)
-
-# CI - Run all tests (unit + integration)
-Bash(pwsh -File ".\test\bin\testrunner.ps1")
-
-# Run all tests with coverage
-Bash(pwsh -File ".\test\bin\testrunner.ps1" -Coverage
-
-# Run unit tests with coverage
-Bash(pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage)
-
-# Run integration tests with coverage
-Bash(pwsh -File ".\test\bin\testrunner.ps1" -Integration -Coverage)
-
-# Run specific test file (PowerShell 7.x)
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
-
-# Run specific test file (PowerShell 5.1)
-powershell -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
-
-# Run linter checks
-Bash(pwsh -File ".\test\bin\linter.Tests.ps1")
-
-# Check PowerShell version
-Bash(pwsh -Command "$PSVersionTable.PSVersion")
-```
-
-#### Error Prevention
-
-When calling PowerShell scripts through the Bash tool:
-
-1. **Always use double quotes** around file paths with the `-File` parameter
-2. **Always use single quotes inside double quotes** when using `-Command` parameter with paths
-3. **NEVER pipe PowerShell cmdlets in bash** - use `pwsh -Command "script.ps1 | Select-String 'pattern'"` instead of `pwsh -File "script.ps1" | Select-String` (see "PowerShell Piping and Cmdlets" section above)
-4. **Verify the path** exists before executing if unsure
-5. **Check for proper backslash handling** - if backslashes disappear, you need better quoting
-
-**Example workflow in AI agent:**
-
-```text
-# Step 1: Verify test script exists
-Bash(Test-Path ".\test\bin\testrunner.ps1")
-
-# Step 2: Run tests with proper quoting
-Bash(pwsh -File ".\test\bin\testrunner.ps1")
-```
-
-### GitHub Actions Workflows
-
-When working with GitHub Actions workflows for this project, be aware of these important limitations:
-
-#### Shell Selection in Matrix Strategies
-
-**IMPORTANT:** You CANNOT use matrix variables in the `shell` field of GitHub Actions steps. The `shell` field only accepts literal values, not matrix interpolation.
-
-**Incorrect (will not work):**
-
-```yaml
-shell: ${{ matrix.shell }}  # This does NOT work
-run: |
-  Write-Output $PSVersionTable
-  .\test\bin\testrunner.ps1
-```
-
-**Correct approach:**
-
-```yaml
-shell: cmd  # Use a literal shell value
-run: |
-  # Then invoke the matrix shell within the command
-  ${{ matrix.shell }} -Command "Write-Output $PSVersionTable; .\test\bin\init.ps1; .\test\bin\testrunner.ps1 -Coverage"
-```
-
-This limitation is fundamental to GitHub Actions and requires using a wrapper shell (like `cmd`) to invoke the desired PowerShell version from the matrix.
-
-**Current test workflow pattern (.github/workflows/test.yml):**
-
-- Uses `shell: cmd` as the literal shell
-- Invokes `${{ matrix.shell }}` (either `pwsh` or `powershell`) within the command
-- This allows testing across multiple PowerShell versions using matrix strategy
+See `tools/pslib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations
 

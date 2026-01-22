@@ -73,120 +73,59 @@ Before modifying any PowerShell code in this directory:
 
 ### Testing Framework: Pester
 
-All PowerShell code in this library must be tested using **Pester**, the standard testing framework for PowerShell.
+All PowerShell code in this library must be tested using **Pester**.
 
-#### Pester Basics
+**For comprehensive Pester test execution guidance, use the `pester-exec` skill** (`.claude/skills/pester-exec/`).
 
-- **Installation**: Pester should be installed via `Install-Module -Name Pester -Force -SkipPublisherCheck` or by running `.\test\bin\init.ps1`
-- **Test files**: Name test files with `.Tests.ps1` suffix (e.g., `utils.Tests.ps1`)
-- **Location**: Place tests in the same directory as the code or in a dedicated `tests` subdirectory
-- **Running tests**:
-  ```powershell
-  # Run all tests (recommended)
-  pwsh -File .\test\bin\testrunner.ps1
+#### Quick Reference
 
-  # Run specific test file (PowerShell 7.x)
-  pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
+```bash
+pwsh -File ".\test\bin\testrunner.ps1" -Unit      # Unit tests
+pwsh -File ".\test\bin\testrunner.ps1" -Coverage  # With coverage
+powershell -File ".\test\bin\testrunner.ps1"      # PS 5.1 compat
+```
 
-  # Run specific test file (PowerShell 5.1)
-  powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
-
-  # Test on PowerShell 5.1 for compatibility
-  powershell -File .\test\bin\testrunner.ps1
-  ```
-
-#### Pester Test Structure
+#### Test Structure
 
 ```powershell
 Describe "Function-Name" {
     Context "When condition or scenario" {
         It "Should do expected behavior" {
-            # Arrange
-            $input = "test"
-
-            # Act
-            $result = Function-Name -Parameter $input
-
-            # Assert
+            $result = Function-Name -Parameter "test"
             $result | Should -Be "expected"
         }
     }
 }
 ```
 
-#### Mocking in Pester
+#### Mocking
 
-- Use `Mock` to replace external dependencies
-- Example: `Mock Test-Path { return $true }`
-- Verify mocks were called: `Should -Invoke Test-Path -Times 1`
-- Mock environment variables: `Mock Get-Item { @{ Value = "mocked" } } -ParameterFilter { $Path -eq "Env:\VARIABLE" }`
+```powershell
+Mock Test-Path { return $true }
+Should -Invoke Test-Path -Times 1
+```
 
 #### Best Practices
 
 - Test both success and failure paths
-- Mock all external dependencies (file system, environment, external commands)
-- Use `BeforeAll` and `AfterAll` for setup/teardown
-- Use `BeforeEach` and `AfterEach` for per-test setup/teardown
+- Mock all external dependencies
 - Test CI and interactive environment behavior separately
-- Use `-ParameterFilter` to mock specific scenarios
-- **Verify tests pass on both PowerShell 5.1 and 7.x** before committing
+- Verify tests pass on both PowerShell 5.1 and 7.x
 
 #### PowerShell Version Compatibility
 
-**IMPORTANT**: All code must be compatible with **PowerShell 5.1** and **PowerShell 7.x**.
+All code must be compatible with **PowerShell 5.1** and **7.x**. Avoid:
 
-**Common compatibility issues to avoid:**
-
-- ❌ **`ErrorMessage` parameter in `ValidateScript`** (PowerShell 6.0+ only)
-  ```powershell
-  # WRONG - Only works in PowerShell 6.0+
-  [ValidateScript({ $_ -gt 0 }, ErrorMessage = "Must be positive")]
-
-  # CORRECT - Works in PowerShell 5.1+
-  [ValidateScript({ $_ -gt 0 })]
-  ```
-
-- ❌ **Ternary operator** `? :` (PowerShell 7.0+ only)
-  ```powershell
-  # WRONG - Only works in PowerShell 7.0+
-  $result = $condition ? "yes" : "no"
-
-  # CORRECT - Works in PowerShell 5.1+
-  $result = if ($condition) { "yes" } else { "no" }
-  ```
-
-- ❌ **Null-coalescing operators** `??`, `??=` (PowerShell 7.0+ only)
-
-**Testing on both versions:**
-
-Always run tests on both PowerShell versions before creating a pull request:
-
-```powershell
-# Test on PowerShell 7.x
-pwsh -File .\test\bin\testrunner.ps1
-
-# Test on PowerShell 5.1
-powershell -File .\test\bin\testrunner.ps1
-```
-
-The CI pipeline runs tests on both versions and will fail if either version encounters errors.
+- `ErrorMessage` in `ValidateScript` (PS 6.0+)
+- Ternary operator `? :` (PS 7.0+)
+- Null-coalescing `??`, `??=` (PS 7.0+)
 
 ### Test-Driven Development (TDD)
 
-When creating or modifying PowerShell functions:
-
-1. **Write tests first**: Create Pester tests before implementing functionality
-2. **Red-Green-Refactor cycle**:
-   - Write a failing test (Red)
-   - Implement minimum code to pass (Green)
-   - Refactor while keeping tests green
-3. **Test coverage**: Ensure tests cover:
-   - Normal operation paths
-   - Error conditions and edge cases
-   - CI vs interactive environment behavior
-   - Both file and directory operations (where applicable)
-4. **Mock external dependencies**: Use Pester mocking for system calls, file operations, and environment variables
-5. **Test naming**: Use descriptive test names that explain the scenario being tested
+1. **Write tests first** before implementing
+2. **Red-Green-Refactor**: Failing test → Pass → Refactor
+3. **Mock external dependencies** for isolation
+4. **Test naming**: Descriptive names explaining the scenario
 
 ### SOLID Principles (Adapted for PowerShell)
 
