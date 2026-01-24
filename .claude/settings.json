@@ -1,38 +1,18 @@
 {
-  "cleanupPeriodDays": 2,
+  "cleanupPeriodDays": 30,
   "permissions": {
     "allow": [
-      "Bash(pwsh -File:*)",
-      "Bash(mkdir:*)",
-      "Bash(pwsh -Command:*)",
-      "Bash(git show:*)",
-      "Bash(wsl --list:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(gh run view:*)",
-      "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL\" -Context 2,2)",
-      "Bash(powershell -File \".\\test\\bin\\test-all.ps1\")",
-      "Bash(git push)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr diff:*)",
-      "Bash(gh run list:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(Start-Sleep -Seconds 5)",
-      "Bash(gh api:*)",
-      "Bash(git restore:*)",
-      "Bash(Remove-Item -Path .git/index.lock -Force -ErrorAction SilentlyContinue)",
-      "Bash(git mv:*)",
-      "Bash(gh run download:*)",
-      "Bash(Select-String -Pattern \"^\\[-\\]|Error|Failed|FAIL|Tests Passed\" -Context 2,2)",
-      "Bash(powershell:*)",
-      "Bash(git log:*)",
-      "Bash(find:*)",
-      "Bash(ls:*)",
-      "Bash(git fetch:*)",
-      "Bash(test:*)"
+      "Bash",
+      "Read",
+      "Edit"
     ],
-    "deny": [],
-    "ask": []
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~/*)",
+      "Bash(sudo rm:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(format:*)"
+    ]
   }
 }
