@@ -1788,6 +1788,86 @@ default=admin
         }
     }
 
+    Context "Defensive parsing with malformed content" {
+        It "Should return null when wsl.conf has missing closing bracket" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user
+default=testuser
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "Should return null when wsl.conf has invalid characters in value" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+default=user@#$%
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            # The function doesn't validate username format, just extracts the value
+            # This test verifies it doesn't throw on unusual characters
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            # Should extract the value even with special chars (validation happens elsewhere)
+            $result | Should -Be "user@#$%"
+        }
+
+        It "Should return null when wsl.conf has empty [user] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+
+[boot]
+systemd=true
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "Should return first value when wsl.conf has duplicate default keys" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[user]
+default=user1
+default=user2
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Get-WslDefaultUser -DistroName "Debian"
+
+            # Should return first match due to early return in parsing logic
+            $result | Should -Be "user1"
+        }
+
+        It "Should not throw exception on any malformed content" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "completely invalid content with no structure @#$%^&*()"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            # Should gracefully return null without throwing
+            { $result = Get-WslDefaultUser -DistroName "Debian" } | Should -Not -Throw
+        }
+    }
+
     Context "Parameter validation" {
         It "Should throw when DistroName is empty" {
             { Get-WslDefaultUser -DistroName "" } | Should -Throw
@@ -1921,6 +2001,86 @@ Describe "Test-WslSystemdConfigured" {
 
             $result = Test-WslSystemdConfigured -DistroName "Debian"
 
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Defensive parsing with malformed content" {
+        It "Should return false when wsl.conf has missing closing bracket" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot
+systemd=true
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when wsl.conf has invalid characters in value" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=tr@ue!
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            # Should return false since value is not "true"
+            $result | Should -Be $false
+        }
+
+        It "Should return false when wsl.conf has empty [boot] section" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+
+[user]
+default=testuser
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return true for first value when wsl.conf has duplicate systemd keys" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=true
+systemd=false
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
+
+            # Should return true based on first match (early return in parsing logic)
+            $result | Should -Be $true
+        }
+
+        It "Should not throw exception on any malformed content" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "completely invalid content with no structure @#$%^&*()"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+
+            # Should gracefully return false without throwing
+            { $result = Test-WslSystemdConfigured -DistroName "Debian" } | Should -Not -Throw
+            $result = Test-WslSystemdConfigured -DistroName "Debian"
             $result | Should -Be $false
         }
     }

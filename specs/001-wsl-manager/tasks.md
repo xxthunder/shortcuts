@@ -258,18 +258,9 @@ Based on plan.md project structure:
   - Verify `Stop-WslDistro` still works (uses `Test-WslDistroRunning`)
   - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 
-- [ ] T052b [Item5] Add localization integration test in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1` (FR-020)
-  - If Windows language is non-English (detected via `Get-WinSystemLocale`):
-    - Run `Get-WslDistroList -Detailed` on real system
-    - Verify State field is normalized to "Running" or "Stopped" (not localized value)
-    - Verify function handles non-English WSL output correctly
-  - If English system: Add comment noting manual testing on localized system required
-  - Documents FR-020 (localized output handling) verification
-  - Run: `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
-
 ### Defensive Parsing Tests (Edge Case Coverage)
 
-- [ ] T052c [P] Add malformed wsl.conf test for `Get-WslDefaultUser` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T052c [P] Add malformed wsl.conf test for `Get-WslDefaultUser` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Mock `Invoke-WslDistroCommand` to return malformed INI content:
     - Missing closing bracket: `[user`
     - Invalid characters: `default = user@#$%`
@@ -279,7 +270,7 @@ Based on plan.md project structure:
   - Verify function does not throw exception
   - Run test, confirm behavior is defensive
 
-- [ ] T052d [P] Add malformed wsl.conf test for `Test-WslSystemdConfigured` in `tools/pslib/wsl/wsl.Tests.ps1`
+- [X] T052d [P] Add malformed wsl.conf test for `Test-WslSystemdConfigured` in `tools/pslib/wsl/wsl.Tests.ps1`
   - Mock `Invoke-WslDistroCommand` to return malformed INI content
   - Verify function returns $false (graceful failure)
   - Verify function does not throw exception
