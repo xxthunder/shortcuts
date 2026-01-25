@@ -8,6 +8,46 @@ BeforeAll {
     . "$PSScriptRoot\wsl.ps1"
 }
 
+Describe "Module Structure - Backward Compatibility" {
+    Context "When wsl.ps1 is sourced" {
+        It "Should export all 19 core WSL functions" {
+            # Define all functions that must remain accessible after refactoring
+            $expectedFunctions = @(
+                'Test-WslInstalled'
+                'Get-WslAvailableDistro'
+                'New-WslDistro'
+                'Get-WslDistroList'
+                'Remove-WslDistro'
+                'Copy-WslDistro'
+                'Invoke-WslDistroCommand'
+                'Get-WslDistroType'
+                'Get-WslDistroState'
+                'Test-WslDistroRunning'
+                'Stop-WslDistro'
+                'Update-WslDistro'
+                'New-WslUser'
+                'Get-WslDefaultUser'
+                'Test-WslSystemdConfigured'
+                'Test-WslSystemd'
+                'Test-Wsl2Version'
+                'Test-WslDockerInstalled'
+                'Install-WslDockerEngine'
+            )
+
+            # Verify each function is accessible
+            foreach ($functionName in $expectedFunctions) {
+                Get-Command -Name $functionName -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because "$functionName must be accessible after sourcing wsl.ps1"
+            }
+        }
+
+        It "Should allow wsl-manager.ps1 to source wsl.ps1 without errors" {
+            # Verify that sourcing wsl.ps1 doesn't cause errors
+            # This simulates what wsl-manager.ps1 does
+            { . "$PSScriptRoot\wsl.ps1" } | Should -Not -Throw
+        }
+    }
+}
+
 Describe "Test-WslInstalled" {
     It "Should return <Expected> when <Scenario>" -ForEach @(
         @{ Scenario = "wsl.exe command exists"; MockBehavior = { @{ Name = "wsl.exe" } }; Expected = $true }
@@ -1864,7 +1904,7 @@ default=user2
             } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
 
             # Should gracefully return null without throwing
-            { $result = Get-WslDefaultUser -DistroName "Debian" } | Should -Not -Throw
+            { Get-WslDefaultUser -DistroName "Debian" } | Should -Not -Throw
         }
     }
 
@@ -2079,7 +2119,7 @@ systemd=false
             } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
 
             # Should gracefully return false without throwing
-            { $result = Test-WslSystemdConfigured -DistroName "Debian" } | Should -Not -Throw
+            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Not -Throw
             $result = Test-WslSystemdConfigured -DistroName "Debian"
             $result | Should -Be $false
         }
