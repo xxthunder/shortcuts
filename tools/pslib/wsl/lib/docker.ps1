@@ -269,7 +269,7 @@ Or verify your installation with:
             "--username=$Username"
         )
 
-        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
+        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -AsRoot $true
 
         # Parse exit code and provide user-friendly errors
         switch ($exitCode) {

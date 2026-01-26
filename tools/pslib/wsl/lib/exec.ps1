@@ -135,6 +135,9 @@ function Invoke-WslDistroScript {
     .PARAMETER PrintCommand
         If true, prints the command before execution. Default: true
 
+    .PARAMETER AsRoot
+        If true, executes the script with sudo (as root). Default: false
+
     .OUTPUTS
         System.Int32
         Returns the exit code from the script execution.
@@ -145,6 +148,9 @@ function Invoke-WslDistroScript {
     .EXAMPLE
         Invoke-WslDistroScript -ScriptPath "C:\scripts\install.sh" -DistroName "Ubuntu" `
             -Arguments @("--user=developer", "--mode=production")
+
+    .EXAMPLE
+        Invoke-WslDistroScript -ScriptPath "C:\scripts\install-docker.sh" -DistroName "Debian" -AsRoot $true
 
     .EXAMPLE
         $exitCode = Invoke-WslDistroScript -ScriptPath "C:\scripts\test.sh" -DistroName "Debian" -StopAtError $false
@@ -169,7 +175,10 @@ function Invoke-WslDistroScript {
         [bool]$StopAtError = $true,
 
         [Parameter(Mandatory = $false)]
-        [bool]$PrintCommand = $true
+        [bool]$PrintCommand = $true,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$AsRoot = $false
     )
 
     # Validate script exists
@@ -206,7 +215,9 @@ function Invoke-WslDistroScript {
     }
 
     # Execute via bash (no need for script to be +x since we're invoking bash directly)
-    $commandLine = "wsl.exe --distribution $DistroName --exec bash `"$wslPath`"$argString"
+    # Use sudo if AsRoot is specified
+    $bashCommand = if ($AsRoot) { "sudo bash" } else { "bash" }
+    $commandLine = "wsl.exe --distribution $DistroName --exec $bashCommand `"$wslPath`"$argString"
 
     # Execute and suppress output (we only care about exit code)
     Invoke-CommandLine -CommandLine $commandLine -StopAtError $StopAtError -PrintCommand $PrintCommand | Out-Null
