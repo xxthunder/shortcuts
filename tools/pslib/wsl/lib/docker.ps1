@@ -236,21 +236,8 @@ Or verify your installation with:
     # Docker installation workflow
 
     try {
-        # 1. Remove old Docker versions
-        Write-Information "  -> Removing old Docker versions"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get remove -y docker docker-engine docker.io containerd runc" -StopAtError $false -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 2. Update and install prerequisites
-        Write-Information "  -> Installing prerequisites"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true -PassThru | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y ca-certificates curl gnupg lsb-release" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 3. Add Docker's official GPG key
-        Write-Information "  -> Adding Docker GPG key"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo mkdir -p /etc/apt/keyrings" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # Get distribution info by sourcing /etc/os-release and echoing variables
-        # Use backtick-escaped $ so PowerShell doesn't expand, but bash does (since we use double quotes in Invoke-WslDistroCommand)
+        # Detect distribution parameters for the bash script
+        Write-Information "Detecting distribution parameters..."
         $getDistroInfoCmd = ". /etc/os-release && echo `$ID && echo `$VERSION_CODENAME && dpkg --print-architecture"
         $distroInfo = Invoke-WslDistroCommand -DistroName $DistroName -Command $getDistroInfoCmd -PrintCommand $false -PassThru
         if ([string]::IsNullOrWhiteSpace($distroInfo)) {
@@ -266,70 +253,55 @@ Or verify your installation with:
         $distroCodename = $infoLines[1].Trim()
         $arch = $infoLines[2].Trim()
 
-        # Download and add Docker's GPG key
-        $gpgUrl = "https://download.docker.com/linux/$distroId/gpg"
-        $gpgCommand = "curl -fsSL $gpgUrl | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $gpgCommand -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 4. Set up Docker repository
-        Write-Information "  -> Configuring Docker repository"
-        $repoUrl = "https://download.docker.com/linux/$distroId"
-        $repoLine = "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.gpg] $repoUrl $distroCodename stable"
-        $repoCommand = "echo '$repoLine' | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command $repoCommand -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 5. Install Docker Engine
-        Write-Information "  -> Installing Docker packages"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get update" -PrintCommand $false -Silent $true -PassThru | Out-Null
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 6. Add user to docker group
-        Write-Information "  -> Adding user '$Username' to docker group"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo usermod -aG docker $Username" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # 7. Enable and start Docker service
-        Write-Information "  -> Enabling Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl enable docker" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        Write-Information "  -> Starting Docker service"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl start docker" -PrintCommand $false -Silent $true -PassThru | Out-Null
-
-        # Post-installation verification
+        Write-Information "  Distribution: $distroId"
+        Write-Information "  Codename: $distroCodename"
+        Write-Information "  Architecture: $arch"
         Write-Information ""
-        Write-Information "Verifying installation ..."
 
-        # Check Docker Engine version
-        Write-Information "  -> Checking Docker Engine version"
-        $dockerVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker --version" -PrintCommand $false -PassThru
-        Write-Information "    Docker Engine: $dockerVersion"
+        # Execute bash installation script
+        Write-Information "Executing Docker installation script..."
+        $scriptPath = Join-Path $PSScriptRoot "..\scripts\install-docker.sh"
 
-        # Check Docker Compose plugin version
-        Write-Information "  -> Checking Docker Compose version"
-        $composeVersion = Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker compose version" -PrintCommand $false -PassThru
-        Write-Information "    Docker Compose: $composeVersion"
+        $scriptArgs = @(
+            "--distro-id=$distroId",
+            "--codename=$distroCodename",
+            "--arch=$arch",
+            "--username=$Username"
+        )
 
-        # Check Docker service status
-        Write-Information "  -> Checking Docker service status"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo systemctl status docker --no-pager" -PrintCommand $false -Silent $true -PassThru | Out-Null
-        Write-Information "    Docker service: active (running)"
+        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
 
-        # Run hello-world container (end-to-end test)
-        Write-Information "  -> Running hello-world test"
-        Invoke-WslDistroCommand -DistroName $DistroName -Command "sudo docker run hello-world" -PrintCommand $false -Silent $true -PassThru | Out-Null
-        Write-Information "    Hello-world test: passed"
-
-        Write-Information ""
-        Write-Information "Successfully installed Docker in '$DistroName'."
-        Write-Information ""
-        Write-Information "Next steps:"
-        Write-Information "  1. Restart the distribution to apply group membership:"
-        Write-Information "       wsl.exe --terminate $DistroName"
-        Write-Information "       wsl.exe --distribution $DistroName"
-        Write-Information "  2. Test Docker (should work without sudo):"
-        Write-Information "       docker ps"
-        Write-Information "       docker run hello-world"
-
-        return $true
+        # Parse exit code and provide user-friendly errors
+        switch ($exitCode) {
+            0 {
+                Write-Information ""
+                Write-Information "Successfully installed Docker in '$DistroName'."
+                Write-Information ""
+                Write-Information "Next steps:"
+                Write-Information "  1. Restart the distribution to apply group membership:"
+                Write-Information "       wsl.exe --terminate $DistroName"
+                Write-Information "       wsl.exe --distribution $DistroName"
+                Write-Information "  2. Test Docker (should work without sudo):"
+                Write-Information "       docker ps"
+                Write-Information "       docker run hello-world"
+                return $true
+            }
+            1 {
+                throw "Prerequisite check failed. Ensure distribution is Debian/Ubuntu and script has root access."
+            }
+            2 {
+                throw "Installation failed. Check apt-get, GPG key download, or repository setup."
+            }
+            3 {
+                throw "Verification failed. Docker installed but service failed to start or docker --version failed."
+            }
+            4 {
+                throw "Argument error. Required distribution parameters missing."
+            }
+            default {
+                throw "Docker installation failed with exit code: $exitCode"
+            }
+        }
     }
     catch {
         Write-Error "Docker installation failed: $_"

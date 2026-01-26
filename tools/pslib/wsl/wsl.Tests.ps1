@@ -10,7 +10,7 @@ BeforeAll {
 
 Describe "Module Structure - Backward Compatibility" {
     Context "When wsl.ps1 is sourced" {
-        It "Should export all 19 core WSL functions" {
+        It "Should export all 20 core WSL functions" {
             # Define all functions that must remain accessible after refactoring
             $expectedFunctions = @(
                 'Test-WslInstalled'
@@ -20,6 +20,7 @@ Describe "Module Structure - Backward Compatibility" {
                 'Remove-WslDistro'
                 'Copy-WslDistro'
                 'Invoke-WslDistroCommand'
+                'Invoke-WslDistroScript'
                 'Get-WslDistroType'
                 'Get-WslDistroState'
                 'Test-WslDistroRunning'
@@ -1001,6 +1002,194 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should throw when Command is empty" {
             { Invoke-WslDistroCommand -DistroName "Debian" -Command "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Invoke-WslDistroScript" {
+    Context "Path Validation" {
+        It "Should throw if script doesn't exist" {
+            Mock Test-Path { $false }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\missing.sh" -DistroName "Debian" } |
+                Should -Throw "*Script not found*"
+        }
+
+        It "Should accept valid Windows script path" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\Users\test.sh" -DistroName "Debian" } |
+                Should -Not -Throw
+
+            Should -Invoke Test-Path -Times 1
+            Should -Invoke Invoke-CommandLine -Times 1
+        }
+    }
+
+    Context "Path Conversion" {
+        It "Should convert C: drive path to /mnt/c/" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
+                $CommandLine -like "*wsl.exe*" -and $CommandLine -like "*/mnt/c/*"
+            }
+
+            Invoke-WslDistroScript -ScriptPath "C:\Users\test.sh" -DistroName "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $CommandLine -like "*/mnt/c/Users/test.sh*"
+            }
+        }
+
+        It "Should convert D: drive path to /mnt/d/" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
+                $CommandLine -like "*/mnt/d/*"
+            }
+
+            Invoke-WslDistroScript -ScriptPath "D:\scripts\test.sh" -DistroName "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $CommandLine -like "*/mnt/d/scripts/test.sh*"
+            }
+        }
+
+        It "Should convert backslashes to forward slashes" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+
+            Invoke-WslDistroScript -ScriptPath "C:\path\to\script.sh" -DistroName "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $CommandLine -like "*/mnt/c/path/to/script.sh*"
+            }
+        }
+    }
+
+    Context "Argument Passing" {
+        It "Should pass multiple arguments correctly" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
+                $CommandLine -like "*--arg1=value1*" -and $CommandLine -like "*--arg2=value2*"
+            }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" `
+                -Arguments @("--arg1=value1", "--arg2=value2")
+
+            Should -Invoke Invoke-CommandLine -Times 1
+        }
+
+        It "Should execute without arguments if none provided" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 1
+        }
+
+        It "Should handle empty Arguments array" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Arguments @()
+
+            Should -Invoke Invoke-CommandLine -Times 1
+        }
+    }
+
+    Context "Exit Code Handling" {
+        It "Should return exit code 0 from successful script" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {
+                $global:LASTEXITCODE = 0
+                return ""
+            }
+
+            $exitCode = Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian"
+
+            $exitCode | Should -Be 0
+        }
+
+        It "Should return exit code 2 from failed script" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine {
+                $global:LASTEXITCODE = 2
+                return ""
+            }
+
+            $exitCode = Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StopAtError $false
+
+            $exitCode | Should -Be 2
+        }
+    }
+
+    Context "WSL Validation" {
+        It "Should throw when WSL is not installed" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $false }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" } |
+                Should -Throw "*WSL is not installed*"
+        }
+
+        It "Should throw when distribution does not exist" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" } |
+                Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "Parameter Passing" {
+        It "Should pass StopAtError parameter to Invoke-CommandLine" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
+                $StopAtError -eq $false
+            }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StopAtError $false
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $StopAtError -eq $false
+            }
+        }
+
+        It "Should pass PrintCommand parameter to Invoke-CommandLine" {
+            Mock Test-Path { $true }
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
+                $PrintCommand -eq $false
+            }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -PrintCommand $false
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $PrintCommand -eq $false
+            }
         }
     }
 }
@@ -2593,148 +2782,6 @@ Describe "Install-WslDockerEngine" {
         }
     }
 
-    Context "Docker installation workflow" {
-        BeforeEach {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
-            Mock Get-WslDistroType { "debian" }
-            Mock Get-WslDefaultUser { "developer" }
-            Mock Test-WslDockerInstalled { $false }
-            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
-            Mock Invoke-WslDistroCommand { }
-        }
-
-        It "Should execute installation commands when prerequisites pass" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt-get update*"
-            }
-        }
-
-        It "Should remove old Docker versions" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt-get remove*docker*"
-            }
-        }
-
-        It "Should install Docker prerequisites" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt-get install*ca-certificates*curl*"
-            }
-        }
-
-        It "Should add Docker GPG key" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*gpg --dearmor*docker.gpg*"
-            }
-        }
-
-        It "Should setup Docker repository" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt/sources.list.d/docker.list*"
-            }
-        }
-
-        It "Should install Docker Engine packages" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*docker-ce*docker-ce-cli*containerd*docker-buildx-plugin*docker-compose-plugin*"
-            }
-        }
-
-        It "Should add user to docker group" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*usermod -aG docker*developer*"
-            }
-        }
-
-        It "Should add specified Username to docker group when provided" {
-            Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*usermod -aG docker*customuser*"
-            }
-        }
-
-        It "Should enable Docker service" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*systemctl enable docker*"
-            }
-        }
-
-        It "Should start Docker service" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*systemctl start docker*"
-            }
-        }
-    }
-
-    Context "Post-installation verification" {
-        BeforeEach {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
-            Mock Get-WslDistroType { "debian" }
-            Mock Get-WslDefaultUser { "developer" }
-            Mock Test-WslDockerInstalled { $false }
-            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
-            Mock Invoke-WslDistroCommand { "Docker version 24.0.7" }
-        }
-
-        It "Should verify Docker Engine version" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*docker --version*"
-            }
-        }
-
-        It "Should verify Docker Compose version" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*docker compose version*"
-            }
-        }
-
-        It "Should verify Docker service status" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*systemctl status docker*"
-            }
-        }
-
-        It "Should run hello-world container test" {
-            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*docker run hello-world*"
-            }
-        }
-    }
-
     Context "SupportsShouldProcess" {
         BeforeEach {
             Mock Test-WslInstalled { $true }
@@ -2746,23 +2793,103 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
-            Mock Invoke-WslDistroCommand { }
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+            Mock Test-Path { $true }
         }
 
         It "Should support -WhatIf parameter" {
             Install-WslDockerEngine -DistroName "Debian" -WhatIf
 
-            # With -WhatIf, no actual commands should be executed
-            Should -Invoke Invoke-WslDistroCommand -Times 0
+            # With -WhatIf, no actual script execution should happen
+            Should -Invoke Invoke-WslDistroScript -Times 0
         }
 
-        It "Should execute when -Confirm:false is specified" {
+        It "Should execute bash script when -Confirm:false is specified" {
             Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
 
-            # With -Confirm:$false, commands should execute
-            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
-                $Command -like "*apt-get update*"
+            # With -Confirm:$false, bash script should execute
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*install-docker.sh*"
             }
+        }
+    }
+
+    Context "Bash script execution (refactored implementation)" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslSystemd { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+            Mock Test-Path { $true }
+        }
+
+        It "Should call Invoke-WslDistroScript with install-docker.sh" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*install-docker.sh*"
+            }
+        }
+
+        It "Should pass correct distribution parameters to script" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--distro-id=debian" -and
+                $Arguments -contains "--codename=bookworm" -and
+                $Arguments -contains "--arch=amd64" -and
+                $Arguments -contains "--username=developer"
+            }
+        }
+
+        It "Should pass custom username when provided" {
+            Install-WslDockerEngine -DistroName "Debian" -Username "customuser" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--username=customuser"
+            }
+        }
+
+        It "Should throw when bash script returns exit code 1 (prerequisite failure)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 1; return 1 }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } |
+                Should -Throw "*Prerequisite check failed*"
+        }
+
+        It "Should throw when bash script returns exit code 2 (installation failure)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } |
+                Should -Throw "*Installation failed*"
+        }
+
+        It "Should throw when bash script returns exit code 3 (verification failure)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 3; return 3 }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } |
+                Should -Throw "*Verification failed*"
+        }
+
+        It "Should throw when bash script returns exit code 4 (argument error)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 4; return 4 }
+
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } |
+                Should -Throw "*Argument error*"
+        }
+
+        It "Should return true on successful installation (exit code 0)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+
+            $result = Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            $result | Should -Be $true
         }
     }
 

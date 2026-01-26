@@ -110,3 +110,107 @@ function Invoke-WslDistroCommand {
         Invoke-CommandLine -CommandLine $wslCommand -StopAtError $StopAtError -PrintCommand $PrintCommand -Silent $Silent
     }
 }
+
+function Invoke-WslDistroScript {
+    <#
+    .SYNOPSIS
+        Executes a bash script file inside a WSL distribution.
+
+    .DESCRIPTION
+        Converts Windows script paths to WSL mount paths and executes the script
+        via bash. Supports argument passing and exit code handling.
+
+    .PARAMETER ScriptPath
+        Windows path to the bash script (e.g., C:\path\to\script.sh)
+
+    .PARAMETER DistroName
+        Name of the WSL distribution to execute the script in
+
+    .PARAMETER Arguments
+        Optional array of arguments to pass to the script
+
+    .PARAMETER StopAtError
+        If true, throws on non-zero exit code. Default: true
+
+    .PARAMETER PrintCommand
+        If true, prints the command before execution. Default: true
+
+    .OUTPUTS
+        System.Int32
+        Returns the exit code from the script execution.
+
+    .EXAMPLE
+        Invoke-WslDistroScript -ScriptPath "C:\scripts\setup.sh" -DistroName "Debian"
+
+    .EXAMPLE
+        Invoke-WslDistroScript -ScriptPath "C:\scripts\install.sh" -DistroName "Ubuntu" `
+            -Arguments @("--user=developer", "--mode=production")
+
+    .EXAMPLE
+        $exitCode = Invoke-WslDistroScript -ScriptPath "C:\scripts\test.sh" -DistroName "Debian" -StopAtError $false
+        if ($exitCode -ne 0) {
+            Write-Host "Script failed with exit code: $exitCode"
+        }
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ScriptPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$Arguments = @(),
+
+        [Parameter(Mandatory = $false)]
+        [bool]$StopAtError = $true,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$PrintCommand = $true
+    )
+
+    # Validate script exists
+    if (-not (Test-Path $ScriptPath)) {
+        throw "Script not found: $ScriptPath"
+    }
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # Validate distribution exists
+    $distros = Get-WslDistroList
+    if ($DistroName -notin $distros) {
+        throw "Distribution '$DistroName' does not exist."
+    }
+
+    # Convert Windows path to WSL mount path
+    # Extract drive letter and convert to lowercase (C:, D:, etc.)
+    $driveLetter = $ScriptPath.Substring(0, 1).ToLower()
+    $driveLetterUpper = $driveLetter.ToUpper()
+
+    # Convert to WSL path: replace drive letter with /mnt/X/ and backslashes with forward slashes
+    # First, replace the drive letter (e.g., "C:" or "c:" -> "/mnt/c") - case insensitive
+    $drivePattern = "^[${driveLetter}${driveLetterUpper}]:"
+    $wslPath = $ScriptPath -replace $drivePattern, "/mnt/${driveLetter}"
+    # Then convert backslashes to forward slashes
+    $wslPath = $wslPath.Replace('\', '/')
+
+    # Build WSL command with arguments
+    $argString = ""
+    if ($Arguments.Count -gt 0) {
+        $argString = " " + ($Arguments -join ' ')
+    }
+
+    # Execute via bash (no need for script to be +x since we're invoking bash directly)
+    $commandLine = "wsl.exe --distribution $DistroName --exec bash `"$wslPath`"$argString"
+
+    # Execute and suppress output (we only care about exit code)
+    Invoke-CommandLine -CommandLine $commandLine -StopAtError $StopAtError -PrintCommand $PrintCommand | Out-Null
+
+    # Return exit code
+    return $LASTEXITCODE
+}
