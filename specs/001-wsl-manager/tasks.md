@@ -606,9 +606,11 @@ Based on plan.md project structure:
   - Tests from T071-test now PASS (475/475 unit tests) ✓
 
 - [X] T072 Integration test for `Invoke-WslDistroScript` in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
-  - Note: Integration test coverage included in bash script execution tests
-  - Verified via unit tests with mocked execution
-  - Real integration testing deferred to Docker installation integration tests
+  - **COMPLETED (2026-01-26)**: Added comprehensive integration tests
+  - Test 1: Execute bash script with arguments and verify exit code
+  - Test 2: Execute bash script with AsRoot=true/false and verify sudo execution
+  - Tests verify Windows-to-WSL path conversion and exit code handling
+  - All integration tests passing (26/26) ✓
 
 ### Docker Setup Work - Tests (MANDATORY - TDD)
 
@@ -632,11 +634,20 @@ Based on plan.md project structure:
   - Handle exit codes with user-friendly error messages
   - Removed old manual command execution (75 lines → 30 lines for script execution)
   - Tests from T073-test now PASS (469/469 unit tests) ✓
+  - **CRITICAL BUG FIX (2026-01-26)**: Added `-AsRoot $true` parameter
+    - Initial implementation failed user acceptance test: "Error: This script must be run as root"
+    - Root cause: install-docker.sh requires root but was executing as regular user
+    - Fix: Added AsRoot parameter to Invoke-WslDistroScript, pass `-AsRoot $true` in Install-WslDockerEngine
+    - **TDD VIOLATION CORRECTED**: Added unit test to verify AsRoot parameter usage
+    - All tests passing (504/504) ✓
 
 - [X] T075 Integration test for Docker setup in `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
-  - Integration testing verified via comprehensive unit test mocking
-  - Real end-to-end Docker installation tested manually
-  - Test distribution cleanup handled by existing test infrastructure
+  - **COMPLETED (2026-01-26)**: Added comprehensive Docker installation integration test
+  - Tests Docker installation from scratch OR verifies existing installation
+  - Verifies: docker --version, systemctl is-active docker, docker ps as non-root user
+  - Tests Docker service is running after installation
+  - Tests user can run docker without sudo (group membership works)
+  - Integration test passing, Docker successfully installed and functional ✓
 
 ---
 

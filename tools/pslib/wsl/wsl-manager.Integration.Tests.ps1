@@ -397,4 +397,154 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $finalState | Should -Be "Stopped"
         }
     }
+
+    Context "Script Execution" {
+        It "Should execute bash script using Invoke-WslDistroScript" {
+            Write-Host "`n==> TEST: Executing bash script in $script:customDistroName ..." -ForegroundColor Magenta
+
+            # Create a temporary test script with Unix line endings
+            $testScriptContent = "#!/bin/bash`necho `"Script executed successfully`"`necho `"Argument 1: `$1`"`necho `"Argument 2: `$2`"`nexit 42"
+            $testScriptPath = Join-Path $env:TEMP "wsl-test-script-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
+            # Write with LF line endings only (Unix format)
+            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, [System.Text.Encoding]::UTF8)
+
+            try {
+                # Execute the script
+                Write-Host "    Executing script: $testScriptPath" -ForegroundColor Cyan
+                $exitCode = Invoke-WslDistroScript -ScriptPath $testScriptPath `
+                    -DistroName $script:customDistroName `
+                    -Arguments @("arg1", "arg2") `
+                    -StopAtError $false `
+                    -PrintCommand $false
+
+                Write-Host "    Exit code: $exitCode" -ForegroundColor Cyan
+
+                # Verify exit code is returned correctly
+                $exitCode | Should -Be 42
+
+                Write-Host "    Script execution test passed" -ForegroundColor Green
+            }
+            finally {
+                # Cleanup
+                if (Test-Path $testScriptPath) {
+                    Remove-Item $testScriptPath -Force
+                }
+            }
+        }
+
+        It "Should execute bash script with sudo when AsRoot is true" {
+            Write-Host "`n==> TEST: Executing bash script with sudo in $script:customDistroName ..." -ForegroundColor Magenta
+
+            # Create a test script that checks if running as root with Unix line endings
+            $testScriptContent = "#!/bin/bash`nif [ `"`$(id -u)`" -eq 0 ]; then`n    echo `"Running as root`"`n    exit 0`nelse`n    echo `"Not running as root`"`n    exit 1`nfi"
+            $testScriptPath = Join-Path $env:TEMP "wsl-test-root-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
+            # Write with LF line endings only (Unix format)
+            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, [System.Text.Encoding]::UTF8)
+
+            try {
+                # Execute with AsRoot=true
+                Write-Host "    Executing script with AsRoot=true" -ForegroundColor Cyan
+                $exitCode = Invoke-WslDistroScript -ScriptPath $testScriptPath `
+                    -DistroName $script:customDistroName `
+                    -AsRoot $true `
+                    -StopAtError $false `
+                    -PrintCommand $false
+
+                Write-Host "    Exit code: $exitCode" -ForegroundColor Cyan
+
+                # Should exit 0 (running as root)
+                $exitCode | Should -Be 0
+
+                # Execute with AsRoot=false (should fail if test user doesn't have sudo without password)
+                # NOTE: Our test user HAS NOPASSWD sudo, so this will actually work but not run as root
+                Write-Host "    Executing script with AsRoot=false" -ForegroundColor Cyan
+                $exitCodeNoRoot = Invoke-WslDistroScript -ScriptPath $testScriptPath `
+                    -DistroName $script:customDistroName `
+                    -AsRoot $false `
+                    -StopAtError $false `
+                    -PrintCommand $false
+
+                Write-Host "    Exit code (AsRoot=false): $exitCodeNoRoot" -ForegroundColor Cyan
+
+                # Should exit 1 (not running as root)
+                $exitCodeNoRoot | Should -Be 1
+
+                Write-Host "    AsRoot parameter test passed" -ForegroundColor Green
+            }
+            finally {
+                # Cleanup
+                if (Test-Path $testScriptPath) {
+                    Remove-Item $testScriptPath -Force
+                }
+            }
+        }
+    }
+
+    Context "Docker Setup" {
+        It "Should install Docker Engine or verify it's already installed" {
+            Write-Host "`n==> TEST: Testing Docker installation in $script:customDistroName ..." -ForegroundColor Magenta
+
+            # First check if Docker is already installed
+            $dockerInstalled = Test-WslDockerInstalled -DistroName $script:customDistroName
+
+            if ($dockerInstalled) {
+                Write-Host "    Docker is already installed, skipping installation test" -ForegroundColor Yellow
+                Write-Host "    Verifying Docker functionality instead..." -ForegroundColor Cyan
+
+                # Verify Docker is functional
+                $dockerVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "docker --version" -PrintCommand $false -PassThru
+                Write-Host "    Docker version: $dockerVersion" -ForegroundColor Cyan
+                $dockerVersion | Should -Match "Docker version"
+
+                # Verify service is running
+                $serviceStatus = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "systemctl is-active docker" -PrintCommand $false -PassThru -StopAtError $false
+                Write-Host "    Docker service status: $serviceStatus" -ForegroundColor Cyan
+                $serviceStatus.Trim() | Should -BeIn @("active", "activating")
+            }
+            else {
+                Write-Host "    Docker not installed, proceeding with installation..." -ForegroundColor Cyan
+
+                # Install Docker
+                Write-Host "    This may take several minutes..." -ForegroundColor Yellow
+                $result = Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false
+
+                # Verify installation succeeded
+                $result | Should -Be $true
+
+                # Verify Docker is now installed
+                $dockerInstalled = Test-WslDockerInstalled -DistroName $script:customDistroName
+                $dockerInstalled | Should -Be $true
+
+                # Verify Docker version
+                $dockerVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "docker --version" -PrintCommand $false -PassThru
+                Write-Host "    Installed Docker version: $dockerVersion" -ForegroundColor Cyan
+                $dockerVersion | Should -Match "Docker version"
+
+                # Restart distribution to apply group membership
+                Write-Host "    Restarting distribution for group membership..." -ForegroundColor Cyan
+                Stop-WslDistro -Name $script:customDistroName -Confirm:$false
+
+                # Start it again
+                Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'restarted'" -PrintCommand $false -Silent $true
+
+                # Verify service is running
+                $serviceStatus = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "systemctl is-active docker" -PrintCommand $false -PassThru
+                Write-Host "    Docker service status: $serviceStatus" -ForegroundColor Cyan
+                $serviceStatus.Trim() | Should -Be "active"
+
+                # Verify user can run docker without sudo
+                Write-Host "    Testing docker ps as testuser..." -ForegroundColor Cyan
+                $dockerPsOutput = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "sudo -u testuser docker ps" -PrintCommand $false -PassThru
+                Write-Host "    Docker ps output: $dockerPsOutput" -ForegroundColor Cyan
+                $dockerPsOutput | Should -Match "CONTAINER ID|STATUS"
+
+                Write-Host "    Docker installation and verification complete" -ForegroundColor Green
+            }
+        }
+    }
 }
