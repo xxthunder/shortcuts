@@ -1,0 +1,13 @@
+# Unix-specific files: Force LF (required for WSL/Linux execution)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows-specific files: Force CRLF (required for Windows batch/PowerShell execution)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# Documentation: CRLF on Windows (easier for Windows editors)
+*.md text eol=crlf
