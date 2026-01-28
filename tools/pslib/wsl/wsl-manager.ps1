@@ -70,16 +70,46 @@ $ErrorActionPreference = "Stop"
 
 #region Functions
 
+function Format-DistroListEntry {
+    <#
+    .SYNOPSIS
+        Formats a distribution list entry with state information.
+
+    .PARAMETER Index
+        The index number to display.
+
+    .PARAMETER Distro
+        The distribution object with Name, State, Version, and IsDefault properties.
+    #>
+    param(
+        [int]$Index,
+        [PSCustomObject]$Distro
+    )
+
+    $statusParts = @()
+    $statusParts += $Distro.State
+    $statusParts += "WSL$($Distro.Version)"
+    if ($Distro.IsDefault) {
+        $statusParts += "Default"
+    }
+    $status = $statusParts -join ", "
+
+    $stateColor = if ($Distro.State -eq "Running") { "Green" } else { "Gray" }
+    Write-Host "  $Index. " -NoNewline -ForegroundColor White
+    Write-Host "$($Distro.Name) " -NoNewline -ForegroundColor White
+    Write-Host "($status)" -ForegroundColor $stateColor
+}
+
 function Show-WslDistroList {
     <#
     .SYNOPSIS
-        Displays a list of installed WSL distributions.
+        Displays a list of installed WSL distributions with state information.
     #>
     if (-not (Test-WslInstalled)) {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     Write-Host ""
     Write-Host "Installed WSL Distributions:" -ForegroundColor Cyan
@@ -91,7 +121,7 @@ function Show-WslDistroList {
     else {
         $index = 1
         foreach ($distro in $distros) {
-            Write-Host "  $index. $distro" -ForegroundColor White
+            Format-DistroListEntry -Index $index -Distro $distro
             $index++
         }
     }
@@ -179,7 +209,7 @@ function Invoke-RemoveDistro {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
         Write-WarningMsg "No WSL distributions found to remove."
@@ -191,7 +221,7 @@ function Invoke-RemoveDistro {
     Write-Host "Available distributions:" -ForegroundColor Cyan
     $index = 1
     foreach ($distro in $distros) {
-        Write-Host "  $index. $distro" -ForegroundColor White
+        Format-DistroListEntry -Index $index -Distro $distro
         $index++
     }
     Write-Host ""
@@ -209,7 +239,7 @@ function Invoke-RemoveDistro {
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-            $selectedName = $distros[$selectionNum - 1]
+            $selectedName = $distros[$selectionNum - 1].Name
         }
         else {
             Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
@@ -233,7 +263,7 @@ function Invoke-UpdateDistro {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
         Write-WarningMsg "No WSL distributions found to update."
@@ -245,7 +275,7 @@ function Invoke-UpdateDistro {
     Write-Host "Available distributions:" -ForegroundColor Cyan
     $index = 1
     foreach ($distro in $distros) {
-        Write-Host "  $index. $distro" -ForegroundColor White
+        Format-DistroListEntry -Index $index -Distro $distro
         $index++
     }
     Write-Host ""
@@ -263,7 +293,7 @@ function Invoke-UpdateDistro {
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-            $selectedName = $distros[$selectionNum - 1]
+            $selectedName = $distros[$selectionNum - 1].Name
         }
         else {
             Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
@@ -296,10 +326,10 @@ function Invoke-TerminateDistro {
     }
 
     # Get running distributions
-    $allDistros = @(Get-WslDistroList)
+    $allDistros = @(Get-WslDistroList -Detailed)
     $runningDistros = @()
     foreach ($distro in $allDistros) {
-        if (Test-WslDistroRunning -DistroName $distro) {
+        if ($distro.State -eq "Running") {
             $runningDistros += $distro
         }
     }
@@ -325,7 +355,7 @@ function Invoke-TerminateDistro {
     Write-Host "Running distributions:" -ForegroundColor Cyan
     $index = 1
     foreach ($distro in $runningDistros) {
-        Write-Host "  $index. $distro" -ForegroundColor White
+        Format-DistroListEntry -Index $index -Distro $distro
         $index++
     }
     Write-Host ""
@@ -343,7 +373,7 @@ function Invoke-TerminateDistro {
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
         if ($selectionNum -ge 1 -and $selectionNum -le $runningDistros.Count) {
-            $selectedName = $runningDistros[$selectionNum - 1]
+            $selectedName = $runningDistros[$selectionNum - 1].Name
         }
         else {
             Write-ErrorMsg "Invalid selection number. Must be between 1 and $($runningDistros.Count)."
@@ -355,7 +385,8 @@ function Invoke-TerminateDistro {
         $selectedName = $selection
     }
 
-    if ($selectedName -notin $runningDistros) {
+    $runningDistroNames = $runningDistros | ForEach-Object { $_.Name }
+    if ($selectedName -notin $runningDistroNames) {
         Write-ErrorMsg "Distribution '$selectedName' is not in the list of running distributions."
         return
     }
@@ -464,7 +495,7 @@ function Invoke-SetupUserInteractive {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
         Write-WarningMsg "No WSL distributions found."
@@ -476,7 +507,7 @@ function Invoke-SetupUserInteractive {
     Write-Host "Available distributions:" -ForegroundColor Cyan
     $index = 1
     foreach ($distro in $distros) {
-        Write-Host "  $index. $distro" -ForegroundColor White
+        Format-DistroListEntry -Index $index -Distro $distro
         $index++
     }
     Write-Host ""
@@ -494,7 +525,7 @@ function Invoke-SetupUserInteractive {
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-            $selectedName = $distros[$selectionNum - 1]
+            $selectedName = $distros[$selectionNum - 1].Name
         }
         else {
             Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
@@ -518,7 +549,7 @@ function Invoke-SetupDockerInteractive {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
         Write-WarningMsg "No WSL distributions found."
@@ -530,7 +561,7 @@ function Invoke-SetupDockerInteractive {
     Write-Host "Available distributions:" -ForegroundColor Cyan
     $index = 1
     foreach ($distro in $distros) {
-        Write-Host "  $index. $distro" -ForegroundColor White
+        Format-DistroListEntry -Index $index -Distro $distro
         $index++
     }
     Write-Host ""
@@ -548,7 +579,7 @@ function Invoke-SetupDockerInteractive {
     if ($selection -match '^\d+$') {
         $selectionNum = [int]$selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-            $selectedName = $distros[$selectionNum - 1]
+            $selectedName = $distros[$selectionNum - 1].Name
         }
         else {
             Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
@@ -582,7 +613,7 @@ function Invoke-CloneDistro {
         throw "WSL is not installed. Please install WSL first."
     }
 
-    $distros = @(Get-WslDistroList)
+    $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
         Write-WarningMsg "No WSL distributions found to clone."
@@ -597,7 +628,7 @@ function Invoke-CloneDistro {
         # Show available distributions with numbers
         $index = 1
         foreach ($distro in $distros) {
-            Write-Host "  $index. $distro" -ForegroundColor White
+            Format-DistroListEntry -Index $index -Distro $distro
             $index++
         }
         Write-Host ""
@@ -613,7 +644,7 @@ function Invoke-CloneDistro {
         if ($selection -match '^\d+$') {
             $selectionNum = [int]$selection
             if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
-                $SourceName = $distros[$selectionNum - 1]
+                $SourceName = $distros[$selectionNum - 1].Name
             }
             else {
                 Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
