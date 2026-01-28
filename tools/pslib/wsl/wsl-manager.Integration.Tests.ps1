@@ -150,6 +150,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:baseDistroName
 
+            # Ensure base distribution is stopped before updating (Update-WslDistro requirement)
+            if (Test-WslDistroRunning -DistroName $script:baseDistroName) {
+                Write-Host "Stopping '$script:baseDistroName' before updating..." -ForegroundColor Yellow
+                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+            }
+
             # Capture output from Update-WslDistro
             $output = Update-WslDistro -Name $script:baseDistroName -Confirm:$false *>&1 | Out-String
             $output = $output -replace '\x00',''
