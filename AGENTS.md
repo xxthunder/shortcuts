@@ -401,12 +401,17 @@ Provide specific feedback with `file:line` references.
 
 ### Reference Documentation
 
-For detailed PowerShell library guidelines, see:
+For core development principles and quality gates:
+
+- `docs/development-principles.md`: Core principles (TDD, error handling, environment awareness, etc.)
+
+For detailed PowerShell library guidelines:
 
 - `tools/pslib/AGENTS.md`: In-depth PowerShell development guide
 - `tools/pslib/CLAUDE.md`: Library-specific Claude instructions
 
-For project usage:
+For project documentation:
 
+- `docs/wsl-manager.md`: WSL Manager consolidated specification
 - `README.md`: User-facing installation and usage guide
 - `bin/install.ps1`: Main installation entry point
