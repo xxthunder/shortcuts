@@ -1,27 +1,10 @@
-# Shortcuts Constitution
+# Shortcuts - Development Principles
 
-<!--
-Sync Impact Report:
-Version: 1.0.0 (Initial constitution creation)
-Ratification Date: 2026-01-12
-Changes:
-  - Created initial constitution based on AGENTS.md project guidelines
-  - Established 7 core principles: Test-First Development, Library-First Architecture,
-    PowerShell Standards, Error Handling & Robustness, Environment Awareness,
-    Code Reusability, Documentation & Traceability
-  - Defined Development Workflow section
-  - Established Quality Gates section
-  - Set Governance rules
+**Version**: 1.0.0 | **Created**: 2026-01-12 | **Adapted**: 2026-01-28
 
-Template Consistency Status:
-  ✅ plan-template.md - Constitution Check section ready for principle validation
-  ✅ spec-template.md - Requirements and success criteria align with principles
-  ✅ tasks-template.md - Task structure supports TDD and independent testing
-  ⚠️  No command files in .specify/templates/commands/ to update
+This document defines the core principles for developing the Shortcuts project. These principles ensure code quality, maintainability, and consistency across the codebase.
 
-Follow-up TODOs:
-  - None: All required fields populated
--->
+---
 
 ## Core Principles
 
@@ -30,7 +13,6 @@ Follow-up TODOs:
 **TDD is mandatory for all PowerShell code in this project.**
 
 - Tests MUST be written BEFORE implementation (Red-Green-Refactor cycle)
-- Tests MUST be approved by user/reviewer before implementation begins
 - Unit tests (`*.Tests.ps1`) MUST pass before committing
 - Integration tests (`*.Integration.Tests.ps1`) MUST pass for modified integration points
 - When modifying existing functions, tests MUST be updated first to reflect new behavior
@@ -43,7 +25,6 @@ Follow-up TODOs:
 **All reusable functionality MUST be implemented as library functions in `tools/pslib/`.**
 
 - Library functions MUST be self-contained and independently testable
-- Library functions MUST have clear, documented purposes (no organizational-only libraries)
 - Before writing new code, MUST check existing library functions in `tools/pslib/utils/` and `tools/pslib/wsl/`
 - Executable scripts MUST have `.bat` wrapper for command-line accessibility
 - External command execution MUST use `Invoke-CommandLine` from pslib
@@ -111,6 +92,8 @@ Follow-up TODOs:
 
 **Rationale**: Maintains project history, enables effective code review, and ensures users understand how to use new features.
 
+---
+
 ## Development Workflow
 
 **All code changes MUST follow this workflow:**
@@ -118,14 +101,15 @@ Follow-up TODOs:
 1. **Research**: Check if functionality exists in `tools/pslib/` or other scripts
 2. **Design**: Plan the script structure and identify reusable components
 3. **Test First**: Write Pester tests before implementation (Red phase)
-4. **User Approval**: Get approval for tests (if applicable)
-5. **Implement**: Write the PowerShell script following guidelines (Green phase)
-6. **Test Again**: Verify all tests pass (Red-Green-Refactor complete)
-7. **Pre-Commit Validation**: Run unit tests and integration tests
-8. **Document**: Add comments and help documentation
-9. **Commit Together**: Tests and implementation in same commit
+4. **Implement**: Write the PowerShell script following guidelines (Green phase)
+5. **Test Again**: Verify all tests pass (Red-Green-Refactor complete)
+6. **Pre-Commit Validation**: Run unit tests and integration tests
+7. **Document**: Add comments and help documentation
+8. **Commit Together**: Tests and implementation in same commit
 
 **Critical checkpoint**: NEVER modify implementation without updating tests first.
+
+---
 
 ## Quality Gates
 
@@ -163,33 +147,11 @@ pwsh -File ".\test\bin\testrunner.ps1"
 powershell -File ".\test\bin\testrunner.ps1"
 ```
 
-## Governance
+---
 
-**This constitution supersedes all other development practices and guidelines.**
+## Reference Documentation
 
-### Amendment Process
-
-1. Proposed amendments MUST be documented in a constitution update PR
-2. Amendments MUST include rationale and impact analysis
-3. Amendments MUST identify affected templates and documentation
-4. Amendments MUST have approval before merge
-5. Constitution version MUST be incremented per semantic versioning:
-   - **MAJOR**: Backward incompatible governance/principle removals or redefinitions
-   - **MINOR**: New principle/section added or materially expanded guidance
-   - **PATCH**: Clarifications, wording, typo fixes, non-semantic refinements
-
-### Compliance Review
-
-- All PRs and code reviews MUST verify compliance with this constitution
-- Any violation MUST be justified (see Complexity Tracking in plan-template.md)
-- Unjustified violations MUST be rejected
-- Complexity MUST be justified: simpler alternatives must be considered first
-
-### Living Documentation
-
-- `AGENTS.md` provides detailed technical implementation guidance for these principles
-- `tools/pslib/AGENTS.md` provides PowerShell library-specific development guidance
-- `README.md` provides user-facing installation and usage documentation
-- When principles change, ALL dependent documentation MUST be updated
-
-**Version**: 1.0.0 | **Ratified**: 2026-01-12 | **Last Amended**: 2026-01-12
+For detailed technical implementation guidance:
+- `AGENTS.md` - Project-wide development guidelines
+- `tools/pslib/AGENTS.md` - PowerShell library-specific guidance
+- `README.md` - User-facing installation and usage documentation
