@@ -4,6 +4,10 @@
 
 This document defines the core principles for developing the Shortcuts project. These principles ensure code quality, maintainability, and consistency across the codebase.
 
+> **Note**: This document covers *how* we develop code. For *what* we plan to build, see:
+> - `docs/roadmap.md` - High-level vision and planned features
+> - `docs/backlog.md` - Detailed backlog of tasks and improvements
+
 ---
 
 ## Core Principles
