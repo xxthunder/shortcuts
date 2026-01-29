@@ -139,6 +139,36 @@ Describe "Get-WslDistroList" {
             $result.GetType().Name | Should -Be "Object[]"
         }
 
+        It "Should return empty array when WSL outputs informational message about no distributions" {
+            Mock Test-WslInstalled { $true }
+            # Simulate WSL output when no distributions exist (actual message varies by locale)
+            $noDistrosMessage = @"
+  NAME            STATE           VERSION
+Windows Subsystem for Linux has no installed distributions.
+"@
+            Mock wsl { $noDistrosMessage -split "`n" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
+
+            $result = @(Get-WslDistroList -Detailed)
+
+            $result | Should -HaveCount 0
+            $result.GetType().Name | Should -Be "Object[]"
+        }
+
+        It "Should not fail when parsing lines that don't match expected distribution format" {
+            Mock Test-WslInstalled { $true }
+            # Test with various edge case outputs
+            $edgeCaseOutput = @"
+  NAME            STATE           VERSION
+No distributions.
+Use 'wsl --list --online' to list available distributions.
+"@
+            Mock wsl { $edgeCaseOutput -split "`n" } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--verbose" }
+
+            { @(Get-WslDistroList -Detailed) } | Should -Not -Throw
+            $result = @(Get-WslDistroList -Detailed)
+            $result | Should -HaveCount 0
+        }
+
         It "Should return array with one object when single distribution exists" {
             Mock Test-WslInstalled { $true }
             $singleDistro = @"

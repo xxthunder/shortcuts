@@ -120,7 +120,16 @@ function Get-WslDistroList {
             # Handle multi-word state values (e.g., "Wird ausgeführt", "En cours d'exécution")
             # Version is always the last field, Name is the first, State is everything in between
             $name = $fields[0]
-            $version = [int]$fields[-1]
+            $versionString = $fields[-1]
+
+            # Validate that the version field is actually a number
+            # If not, this line is not a valid distribution entry (e.g., informational message)
+            $version = 0
+            if (-not [int]::TryParse($versionString, [ref]$version)) {
+                # Skip lines that don't have a valid numeric version field
+                continue
+            }
+
             $stateValue = ($fields[1..($fields.Count - 2)]) -join ' '
 
             # Normalize state to Running/Stopped
