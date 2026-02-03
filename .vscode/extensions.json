@@ -1,7 +1,6 @@
 {
     "recommendations": [
         "ms-vscode.powershell",
-        "thqby.vscode-autohotkey2-lsp",
-        "anthropic.claude-code"
+        "thqby.vscode-autohotkey2-lsp"
     ]
 }

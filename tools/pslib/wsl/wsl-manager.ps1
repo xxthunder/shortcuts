@@ -9,7 +9,7 @@
     creating, and removing distributions.
 
 .PARAMETER Command
-    The command to execute: list, create, clone, remove.
+    The command to execute: list, create, clone, remove, update, setup-user, setup-docker, repair-interop, terminate.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -40,6 +40,7 @@
 .EXAMPLE
     .\wsl-manager.ps1 clone Debian MyProject
     Clones the Debian distribution to a new distribution named MyProject.
+
 #>
 
 # Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
@@ -47,7 +48,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "terminate", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "repair-interop", "terminate", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -708,7 +709,7 @@ function Show-InteractiveMenu {
         Write-Host "  [C] Clone distribution" -ForegroundColor White
         Write-Host "  [U] Update distribution" -ForegroundColor White
         Write-Host "  [S] Setup user account" -ForegroundColor White
-        Write-Host "  [D] Setup Docker" -ForegroundColor White
+        Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
@@ -835,6 +836,16 @@ function Invoke-WslManager {
             }
             else {
                 Invoke-SetupDocker -DistroName $Name
+            }
+        }
+        "repair-interop" {
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Write-Host "Error: Distribution name required for repair-interop command" -ForegroundColor Red
+                Write-Host "Usage: wsl-manager repair-interop <DistroName>" -ForegroundColor Yellow
+                exit 1
+            }
+            else {
+                Invoke-RepairInterop -DistroName $Name
             }
         }
         "terminate" {

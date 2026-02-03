@@ -129,56 +129,6 @@ Describe "Install-WslDockerEngine" {
         }
     }
 
-    Context "Prerequisite validation - Systemd configuration" {
-        It "Should throw when systemd is not configured in wsl.conf" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*wsl.conf*"
-        }
-
-        It "Should provide wsl.conf configuration instructions in error message" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*[boot]*systemd=true*"
-        }
-
-        It "Should provide restart instructions in error message" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*wsl.exe --terminate*"
-        }
-    }
-
-    Context "Prerequisite validation - Systemd running" {
-        It "Should throw when systemd is not running" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemd*running*"
-        }
-
-        It "Should provide troubleshooting steps in error message" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*systemctl --version*"
-        }
-    }
 
     Context "Prerequisite validation - Distribution type" {
         It "Should throw when distribution is not Debian/Ubuntu" {
@@ -197,7 +147,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -213,7 +163,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Ubuntu") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "ubuntu" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -230,8 +180,6 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
 
@@ -242,8 +190,6 @@ Describe "Install-WslDockerEngine" {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
 
@@ -255,7 +201,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
             Mock Test-WslDockerInstalled { $false }
@@ -271,7 +217,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "autodetected" }
             Mock Test-WslDockerInstalled { $false }
@@ -285,31 +231,43 @@ Describe "Install-WslDockerEngine" {
         }
     }
 
-    Context "Prerequisite validation - Docker already installed" {
-        It "Should throw when Docker is already installed" {
+    Context "Idempotent behavior - Docker already installed" {
+        BeforeEach {
             Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
-            Mock Test-WslDockerInstalled { $true }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*already installed*"
+            Mock Test-WslDockerInstalled { $true }  # Docker already installed
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*" }
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+            Mock Test-Path { $true }
         }
 
-        It "Should provide uninstall instructions in error message" {
-            Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
-            Mock Test-Wsl2Version { $true }
-            Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
-            Mock Get-WslDistroType { "debian" }
-            Mock Get-WslDefaultUser { "developer" }
-            Mock Test-WslDockerInstalled { $true }
+        It "Should not throw when Docker is already installed" {
+            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Not -Throw
+        }
 
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*apt-get remove*"
+        It "Should still call bash script when Docker installed (for repair)" {
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*install-docker.sh*"
+            }
+        }
+
+        It "Should return true when Docker verification succeeds" {
+            $result = Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+            $result | Should -Be $true
+        }
+
+        It "Should write informational message when Docker already installed" {
+            Mock Write-Information { }
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*already installed*"
+            }
         }
     }
 
@@ -319,7 +277,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -351,7 +309,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
-            Mock Test-WslSystemd { $true }
+            Mock Test-WslInteropConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -429,6 +387,110 @@ Describe "Install-WslDockerEngine" {
             $result = Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
 
             $result | Should -Be $true
+        }
+    }
+
+    Context "Systemd and interop prerequisite configuration" {
+        BeforeEach {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-Wsl2Version { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+            Mock Test-Path { $true }
+        }
+
+        It "Should configure systemd if not already configured" {
+            Mock Test-WslSystemdConfigured { $false } -ParameterFilter { $DistroName -eq "Debian" }
+            Mock Test-WslInteropConfigured { $false } -ParameterFilter { $DistroName -eq "Debian" }
+            Mock Get-WslDefaultUser { "developer" } -ParameterFilter { $DistroName -eq "Debian" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Sections.boot.systemd -eq "true"
+            }
+        }
+
+        It "Should configure interop settings when systemd is not configured" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.interop.enabled -eq "true" -and
+                $Sections.interop.appendWindowsPath -eq "true"
+            }
+        }
+
+        It "Should preserve existing user configuration" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Get-WslDefaultUser { "existinguser" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.user.default -eq "existinguser"
+            }
+        }
+
+        It "Should configure interop even if systemd already configured" {
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.interop.enabled -eq "true" -and
+                $Sections.interop.appendWindowsPath -eq "true" -and
+                -not $Sections.ContainsKey('boot')
+            }
+        }
+
+        It "Should skip wsl.conf configuration if both systemd and interop are configured" {
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $true }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 0
+        }
+
+        It "Should restart distribution after wsl.conf changes" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            # Verify systemd configuration happened and Start-Sleep was called (which only happens after terminate)
+            Should -Invoke Set-WslConf -Times 1
+            Should -Invoke Start-Sleep -Times 1
         }
     }
 

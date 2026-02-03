@@ -615,6 +615,55 @@ Describe "Get-WslDistroState" {
     }
 }
 
+Describe "Test-WslDistroExists" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslDistroExists -DistroName "Debian" } | Should -Throw -ExpectedMessage "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution exists" {
+        It "Should return true" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian", "Ubuntu", "Alpine") }
+
+            $result = Test-WslDistroExists -DistroName "Debian"
+            $result | Should -Be $true
+        }
+
+        It "Should call Get-WslDistroList" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            Test-WslDistroExists -DistroName "Debian"
+
+            Should -Invoke Get-WslDistroList -Times 1
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should return false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+
+            $result = Test-WslDistroExists -DistroName "Debian"
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When no distributions are installed" {
+        It "Should return false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @() }
+
+            $result = Test-WslDistroExists -DistroName "Debian"
+            $result | Should -Be $false
+        }
+    }
+}
+
 Describe "Test-WslDistroRunning" {
     Context "When WSL is not installed" {
         It "Should throw an error" {
@@ -627,7 +676,7 @@ Describe "Test-WslDistroRunning" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
             Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+            Mock Test-WslDistroExists { $false }
 
             { Test-WslDistroRunning -DistroName "NonExistent" } | Should -Throw -ExpectedMessage "*Distribution 'NonExistent' does not exist*"
         }
@@ -636,7 +685,7 @@ Describe "Test-WslDistroRunning" {
     Context "When distribution is running" {
         It "Should return true" {
             Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-WslDistroExists { $true }
             Mock Get-WslDistroState { "Running" } -ParameterFilter { $DistroName -eq "Debian" }
 
             $result = Test-WslDistroRunning -DistroName "Debian"
@@ -645,7 +694,7 @@ Describe "Test-WslDistroRunning" {
 
         It "Should call Get-WslDistroState" {
             Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-WslDistroExists { $true }
             Mock Get-WslDistroState { "Running" }
 
             Test-WslDistroRunning -DistroName "Debian"
@@ -657,7 +706,7 @@ Describe "Test-WslDistroRunning" {
     Context "When distribution is stopped" {
         It "Should return false" {
             Mock Test-WslInstalled { $true }
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Test-WslDistroExists { $true }
             Mock Get-WslDistroState { "Stopped" } -ParameterFilter { $DistroName -eq "Debian" }
 
             $result = Test-WslDistroRunning -DistroName "Debian"

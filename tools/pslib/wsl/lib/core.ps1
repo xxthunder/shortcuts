@@ -232,6 +232,48 @@ function Get-WslDistroState {
     return $distro.State
 }
 
+function Test-WslDistroExists {
+    <#
+    .SYNOPSIS
+        Tests if a WSL distribution exists.
+
+    .DESCRIPTION
+        Checks if the specified WSL distribution is installed on the system.
+        This is a convenience wrapper around Get-WslDistroList.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to check.
+
+    .OUTPUTS
+        System.Boolean
+        Returns $true if the distribution exists, $false otherwise.
+
+    .EXAMPLE
+        if (Test-WslDistroExists -DistroName "Debian") {
+            Write-Host "Debian is installed"
+        }
+
+    .EXAMPLE
+        Test-WslDistroExists -DistroName "Ubuntu-22.04"
+        Returns: $true or $false
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Exists is a singular verb form, not a plural noun')]
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    $distros = Get-WslDistroList
+    return $DistroName -in $distros
+}
+
 function Test-WslDistroRunning {
     <#
     .SYNOPSIS
@@ -269,8 +311,7 @@ function Test-WslDistroRunning {
     }
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
+    if (-not (Test-WslDistroExists -DistroName $DistroName)) {
         throw "Distribution '$DistroName' does not exist."
     }
 

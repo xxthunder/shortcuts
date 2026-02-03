@@ -77,16 +77,22 @@ function Install-WslDockerEngine {
         Installs Docker Engine in a WSL distribution.
 
     .DESCRIPTION
-        Installs Docker Engine, Docker CLI, containerd, Docker Compose plugin,
-        and Docker Buildx plugin in a WSL2 distribution. Performs comprehensive
-        prerequisite validation and post-installation verification.
+        Installs or repairs Docker Engine in a WSL2 distribution. This function is
+        idempotent and safe to run multiple times - it will skip installation if
+        Docker is already present and repair any missing configuration.
+
+        Automatically configures systemd and Windows interop if not already configured.
 
         Prerequisites:
         - WSL2 (not WSL1)
-        - systemd enabled and running
         - Debian or Ubuntu distribution
         - Default user configured in /etc/wsl.conf (or Username parameter provided)
-        - Docker not already installed
+
+        Note: This function is idempotent. Running it multiple times is safe and will:
+        - Skip Docker installation if already present
+        - Ensure user is in docker group
+        - Verify Docker service is running
+        - Repair binfmt.d configuration if needed
 
     .PARAMETER DistroName
         The name of the WSL distribution to install Docker in.
@@ -106,6 +112,10 @@ function Install-WslDockerEngine {
     .EXAMPLE
         Install-WslDockerEngine -DistroName "Ubuntu-22.04" -Username "developer" -Confirm:$false
         Installs Docker Engine in Ubuntu-22.04, adds user 'developer' to docker group, skips confirmation.
+
+    .EXAMPLE
+        Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+        Repairs or verifies Docker installation in Debian (safe to re-run).
 
     .NOTES
         This function requires sudo privileges in the WSL distribution.
@@ -152,45 +162,13 @@ Docker requires WSL2. Upgrade with:
 "@
     }
 
-    # 4. Check systemd configuration in wsl.conf
-    if (-not (Test-WslSystemdConfigured -DistroName $DistroName)) {
-        throw @"
-Distribution '$DistroName' does not have systemd configured in /etc/wsl.conf.
-Docker Engine requires systemd for service management.
-
-Add the following to /etc/wsl.conf:
-  [boot]
-  systemd=true
-
-Then restart the distribution:
-  wsl.exe --terminate $DistroName
-  wsl.exe --distribution $DistroName
-"@
-    }
-
-    # 5. Check systemd is running
-    if (-not (Test-WslSystemd -DistroName $DistroName)) {
-        throw @"
-Distribution '$DistroName' does not have systemd running.
-Docker Engine requires systemd for service management.
-
-This may mean systemd failed to start. Check the following:
-  1. Verify systemd is configured in /etc/wsl.conf (see previous step)
-  2. Restart the distribution:
-       wsl.exe --terminate $DistroName
-       wsl.exe --distribution $DistroName
-  3. Check systemd status:
-       wsl.exe --distribution $DistroName systemctl --version
-"@
-    }
-
-    # 6. Check distribution type (Debian/Ubuntu only)
+    # 4. Check distribution type (Debian/Ubuntu only)
     $distroType = Get-WslDistroType -DistroName $DistroName
     if ($distroType -notin @("debian", "ubuntu")) {
         throw "Distribution '$DistroName' is not a Debian or Ubuntu distribution (detected: $distroType). Only Debian and Ubuntu distributions are currently supported for Docker setup."
     }
 
-    # 7. Detect or validate username
+    # 5. Detect or validate username
     if (-not $Username) {
         $Username = Get-WslDefaultUser -DistroName $DistroName
         if (-not $Username) {
@@ -206,20 +184,56 @@ Then run setup-docker again.
         }
     }
 
-    # 8. Check if Docker already installed
-    if (Test-WslDockerInstalled -DistroName $DistroName) {
-        throw @"
-Docker is already installed in '$DistroName'.
+    # 6. Check Docker installation status (informational only - bash script is idempotent)
+    $dockerAlreadyInstalled = Test-WslDockerInstalled -DistroName $DistroName
+    if ($dockerAlreadyInstalled) {
+        Write-Information "Docker is already installed in '$DistroName'. Verifying configuration..."
+    }
 
-To reinstall Docker:
-  1. Uninstall existing Docker:
-       wsl.exe --distribution $DistroName sudo apt-get remove docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  2. Run setup-docker again
+    # Configure systemd and interop if not already configured
+    $systemdConfigured = Test-WslSystemdConfigured -DistroName $DistroName
+    $interopConfigured = Test-WslInteropConfigured -DistroName $DistroName
 
-Or verify your installation with:
-  docker --version
-  docker compose version
-"@
+    if (-not $systemdConfigured -or -not $interopConfigured) {
+        $configItems = @()
+        if (-not $systemdConfigured) {
+            $configItems += "systemd"
+        }
+        if (-not $interopConfigured) {
+            $configItems += "Windows interop"
+        }
+        Write-Information "Configuring $($configItems -join ' and ') (Docker prerequisites)..."
+
+        # Get existing default user if configured
+        $existingUser = Get-WslDefaultUser -DistroName $DistroName
+
+        # Build wsl.conf sections
+        $sections = @{}
+
+        # Add boot section if systemd not configured
+        if (-not $systemdConfigured) {
+            $sections.boot = @{systemd = "true"}
+        }
+
+        # Add interop section if not configured
+        if (-not $interopConfigured) {
+            $sections.interop = @{
+                enabled           = "true"
+                appendWindowsPath = "true"
+            }
+        }
+
+        # Preserve existing default user
+        if ($existingUser) {
+            $sections.user = @{default = $existingUser}
+        }
+
+        # Configure wsl.conf
+        Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false | Out-Null
+
+        Write-Information "Restarting distribution to apply changes..."
+        Invoke-CommandLine -Command "wsl.exe --terminate $DistroName" -StopAtError $false -PrintCommand $false | Out-Null
+        Start-Sleep -Seconds 2
     }
 
     # SupportsShouldProcess - prompt for confirmation
@@ -275,7 +289,13 @@ Or verify your installation with:
         switch ($exitCode) {
             0 {
                 Write-Information ""
-                Write-Information "Successfully installed Docker in '$DistroName'."
+                if ($dockerAlreadyInstalled) {
+                    Write-Information "Successfully verified Docker configuration in '$DistroName'."
+                    Write-Information ""
+                    Write-Information "Docker was already installed. Configuration has been verified and any missing components have been repaired."
+                } else {
+                    Write-Information "Successfully installed Docker in '$DistroName'."
+                }
                 Write-Information ""
                 Write-Information "Next steps:"
                 Write-Information "  1. Restart the distribution to apply group membership:"

@@ -759,3 +759,361 @@ systemd=false
         }
     }
 }
+
+Describe "Test-WslInteropConfigured" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Test-WslInteropConfigured -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Test-WslInteropConfigured -DistroName "Debian" } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When wsl.conf does not exist" {
+        It "Should return false when wsl.conf is not found" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When Windows interop is fully configured in wsl.conf" {
+        It "Should return true when both enabled=true and appendWindowsPath=true are set" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nenabled=true`nappendWindowsPath=true`n[boot]`nsystemd=true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true with spaces around equals" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nenabled = true`nappendWindowsPath = true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+
+        It "Should return true with extra whitespace" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`n  enabled  =  true  `n  appendWindowsPath  =  true  "
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+    }
+
+    Context "When Windows interop is not configured in wsl.conf" {
+        It "Should return false when [interop] section does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when only enabled=true is set" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nenabled=true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when only appendWindowsPath=true is set" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nappendWindowsPath=true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when enabled=false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nenabled=false`nappendWindowsPath=true"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when appendWindowsPath=false" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[interop]`nenabled=true`nappendWindowsPath=false"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when wsl.conf is empty" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When interop settings are in different sections" {
+        It "Should only check [interop] section, not [other] sections" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[other]`nenabled=true`nappendWindowsPath=true`n[interop]`nenabled=false"
+            }
+
+            $result = Test-WslInteropConfigured -DistroName "Debian"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Test-WslInteropConfigured -DistroName "" } | Should -Throw
+        }
+    }
+}
+
+Describe "Set-WslConf" {
+    Context "When WSL is not installed" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $false }
+
+            { Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw an error" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Ubuntu") }
+
+            { Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } } | Should -Throw "*does not exist*"
+        }
+    }
+
+    Context "When wsl.conf does not exist" {
+        It "Should create new wsl.conf with specified sections" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo tee /etc/wsl.conf*" -and
+                $Command -like "*[boot]*" -and
+                $Command -like "*systemd=true*"
+            }
+        }
+    }
+
+    Context "When wsl.conf exists with existing sections" {
+        It "Should preserve existing [user] section when adding [boot]" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[user]`ndefault=myuser"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*[user]*" -and
+                $Command -like "*default=myuser*" -and
+                $Command -like "*[boot]*" -and
+                $Command -like "*systemd=true*"
+            }
+        }
+
+        It "Should update existing [boot] section when systemd value changes" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=false"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*[boot]*" -and
+                $Command -like "*systemd=true*" -and
+                $Command -notlike "*systemd=false*"
+            }
+        }
+
+        It "Should preserve unrelated [network] section when modifying [boot]" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=false
+
+[network]
+generateHosts=false
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*[network]*" -and
+                $Command -like "*generateHosts=false*"
+            }
+        }
+
+        It "Should merge multiple sections in one call" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[user]`ndefault=myuser"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{
+                boot    = @{systemd = "true" }
+                interop = @{enabled = "true"; appendWindowsPath = "true" }
+            } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*[boot]*" -and
+                $Command -like "*systemd=true*" -and
+                $Command -like "*[interop]*" -and
+                $Command -like "*enabled=true*" -and
+                $Command -like "*appendWindowsPath=true*"
+            }
+        }
+
+        It "Should preserve comments in existing wsl.conf" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                @"
+# WSL Configuration
+[user]
+# Default user
+default=myuser
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*# WSL Configuration*" -and
+                $Command -like "*# Default user*"
+            }
+        }
+    }
+
+    Context "When backing up existing wsl.conf" {
+        It "Should create backup when wsl.conf exists" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand {
+                "[user]`ndefault=myuser"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo cp /etc/wsl.conf /etc/wsl.conf.backup.*"
+            }
+        }
+
+        It "Should not create backup when wsl.conf does not exist" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo cp /etc/wsl.conf*"
+            } -Times 0
+        }
+    }
+
+    Context "ShouldProcess support" {
+        It "Should skip modification when WhatIf is used" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -WhatIf
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo tee /etc/wsl.conf*"
+            } -Times 0
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should throw when DistroName is empty" {
+            { Set-WslConf -DistroName "" -Sections @{boot = @{systemd = "true" } } } | Should -Throw
+        }
+
+        It "Should throw when Sections is empty" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList { @("Debian") }
+
+            { Set-WslConf -DistroName "Debian" -Sections @{} -Confirm:$false } | Should -Throw "*null*"
+        }
+    }
+}
+

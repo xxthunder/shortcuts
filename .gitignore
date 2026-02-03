@@ -23,8 +23,6 @@ __pycache__/
 # Claude Code temporary files
 tmpclaude-*
 .claude/settings.local.json
-.vscode/
-.idea/
 *.tmp
 .DS_Store
 Thumbs.db
