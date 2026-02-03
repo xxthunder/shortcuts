@@ -30,6 +30,7 @@
 - [Installation](#installation)
 - [Using Keypirinha](#using-keypirinha)
 - [Managing Shortcuts](#managing-shortcuts)
+- [WSL Development Setup](#wsl-development-setup)
 - [Update](#update)
 - [Troubleshooting](#troubleshooting)
 - [Uninstallation](#uninstallation)
@@ -186,6 +187,51 @@ scoop install nodejs      # JavaScript runtime
 scoop install python      # Python programming
 scoop install vscode      # Visual Studio Code
 ```
+
+---
+
+## WSL Development Setup
+
+> **For Developers:** This section is for developers who want to use WSL (Windows Subsystem for Linux) for development with Docker and VS Code DevContainers.
+
+### What You Can Do
+
+The Shortcuts project includes **WSL Manager**, a PowerShell tool for managing WSL distributions and setting up development environments:
+
+- **Manage WSL distributions**: List, clone, update, and remove distributions
+- **Setup Docker Engine**: One-command Docker installation with automatic prerequisite configuration
+- **Configure DevContainers**: Complete setup guide for VS Code DevContainer development
+- **User management**: Create users with sudo privileges in WSL distributions
+
+### Quick Start
+
+**Install Docker in WSL (automated):**
+
+```powershell
+# Interactive menu
+wsl-manager
+# Then select: [D] Setup Docker (includes systemd/interop)
+
+# Or direct command
+wsl-manager setup-docker Debian
+```
+
+This automatically configures:
+- Docker Engine and Docker Compose
+- Systemd (required for Docker)
+- Windows executable interop
+- User permissions
+
+**Complete DevContainer setup:**
+
+For full VS Code DevContainer development (SSH agent forwarding, git configuration, etc.), see:
+
+**[📖 WSL DevContainer Setup Guide](docs/wsl-devcontainer-setup.md)**
+
+### Documentation
+
+- **[WSL Manager Documentation](docs/wsl-manager.md)** - Complete guide to WSL Manager features and commands
+- **[WSL DevContainer Setup](docs/wsl-devcontainer-setup.md)** - Step-by-step guide for VS Code DevContainer development
 
 ---
 

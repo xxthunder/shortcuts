@@ -127,6 +127,50 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
 - PowerShell piping patterns (avoid bash-to-PowerShell pipes)
 - Error prevention guidelines
 
+## Troubleshooting Test Failures
+
+### When Tests Fail on a Feature Branch
+
+**Remember**: The `develop` branch is always green (CI enforces this).
+
+**If tests fail on your feature branch**:
+
+1. **Your changes caused it** - Even "cosmetic" changes can break tests:
+   - Encoding changes (UTF-8 BOM, line endings)
+   - String formatting in test output
+   - Import order changes
+   - File renames affecting discovery
+
+2. **Investigation steps**:
+   ```bash
+   # See all changes since branching from develop
+   git diff develop..HEAD
+
+   # See all commits on this branch
+   git log develop..HEAD --oneline
+
+   # Check if develop is still green
+   git checkout develop
+   pwsh -File ".\test\bin\testrunner.ps1" -Unit
+   git checkout -  # Return to feature branch
+   ```
+
+3. **Common causes**:
+   - File encoding issues (PowerShell 5.1 vs 7.x)
+   - Path separator issues (Windows vs Linux)
+   - Module import order changes
+   - Test discovery pattern changes
+
+4. **If stuck**: Use `git bisect` to find the breaking commit
+   ```bash
+   git bisect start
+   git bisect bad  # Current commit fails
+   git bisect good develop  # develop is known good
+   # Git will check out commits; run tests at each
+   pwsh -File ".\test\bin\testrunner.ps1" -Unit
+   git bisect good  # or bad, depending on result
+   ```
+
 ## Advanced Workflows
 
 See [references/workflows.md](references/workflows.md) for:

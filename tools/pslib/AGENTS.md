@@ -112,6 +112,23 @@ Should -Invoke Test-Path -Times 1
 - Test CI and interactive environment behavior separately
 - Verify tests pass on both PowerShell 5.1 and 7.x
 
+#### Set-StrictMode in Library Files
+
+**CRITICAL**: Library files in `tools/pslib/` are dot-sourced into other scripts and should **NEVER use `Set-StrictMode`**.
+
+**Reason**: When dot-sourced, `Set-StrictMode` persists in the caller's scope and can break other scripts in the same PowerShell session, especially when sourced into PowerShell profiles.
+
+**Pattern for library files:**
+```powershell
+# DO NOT: Set-StrictMode -Version Latest
+$InformationPreference = 'Continue'  # Optional
+$ErrorActionPreference = 'Stop'
+```
+
+**Examples**:
+- ✓ Correct: `utils.ps1`, `wsl.ps1` (no Set-StrictMode)
+- ✗ Wrong: Adding Set-StrictMode to any pslib file
+
 #### PowerShell Version Compatibility
 
 All code must be compatible with **PowerShell 5.1** and **7.x**. Avoid:

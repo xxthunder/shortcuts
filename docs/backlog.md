@@ -10,77 +10,72 @@ This document contains the detailed backlog of tasks, improvements, and bug fixe
 
 ### Bugs
 
-*No open bugs*
+#### [BUG-002] VS Code WSL Interop Interference Breaks Docker
+
+**Status**: Open
+**Priority**: High
+**Component**: `tools/pslib/wsl/scripts/install-docker.sh`, `tools/pslib/wsl/lib/docker.ps1`
+**Created**: 2026-02-03
+**Branch**: `feature/wsl-devcontainer-prep`
+**Plan**: `docs/BUG-002-vscode-wsl-interop-fix.md`
+
+**Description**:
+The current Docker installation uses `/etc/rc.local` to configure WSL Windows executable interop. VS Code's server can overwrite this configuration when opening WSL folders, breaking Docker commands and Windows `.exe` execution.
+
+**Symptoms**:
+- Docker commands fail after opening WSL folder in VS Code
+- Error: `docker: command not found` or `cannot execute: required file not found`
+- Windows executables fail: `notepad.exe: cannot execute binary file`
+- Missing interop registration: `/proc/sys/fs/binfmt_misc/WSLInterop` doesn't exist
+
+**Root Cause**:
+The rc.local approach is a "late-boot" script that VS Code can override. There's a race condition between rc-local.service and VS Code's environment initialization.
+
+**Solution**:
+Replace rc.local with kernel-level `/etc/binfmt.d/WSLInterop.conf` configuration managed by `systemd-binfmt.service`. This is a core system service that VS Code respects and won't interfere with.
+
+**Implementation Plan**:
+
+1. **Update integration tests** (RED phase) - Expect binfmt.d instead of rc.local
+2. **Modify install-docker.sh** (GREEN phase) - Replace rc.local setup with binfmt.d
+3. **Add repair function** - `Repair-WslInteropConfiguration` in docker.ps1
+4. **Add CLI support** - `wsl-manager repair-interop <distro>` command
+5. **Update documentation** - Troubleshooting section, updated descriptions
+
+**Affected Files**:
+- `tools/pslib/wsl/scripts/install-docker.sh` (lines 121-148, 164-168)
+- `tools/pslib/wsl/lib/docker.ps1` (add repair function)
+- `tools/pslib/wsl/wsl-manager.ps1` (add CLI command)
+- `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1` (lines 619-655, add repair test)
+- `docs/wsl-devcontainer-setup.md` (update description, add troubleshooting)
+- `docs/wsl-manager.md` (line ~94, update description)
+
+**Acceptance Criteria**:
+- [ ] New Docker installations use binfmt.d (not rc.local)
+- [ ] Integration tests verify binfmt.d configuration
+- [ ] VS Code no longer breaks Docker/Windows executables
+- [ ] Repair function available for migrating existing installations
+- [ ] CLI command: `wsl-manager repair-interop <distro>`
+- [ ] Documentation includes troubleshooting steps
+- [ ] All tests pass on PowerShell 5.1 and 7.x
+- [ ] Manual testing confirms VS Code compatibility
+
+**Migration Path**:
+Existing users experiencing this issue can run:
+```powershell
+.\tools\pslib\wsl\wsl-manager.ps1 repair-interop Debian
+```
+
+This removes old rc.local configuration and creates kernel-level binfmt.d configuration.
+
+**Technical Details**:
+See comprehensive plan: `docs/BUG-002-vscode-wsl-interop-fix.md`
 
 ---
 
 ## Backlog Items
 
 ### Enhancements
-
-#### [FEAT-001] Prepare WSL distro for VS Code Dev Container usage
-
-**Status**: Open
-**Priority**: Medium
-**Component**: `tools/pslib/wsl/wsl-manager.ps1`
-**Related**: Dev Container workflow
-
-**Description**:
-Add functionality to `wsl-manager` to prepare a WSL distribution for optimal VS Code Dev Container usage. This includes configuring interop settings, systemd compatibility, and providing git configuration guidance.
-
-**Rationale**:
-Dev Containers require proper Windows-WSL interop and systemd support. Automating this setup reduces manual configuration and ensures consistent development environments.
-
-**Implementation Steps**:
-
-**Step 1: Configure WSL Interop**
-- Add/update `[interop]` section in `/etc/wsl.conf`:
-  ```ini
-  [interop]
-  enabled = true
-  appendWindowsPath = true
-  ```
-- Ensure proper permissions and backup existing config
-
-**Step 2: Permanent Systemd Interop Fix**
-- Apply binfmt configuration for WSL interop with systemd:
-  ```bash
-  echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/wsl.conf
-  ```
-- Verify persistence across WSL restarts
-
-**Step 3: Git Configuration Documentation**
-- Create `docs/wsl-devcontainer-setup.md` with:
-  - Git credential helper configuration
-  - User name/email setup inside containers
-  - SSH key handling between Windows/WSL/containers
-  - Line ending configuration (core.autocrlf)
-  - Best practices for .gitconfig placement
-
-**Acceptance Criteria**:
-- [ ] New command/option in wsl-manager (e.g., `wsl-manager prepare-devcontainer <distro>`)
-- [ ] Safely modifies /etc/wsl.conf with proper backup
-- [ ] Applies binfmt.d fix correctly
-- [ ] Detects and skips if already configured
-- [ ] Clear success/error messages for each step
-- [ ] Documentation created in `docs/wsl-devcontainer-setup.md`
-- [ ] Unit tests for configuration logic
-- [ ] Integration test on fresh WSL distro
-- [ ] User prompted before making changes (interactive mode)
-- [ ] Non-interactive mode for automation (CI/scripting)
-
-**Technical Notes**:
-- Requires sudo access inside WSL distro
-- May require WSL restart (`wsl --terminate <distro>`) after wsl.conf changes
-- Should validate systemd is enabled in the distro
-- Consider checking Windows VSCode + Dev Containers extension presence
-
-**Dependencies**:
-- WSL 2
-- Systemd-enabled distribution
-- Sudo access in target distro
-
----
 
 #### [FEAT-002] Set up Podman as Docker alternative in WSL
 
@@ -176,6 +171,96 @@ Podman provides a daemonless, rootless container runtime that's compatible with 
 ---
 
 ## Completed Items
+
+### [FEAT-001] ✅ COMPLETED - DevContainer Prep → Docker Prerequisites
+
+**Status**: **Completed** (2026-02-02) | **Branch**: `feature/wsl-devcontainer-prep` → PR #18
+**Original**: Completed (2026-01-30) | **Refactored**: (2026-01-31) | **Documentation**: (2026-02-02)
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/lib/docker.ps1`, `tools/pslib/wsl/scripts/install-docker.sh`
+**Related**: Docker installation, Dev Container workflow
+
+**Rationale**:
+Systemd and Windows interop are Docker prerequisites, not DevContainer-specific.
+Consolidated into `Install-WslDockerEngine` for clearer workflow - users just install Docker
+and get everything they need automatically.
+
+**Description**:
+Originally added standalone DevContainer preparation functionality. Refactored to consolidate
+systemd/interop configuration into Docker installation since these are Docker prerequisites.
+Completed with comprehensive end-to-end documentation.
+
+**Implementation**:
+
+**Systemd/Interop Configuration**:
+- Integrated into `Install-WslDockerEngine` in `docker.ps1`
+- Automatically configures if `Test-WslSystemdConfigured` or `Test-WslInteropConfigured` returns false
+- Uses `Set-WslConf` function for safe wsl.conf management
+- Preserves existing default user configuration
+- Restarts distribution after wsl.conf changes
+
+**RC.local Fix**:
+- Applied in `install-docker.sh` bash script during Docker installation
+- Creates `/etc/systemd/system/rc-local.service.d/override.conf`
+- Creates `/etc/rc.local` with binfmt_misc registration
+- Enables and starts rc-local.service
+- Verification added to check service is enabled
+
+**Essential Packages**:
+- Added wget, htop to prerequisite packages (alongside ca-certificates, curl, gnupg)
+- Required for VS Code DevContainer usage
+
+**Documentation** (Comprehensive):
+- **README.md**: Added "WSL Development Setup" section with quick start and links
+- **docs/wsl-devcontainer-setup.md**: Complete 8-step workflow:
+  1. Install Debian (Microsoft Store or `wsl --install`)
+  2. Update distribution (`wsl-manager update`)
+  3. Clone (optional) for isolated environments (`wsl-manager clone`)
+  4. Setup user with sudo (`wsl-manager setup-user`)
+  5. Install Docker (automated systemd/interop/rc.local/packages via `wsl-manager setup-docker`)
+  6. Windows SSH Agent configuration (manual)
+  7. Git configuration inside WSL (manual)
+  8. VS Code settings (manual)
+- **docs/wsl-manager.md**: Updated to reflect actual implementation status
+  - Phase 3 describes Docker integration (removed outdated DevContainer prep references)
+  - User Story 8 marked as "COMPLETED" (Docker setup in interactive menu)
+
+**Functions Removed** (Consolidated):
+- ❌ `Initialize-WslDevContainer` - functionality moved to Docker installation
+- ❌ `Invoke-PrepareDevContainerInteractive` - removed from wsl-manager
+- ❌ `Invoke-PrepareDevContainer` - removed from wsl-manager
+- ✅ `Set-WslConf` - **kept** as general-purpose utility in `user.ps1`
+
+**Acceptance Criteria**:
+- [x] Systemd/interop automatically configured during Docker installation
+- [x] RC.local fix applied in bash script during Docker installation
+- [x] Essential packages (wget, htop) included for VS Code
+- [x] Safely modifies /etc/wsl.conf (via Set-WslConf with backups)
+- [x] Skips configuration if systemd/interop already configured
+- [x] Clear success/error messages
+- [x] Complete end-to-end documentation (8-step workflow)
+- [x] README.md links to WSL documentation
+- [x] wsl-manager.md reflects actual implementation
+- [x] Unit tests updated (520 tests passing)
+- [x] Old DevContainer prep code removed (cleaner codebase)
+- [x] Users just run `wsl-manager setup-docker` and get everything
+
+**Test Coverage**:
+- 520 unit tests passing (PowerShell 7.x)
+- 31 integration tests passing
+- Tests for: Set-WslConf, Docker systemd/interop config, rc.local fix
+- Pre-commit hook validation enabled
+
+**Commits**:
+- `d6e8a58` - feat(wsl): add Set-WslConf and Initialize-WslDevContainer functions
+- `a88782e` - docs(wsl): add comprehensive WSL DevContainer setup guide
+- `1a1ffc8` - feat(wsl): add DevContainer preparation to wsl-manager interactive menu
+- `aeff01d` - feat(wsl): configure systemd and interop automatically in Docker installation
+- `f9f25d4` - feat(wsl): add rc.local fix for Windows executable interop in Docker installation
+- `adf01f5` - refactor(wsl): remove standalone DevContainer preparation functionality
+- `2dbc043` - docs(wsl): complete FEAT-001 with comprehensive DevContainer workflow documentation
+
+---
 
 ### [BUG-001] WSL Manager fails when no distributions are installed
 

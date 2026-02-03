@@ -203,9 +203,49 @@ if (-not $result) {
 - Standardized output capture
 - Integration with CI/test environments
 
-#### 7. Script Structure
+#### 7. PowerShell Command Execution from Bash
 
-Follow this standard structure:
+**Issue**: Mixing Bash and PowerShell pipelines causes errors.
+
+**Guideline**: NEVER pipe PowerShell output to PowerShell cmdlets through Bash.
+
+**Anti-pattern** (what NOT to do):
+```bash
+# DON'T: This fails because Select-String is not a Bash command
+powershell -File script.ps1 | Select-String -Pattern "foo"
+
+# DON'T: This also fails
+pwsh -Command "Get-Content file.txt" | Select-String "pattern"
+```
+
+**Correct patterns**:
+
+```bash
+# Option 1: Keep everything in PowerShell
+pwsh -Command "powershell -File script.ps1 | Select-String -Pattern 'foo'"
+
+# Option 2: Use Bash-native tools
+powershell -File script.ps1 | grep "foo"
+
+# Option 3: Use Read tool to read PowerShell output, then process
+# (Preferred for AI agents - saves output to file first)
+```
+
+**When to use each**:
+- **Option 1**: When you need PowerShell cmdlet features (objects, -Context, etc.)
+- **Option 2**: When simple text matching is sufficient
+- **Option 3**: When processing large outputs or need to reference multiple times
+
+#### 8. Script Structure
+
+**IMPORTANT: Set-StrictMode in Dot-Sourced Files**
+
+- **Standalone executable scripts** (e.g., `install.ps1`, `wsl-manager.ps1`): **Use `Set-StrictMode -Version Latest`**
+- **Dot-sourced library files** (e.g., `utils.ps1`, `wsl.ps1`, `setProxy.ps1`): **DO NOT use `Set-StrictMode`**
+
+**Reason**: When a script is dot-sourced (`. .\script.ps1`), `Set-StrictMode` persists in the caller's scope and affects all subsequent code in that PowerShell session. This can break other scripts that weren't written to handle strict mode, especially when sourced into PowerShell profiles.
+
+**Standalone Executable Script Structure:**
 
 ```powershell
 #Requires -Version 5.1
@@ -245,6 +285,34 @@ try {
     Write-Error "Error: $_"
     exit 1
 }
+```
+
+**Dot-Sourced Library File Structure:**
+
+```powershell
+#Requires -Version 5.1
+
+<#
+.DESCRIPTION
+    Utility functions for common tasks.
+    This file is meant to be dot-sourced into other scripts.
+#>
+
+# DO NOT use Set-StrictMode in dot-sourced files
+$InformationPreference = 'Continue'  # Optional, for logging
+$ErrorActionPreference = 'Stop'
+
+function Public-Function {
+    <#
+    .SYNOPSIS
+        Brief description
+    #>
+    [CmdletBinding()]
+    param()
+
+    # Implementation
+}
+```
 ```
 
 ### Testing Requirements
@@ -327,6 +395,69 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 - Keep bootstrap scripts independent from main tools
 
 ### Workflow
+
+#### CI and Branch Hygiene
+
+**Context**: This project uses GitHub Actions CI. The `develop` branch is always green.
+
+**Guideline**: When working on a feature branch, ANY test failures are caused by changes on that branch.
+
+**Reasoning**:
+- CI ensures `develop` is always green
+- Feature branches are created from `develop`
+- Therefore, failures = something introduced on the feature branch
+
+**Workflow when encountering test failures**:
+1. **NEVER assume failures are pre-existing**
+2. Check `git diff develop..HEAD` to see all changes on the branch
+3. Analyze if ANY change (even cosmetic ones like string formatting) could affect tests
+4. If uncertain, use `git bisect` to identify the breaking commit
+5. Fix the issue before proceeding
+
+**Anti-pattern**:
+```bash
+# DON'T: Assume failures are unrelated
+"These test failures are pre-existing, not caused by my bullet point change"
+```
+
+**Correct pattern**:
+```bash
+# DO: Investigate if your changes could be the cause
+git diff develop..HEAD  # Review ALL changes
+git log develop..HEAD   # Review ALL commits on branch
+# Even cosmetic changes to test files can break things
+```
+
+#### When to Use EnterPlanMode (MANDATORY)
+
+**ALWAYS use EnterPlanMode before implementation when:**
+
+1. **User says "review" or "plan"** - They explicitly want exploration, not implementation
+2. **Backlog items** - Items in `docs/backlog.md` require architectural understanding before coding
+3. **New features** - Adding functionality, not just fixing bugs
+4. **Architectural decisions** - Unclear where functionality belongs in existing structure
+5. **"Belongs to" questions** - When you're unsure which module/function should own the code
+
+**Red flags that require planning first:**
+- "Where should this go?"
+- "Does this already exist somewhere?"
+- "Is this related to [existing feature]?"
+- Any uncertainty about architecture, ownership, or approach
+
+**Anti-pattern (what NOT to do):**
+```
+User: "Review FEAT-001 for DevContainer prep"
+Agent: *immediately creates new functions and commits*
+```
+
+**Correct pattern:**
+```
+User: "Review FEAT-001 for DevContainer prep"
+Agent: *uses EnterPlanMode to explore architecture, understand relationships,
+        propose whether this is new feature vs. enhancement to existing*
+```
+
+**Enforcement**: When in doubt, ALWAYS prefer planning over immediate implementation. Use EnterPlanMode proactively to avoid architectural misalignment.
 
 #### When Implementing New Functionality
 

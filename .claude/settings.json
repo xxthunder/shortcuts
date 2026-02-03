@@ -4,7 +4,11 @@
     "allow": [
       "Bash",
       "Read",
-      "Edit"
+      "Edit",
+      "Write",
+      "Create",
+      "Delete",
+      "WebSearch"
     ],
     "deny": [
       "Bash(rm -rf /*)",

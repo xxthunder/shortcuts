@@ -14,7 +14,7 @@ The WSL Manager is a PowerShell-based tool for managing Windows Subsystem for Li
 - `tools/pslib/wsl/wsl-manager.ps1` - Interactive interface
 - `tools/pslib/wsl/wsl-manager.bat` - Batch wrapper for Keypirinha
 
-**Test Coverage**: 508 tests passing (unit + integration)
+**Test Coverage**: 523 tests passing (unit + integration)
 
 ---
 
@@ -75,6 +75,43 @@ The WSL Manager is a PowerShell-based tool for managing Windows Subsystem for Li
 - Documentation (`.md`) → CRLF (Windows)
 - Prevents GitHub Actions line ending issues
 
+### Phase 3: Docker & DevContainer Integration (Branch: `feature/wsl-devcontainer-prep`)
+
+**Note**: Docker installation automatically configures systemd and Windows interop as prerequisites. These settings enable Docker Engine to run properly in WSL and are essential for VS Code DevContainers.
+
+✅ **wsl.conf Management** (`tools/pslib/wsl/lib/user.ps1`)
+- `Set-WslConf` for safe section-aware merging
+  - Preserves existing sections and comments
+  - Creates timestamped backups (`/etc/wsl.conf.backup.YYYYMMDD-HHMMSS`)
+  - Supports multiple sections in one call
+  - ShouldProcess support (`-WhatIf`, `-Confirm`)
+- Refactored `New-WslUser` to use `Set-WslConf` (no longer overwrites entire file)
+
+✅ **Docker Installation Enhancements** (`tools/pslib/wsl/lib/docker.ps1`)
+- `Install-WslDockerEngine` automatically configures Docker prerequisites:
+  - Systemd configuration via `wsl.conf` `[boot]` section
+  - Windows interop via `wsl.conf` `[interop]` section
+  - Kernel-level interop via binfmt.d (VS Code compatible, in `install-docker.sh`)
+  - Skips configuration if already enabled
+  - Validates WSL2 and distribution type before installation
+
+✅ **Interactive Manager Integration** (`tools/pslib/wsl/wsl-manager.ps1`)
+- Menu option: `[D] Setup Docker (includes systemd/interop)`
+- Command-line: `wsl-manager setup-docker <distro-name>`
+- Functions: `Invoke-SetupDockerInteractive`, `Invoke-SetupDocker`
+
+✅ **Documentation** (`docs/wsl-devcontainer-setup.md`)
+- Phase 1: Docker installation (automated systemd/interop/binfmt.d)
+- Phase 2: Windows SSH Agent setup (manual, PowerShell Admin)
+- Phase 3: Git configuration inside WSL (manual: user.name, user.email, ssh.exe)
+- Phase 4: VS Code settings (manual: dev.containers.copyGitConfig, SSH forwarding)
+- Phase 5: Validation steps (SSH forwarding test, git identity check, DevContainer test)
+- Comprehensive troubleshooting guide
+
+**Test Coverage**: 505 unit tests for Set-WslConf and Docker configuration
+
+**Reference**: See `docs/wsl-devcontainer-setup.md` for complete setup guide and `docs/backlog.md` FEAT-001
+
 ---
 
 ## What's Remaining (8 items)
@@ -109,14 +146,19 @@ These user stories were identified but not yet prioritized for implementation:
 
 **Why deferred**: Users can create distributions via `wsl --install <distro>` directly. The manager focuses on managing *existing* distributions rather than initial installation. May add in future if there's demand for guided creation.
 
-### User Story 8 - Setup Docker Engine (P8) - PARTIALLY IMPLEMENTED
+### User Story 8 - Setup Docker Engine (P8) - ✅ COMPLETED
 
-**Current status**: Docker installation works (`Install-WslDockerEngine`), but the *interactive manager menu* doesn't include Docker setup.
+**Status**: Fully implemented in both CLI and interactive menu.
 
-**What's needed**:
-- Add Docker setup to `wsl-manager.ps1` interactive menu
-- Add Docker status check command
-- Add Docker uninstall command (optional)
+**Features**:
+- ✅ Docker installation via `Install-WslDockerEngine`
+- ✅ Interactive menu: `[D] Setup Docker (includes systemd/interop)`
+- ✅ CLI command: `wsl-manager setup-docker <distro-name>`
+- ✅ Automatic prerequisite configuration (systemd, interop, binfmt.d)
+- ✅ Docker status check via `Test-WslDockerInstalled`
+
+**Not yet implemented**:
+- Docker uninstall command (users can manually uninstall via apt-get)
 
 ---
 
