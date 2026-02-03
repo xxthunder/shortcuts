@@ -16,6 +16,12 @@ BeforeAll {
     # Set test mode to prevent auto-execution when dot-sourcing
     $env:SETPROXY_TEST_MODE = '1'
 
+    # Save original environment state to restore after tests
+    $script:OriginalHttpProxy = $Env:HTTP_PROXY
+    $script:OriginalHttpsProxy = $Env:HTTPS_PROXY
+    $script:OriginalNoProxy = $Env:NO_PROXY
+    $script:OriginalDefaultWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+
     # Source the script to get access to functions
     . "$PSScriptRoot\setProxy.ps1"
 }
@@ -23,6 +29,28 @@ BeforeAll {
 AfterAll {
     # Clean up test mode flag
     Remove-Item Env:\SETPROXY_TEST_MODE -ErrorAction SilentlyContinue
+
+    # Restore original environment state
+    if ($null -eq $script:OriginalHttpProxy) {
+        Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
+    } else {
+        $Env:HTTP_PROXY = $script:OriginalHttpProxy
+    }
+
+    if ($null -eq $script:OriginalHttpsProxy) {
+        Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+    } else {
+        $Env:HTTPS_PROXY = $script:OriginalHttpsProxy
+    }
+
+    if ($null -eq $script:OriginalNoProxy) {
+        Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+    } else {
+        $Env:NO_PROXY = $script:OriginalNoProxy
+    }
+
+    # Restore DefaultWebProxy
+    [System.Net.WebRequest]::DefaultWebProxy = $script:OriginalDefaultWebProxy
 }
 
 Describe "Get-InternetSettingsFromRegistry" {
@@ -84,6 +112,11 @@ Describe "Enable-ProxyInRegistry" {
 }
 
 Describe "Set-NoProxyEnvironment" {
+    AfterEach {
+        # Clean up environment variables after each test
+        Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+    }
+
     Context "When setting NO_PROXY" {
         It "Should set NO_PROXY environment variable" {
             Set-NoProxyEnvironment
@@ -196,6 +229,12 @@ Describe "Get-ProxyFromPac" {
 }
 
 Describe "Set-ProxyEnvironment" {
+    AfterEach {
+        # Clean up environment variables after each test
+        Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
+        Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+    }
+
     Context "When setting DIRECT (no proxy)" {
         It "Should clear HTTP_PROXY and HTTPS_PROXY" {
             $Env:HTTP_PROXY = "http://old.proxy:8080"
@@ -255,6 +294,16 @@ Describe "Set-ProxyEnvironment" {
 }
 
 Describe "Initialize-DefaultWebProxy" {
+    BeforeAll {
+        # Save original DefaultWebProxy
+        $script:SavedDefaultWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+    }
+
+    AfterEach {
+        # Restore DefaultWebProxy after each test
+        [System.Net.WebRequest]::DefaultWebProxy = $script:SavedDefaultWebProxy
+    }
+
     Context "When initializing web proxy with PAC" {
         It "Should set DefaultWebProxy to system proxy" {
             # Get real system proxy instead of mocking
@@ -299,6 +348,37 @@ Describe "Get-SystemWebProxy" {
 }
 
 Describe "Initialize-ProxyConfiguration" {
+    BeforeAll {
+        # Save original environment and proxy state
+        $script:SavedHttpProxy = $Env:HTTP_PROXY
+        $script:SavedHttpsProxy = $Env:HTTPS_PROXY
+        $script:SavedNoProxy = $Env:NO_PROXY
+        $script:SavedWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+    }
+
+    AfterEach {
+        # Clean up environment variables and proxy state after each test
+        if ($null -eq $script:SavedHttpProxy) {
+            Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:HTTP_PROXY = $script:SavedHttpProxy
+        }
+
+        if ($null -eq $script:SavedHttpsProxy) {
+            Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:HTTPS_PROXY = $script:SavedHttpsProxy
+        }
+
+        if ($null -eq $script:SavedNoProxy) {
+            Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:NO_PROXY = $script:SavedNoProxy
+        }
+
+        [System.Net.WebRequest]::DefaultWebProxy = $script:SavedWebProxy
+    }
+
     Context "When PAC is configured and proxy is resolved" {
         It "Should initialize with system proxy and set environment variables" {
             Mock Get-InternetSettingsFromRegistry {
@@ -475,23 +555,13 @@ Describe "Initialize-ProxyConfiguration" {
 
         It "Should use custom FallbackProxyHost when PAC is not configured" {
             # This is an integration test - it will actually set environment variables
-            # Save current environment
-            $oldHttpProxy = $Env:HTTP_PROXY
-            $oldHttpsProxy = $Env:HTTPS_PROXY
+            # AfterEach handles cleanup
+            $customHost = "integration.test.proxy:9999"
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost
 
-            try {
-                $customHost = "integration.test.proxy:9999"
-                Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost
-
-                # Verify the custom fallback was used (assuming no PAC is configured in test environment)
-                # This will pass if either PAC is configured (proxy set) or fallback is used
-                $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
-            }
-            finally {
-                # Restore environment
-                $Env:HTTP_PROXY = $oldHttpProxy
-                $Env:HTTPS_PROXY = $oldHttpsProxy
-            }
+            # Verify the custom fallback was used (assuming no PAC is configured in test environment)
+            # This will pass if either PAC is configured (proxy set) or fallback is used
+            $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
         }
     }
 }

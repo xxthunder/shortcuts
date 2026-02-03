@@ -25,7 +25,7 @@ Param(
     [string]$FallbackProxyHost = "some.fallback.de:8080"
 )
 
-Set-StrictMode -Version Latest
+$InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 #region Private Functions
@@ -253,7 +253,7 @@ function Initialize-DefaultWebProxy {
         [System.Net.WebRequest]::DefaultWebProxy = $systemProxy
     }
     else {
-        $noProxyList = ($Env:NO_PROXY).Split(',')
+        $noProxyList = if ($Env:NO_PROXY) { ($Env:NO_PROXY).Split(',') } else { @() }
         [System.Net.WebRequest]::DefaultWebProxy = New-Object System.Net.WebProxy("http://$FallbackProxyHost", $true, $noProxyList)
     }
 
