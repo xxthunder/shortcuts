@@ -96,7 +96,7 @@ The WSL Manager is a PowerShell-based tool for managing Windows Subsystem for Li
   - Validates WSL2 and distribution type before installation
 
 ✅ **Interactive Manager Integration** (`tools/pslib/wsl/wsl-manager.ps1`)
-- Menu option: `[D] Setup Docker (includes systemd/interop)`
+- Menu option: `[D] Setup/Repair Docker (idempotent, includes systemd/interop)`
 - Command-line: `wsl-manager setup-docker <distro-name>`
 - Functions: `Invoke-SetupDockerInteractive`, `Invoke-SetupDocker`
 
@@ -148,14 +148,22 @@ These user stories were identified but not yet prioritized for implementation:
 
 ### User Story 8 - Setup Docker Engine (P8) - ✅ COMPLETED
 
-**Status**: Fully implemented in both CLI and interactive menu.
+**Status**: Fully implemented in both CLI and interactive menu with idempotent behavior.
 
 **Features**:
-- ✅ Docker installation via `Install-WslDockerEngine`
-- ✅ Interactive menu: `[D] Setup Docker (includes systemd/interop)`
+- ✅ Docker installation via `Install-WslDockerEngine` (fully idempotent)
+- ✅ Interactive menu: `[D] Setup/Repair Docker (idempotent, includes systemd/interop)`
 - ✅ CLI command: `wsl-manager setup-docker <distro-name>`
 - ✅ Automatic prerequisite configuration (systemd, interop, binfmt.d)
 - ✅ Docker status check via `Test-WslDockerInstalled`
+- ✅ Safe to run multiple times - verifies or repairs existing installations
+- ✅ Uses binfmt.d for VS Code compatibility (no rc.local conflicts)
+
+**Idempotent Behavior**:
+- Detects if Docker is already installed and skips if present
+- Verifies configuration and repairs any missing components
+- Can be used as both install and repair command
+- No errors when run on already-configured distributions
 
 **Not yet implemented**:
 - Docker uninstall command (users can manually uninstall via apt-get)

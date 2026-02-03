@@ -10,68 +10,8 @@ This document contains the detailed backlog of tasks, improvements, and bug fixe
 
 ### Bugs
 
-#### [BUG-002] VS Code WSL Interop Interference Breaks Docker
+*No active bugs*
 
-**Status**: Open
-**Priority**: High
-**Component**: `tools/pslib/wsl/scripts/install-docker.sh`, `tools/pslib/wsl/lib/docker.ps1`
-**Created**: 2026-02-03
-**Branch**: `feature/wsl-devcontainer-prep`
-**Plan**: `docs/BUG-002-vscode-wsl-interop-fix.md`
-
-**Description**:
-The current Docker installation uses `/etc/rc.local` to configure WSL Windows executable interop. VS Code's server can overwrite this configuration when opening WSL folders, breaking Docker commands and Windows `.exe` execution.
-
-**Symptoms**:
-- Docker commands fail after opening WSL folder in VS Code
-- Error: `docker: command not found` or `cannot execute: required file not found`
-- Windows executables fail: `notepad.exe: cannot execute binary file`
-- Missing interop registration: `/proc/sys/fs/binfmt_misc/WSLInterop` doesn't exist
-
-**Root Cause**:
-The rc.local approach is a "late-boot" script that VS Code can override. There's a race condition between rc-local.service and VS Code's environment initialization.
-
-**Solution**:
-Replace rc.local with kernel-level `/etc/binfmt.d/WSLInterop.conf` configuration managed by `systemd-binfmt.service`. This is a core system service that VS Code respects and won't interfere with.
-
-**Implementation Plan**:
-
-1. **Update integration tests** (RED phase) - Expect binfmt.d instead of rc.local
-2. **Modify install-docker.sh** (GREEN phase) - Replace rc.local setup with binfmt.d
-3. **Add repair function** - `Repair-WslInteropConfiguration` in docker.ps1
-4. **Add CLI support** - `wsl-manager repair-interop <distro>` command
-5. **Update documentation** - Troubleshooting section, updated descriptions
-
-**Affected Files**:
-- `tools/pslib/wsl/scripts/install-docker.sh` (lines 121-148, 164-168)
-- `tools/pslib/wsl/lib/docker.ps1` (add repair function)
-- `tools/pslib/wsl/wsl-manager.ps1` (add CLI command)
-- `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1` (lines 619-655, add repair test)
-- `docs/wsl-devcontainer-setup.md` (update description, add troubleshooting)
-- `docs/wsl-manager.md` (line ~94, update description)
-
-**Acceptance Criteria**:
-- [ ] New Docker installations use binfmt.d (not rc.local)
-- [ ] Integration tests verify binfmt.d configuration
-- [ ] VS Code no longer breaks Docker/Windows executables
-- [ ] Repair function available for migrating existing installations
-- [ ] CLI command: `wsl-manager repair-interop <distro>`
-- [ ] Documentation includes troubleshooting steps
-- [ ] All tests pass on PowerShell 5.1 and 7.x
-- [ ] Manual testing confirms VS Code compatibility
-
-**Migration Path**:
-Existing users experiencing this issue can run:
-```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 repair-interop Debian
-```
-
-This removes old rc.local configuration and creates kernel-level binfmt.d configuration.
-
-**Technical Details**:
-See comprehensive plan: `docs/BUG-002-vscode-wsl-interop-fix.md`
-
----
 
 ## Backlog Items
 
@@ -171,6 +111,52 @@ Podman provides a daemonless, rootless container runtime that's compatible with 
 ---
 
 ## Completed Items
+
+### [BUG-002] ✅ COMPLETED - VS Code WSL Interop Interference Fixed
+
+**Status**: **Completed** (2026-02-03) | **Branch**: `feature/wsl-devcontainer-prep`
+**Priority**: High
+**Component**: `tools/pslib/wsl/scripts/install-docker.sh`, `tools/pslib/wsl/lib/docker.ps1`
+
+**Problem**:
+VS Code's WSL server could overwrite Docker's rc.local-based Windows executable interop configuration, breaking Docker commands and `.exe` execution.
+
+**Solution Implemented**:
+Replaced rc.local with kernel-level `/etc/binfmt.d/WSLInterop.conf` configuration managed by `systemd-binfmt.service`. This is a core system service that loads before VS Code and cannot be overridden.
+
+**Implementation**:
+- ✅ Modified `install-docker.sh` to use binfmt.d instead of rc.local
+- ✅ Added automatic migration from old rc.local configuration
+- ✅ Made Docker installation fully idempotent (safe to re-run for repair)
+- ✅ Updated integration tests to verify binfmt.d configuration
+- ✅ Removed separate "Fix interop" menu option (now part of idempotent Docker setup)
+- ✅ All 569 unit tests + 31 integration tests passing
+
+**Repair/Verification**:
+Users can verify or repair their Docker installation by simply re-running:
+```powershell
+wsl-manager setup-docker <distro-name>
+```
+
+The idempotent Docker setup will:
+- Detect if binfmt.d is already configured (skip if present)
+- Migrate from old rc.local to binfmt.d if needed
+- Verify all components are working correctly
+
+**Files Modified**:
+- `tools/pslib/wsl/scripts/install-docker.sh` - binfmt.d implementation
+- `tools/pslib/wsl/lib/docker.ps1` - idempotent wrapper
+- `tools/pslib/wsl/wsl-manager.ps1` - simplified menu
+- Integration tests - binfmt.d verification
+
+**Commits**:
+- `a82c3f1` + `5debe4e` + `ec504ff` - feat(wsl): implement Docker installation with binfmt.d interop and idempotent setup
+
+**Documentation**:
+- See `docs/BUG-002-vscode-wsl-interop-fix.md` for technical details
+- See `docs/wsl-devcontainer-setup.md` for full setup workflow
+
+---
 
 ### [FEAT-001] ✅ COMPLETED - DevContainer Prep → Docker Prerequisites
 

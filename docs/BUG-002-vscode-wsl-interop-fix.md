@@ -1,10 +1,12 @@
 # BUG-002: Fix VS Code WSL Interop Interference
 
-**Status**: Open
+**Status**: ✅ **COMPLETED** (2026-02-03)
 **Priority**: High
 **Component**: `tools/pslib/wsl/scripts/install-docker.sh`, `tools/pslib/wsl/lib/docker.ps1`
 **Created**: 2026-02-03
+**Completed**: 2026-02-03
 **Branch**: `feature/wsl-devcontainer-prep`
+**Commits**: `a82c3f1` + `5debe4e` + `ec504ff` (squashed)
 
 ---
 

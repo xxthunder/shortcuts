@@ -88,7 +88,7 @@ Install Docker Engine with automatic prerequisite configuration:
 ```powershell
 # Via WSL Manager
 wsl-manager
-# Select: [D] Setup Docker (includes systemd/interop)
+# Select: [D] Setup/Repair Docker (idempotent, includes systemd/interop)
 
 # Or direct command
 Install-WslDockerEngine -DistroName debian-devcon
@@ -101,7 +101,7 @@ Install-WslDockerEngine -DistroName debian-devcon
 - Adds your user to the docker group
 - Restarts the distribution
 
-**Note**: After installation, you must restart your terminal for docker group membership to take effect.
+**Note**: This setup is idempotent - safe to run multiple times to verify or repair your installation. After installation, you must restart your terminal for docker group membership to take effect.
 
 ### Steps 6-8: Manual Configuration
 
@@ -432,24 +432,26 @@ In VS Code, open Output panel (View > Output) and select "Dev Containers"
 
 **Cause:** Legacy rc.local configuration that VS Code can overwrite when initializing its WSL server.
 
-**Solution:** Migrate to kernel-level binfmt.d configuration:
+**Solution:** Re-run the idempotent Docker setup to migrate to kernel-level binfmt.d configuration:
 
 ```powershell
 # From Windows PowerShell/Command Prompt:
-.\tools\pslib\wsl\wsl-manager.ps1 repair-interop Debian
+wsl-manager setup-docker Debian
 ```
 
 Or using the interactive menu:
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1
-# Select [F] Fix interop (VS Code compatibility)
+wsl-manager
+# Select: [D] Setup/Repair Docker (idempotent, includes systemd/interop)
 ```
 
-**What the repair does:**
-- Removes old rc.local configuration
-- Creates `/etc/binfmt.d/WSLInterop.conf` (kernel-level)
-- Restarts `systemd-binfmt` service
+**What this does:**
+- Detects existing Docker installation (no reinstall)
+- Migrates from old rc.local to `/etc/binfmt.d/WSLInterop.conf` if needed
+- Verifies all components are configured correctly
 - VS Code respects kernel configuration (no more interference)
+
+**Note:** This is safe to run on already-working installations - it will verify and repair without breaking anything.
 
 **Verification:**
 ```bash

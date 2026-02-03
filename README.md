@@ -210,7 +210,7 @@ The Shortcuts project includes **WSL Manager**, a PowerShell tool for managing W
 ```powershell
 # Interactive menu
 wsl-manager
-# Then select: [D] Setup Docker (includes systemd/interop)
+# Then select: [D] Setup/Repair Docker (idempotent, includes systemd/interop)
 
 # Or direct command
 wsl-manager setup-docker Debian
@@ -219,8 +219,10 @@ wsl-manager setup-docker Debian
 This automatically configures:
 - Docker Engine and Docker Compose
 - Systemd (required for Docker)
-- Windows executable interop
+- Windows executable interop (using binfmt.d for VS Code compatibility)
 - User permissions
+
+**Note:** This setup is idempotent - safe to run multiple times for verification or repair.
 
 **Complete DevContainer setup:**
 
