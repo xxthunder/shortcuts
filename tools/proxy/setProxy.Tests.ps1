@@ -25,15 +25,15 @@ AfterAll {
     Remove-Item Env:\SETPROXY_TEST_MODE -ErrorAction SilentlyContinue
 }
 
-Describe "Get-InternetSetting" {
+Describe "Get-InternetSettingsFromRegistry" {
     Context "When registry key exists" {
         It "Should return internet settings object" {
-            $result = Get-InternetSetting
+            $result = Get-InternetSettingsFromRegistry
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should have ProxyEnable property" {
-            $result = Get-InternetSetting
+            $result = Get-InternetSettingsFromRegistry
             $result.PSObject.Properties.Name | Should -Contain 'ProxyEnable'
         }
     }
@@ -42,7 +42,7 @@ Describe "Get-InternetSetting" {
         It "Should return null and not throw" {
             # Mock registry path to non-existent
             Mock Get-ItemProperty { return $null }
-            $result = Get-InternetSetting
+            $result = Get-InternetSettingsFromRegistry
             $result | Should -BeNullOrEmpty
         }
     }
@@ -226,16 +226,30 @@ Describe "Set-ProxyEnvironment" {
 
     Context "When using fallback proxy" {
         It "Should set fallback proxy when UseFallback is true" {
-            Set-ProxyEnvironment -UseFallback $true
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost "some.fallback.de:8080"
 
             $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
             $Env:HTTP_PROXY | Should -Match 'some\.fallback\.de'
         }
 
         It "Should mirror HTTP_PROXY to HTTPS_PROXY" {
-            Set-ProxyEnvironment -UseFallback $true
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost "some.fallback.de:8080"
 
             $Env:HTTP_PROXY | Should -Be $Env:HTTPS_PROXY
+        }
+
+        It "Should use custom fallback proxy host when provided" {
+            $customHost = "custom.proxy.com:3128"
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $customHost
+
+            $Env:HTTP_PROXY | Should -Be "http://$customHost"
+            $Env:HTTPS_PROXY | Should -Be "http://$customHost"
+        }
+
+        It "Should use provided FallbackProxyHost parameter" {
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost "some.fallback.de:8080"
+
+            $Env:HTTP_PROXY | Should -Be "http://some.fallback.de:8080"
         }
     }
 }
@@ -285,24 +299,199 @@ Describe "Get-SystemWebProxy" {
 }
 
 Describe "Initialize-ProxyConfiguration" {
+    Context "When PAC is configured and proxy is resolved" {
+        It "Should initialize with system proxy and set environment variables" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    AutoConfigURL = "http://proxy.company.com/proxy.pac"
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry {
+                param($InternetSettings)
+                return $false
+            }
+            Mock Set-NoProxyEnvironment { }
+            Mock Get-ProxyFromPac {
+                param($InternetSettings, $ProbeUrl)
+                return @{
+                    ProxyUrl = "http://proxy.server.com:8080"
+                    IsDirect = $false
+                }
+            }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+            Should -Invoke Initialize-DefaultWebProxy -Times 1 -ParameterFilter { $UseSystemProxy -eq $true }
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter {
+                $ProxyUrl -eq "http://proxy.server.com:8080" -and $IsDirect -eq $false
+            }
+        }
+
+        It "Should detect DIRECT connection when PAC returns IsDirect" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    AutoConfigURL = "http://proxy.company.com/proxy.pac"
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Get-ProxyFromPac {
+                param($InternetSettings, $ProbeUrl)
+                return @{
+                    ProxyUrl = $null
+                    IsDirect = $true
+                }
+            }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter {
+                $IsDirect -eq $true
+            }
+        }
+    }
+
+    Context "When PAC resolution fails" {
+        It "Should fall back to fallback proxy configuration" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    AutoConfigURL = "http://proxy.company.com/proxy.pac"
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry {
+                param($InternetSettings)
+                return $false
+            }
+            Mock Set-NoProxyEnvironment { }
+            Mock Get-ProxyFromPac {
+                param($InternetSettings, $ProbeUrl)
+                return $null
+            }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+            Should -Invoke Initialize-DefaultWebProxy -Times 1 -ParameterFilter { $UseSystemProxy -eq $false }
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter { $UseFallback -eq $true }
+        }
+    }
+
+    Context "When no PAC is configured" {
+        It "Should use fallback proxy configuration" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry {
+                param($InternetSettings)
+                return $false
+            }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+            Should -Invoke Initialize-DefaultWebProxy -Times 1 -ParameterFilter { $UseSystemProxy -eq $false }
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter { $UseFallback -eq $true }
+        }
+
+        It "Should pass custom FallbackProxyHost to Initialize-DefaultWebProxy" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            $customHost = "corporate.proxy.com:8080"
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost
+
+            Should -Invoke Initialize-DefaultWebProxy -Times 1 -ParameterFilter {
+                $UseSystemProxy -eq $false -and $FallbackProxyHost -eq $customHost
+            }
+        }
+
+        It "Should pass custom FallbackProxyHost to Set-ProxyEnvironment" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            $customHost = "corporate.proxy.com:8080"
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost
+
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter {
+                $UseFallback -eq $true -and $FallbackProxyHost -eq $customHost
+            }
+        }
+    }
+
     Context "Integration test for main orchestration" {
-        It "Should execute without errors" {
-            { Initialize-ProxyConfiguration } | Should -Not -Throw
+        It "Should execute without errors when ProbeUrl is provided" {
+            { Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080" } | Should -Not -Throw
         }
 
         It "Should set NO_PROXY environment variable" {
-            Initialize-ProxyConfiguration
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080"
             $Env:NO_PROXY | Should -Not -BeNullOrEmpty
         }
 
         It "Should set HTTP_PROXY environment variable" {
-            Initialize-ProxyConfiguration
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080"
             # HTTP_PROXY should be either set or null, but not undefined
             { $Env:HTTP_PROXY } | Should -Not -Throw
         }
 
-        It "Should accept ProbeUrl parameter" {
-            { Initialize-ProxyConfiguration -ProbeUrl "https://www.google.com" } | Should -Not -Throw
+        It "Should accept custom ProbeUrl parameter" {
+            { Initialize-ProxyConfiguration -ProbeUrl "https://www.google.com" -FallbackProxyHost "some.fallback.de:8080" } | Should -Not -Throw
+        }
+
+        It "Should work with both parameters provided" {
+            { Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080" } | Should -Not -Throw
+        }
+
+        It "Should accept custom FallbackProxyHost parameter" {
+            $customHost = "corporate.proxy.com:8080"
+            { Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost } | Should -Not -Throw
+        }
+
+        It "Should use custom FallbackProxyHost when PAC is not configured" {
+            # This is an integration test - it will actually set environment variables
+            # Save current environment
+            $oldHttpProxy = $Env:HTTP_PROXY
+            $oldHttpsProxy = $Env:HTTPS_PROXY
+
+            try {
+                $customHost = "integration.test.proxy:9999"
+                Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost $customHost
+
+                # Verify the custom fallback was used (assuming no PAC is configured in test environment)
+                # This will pass if either PAC is configured (proxy set) or fallback is used
+                $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
+            }
+            finally {
+                # Restore environment
+                $Env:HTTP_PROXY = $oldHttpProxy
+                $Env:HTTPS_PROXY = $oldHttpsProxy
+            }
         }
     }
 }

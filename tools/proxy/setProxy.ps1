@@ -1,14 +1,28 @@
 <#
 .SYNOPSIS
-    MQ proxy settings for PowerShell using PAC resolution (no hardcoded proxy hosts)
+    Proxy settings for PowerShell using PAC resolution (no hardcoded proxy hosts)
 .DESCRIPTION
     Reads PAC/Internet Settings from the registry and uses the system web proxy
     to determine the effective proxy. Sets PowerShell's default proxy and common
     environment variables for tools (git, Python, etc.).
+.PARAMETER ProbeUrl
+    URL to probe for proxy resolution (default: https://www.microsoft.com)
+.PARAMETER FallbackProxyHost
+    Fallback proxy host:port when PAC resolution fails or is not configured (default: some.fallback.de:8080)
+.EXAMPLE
+    .\setProxy.ps1
+    Uses default probe URL and fallback proxy
+.EXAMPLE
+    .\setProxy.ps1 -FallbackProxyHost "corporate.proxy.com:8080"
+    Uses custom fallback proxy for corporate environment
 #>
 
 Param(
-    [string]$ProbeUrl         # Optional: URL to probe for proxy resolution (defaults if not provided)
+    [Parameter(Mandatory = $false)]
+    [string]$ProbeUrl = "https://www.microsoft.com",
+
+    [Parameter(Mandatory = $false)]
+    [string]$FallbackProxyHost = "some.fallback.de:8080"
 )
 
 Set-StrictMode -Version Latest
@@ -24,7 +38,7 @@ $ErrorActionPreference = "Stop"
 .OUTPUTS
     PSCustomObject with registry properties or $null if not found
 #>
-function Get-InternetSetting {
+function Get-InternetSettingsFromRegistry {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param()
@@ -177,6 +191,8 @@ function Get-ProxyFromPac {
     Whether connection is direct (no proxy)
 .PARAMETER UseFallback
     Use fallback proxy configuration
+.PARAMETER FallbackProxyHost
+    Fallback proxy host:port (e.g., proxy.company.com:8080)
 #>
 function Set-ProxyEnvironment {
     [CmdletBinding(SupportsShouldProcess)]
@@ -188,13 +204,15 @@ function Set-ProxyEnvironment {
         [bool]$IsDirect = $false,
 
         [Parameter(Mandatory = $false)]
-        [bool]$UseFallback = $false
+        [bool]$UseFallback = $false,
+
+        [Parameter(Mandatory = $false)]
+        [string]$FallbackProxyHost
     )
 
     if ($PSCmdlet.ShouldProcess("HTTP_PROXY and HTTPS_PROXY environment variables", "Set")) {
         if ($UseFallback) {
-            $fallbackHost = 'some.fallback.de:8080'
-            $Env:HTTP_PROXY = "http://$fallbackHost"
+            $Env:HTTP_PROXY = "http://$FallbackProxyHost"
             Write-Output "Using fallback proxy: $Env:HTTP_PROXY"
         }
         elseif ($IsDirect) {
@@ -227,7 +245,7 @@ function Initialize-DefaultWebProxy {
         [bool]$UseSystemProxy = $true,
 
         [Parameter(Mandatory = $false)]
-        [string]$FallbackProxyHost = 'some.fallback.de:8080'
+        [string]$FallbackProxyHost
     )
 
     if ($UseSystemProxy) {
@@ -249,17 +267,22 @@ function Initialize-DefaultWebProxy {
 .DESCRIPTION
     Coordinates all proxy setup functions
 .PARAMETER ProbeUrl
-    Optional URL to probe for proxy resolution
+    URL to probe for proxy resolution (uses script-level default if not provided)
+.PARAMETER FallbackProxyHost
+    Fallback proxy host:port (uses script-level default if not provided)
 #>
 function Initialize-ProxyConfiguration {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [string]$ProbeUrl = "https://www.microsoft.com"
+        [string]$ProbeUrl,
+
+        [Parameter(Mandatory = $false)]
+        [string]$FallbackProxyHost
     )
 
     # Get Internet Setting from registry
-    $inetSettings = Get-InternetSetting
+    $inetSettings = Get-InternetSettingsFromRegistry
 
     # Enable proxy in registry if needed
     $null = Enable-ProxyInRegistry -InternetSettings $inetSettings
@@ -274,7 +297,7 @@ function Initialize-ProxyConfiguration {
         Write-Output "AutoConfigURL detected: $($inetSettings.AutoConfigURL)"
 
         # Initialize DefaultWebProxy with system proxy
-        Initialize-DefaultWebProxy -UseSystemProxy $true
+        Initialize-DefaultWebProxy -UseSystemProxy $true -FallbackProxyHost $FallbackProxyHost
 
         # Resolve proxy from PAC
         $proxyInfo = Get-ProxyFromPac -InternetSettings $inetSettings -ProbeUrl $ProbeUrl
@@ -283,20 +306,20 @@ function Initialize-ProxyConfiguration {
             if ($proxyInfo.IsDirect) {
                 Write-Output "PAC/System proxy indicates DIRECT for '$ProbeUrl'. Clearing HTTP(S)_PROXY environment variables."
             }
-            Set-ProxyEnvironment -ProxyUrl $proxyInfo.ProxyUrl -IsDirect $proxyInfo.IsDirect
+            Set-ProxyEnvironment -ProxyUrl $proxyInfo.ProxyUrl -IsDirect $proxyInfo.IsDirect -FallbackProxyHost $FallbackProxyHost
         }
         else {
             # PAC resolution failed, use fallback
             Write-Warning "PAC resolution failed. Using fallback proxy."
-            Initialize-DefaultWebProxy -UseSystemProxy $false
-            Set-ProxyEnvironment -UseFallback $true
+            Initialize-DefaultWebProxy -UseSystemProxy $false -FallbackProxyHost $FallbackProxyHost
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost
         }
     }
     else {
         # No PAC, use fallback configuration
         Write-Warning "No AutoConfigURL (PAC) detected in registry. System may rely on manual or direct settings."
-        Initialize-DefaultWebProxy -UseSystemProxy $false
-        Set-ProxyEnvironment -UseFallback $true
+        Initialize-DefaultWebProxy -UseSystemProxy $false -FallbackProxyHost $FallbackProxyHost
+        Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost
     }
 
     # Show summary
@@ -311,12 +334,7 @@ function Initialize-ProxyConfiguration {
 # Execute main logic unless explicitly in test mode
 # Set environment variable SETPROXY_TEST_MODE=1 in tests to prevent auto-execution
 if (-not $env:SETPROXY_TEST_MODE) {
-    if ($ProbeUrl) {
-        Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl
-    }
-    else {
-        Initialize-ProxyConfiguration
-    }
+    Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost
 }
 
 #endregion
