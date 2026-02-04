@@ -6,23 +6,23 @@ Write-Output $PSVersionTable
 wsl --update
 wsl --version
 
+# Define Scope Once (Must be CurrentUser for non-admin agents)
+$Scope = "CurrentUser"
+
 # ---------------------------------------------------------------------------
-# 1. Install NuGet Provider (Scope: CurrentUser)
+# 1. Install NuGet Provider
 # ---------------------------------------------------------------------------
 # We check specifically for the CurrentUser scope or general availability.
 # If missing, we install explicitly to CurrentUser to avoid Admin prompts.
 if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
-    Write-Output "Installing NuGet Provider for CurrentUser..."
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+    Write-Output "Installing NuGet Provider for $Scope..."
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope $Scope
 }
 
 # ---------------------------------------------------------------------------
-# 2. Check and install dependencies (Scope: CurrentUser)
+# 2. Check and install dependencies
 # ---------------------------------------------------------------------------
 Write-Output 'Check and install dependencies ...'
-
-# Define Scope Once (Must be CurrentUser for non-admin agents)
-$Scope = "CurrentUser"
 
 # --- PESTER ---
 # Check if Pester exists in the bounds we want
