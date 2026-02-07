@@ -1,23 +1,381 @@
-# Shortcuts - Backlog
+# Backlog
 
-**Version**: 1.0.0 | **Created**: 2026-01-29
+## IN PROGRESS
 
-This document contains the detailed backlog of tasks, improvements, and bug fixes for the Shortcuts project.
+## TODO
+
+### [FEAT-003] Migrate from Keypirinha to Flow Launcher
+
+**Status**: Open
+**Priority**: High
+**Component**: `links/`, `bin/install.ps1`, `README.md`, documentation
+**Type**: Major Refactoring / Modernization
+
+**Description**:
+Replace Keypirinha launcher integration with Flow Launcher, a modern, actively maintained alternative with better plugin ecosystem and ongoing Windows 11+ support.
+
+**Rationale**:
+- **Keypirinha is abandoned**: Last update in 2021, no development since 2020
+- **Risk mitigation**: Unmaintained software poses security and compatibility risks
+- **Future-proof**: Flow Launcher has active development and community
+- **Better extensibility**: Modern plugin system with built-in plugin store
+- **Industry recommendation**: Flow Launcher is the #1 recommended Keypirinha alternative
+
+**Current State**:
+- Shortcuts defined as `.url` files in `links/` directory
+- README instructions reference Keypirinha catalog refresh
+- Installation assumes Keypirinha is installed
+- Works but no guarantee of future Windows compatibility
+
+**Proposed Solution**:
+
+**Phase 1: Research & Planning**
+1. Install Flow Launcher and explore integration options
+2. Determine how to replicate `.url` file functionality
+3. Identify Flow Launcher's equivalent to Keypirinha's catalog system
+4. Document migration strategy for existing shortcuts
+
+**Phase 2: Implementation**
+1. Update `bin/install.ps1`:
+   - Remove Keypirinha from `scoopfile.json` (if present)
+   - Add Flow Launcher installation (via Scoop or direct install)
+   - Add Flow Launcher configuration setup
+2. Migrate shortcuts from `links/`:
+   - Convert `.url` files to Flow Launcher format
+   - Test each shortcut works in Flow Launcher
+   - Consider: Keep `links/` structure or move to Flow Launcher plugins?
+3. Create Flow Launcher configuration:
+   - Set up default hotkeys
+   - Configure plugin settings
+   - Add custom shortcuts/commands
+
+**Phase 3: Documentation**
+1. Update `README.md`:
+   - Replace Keypirinha references with Flow Launcher
+   - Update installation instructions
+   - Update usage guide (hotkeys, catalog refresh → plugin refresh)
+2. Add `docs/flow-launcher-setup.md`:
+   - Detailed setup guide
+   - Migration guide for existing Keypirinha users
+   - Troubleshooting common issues
+3. Update all references in other documentation
+
+**Phase 4: Cleanup**
+1. Remove Keypirinha-specific code and configurations
+2. Archive old `.url` files (or remove if migrated)
+3. Update CI/testing if needed
+
+**Acceptance Criteria**:
+- [ ] Flow Launcher installed via `bin/install.ps1`
+- [ ] All existing shortcuts work in Flow Launcher
+- [ ] No Keypirinha references in code or documentation
+- [ ] `README.md` updated with Flow Launcher instructions
+- [ ] `docs/flow-launcher-setup.md` created with setup guide
+- [ ] Migration tested on fresh Windows installation
+- [ ] User can trigger shortcuts with same/better UX than Keypirinha
+- [ ] Clear migration path for existing users documented
+- [ ] All tests pass after migration
+
+**Technical Notes**:
+- Flow Launcher installation:
+  - Available via Scoop: `scoop install extras/flow-launcher`
+  - Or direct download: https://www.flowlauncher.com/
+- Flow Launcher uses JSON-based plugin system
+- Default hotkey: Alt+Space (configurable)
+- Plugin API documentation: https://www.flowlauncher.com/docs/
+- May need to create custom Flow Launcher plugin for project-specific shortcuts
+
+**Migration Impact**:
+- **Breaking change for existing users**: They must install Flow Launcher
+- **Documentation update required**: All user-facing docs need updates
+- **Testing effort**: Verify all shortcuts work in new launcher
+- **Opportunity**: Can leverage Flow Launcher's richer plugin ecosystem
+
+**Risks**:
+- Flow Launcher may have different behavior/limitations
+- Custom shortcuts might require plugin development
+- Users must manually uninstall Keypirinha (document this)
+- Learning curve for users familiar with Keypirinha
+
+**Dependencies**:
+- Flow Launcher availability via Scoop or direct download
+- Windows 10/11 (Flow Launcher requirement)
+
+**Related Resources**:
+- https://www.flowlauncher.com/
+- https://github.com/Flow-Launcher/Flow.Launcher
+- https://alternativeto.net/software/keypirinha/ (alternatives comparison)
 
 ---
 
-## Active Items
+### [FEAT-004] Refactor install.ps1 with Mandatory/Optional Tools and Idempotent Functions
 
-### Bugs
+**Status**: Open
+**Priority**: Medium
+**Component**: `scoopfile.json`, `bin/install.ps1`, `.bootstrap/bootstrap.ps1`
+**Type**: Feature / Refactoring
+**Related**: DEBT-001 (Bootstrap removal), FEAT-003 (Flow Launcher)
 
-*No active bugs*
+**Description**:
+Refactor `install.ps1` into a dot-sourceable, self-complete script with idempotent functions. Split tools into mandatory (minimal essential) and optional (recommended) sets. Enable both standalone execution and function reuse via wrappers/Flow Launcher.
 
+**Rationale**:
+- **Minimal mandatory set**: Only essential tools (lessmsi, 7zip, innounp, dark, git, Flow Launcher)
+- **User choice**: Optional tools can be installed on demand
+- **Reusability**: Dot-source install.ps1 to call functions from wrappers/Flow Launcher
+- **Idempotency**: Functions can be re-run safely for repair/updates
+- **Self-complete**: No external dependencies (works via `Invoke-RestMethod`)
 
-## Backlog Items
+**Design Requirements**:
 
-### Enhancements
+**1. Self-Complete Script**
+- No dependencies on other files (can be downloaded and run standalone)
+- Must work when invoked via:
+  ```powershell
+  Invoke-RestMethod https://raw.githubusercontent.com/.../install.ps1 | Invoke-Expression
+  ```
 
-#### [FEAT-002] Set up Podman as Docker alternative in WSL
+**2. Dot-Sourceable Architecture**
+- Can be dot-sourced to expose functions:
+  ```powershell
+  . .\install.ps1
+  Install-Scoop
+  Install-MandatoryTools
+  Install-OptionalTools
+  ```
+- Wrapper scripts and Flow Launcher can call individual functions
+
+**3. Idempotent Functions**
+- All functions safe to re-run (check state before acting)
+- Example: `Install-Scoop` checks if already installed before installing
+- Example: `Install-MandatoryTools` skips already-installed tools
+
+**Tool Categorization**:
+
+**Mandatory (scoop_mandatory.json)**:
+- `lessmsi` - MSI extraction
+- `7zip` - Archive handling
+- `innounp` - Inno Setup extraction
+- `dark` - WiX toolset
+- `git` - Version control (essential)
+- `flow-launcher` - Launcher integration (from extras bucket)
+
+**Optional (scoop_optional.json)**:
+- Everything else currently in `scoopfile.json`
+
+**Proposed Solution**:
+
+**Phase 1: Extract and Consolidate Functions**
+1. Move `Install-Scoop` from `.bootstrap/bootstrap.ps1` to `install.ps1`
+2. Make `Install-Scoop` idempotent:
+   ```powershell
+   function Install-Scoop {
+       if (Get-Command scoop -ErrorAction SilentlyContinue) {
+           Write-Information "Scoop already installed, skipping"
+           return
+       }
+       # Install scoop logic
+   }
+   ```
+3. Create idempotent functions:
+   - `Install-Scoop`
+   - `Install-MandatoryTools`
+   - `Install-OptionalTools`
+   - `Test-ScoopInstalled` (helper)
+
+**Phase 2: Create Tool Definition Files**
+1. Create `scoop_mandatory.json`:
+   ```json
+   {
+     "buckets": [
+       { "Name": "extras" }
+     ],
+     "apps": [
+       { "Name": "lessmsi" },
+       { "Name": "7zip" },
+       { "Name": "innounp" },
+       { "Name": "dark" },
+       { "Name": "git" },
+       { "Name": "flow-launcher", "Source": "extras" }
+     ]
+   }
+   ```
+2. Create `scoop_optional.json` with remaining tools
+
+**Phase 3: Implement install.ps1 Structure**
+```powershell
+#Requires -Version 5.1
+
+# Self-complete, dot-sourceable installation script
+# Can be invoked standalone or dot-sourced for function reuse
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# === Helper Functions ===
+
+function Test-ScoopInstalled {
+    return $null -ne (Get-Command scoop -ErrorAction SilentlyContinue)
+}
+
+function Test-RunningInCIorTestEnvironment {
+    # Inline implementation (self-complete requirement)
+    return $null -ne $env:CI
+}
+
+# === Core Functions ===
+
+function Install-Scoop {
+    [CmdletBinding()]
+    param()
+
+    if (Test-ScoopInstalled) {
+        Write-Information "Scoop already installed"
+        return
+    }
+
+    if (Test-RunningInCIorTestEnvironment) {
+        # Auto-install in CI
+        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+    } else {
+        # Interactive prompt
+        $response = Read-Host "Scoop is not installed. Install it now? (Y/N)"
+        if ($response -match '^[Yy]') {
+            Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+        } else {
+            Write-Error "Scoop is required. Exiting."
+            exit 1
+        }
+    }
+}
+
+function Install-MandatoryTools {
+    [CmdletBinding()]
+    param()
+
+    if (-not (Test-ScoopInstalled)) {
+        Write-Error "Scoop must be installed first"
+        exit 1
+    }
+
+    $mandatoryJson = Join-Path $PSScriptRoot "scoop_mandatory.json"
+    if (Test-Path $mandatoryJson) {
+        Write-Information "Installing mandatory tools..."
+        scoop import $mandatoryJson
+    } else {
+        Write-Warning "scoop_mandatory.json not found, skipping"
+    }
+}
+
+function Install-OptionalTools {
+    [CmdletBinding()]
+    param(
+        [switch]$Force
+    )
+
+    if (-not (Test-ScoopInstalled)) {
+        Write-Error "Scoop must be installed first"
+        exit 1
+    }
+
+    $optionalJson = Join-Path $PSScriptRoot "scoop_optional.json"
+    if (-not (Test-Path $optionalJson)) {
+        Write-Warning "scoop_optional.json not found, skipping"
+        return
+    }
+
+    if ($Force) {
+        Write-Information "Installing optional tools..."
+        scoop import $optionalJson
+        return
+    }
+
+    if (Test-RunningInCIorTestEnvironment) {
+        Write-Information "CI mode: skipping optional tools"
+        return
+    }
+
+    $response = Read-Host "Install recommended optional tools? (Y/N)"
+    if ($response -match '^[Yy]') {
+        scoop import $optionalJson
+    }
+}
+
+# === Main Execution (only when NOT dot-sourced) ===
+
+# Detect if script is being dot-sourced
+$isSourced = $MyInvocation.InvocationName -eq '.' -or $MyInvocation.Line -eq ''
+
+if (-not $isSourced) {
+    # Standalone execution
+    try {
+        Install-Scoop
+        Install-MandatoryTools
+        Install-OptionalTools
+        Write-Host "Installation complete!" -ForegroundColor Green
+    } catch {
+        Write-Error "Installation failed: $_"
+        exit 1
+    }
+}
+```
+
+**Phase 4: Enable Wrapper Usage**
+Example wrapper script:
+```powershell
+# tools/install-optional.ps1
+. "$PSScriptRoot\..\bin\install.ps1"
+Install-OptionalTools -Force
+```
+
+Example Flow Launcher integration:
+```powershell
+. "C:\Path\To\bin\install.ps1"
+Install-Scoop  # Repair/verify Scoop installation
+```
+
+**Phase 5: Update Dependencies**
+1. Coordinate with DEBT-001: Remove `.bootstrap/` entirely after migrating `Install-Scoop`
+2. Coordinate with FEAT-003: Ensure `flow-launcher` in mandatory tools
+
+**Acceptance Criteria**:
+- [ ] `Install-Scoop` function extracted from bootstrap.ps1 to install.ps1
+- [ ] All functions are idempotent (safe to re-run)
+- [ ] `install.ps1` is self-complete (no external file dependencies)
+- [ ] `install.ps1` can be dot-sourced without executing main logic
+- [ ] `scoop_mandatory.json` contains only: lessmsi, 7zip, innounp, dark, git, flow-launcher
+- [ ] `scoop_optional.json` contains all other tools
+- [ ] Works via `Invoke-RestMethod` (standalone remote execution)
+- [ ] Works when dot-sourced by wrapper scripts
+- [ ] Interactive prompts in interactive mode
+- [ ] Non-interactive behavior in CI mode
+- [ ] Clear success/error messages
+- [ ] All tests pass
+- [ ] Documentation updated
+
+**Technical Notes**:
+- **Self-complete requirement**: All helper functions must be inline (can't source utils.ps1)
+- **Dot-source detection**: Check `$MyInvocation.InvocationName -eq '.'`
+- **Idempotency pattern**: Always check state before acting
+- **Flow Launcher bucket**: `scoop bucket add extras` (if not already added)
+- **Remote invocation**: `irm https://raw.github.com/.../install.ps1 | iex`
+
+**Testing Requirements**:
+- Unit tests for each function (Install-Scoop, Install-MandatoryTools, Install-OptionalTools)
+- Test idempotency (running functions multiple times)
+- Test dot-sourcing (functions accessible without execution)
+- Test standalone execution
+- Test CI/interactive modes
+
+**Migration Path**:
+1. Implement new install.ps1 structure
+2. Test thoroughly (both standalone and dot-sourced)
+3. Remove bootstrap.ps1 (DEBT-001)
+4. Update all documentation
+
+---
+
+### [FEAT-002] Set up Podman as Docker alternative in WSL
 
 **Status**: Open
 **Priority**: Medium
@@ -102,7 +460,48 @@ Podman provides a daemonless, rootless container runtime that's compatible with 
 
 ### Technical Debt
 
-*No items yet*
+### [DEBT-001] Remove Bootstrap System Dependency from install.ps1
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `bin/install.ps1`, `.bootstrap/` directory
+**Type**: Refactoring / Technical Debt
+
+**Description**:
+Simplify the installation process by removing the `.bootstrap` system dependency and replacing it with a straightforward Scoop availability check.
+
+**Current Problem**:
+- `.bootstrap` system adds unnecessary complexity
+- More suited for Python projects than PowerShell/Windows tooling
+- Obscures the simple requirement: Scoop must be installed
+
+**Proposed Solution**:
+Replace bootstrap system with direct Scoop check in `install.ps1`:
+1. Check if `scoop` command is available
+2. If not found, ask user: "Scoop is not installed. Install it now? (Y/N)"
+3. If Yes: Install Scoop using default method from https://scoop.sh/
+4. If No: Exit gracefully with helpful message
+5. Once Scoop is available: Install tools via `scoop import scoopfile.json`
+
+**Acceptance Criteria**:
+- [ ] Remove dependency on `.bootstrap/` directory
+- [ ] Delete `.bootstrap/` directory entirely
+- [ ] Add Scoop availability check to `install.ps1`
+- [ ] Interactive prompt asking user to install Scoop if missing
+- [ ] Automatic Scoop installation if user confirms
+- [ ] Graceful exit with helpful message if user declines
+- [ ] Install tools via `scoop import scoopfile.json` after Scoop is available
+- [ ] Update documentation to reflect simplified installation
+- [ ] All tests pass after refactoring
+
+**Technical Notes**:
+- Current Scoop check: `Get-Command scoop -ErrorAction SilentlyContinue`
+- Default Scoop installation (from scoop.sh):
+  ```powershell
+  irm get.scoop.sh | iex
+  ```
+- Tool installation: `scoop import scoopfile.json`
+- Must handle CI/non-interactive environments properly
 
 ### Documentation
 
@@ -110,7 +509,7 @@ Podman provides a daemonless, rootless container runtime that's compatible with 
 
 ---
 
-## Completed Items
+## DONE
 
 ### [BUG-002] ✅ COMPLETED - VS Code WSL Interop Interference Fixed
 
@@ -281,5 +680,4 @@ Added validation using `[int]::TryParse()` before attempting to convert the vers
 ## Notes
 
 - Use format `[TYPE-###]` for item IDs (e.g., `BUG-001`, `FEAT-001`, `DEBT-001`)
-- Link to commits, files, and line numbers where relevant
 - Keep items actionable with clear acceptance criteria
