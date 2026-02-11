@@ -4,125 +4,21 @@
 
 ## TODO
 
-### [FEAT-003] Migrate from Keypirinha to Flow Launcher
-
-**Status**: Open
-**Priority**: High
-**Component**: `links/`, `bin/install.ps1`, `README.md`, documentation
-**Type**: Major Refactoring / Modernization
-
-**Description**:
-Replace Keypirinha launcher integration with Flow Launcher, a modern, actively maintained alternative with better plugin ecosystem and ongoing Windows 11+ support.
-
-**Rationale**:
-- **Keypirinha is abandoned**: Last update in 2021, no development since 2020
-- **Risk mitigation**: Unmaintained software poses security and compatibility risks
-- **Future-proof**: Flow Launcher has active development and community
-- **Better extensibility**: Modern plugin system with built-in plugin store
-- **Industry recommendation**: Flow Launcher is the #1 recommended Keypirinha alternative
-
-**Current State**:
-- Shortcuts defined as `.url` files in `links/` directory
-- README instructions reference Keypirinha catalog refresh
-- Installation assumes Keypirinha is installed
-- Works but no guarantee of future Windows compatibility
-
-**Proposed Solution**:
-
-**Phase 1: Research & Planning**
-1. Install Flow Launcher and explore integration options
-2. Determine how to replicate `.url` file functionality
-3. Identify Flow Launcher's equivalent to Keypirinha's catalog system
-4. Document migration strategy for existing shortcuts
-
-**Phase 2: Implementation**
-1. Update `bin/install.ps1`:
-   - Remove Keypirinha from `scoopfile.json` (if present)
-   - Add Flow Launcher installation (via Scoop or direct install)
-   - Add Flow Launcher configuration setup
-2. Migrate shortcuts from `links/`:
-   - Convert `.url` files to Flow Launcher format
-   - Test each shortcut works in Flow Launcher
-   - Consider: Keep `links/` structure or move to Flow Launcher plugins?
-3. Create Flow Launcher configuration:
-   - Set up default hotkeys
-   - Configure plugin settings
-   - Add custom shortcuts/commands
-
-**Phase 3: Documentation**
-1. Update `README.md`:
-   - Replace Keypirinha references with Flow Launcher
-   - Update installation instructions
-   - Update usage guide (hotkeys, catalog refresh → plugin refresh)
-2. Add `docs/flow-launcher-setup.md`:
-   - Detailed setup guide
-   - Migration guide for existing Keypirinha users
-   - Troubleshooting common issues
-3. Update all references in other documentation
-
-**Phase 4: Cleanup**
-1. Remove Keypirinha-specific code and configurations
-2. Archive old `.url` files (or remove if migrated)
-3. Update CI/testing if needed
-
-**Acceptance Criteria**:
-- [ ] Flow Launcher installed via `bin/install.ps1`
-- [ ] All existing shortcuts work in Flow Launcher
-- [ ] No Keypirinha references in code or documentation
-- [ ] `README.md` updated with Flow Launcher instructions
-- [ ] `docs/flow-launcher-setup.md` created with setup guide
-- [ ] Migration tested on fresh Windows installation
-- [ ] User can trigger shortcuts with same/better UX than Keypirinha
-- [ ] Clear migration path for existing users documented
-- [ ] All tests pass after migration
-
-**Technical Notes**:
-- Flow Launcher installation:
-  - Available via Scoop: `scoop install extras/flow-launcher`
-  - Or direct download: https://www.flowlauncher.com/
-- Flow Launcher uses JSON-based plugin system
-- Default hotkey: Alt+Space (configurable)
-- Plugin API documentation: https://www.flowlauncher.com/docs/
-- May need to create custom Flow Launcher plugin for project-specific shortcuts
-
-**Migration Impact**:
-- **Breaking change for existing users**: They must install Flow Launcher
-- **Documentation update required**: All user-facing docs need updates
-- **Testing effort**: Verify all shortcuts work in new launcher
-- **Opportunity**: Can leverage Flow Launcher's richer plugin ecosystem
-
-**Risks**:
-- Flow Launcher may have different behavior/limitations
-- Custom shortcuts might require plugin development
-- Users must manually uninstall Keypirinha (document this)
-- Learning curve for users familiar with Keypirinha
-
-**Dependencies**:
-- Flow Launcher availability via Scoop or direct download
-- Windows 10/11 (Flow Launcher requirement)
-
-**Related Resources**:
-- https://www.flowlauncher.com/
-- https://github.com/Flow-Launcher/Flow.Launcher
-- https://alternativeto.net/software/keypirinha/ (alternatives comparison)
-
----
-
 ### [FEAT-004] Refactor install.ps1 with Mandatory/Optional Tools and Idempotent Functions
 
 **Status**: Open
 **Priority**: Medium
 **Component**: `scoopfile.json`, `bin/install.ps1`, `.bootstrap/bootstrap.ps1`
 **Type**: Feature / Refactoring
-**Related**: DEBT-001 (Bootstrap removal), FEAT-003 (Flow Launcher)
+**Related**: DEBT-001 (Bootstrap removal)
 
 **Description**:
-Refactor `install.ps1` into a dot-sourceable, self-complete script with idempotent functions. Split tools into mandatory (minimal essential) and optional (recommended) sets. Enable both standalone execution and function reuse via wrappers/Flow Launcher.
+Refactor `install.ps1` into a dot-sourceable, self-complete script with idempotent functions. Split tools into mandatory (minimal essential) and optional (recommended) sets. Enable both standalone execution and function reuse via wrappers.
 
 **Rationale**:
-- **Minimal mandatory set**: Only essential tools (lessmsi, 7zip, innounp, dark, git, Flow Launcher)
+- **Minimal mandatory set**: Only essential tools (lessmsi, 7zip, innounp, dark, git, Keypirinha)
 - **User choice**: Optional tools can be installed on demand
-- **Reusability**: Dot-source install.ps1 to call functions from wrappers/Flow Launcher
+- **Reusability**: Dot-source install.ps1 to call functions from wrappers
 - **Idempotency**: Functions can be re-run safely for repair/updates
 - **Self-complete**: No external dependencies (works via `Invoke-RestMethod`)
 
@@ -143,7 +39,7 @@ Refactor `install.ps1` into a dot-sourceable, self-complete script with idempote
   Install-MandatoryTools
   Install-OptionalTools
   ```
-- Wrapper scripts and Flow Launcher can call individual functions
+- Wrapper scripts and Keypirinha can call individual functions
 
 **3. Idempotent Functions**
 - All functions safe to re-run (check state before acting)
@@ -158,7 +54,7 @@ Refactor `install.ps1` into a dot-sourceable, self-complete script with idempote
 - `innounp` - Inno Setup extraction
 - `dark` - WiX toolset
 - `git` - Version control (essential)
-- `flow-launcher` - Launcher integration (from extras bucket)
+- `keypirinha` - Keyboard launcher (from extras bucket)
 
 **Optional (scoop_optional.json)**:
 - Everything else currently in `scoopfile.json`
@@ -196,7 +92,7 @@ Refactor `install.ps1` into a dot-sourceable, self-complete script with idempote
        { "Name": "innounp" },
        { "Name": "dark" },
        { "Name": "git" },
-       { "Name": "flow-launcher", "Source": "extras" }
+       { "Name": "keypirinha", "Source": "extras" }
      ]
    }
    ```
@@ -328,7 +224,7 @@ Example wrapper script:
 Install-OptionalTools -Force
 ```
 
-Example Flow Launcher integration:
+Example Keypirinha integration:
 ```powershell
 . "C:\Path\To\bin\install.ps1"
 Install-Scoop  # Repair/verify Scoop installation
@@ -336,14 +232,13 @@ Install-Scoop  # Repair/verify Scoop installation
 
 **Phase 5: Update Dependencies**
 1. Coordinate with DEBT-001: Remove `.bootstrap/` entirely after migrating `Install-Scoop`
-2. Coordinate with FEAT-003: Ensure `flow-launcher` in mandatory tools
 
 **Acceptance Criteria**:
 - [ ] `Install-Scoop` function extracted from bootstrap.ps1 to install.ps1
 - [ ] All functions are idempotent (safe to re-run)
 - [ ] `install.ps1` is self-complete (no external file dependencies)
 - [ ] `install.ps1` can be dot-sourced without executing main logic
-- [ ] `scoop_mandatory.json` contains only: lessmsi, 7zip, innounp, dark, git, flow-launcher
+- [ ] `scoop_mandatory.json` contains only: lessmsi, 7zip, innounp, dark, git, keypirinha
 - [ ] `scoop_optional.json` contains all other tools
 - [ ] Works via `Invoke-RestMethod` (standalone remote execution)
 - [ ] Works when dot-sourced by wrapper scripts
@@ -357,7 +252,7 @@ Install-Scoop  # Repair/verify Scoop installation
 - **Self-complete requirement**: All helper functions must be inline (can't source utils.ps1)
 - **Dot-source detection**: Check `$MyInvocation.InvocationName -eq '.'`
 - **Idempotency pattern**: Always check state before acting
-- **Flow Launcher bucket**: `scoop bucket add extras` (if not already added)
+- **Keypirinha bucket**: `scoop bucket add extras` (if not already added)
 - **Remote invocation**: `irm https://raw.github.com/.../install.ps1 | iex`
 
 **Testing Requirements**:
@@ -510,6 +405,25 @@ Replace bootstrap system with direct Scoop check in `install.ps1`:
 ---
 
 ## DONE
+
+### [FEAT-003] ✅ COMPLETED - Add Flow Launcher as Standalone Optional Tool
+
+**Status**: **Completed** (2026-02-10) | **Branch**: `feature/feat-003-flow-launcher`
+**Priority**: Medium
+**Component**: `tools/flow-launcher/`
+
+**Description**:
+Flow Launcher offered as a standalone optional tool alongside the default Keypirinha launcher. Originally implemented as a full migration (`7104fe9`), rescoped to keep Keypirinha as default and provide Flow Launcher independently.
+
+**Implementation**:
+- ✅ Reverted Keypirinha-to-Flow-Launcher migration (restored all default Keypirinha references)
+- ✅ Created `tools/flow-launcher/install-flow-launcher.ps1` - standalone installer (TDD, 17 tests)
+- ✅ Created `tools/flow-launcher/install-flow-launcher.bat` wrapper
+- ✅ `configure-program-plugin.ps1` + tests (584 tests) - configures Program plugin
+- ✅ Program plugin scans `shortcuts/` (root) and `shortcuts_private/`
+- ✅ Updated `docs/flow-launcher-setup.md` for standalone usage
+
+---
 
 ### [BUG-002] ✅ COMPLETED - VS Code WSL Interop Interference Fixed
 
@@ -681,3 +595,4 @@ Added validation using `[int]::TryParse()` before attempting to convert the vers
 
 - Use format `[TYPE-###]` for item IDs (e.g., `BUG-001`, `FEAT-001`, `DEBT-001`)
 - Keep items actionable with clear acceptance criteria
+- Do NOT list commit hashes in backlog entries — the backlog is part of the commit itself, so hashes are circular and go stale after squash/rebase

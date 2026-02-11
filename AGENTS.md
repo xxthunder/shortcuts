@@ -62,6 +62,20 @@ tools/pslib/wsl/
 - mocking external dependencies
 - conventional commits
 
+### No Speculative Alternatives
+
+**Issue**: Building alternative/fallback approaches that weren't requested.
+
+**Guideline**: Implement exactly what was requested. Do NOT create "alternative approaches", "backward compatibility" paths, or "optional fallback" mechanisms unless the user explicitly asks for them. One clean solution is better than two competing ones.
+
+**Anti-pattern**:
+```
+# DON'T: Build two competing approaches "in case the user prefers one"
+# DON'T: Create a migration path from an approach that was never shipped
+```
+
+**When to apply**: Always. If you think an alternative approach might be useful, mention it in conversation instead of building it.
+
 ## PowerShell Implementation Guidelines
 
 ### Core Principles
