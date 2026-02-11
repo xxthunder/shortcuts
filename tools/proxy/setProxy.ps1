@@ -15,6 +15,9 @@
 .EXAMPLE
     .\setProxy.ps1 -FallbackProxyHost "corporate.proxy.com:8080"
     Uses custom fallback proxy for corporate environment
+.EXAMPLE
+    .\setProxy.ps1 -askForCreds
+    Prompts for credentials and embeds them in proxy environment variables (WARNING: Security risk!)
 #>
 
 Param(
@@ -22,7 +25,10 @@ Param(
     [string]$ProbeUrl = "https://www.microsoft.com",
 
     [Parameter(Mandatory = $false)]
-    [string]$FallbackProxyHost = "some.fallback.de:8080"
+    [string]$FallbackProxyHost = "some.fallback.de:8080",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$askForCreds
 )
 
 $InformationPreference = "Continue"
@@ -95,6 +101,82 @@ function Set-NoProxyEnvironment {
     if ($PSCmdlet.ShouldProcess("NO_PROXY environment variable", "Set")) {
         $Env:NO_PROXY = "localhost"
         Write-Verbose "NO_PROXY set to: $Env:NO_PROXY"
+    }
+}
+
+<#
+.SYNOPSIS
+    Gets credentials for proxy authentication from user input
+.DESCRIPTION
+    Prompts user for username and password, URL-encodes the password,
+    and returns formatted credentials string for proxy URL
+.OUTPUTS
+    String with format "username:encodedPassword@" or empty string if cancelled
+#>
+function Get-ProxyCredentialsFromUser {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    Write-Warning "SECURITY RISK: Credentials will be stored in environment variables in plain text!"
+    Write-Warning "This makes your password visible to any process that reads environment variables."
+    Write-Warning "Only use this option when absolutely required by specific tools."
+
+    [string]$username = Read-Host "Please enter your Windows user name for proxy authentication"
+    if ([string]::IsNullOrEmpty($username)) {
+        Write-Warning "No username provided. Skipping credential embedding."
+        return ""
+    }
+
+    $userpwd_sec = Read-Host "Please enter your Windows password for proxy authentication" -AsSecureString
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($userpwd_sec)
+    try {
+        [string]$encodedPwd = [System.Uri]::EscapeDataString([System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr))
+    }
+    finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    }
+
+    return "${username}:${encodedPwd}@"
+}
+
+<#
+.SYNOPSIS
+    Masks credentials in proxy URL for safe display
+.DESCRIPTION
+    Replaces username and password with asterisks to prevent accidental exposure
+.PARAMETER ProxyUrl
+    Proxy URL potentially containing credentials (can be empty/null)
+.OUTPUTS
+    String with credentials masked as ***username:***@host:port or empty if input is empty
+#>
+function Get-MaskedProxyUrl {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyString()]
+        [string]$ProxyUrl
+    )
+
+    if ([string]::IsNullOrEmpty($ProxyUrl)) {
+        return $ProxyUrl
+    }
+
+    try {
+        # Simple regex-based masking: find pattern scheme://anything@host and mask the "anything" part
+        if ($ProxyUrl -match '^([a-zA-Z0-9+.-]+)://([^@]+)@(.+)$') {
+            $scheme = $matches[1]
+            $hostPort = $matches[3]
+            return "${scheme}://***username:***@${hostPort}"
+        }
+
+        # If no @ found, return as-is (no credentials)
+        return $ProxyUrl
+    }
+    catch {
+        # If anything fails, return as-is
+        return $ProxyUrl
     }
 }
 
@@ -193,9 +275,12 @@ function Get-ProxyFromPac {
     Use fallback proxy configuration
 .PARAMETER FallbackProxyHost
     Fallback proxy host:port (e.g., proxy.company.com:8080)
+.PARAMETER CredentialPrefix
+    Credential string with format "username:password@" to embed in proxy URL
 #>
 function Set-ProxyEnvironment {
     [CmdletBinding(SupportsShouldProcess)]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'CredentialPrefix', Justification = 'CredentialPrefix is a pre-formatted URI component (user:encodedPass@), not a raw password')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$ProxyUrl,
@@ -207,20 +292,30 @@ function Set-ProxyEnvironment {
         [bool]$UseFallback = $false,
 
         [Parameter(Mandatory = $false)]
-        [string]$FallbackProxyHost
+        [string]$FallbackProxyHost,
+
+        [Parameter(Mandatory = $false)]
+        [string]$CredentialPrefix = ""
     )
 
     if ($PSCmdlet.ShouldProcess("HTTP_PROXY and HTTPS_PROXY environment variables", "Set")) {
         if ($UseFallback) {
-            $Env:HTTP_PROXY = "http://$FallbackProxyHost"
-            Write-Output "Using fallback proxy: $Env:HTTP_PROXY"
+            $Env:HTTP_PROXY = "http://${CredentialPrefix}$FallbackProxyHost"
+            Write-Output "Using fallback proxy: http://$FallbackProxyHost"
         }
         elseif ($IsDirect) {
             $Env:HTTP_PROXY = $null
             $Env:HTTPS_PROXY = $null
         }
         else {
-            $Env:HTTP_PROXY = $ProxyUrl
+            # Insert credentials into proxy URL if provided
+            if ($CredentialPrefix -and $ProxyUrl) {
+                $uri = [Uri]$ProxyUrl
+                $Env:HTTP_PROXY = "$($uri.Scheme)://${CredentialPrefix}$($uri.Authority)"
+            }
+            else {
+                $Env:HTTP_PROXY = $ProxyUrl
+            }
         }
 
         # Mirror to HTTPS (most tooling uses the same endpoint)
@@ -270,6 +365,8 @@ function Initialize-DefaultWebProxy {
     URL to probe for proxy resolution (uses script-level default if not provided)
 .PARAMETER FallbackProxyHost
     Fallback proxy host:port (uses script-level default if not provided)
+.PARAMETER AskForCreds
+    If set, prompts user for credentials to embed in proxy environment variables
 #>
 function Initialize-ProxyConfiguration {
     [CmdletBinding()]
@@ -278,8 +375,17 @@ function Initialize-ProxyConfiguration {
         [string]$ProbeUrl,
 
         [Parameter(Mandatory = $false)]
-        [string]$FallbackProxyHost
+        [string]$FallbackProxyHost,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AskForCreds
     )
+
+    # Get credentials if requested
+    $credentialPrefix = ""
+    if ($AskForCreds) {
+        $credentialPrefix = Get-ProxyCredentialsFromUser
+    }
 
     # Get Internet Setting from registry
     $inetSettings = Get-InternetSettingsFromRegistry
@@ -306,24 +412,25 @@ function Initialize-ProxyConfiguration {
             if ($proxyInfo.IsDirect) {
                 Write-Output "PAC/System proxy indicates DIRECT for '$ProbeUrl'. Clearing HTTP(S)_PROXY environment variables."
             }
-            Set-ProxyEnvironment -ProxyUrl $proxyInfo.ProxyUrl -IsDirect $proxyInfo.IsDirect -FallbackProxyHost $FallbackProxyHost
+            Set-ProxyEnvironment -ProxyUrl $proxyInfo.ProxyUrl -IsDirect $proxyInfo.IsDirect -FallbackProxyHost $FallbackProxyHost -CredentialPrefix $credentialPrefix
         }
         else {
             # PAC resolution failed, use fallback
             Write-Warning "PAC resolution failed. Using fallback proxy."
             Initialize-DefaultWebProxy -UseSystemProxy $false -FallbackProxyHost $FallbackProxyHost
-            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost
+            Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost -CredentialPrefix $credentialPrefix
         }
     }
     else {
         # No PAC, use fallback configuration
         Write-Warning "No AutoConfigURL (PAC) detected in registry. System may rely on manual or direct settings."
         Initialize-DefaultWebProxy -UseSystemProxy $false -FallbackProxyHost $FallbackProxyHost
-        Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost
+        Set-ProxyEnvironment -UseFallback $true -FallbackProxyHost $FallbackProxyHost -CredentialPrefix $credentialPrefix
     }
 
-    # Show summary
-    Write-Output "HTTP_PROXY/HTTPS_PROXY: $Env:HTTPS_PROXY"
+    # Show summary (mask credentials if present)
+    $maskedProxyUrl = Get-MaskedProxyUrl -ProxyUrl $Env:HTTPS_PROXY
+    Write-Output "HTTP_PROXY/HTTPS_PROXY: $maskedProxyUrl"
     Write-Output "NO_PROXY: $Env:NO_PROXY"
 }
 
@@ -334,7 +441,7 @@ function Initialize-ProxyConfiguration {
 # Execute main logic unless explicitly in test mode
 # Set environment variable SETPROXY_TEST_MODE=1 in tests to prevent auto-execution
 if (-not $env:SETPROXY_TEST_MODE) {
-    Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost
+    Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost -AskForCreds:$askForCreds
 }
 
 #endregion

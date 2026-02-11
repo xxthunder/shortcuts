@@ -10,6 +10,7 @@
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Mock function parameters are required by the interface but may not be used in test implementations')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Test code requires plaintext SecureString creation for mocking Read-Host -AsSecureString')]
 param()
 
 BeforeAll {
@@ -562,6 +563,176 @@ Describe "Initialize-ProxyConfiguration" {
             # Verify the custom fallback was used (assuming no PAC is configured in test environment)
             # This will pass if either PAC is configured (proxy set) or fallback is used
             $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
+        }
+    }
+}
+
+Describe "Get-ProxyCredentialsFromUser" {
+    Context "When user provides valid credentials" {
+        It "Should return formatted credentials string" {
+            # Create a secure string for the password
+            $securePassword = ConvertTo-SecureString "TestPassword123" -AsPlainText -Force
+
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return "testuser"
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Read-Host {
+                return $securePassword
+            } -ParameterFilter { $AsSecureString }
+
+            $result = Get-ProxyCredentialsFromUser
+
+            $result | Should -Be "testuser:TestPassword123@"
+        }
+
+        It "Should URL-encode special characters in password" {
+            $securePassword = ConvertTo-SecureString "P@ss=word&123" -AsPlainText -Force
+
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return "testuser"
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Read-Host {
+                return $securePassword
+            } -ParameterFilter { $AsSecureString }
+
+            $result = Get-ProxyCredentialsFromUser
+
+            # URL-encoded: @ -> %40, = -> %3D, & -> %26
+            $result | Should -Be "testuser:P%40ss%3Dword%26123@"
+        }
+
+        It "Should show security warning" {
+            $securePassword = ConvertTo-SecureString "test" -AsPlainText -Force
+
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return "testuser"
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Read-Host {
+                return $securePassword
+            } -ParameterFilter { $AsSecureString }
+
+            Mock Write-Warning { }
+
+            Get-ProxyCredentialsFromUser
+
+            Should -Invoke Write-Warning -Times 3 -Scope It
+        }
+    }
+
+    Context "When user provides empty username" {
+        It "Should return empty string" {
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return ""
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Write-Warning { }
+
+            $result = Get-ProxyCredentialsFromUser
+
+            $result | Should -Be ""
+        }
+
+        It "Should show warning about skipping credential embedding" {
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return ""
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Write-Warning { }
+
+            Get-ProxyCredentialsFromUser
+
+            # 3 security warnings + 1 skip warning
+            Should -Invoke Write-Warning -Times 4 -Scope It
+        }
+    }
+
+    Context "When user provides null username" {
+        It "Should return empty string" {
+            Mock Read-Host {
+                param($Prompt)
+                if ($Prompt -match "user name") {
+                    return $null
+                }
+            } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+
+            Mock Write-Warning { }
+
+            $result = Get-ProxyCredentialsFromUser
+
+            $result | Should -Be ""
+        }
+    }
+}
+
+Describe "Get-MaskedProxyUrl" {
+    Context "When proxy URL contains credentials" {
+        It "Should mask username and password" {
+            $proxyUrl = "http://testuser:mypassword123@proxy.server.com:8080"
+            $result = Get-MaskedProxyUrl -ProxyUrl $proxyUrl
+
+            $result | Should -Be "http://***username:***@proxy.server.com:8080"
+        }
+
+        It "Should mask credentials with special characters" {
+            $proxyUrl = "http://user%40domain:P%40ss%3Dword%26123@proxy.server.com:8080"
+            $result = Get-MaskedProxyUrl -ProxyUrl $proxyUrl
+
+            $result | Should -Be "http://***username:***@proxy.server.com:8080"
+        }
+
+        It "Should handle HTTPS scheme" {
+            $proxyUrl = "https://admin:secret@secure.proxy.de:3128"
+            $result = Get-MaskedProxyUrl -ProxyUrl $proxyUrl
+
+            $result | Should -Be "https://***username:***@secure.proxy.de:3128"
+        }
+    }
+
+    Context "When proxy URL does not contain credentials" {
+        It "Should return URL unchanged" {
+            $proxyUrl = "http://proxy.server.com:8080"
+            $result = Get-MaskedProxyUrl -ProxyUrl $proxyUrl
+
+            $result | Should -Be "http://proxy.server.com:8080"
+        }
+
+        It "Should return empty string when input is empty" {
+            $result = Get-MaskedProxyUrl -ProxyUrl ""
+
+            $result | Should -Be ""
+        }
+
+        It "Should return null when input is null" {
+            $result = Get-MaskedProxyUrl -ProxyUrl $null
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When proxy URL is malformed" {
+        It "Should return original URL if parsing fails" {
+            $malformedUrl = "not a valid url"
+            $result = Get-MaskedProxyUrl -ProxyUrl $malformedUrl
+
+            $result | Should -Be $malformedUrl
         }
     }
 }
