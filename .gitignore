@@ -14,7 +14,7 @@ __pycache__/
 # Backup files of KConfig
 *.old
 
-# bootstrap files are downloaded during installation
+# bootstrap files may be created by legacy or external tooling
 /.bootstrap
 
 # Test results
