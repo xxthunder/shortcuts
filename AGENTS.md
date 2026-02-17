@@ -124,7 +124,15 @@ Always implement robust error handling with:
 
 See "Script Structure" section below for the complete template.
 
-#### 3. Environment Awareness
+#### 3. File Encoding
+
+**All `.ps1` files must be saved as UTF-8 with BOM** (Byte Order Mark).
+
+PSScriptAnalyzer enforces `PSUseBOMForUnicodeEncodedFile` — any `.ps1` file containing non-ASCII characters (e.g., em dashes, accented letters, Unicode symbols) without a UTF-8 BOM will fail linting. To avoid issues, **always save `.ps1` files with BOM**, regardless of whether they currently contain non-ASCII characters.
+
+This applies only to `.ps1` files. Other file types (`.sh`, `.yml`, `.json`, `.md`, `.bat`) should remain UTF-8 without BOM, as BOM can cause problems in those formats.
+
+#### 4. Environment Awareness
 
 Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils/utils.ps1`:
 
@@ -145,7 +153,7 @@ if (Test-RunningInCIorTestEnvironment) {
 
 **Manual Testing:** Set `CI=true` to simulate non-interactive behavior when manually testing interactive scripts. DO NOT set `CI` when running the Pester test suite - the test framework handles this automatically.
 
-#### 4. Path Handling
+#### 5. Path Handling
 
 Use proper path resolution and validation:
 
@@ -161,7 +169,7 @@ if (-not (Test-Path $targetPath)) {
 }
 ```
 
-#### 5. Output and Logging
+#### 6. Output and Logging
 
 Provide clear, user-friendly output:
 
@@ -186,7 +194,7 @@ Write-Status "Installing Node.js..."
 Write-Success "Installation complete"
 ```
 
-#### 6. External Commands
+#### 7. External Commands
 
 **Always use `Invoke-CommandLine` from pslib for executing external commands.** This ensures consistent error handling and proper output capture.
 
@@ -217,7 +225,7 @@ if (-not $result) {
 - Standardized output capture
 - Integration with CI/test environments
 
-#### 7. PowerShell Command Execution from Bash
+#### 8. PowerShell Command Execution from Bash
 
 **Issue**: Mixing Bash and PowerShell pipelines causes errors.
 
@@ -250,7 +258,7 @@ powershell -File script.ps1 | grep "foo"
 - **Option 2**: When simple text matching is sufficient
 - **Option 3**: When processing large outputs or need to reference multiple times
 
-#### 8. Script Structure
+#### 9. Script Structure
 
 **IMPORTANT: Set-StrictMode in Dot-Sourced Files**
 

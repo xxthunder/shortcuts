@@ -87,6 +87,11 @@ Describe 'install.ps1 Remote Mode Structure' {
         $script:content | Should -Match 'git clone -b \$branch'
         $script:content | Should -Match 'git pull origin \$branch'
     }
+
+    It 'checks out the target branch before pulling in update path' {
+        $script:content | Should -Match 'git fetch origin \$branch'
+        $script:content | Should -Match 'git checkout \$branch'
+    }
 }
 
 Describe 'Install-Scoop' {
@@ -436,6 +441,21 @@ Describe 'Dot-Source Support' {
 
     It 'exposes New-StartupShortcut function' {
         Get-Command New-StartupShortcut -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Keypirinha CI Guard' {
+    BeforeAll {
+        $script:content = Get-Content $script:installScript -Raw
+    }
+
+    It 'guards Keypirinha launch with Test-RunningInCIorTestEnvironment check' {
+        $script:content | Should -Match 'Test-RunningInCIorTestEnvironment[\s\S]*?keypirinha\.exe'
+    }
+
+    It 'only launches Keypirinha when NOT in CI' {
+        $pattern = 'if\s*\(\s*-not\s*\(\s*Test-RunningInCIorTestEnvironment\s*\)\s*\)\s*\{[^}]*keypirinha\.exe'
+        $script:content | Should -Match $pattern
     }
 }
 

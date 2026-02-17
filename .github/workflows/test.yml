@@ -47,8 +47,9 @@ jobs:
           Invoke-RestMethod $url -OutFile install.ps1
           Write-Host "==> Running install.ps1 with `"-Branch $branch -SkipAdminCheck`""
           .\install.ps1 -Branch $branch -SkipAdminCheck
-          # Export PATH entries added by install (compare against pre-install snapshot)
-          $Env:Path -split ";" | Where-Object { $_ -and $pathBefore -notlike "*$_*" } |
+          # Export PATH entries added by install (set-difference against pre-install snapshot)
+          $before = $pathBefore -split ";" | Where-Object { $_ }
+          $Env:Path -split ";" | Where-Object { $_ -and $_ -notin $before } |
               Out-File -FilePath $Env:GITHUB_PATH -Append -Encoding utf8
           # Export SHORTCUTS_DIR for later steps (test dependencies and test runner)
           "SHORTCUTS_DIR=$Env:USERPROFILE\shortcuts" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8

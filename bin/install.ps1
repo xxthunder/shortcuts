@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -162,6 +162,8 @@ if (-not $InPlace) {
         Write-Host "==> Updating repository..." -ForegroundColor Cyan
         Push-Location $shortcutsDir
         try {
+            git fetch origin $branch
+            git checkout $branch
             git pull origin $branch
         } finally {
             Pop-Location
@@ -316,8 +318,10 @@ if (-not $InPlace) {
                 New-StartupShortcut -name "shortcuts_hotkeys" -path "$shortcutsDir\tools\AutoHotKey\hotkeys.cmd"
             }
 
-            # Start Keypirinha
-            & "$Env:USERPROFILE\scoop\apps\keypirinha\current\keypirinha.exe"
+            # Start Keypirinha (skip in CI — headless runners cannot launch GUI apps)
+            if (-not (Test-RunningInCIorTestEnvironment)) {
+                & "$Env:USERPROFILE\scoop\apps\keypirinha\current\keypirinha.exe"
+            }
 
             Write-Output "Installation/Update of Shortcuts was successful."
         } finally {
