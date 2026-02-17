@@ -1,0 +1,46 @@
+{
+    "buckets": [
+        {
+            "Name": "main",
+            "Source": "https://github.com/ScoopInstaller/Main"
+        },
+        {
+            "Name": "versions",
+            "Source": "https://github.com/ScoopInstaller/Versions"
+        },
+        {
+            "Name": "extras",
+            "Source": "https://github.com/ScoopInstaller/Extras"
+        }
+    ],
+    "apps": [
+        {
+            "Source": "main",
+            "Name": "pwsh"
+        },
+        {
+            "Source": "extras",
+            "Name": "windows-terminal"
+        },
+        {
+            "Source": "extras",
+            "Name": "ditto"
+        },
+        {
+            "Source": "extras",
+            "Name": "winmerge"
+        },
+        {
+            "Source": "extras",
+            "Name": "sysinternals"
+        },
+        {
+            "Source": "extras",
+            "Name": "vscode"
+        },
+        {
+            "Source": "extras",
+            "Name": "autohotkey"
+        }
+    ]
+}

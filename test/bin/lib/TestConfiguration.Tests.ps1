@@ -36,15 +36,17 @@ Describe "Test Configuration Logic" {
 
     Context "Get-TestConfiguration Path Resolution" {
 
-        It "Should use default paths 'tools' and 'test' when TestPath is empty" {
+        It "Should use default paths 'tools', 'test', and 'bin' when TestPath is empty" {
             Write-Output "RepoRoot: $script:TestRepoRoot"
-            # We need to ensure tools/test exist in our dummy root for this to pass validation
+            # We need to ensure tools/test/bin exist in our dummy root for this to pass validation
             New-Item -ItemType Directory -Path "$script:TestRepoRoot\test" -Force | Out-Null
+            New-Item -ItemType Directory -Path "$script:TestRepoRoot\bin" -Force | Out-Null
 
             $config = Get-TestConfiguration -TestPath @() -RepoRoot $script:TestRepoRoot
 
             $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\tools"
             $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\test"
+            $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\bin"
         }
 
         It "Should resolve relative paths against RepoRoot" {

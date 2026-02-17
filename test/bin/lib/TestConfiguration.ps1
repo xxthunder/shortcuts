@@ -19,7 +19,7 @@ function Get-TestConfiguration {
 
     # 1. Default Paths
     if (-not $TestPath -or $TestPath.Count -eq 0) {
-        $TestPath = @('tools', 'test')
+        $TestPath = @('tools', 'test', 'bin')
     }
 
     # 2. Resolve Paths

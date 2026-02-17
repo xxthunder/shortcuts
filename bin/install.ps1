@@ -1,118 +1,331 @@
+#Requires -Version 5.1
+
 <#
+.SYNOPSIS
+    Installation of Shortcuts - self-contained, two-mode installer.
+
 .DESCRIPTION
-    Installation of Shortcuts
+    Installs the Shortcuts toolkit on Windows. Operates in two modes:
+
+    Remote mode (irm .../install.ps1 | iex):
+        Bootstraps Scoop and git inline, clones the repo, then delegates to local mode.
+
+    Local mode (.\install.ps1 -InPlace):
+        Sources pslib utilities, installs Scoop dependencies, mandatory and optional
+        tools, and configures Keypirinha.
+
+    Can be dot-sourced (. .\install.ps1) to expose functions without running main logic.
+
+.PARAMETER InPlace
+    Run in local mode without cloning/updating the repository.
+    Used by remote mode to delegate to the cloned script.
+
+.PARAMETER Branch
+    Branch to clone/pull in remote mode. Defaults to "develop".
+    Used by CI to test feature branches via remote mode.
+
+.PARAMETER SkipAdminCheck
+    Skip the administrator-privilege check. Used by CI runners that always run elevated.
+
+.EXAMPLE
+    irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
+
+.EXAMPLE
+    $tmp = Join-Path $Env:TEMP "install.ps1"; irm $url | Set-Content $tmp; & $tmp -Branch "feature/my-branch"; Remove-Item $tmp
+
+.EXAMPLE
+    .\bin\install.ps1 -InPlace
 #>
 
+# Suppress linter warnings for necessary patterns
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Invoke-Expression is required for Scoop installer which returns a script string')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output in remote mode')]
+[CmdletBinding()]
 param (
-    [Parameter(Mandatory = $false, HelpMessage = 'Install in place without cloning/updating the repository. (Switch, default: false)')]
-    [switch]$InPlace = $false
+    [Parameter(Mandatory = $false, HelpMessage = 'Install in place without cloning/updating the repository.')]
+    [switch]$InPlace = $false,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Branch to clone/pull in remote mode. Defaults to develop.')]
+    [string]$Branch = "develop",
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Skip the administrator-privilege check. Used by CI runners that always run elevated.')]
+    [switch]$SkipAdminCheck = $false
 )
 
-Function Test-AdminRights {
+$ErrorActionPreference = 'Stop'
+$InformationPreference = 'Continue'
+
+#region Shared Functions (available in both modes)
+
+function Test-AdminPrivilege {
+    <#
+    .SYNOPSIS
+        Tests whether the current session is running with administrator privileges.
+    #>
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# Check if running with administrator privileges and fail if so
-if (Test-AdminRights) {
-    Write-Host "ERROR: This script should not be run with administrator privileges. Please run it from a normal PowerShell console." -ForegroundColor Red
-    exit 1
-}
-
-Function Copy-Config {
+function Copy-Config {
+    <#
+    .SYNOPSIS
+        Copies a configuration directory tree to a destination using robocopy.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
-        [string]$target,
+        [string]$source,
         [Parameter(Mandatory = $true, Position = 1)]
-        [string]$source
+        [string]$destination
     )
-    robocopy $target $source /E /IS /IT
-    if ($LASTEXITCODE -ge 8) {
-        Write-Error "Copying '$source' failed"
+    if ($PSCmdlet.ShouldProcess($destination, "Copy config from '$source'")) {
+        robocopy $source $destination /E /IS /IT
+        if ($LASTEXITCODE -ge 8) {
+            Write-Error "Copying config to '$destination' failed"
+        }
     }
 }
 
-Function New-Shortcut {
+function New-Shortcut {
+    <#
+    .SYNOPSIS
+        Creates a Windows shortcut (.lnk) at the target path pointing to the given path.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [string]$target,
         [Parameter(Mandatory = $true, Position = 1)]
         [string]$path
     )
-    $WshShell = New-Object -ComObject WScript.Shell
-    $Shortcut = $WshShell.CreateShortcut($target)
-    $Shortcut.TargetPath = $path
-    $Shortcut.Save()
+    if ($PSCmdlet.ShouldProcess($target, "Create shortcut")) {
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($target)
+        $Shortcut.TargetPath = $path
+        $Shortcut.Save()
+    }
 }
 
-Function New-Startup-Shortcut {
+function New-StartupShortcut {
+    <#
+    .SYNOPSIS
+        Creates a shortcut in the Windows Startup folder.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [string]$name,
         [Parameter(Mandatory = $true, Position = 1)]
         [string]$path
     )
-    $startupPath = Join-Path -Path $env:APPDATA -ChildPath "Microsoft\Windows\Start Menu\Programs\Startup"
-    New-Shortcut -target (Join-Path -Path $startupPath -ChildPath "$name.lnk") -path $path
+    if ($PSCmdlet.ShouldProcess($name, "Create startup shortcut")) {
+        $startupPath = Join-Path -Path $env:APPDATA -ChildPath "Microsoft\Windows\Start Menu\Programs\Startup"
+        New-Shortcut -target (Join-Path -Path $startupPath -ChildPath "$name.lnk") -path $path
+    }
 }
 
-# Initial bootstrapping (scoop and other dependencies)
-function Invoke-Bootstrap {
-    # Download bootstrap scripts from external repository
-    Invoke-RestMethod -Uri https://raw.githubusercontent.com/avengineers/bootstrap-installer/refs/tags/$bootstrap_git_tag/install.ps1 | Invoke-Expression
-    # Execute bootstrap script
-    . .\.bootstrap\bootstrap.ps1
-}
-
-## start of script
-# Always set the $InformationPreference variable to "Continue" globally,
-# this way it gets printed on execution and continues execution afterwards.
-$InformationPreference = "Continue"
-
-# Stop on first error
-$ErrorActionPreference = "Stop"
-
-$repoUrl = "https://github.com/xxthunder/shortcuts.git"
-$shortcutsDir = "$Env:USERPROFILE\shortcuts"
-$branch = "develop"
-
-$bootstrap_git_tag = "v1.17.2"
-
-# Load utility methods
-Invoke-RestMethod -Uri https://raw.githubusercontent.com/avengineers/bootstrap/refs/tags/$bootstrap_git_tag/utils.ps1 | Invoke-Expression
+#endregion
 
 if (-not $InPlace) {
-    # Get the latest commit of this repository
-    CloneOrPullGitRepo -RepoUrl $repoUrl -TargetDirectory $shortcutsDir -Branch $branch
+    #region Remote Mode - inline bootstrap, clone, delegate
 
-    Push-Location $shortcutsDir
+    Set-StrictMode -Version Latest
+
+    $repoUrl = "https://github.com/xxthunder/shortcuts.git"
+    $shortcutsDir = "$Env:USERPROFILE\shortcuts"
+    $branch = $Branch
+
+    # Admin guard
+    if (-not $SkipAdminCheck -and (Test-AdminPrivilege)) {
+        Write-Host "ERROR: This script should not be run with administrator privileges. Please run it from a normal PowerShell console." -ForegroundColor Red
+        exit 1
+    }
+
+    # Install Scoop if not present
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Host "==> Installing Scoop..." -ForegroundColor Cyan
+        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+        # Refresh PATH so scoop is available
+        $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
+
+    # Install git if not present
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Host "==> Installing git..." -ForegroundColor Cyan
+        scoop install git
+        $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
+
+    # Clone or pull repository
+    if (Test-Path $shortcutsDir) {
+        Write-Host "==> Updating repository..." -ForegroundColor Cyan
+        Push-Location $shortcutsDir
+        try {
+            git pull origin $branch
+        } finally {
+            Pop-Location
+        }
+    } else {
+        Write-Host "==> Cloning repository..." -ForegroundColor Cyan
+        git clone -b $branch $repoUrl $shortcutsDir
+    }
+
+    # Delegate to local mode (pass through SkipAdminCheck if set)
+    $delegateArgs = @{ InPlace = $true }
+    if ($SkipAdminCheck) { $delegateArgs['SkipAdminCheck'] = $true }
+    Write-Host "==> Running local installer..." -ForegroundColor Cyan
+    & "$shortcutsDir\bin\install.ps1" @delegateArgs
+    exit
+
+    #endregion
+} else {
+    #region Local Mode - full installation with dot-sourceable functions
+
+    # Resolve repo root from script location
+    $script:repoRoot = Split-Path $PSScriptRoot -Parent
+
+    # Source pslib utilities
+    . "$script:repoRoot\tools\pslib\utils\utils.ps1"
+
+    #region Exposed Functions
+
+    function Install-Scoop {
+        <#
+        .SYNOPSIS
+            Installs Scoop package manager if not already present. Idempotent.
+        #>
+        if (Get-Command scoop -ErrorAction SilentlyContinue) {
+            Write-Status "Scoop is already installed"
+            return
+        }
+
+        Write-Status "Installing Scoop..."
+        $installer = Invoke-RestMethod -Uri https://get.scoop.sh
+        Invoke-Expression $installer
+        Initialize-EnvPath
+        Write-Success "Scoop installed"
+    }
+
+    function Install-ScoopDependency {
+        <#
+        .SYNOPSIS
+            Installs Scoop's own prerequisites in the correct dependency order.
+        #>
+        $deps = @('lessmsi', '7zip', 'innounp', 'dark')
+        foreach ($dep in $deps) {
+            Write-Status "Installing Scoop dependency: $dep"
+            Invoke-CommandLine -CommandLine "scoop install $dep" -StopAtError $false
+        }
+    }
+
+    function Install-Git {
+        <#
+        .SYNOPSIS
+            Installs git via Scoop if not already available in PATH. Idempotent.
+        #>
+        if (Get-Command git -ErrorAction SilentlyContinue) {
+            Write-Status "git is already installed"
+            return
+        }
+
+        Write-Status "Installing git..."
+        Invoke-CommandLine -CommandLine "scoop install git" -StopAtError $true
+        Initialize-EnvPath
+        Write-Success "git installed"
+    }
+
+    function Install-MandatoryToolset {
+        <#
+        .SYNOPSIS
+            Installs mandatory tools from scoop_mandatory.json (keypirinha + extras bucket).
+        #>
+        $mandatoryJson = Join-Path $script:repoRoot 'scoop_mandatory.json'
+        Write-Status "Installing mandatory tools..."
+        Invoke-CommandLine -CommandLine "scoop import `"$mandatoryJson`"" -StopAtError $true
+        Write-Success "Mandatory tools installed"
+    }
+
+    function Install-OptionalToolset {
+        <#
+        .SYNOPSIS
+            Installs optional tools from scoop_optional.json.
+            Prompts in interactive mode, skips in CI, installs unconditionally with -Force.
+
+        .PARAMETER Force
+            Install without prompting.
+        #>
+        param(
+            [switch]$Force
+        )
+
+        $optionalJson = Join-Path $script:repoRoot 'scoop_optional.json'
+
+        if ($Force) {
+            Write-Status "Installing optional tools (forced)..."
+            Invoke-CommandLine -CommandLine "scoop import `"$optionalJson`"" -StopAtError $true
+            Write-Success "Optional tools installed"
+            return
+        }
+
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-Status "CI environment detected - skipping optional tools"
+            return
+        }
+
+        $install = Get-UserConfirmation -message "Install optional tools (pwsh, windows-terminal, ditto, winmerge, sysinternals, vscode, autohotkey)?"
+        if ($install) {
+            Write-Status "Installing optional tools..."
+            Invoke-CommandLine -CommandLine "scoop import `"$optionalJson`"" -StopAtError $true
+            Write-Success "Optional tools installed"
+        } else {
+            Write-Status "Skipping optional tools"
+        }
+    }
+
+    #endregion
+
+    #region Main Execution (guarded - not triggered by dot-sourcing)
+
+    if ($MyInvocation.InvocationName -ne '.') {
+        Set-StrictMode -Version Latest
+
+        # Admin guard
+        if (-not $SkipAdminCheck -and (Test-AdminPrivilege)) {
+            Write-Host "ERROR: This script should not be run with administrator privileges. Please run it from a normal PowerShell console." -ForegroundColor Red
+            exit 1
+        }
+
+        $shortcutsDir = $script:repoRoot
+
+        try {
+            Install-Scoop
+            Install-ScoopDependency
+            Install-Git
+            Install-MandatoryToolset
+            Install-OptionalToolset
+
+            # Post-install: Keypirinha config
+            Copy-Config (Join-Path $shortcutsDir "config\keypirinha\portable\Profile") "$Env:USERPROFILE\scoop\apps\keypirinha\current\portable\Profile"
+
+            # Post-install: private shortcuts directory
+            New-Directory "$Env:USERPROFILE\shortcuts_private"
+
+            # Post-install: AutoHotkey startup shortcut (only if autohotkey is installed)
+            if (Get-Command autohotkey -ErrorAction SilentlyContinue) {
+                New-StartupShortcut -name "shortcuts_hotkeys" -path "$shortcutsDir\tools\AutoHotKey\hotkeys.cmd"
+            }
+
+            # Start Keypirinha
+            & "$Env:USERPROFILE\scoop\apps\keypirinha\current\keypirinha.exe"
+
+            Write-Output "Installation/Update of Shortcuts was successful."
+        } finally {
+            if (-not (Test-RunningInCIorTestEnvironment)) {
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
+        }
+    }
+
+    #endregion
 }
-else {
-    # Run in place, no cloning
-    Push-Location $PSScriptRoot.TrimEnd("\bin")
-}
-
-try {
-    Invoke-Bootstrap
-
-    # automatically start AutoHotkey
-    New-Startup-Shortcut -name "shortcuts_hotkeys" -path "$shortcutsDir\tools\AutoHotKey\hotkeys.cmd"
-
-    # Create Keypirinha default settings
-    Copy-Config "config\keypirinha\portable\Profile" "$Env:USERPROFILE\scoop\apps\keypirinha\current\portable\Profile"
-
-    # Create directory for private shortcuts
-    $shortcutsPrivateDir = "$Env:USERPROFILE\shortcuts_private"
-    New-Directory $shortcutsPrivateDir
-
-    # Start Keypirinha
-    & "$Env:USERPROFILE\scoop\apps\keypirinha\current\keypirinha.exe"
-
-    Write-Output "Installation/Update of Shortcuts was successful."
-}
-finally {
-    Pop-Location
-    Read-Host -Prompt "Press Enter to continue ..."
-}
-## end of script
