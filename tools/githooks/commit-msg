@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# commit-msg hook — validates that the commit subject follows
+# conventional commits format with a backlog item suffix:
+#
+#   type(scope): description (ITEM-123)
+#   type: description (ITEM-123)
+#
+# Allowed types: feat fix docs style refactor perf test build ci chore revert
+
+SUBJECT=$(head -1 "$1")
+
+# Conventional commit: type(optional-scope): description (BACKLOG-ITEM)
+if ! echo "$SUBJECT" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?: .+ \([A-Z]+-[0-9]+\)$'; then
+    echo "" >&2
+    echo "❌ Commit subject does not match required format:" >&2
+    echo "" >&2
+    echo "  type: description (ITEM-123)" >&2
+    echo "  type(scope): description (ITEM-123)" >&2
+    echo "" >&2
+    echo "Got: $SUBJECT" >&2
+    echo "" >&2
+    exit 1
+fi
+
+exit 0

@@ -5,7 +5,7 @@
 .DESCRIPTION
     Copies hooks from tools/githooks to .git/hooks.
     Currently installs:
-    - pre-commit
+    - commit-msg
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -21,7 +21,7 @@ if (-not (Test-Path $gitHooksDir)) {
     exit 1
 }
 
-$hooks = @("pre-commit")
+$hooks = @("commit-msg")
 
 foreach ($hook in $hooks) {
     $sourcePath = Join-Path $sourceDir $hook
