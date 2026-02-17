@@ -442,6 +442,31 @@ git log develop..HEAD   # Review ALL commits on branch
 # Even cosmetic changes to test files can break things
 ```
 
+#### GitHub Actions Shell and Matrix
+
+**The `shell:` key on a workflow step does NOT accept matrix expressions.**
+
+Using `shell: ${{ matrix.shell }}` will fail. Instead, use `shell: cmd` and invoke the matrix shell inside the `run:` block:
+
+**Anti-pattern** (what NOT to do):
+```yaml
+# DON'T: shell: key does not resolve matrix expressions
+- name: Run tests
+  shell: ${{ matrix.shell }}
+  run: .\test\bin\testrunner.ps1 -Coverage
+```
+
+**Correct pattern**:
+```yaml
+# DO: Use shell: cmd and invoke the matrix shell explicitly
+- name: Run tests
+  shell: cmd
+  run: |
+    ${{ matrix.shell }} -Command ".\test\bin\testrunner.ps1 -Coverage"
+```
+
+**For multi-line PowerShell** (e.g., the remote install step), use a hardcoded shell (`shell: powershell` or `shell: pwsh`) since multi-line code cannot be wrapped in a single `-Command` string through cmd.
+
 #### When to Use EnterPlanMode (MANDATORY)
 
 **ALWAYS use EnterPlanMode before implementation when:**

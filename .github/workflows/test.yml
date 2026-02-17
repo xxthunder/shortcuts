@@ -1,3 +1,6 @@
+# Unified CI workflow: remote-installs shortcuts via install.ps1 (no checkout),
+# then runs the full test suite under both PowerShell 5.x and 7.x.
+# Each matrix entry publishes its own test report as a PR check.
 name: CI
 
 on:
@@ -23,53 +26,58 @@ jobs:
             shell_name: "Powershell 5.x"
             shell_label: PS5
     runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Dependencies
-        shell: cmd
-        run: |
-          ${{ matrix.shell }} -Command ".\test\bin\init.ps1"
-      - name: Execute Tests
-        continue-on-error: true # Essential for aggregating results later
-        shell: cmd
-        run: |
-          ${{ matrix.shell }} -Command ".\test\bin\testrunner.ps1 -Coverage"
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: junit-results-${{ matrix.shell_label }}
-          path: "**/junit.xml"
-          if-no-files-found: error
-      - name: Upload Coverage Reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.shell_label }}
-          path: "test/out/coverage.xml"
-          if-no-files-found: error
-
-  report:
-    name: Finalize Results
-    needs: test
-    runs-on: ubuntu-latest
-    if: always()
+    timeout-minutes: 15 # remote install + Scoop is slower than a plain checkout
     permissions:
-      checks: write
+      checks: write # publish test report as PR check
       pull-requests: write
       contents: read
     steps:
-      - name: Download All Results
-        uses: actions/download-artifact@v4
-        with:
-          path: all-results
-          pattern: junit-results-*
-      - name: Publish and Evaluate Test Report
+      # Hardcoded shell: powershell
+      # - step shell: key does NOT accept matrix expressions.
+      # - Multi-line PowerShell cannot be wrapped via shell: cmd either,
+      #   so we use a fixed shell here.
+      - name: Remote install
+        shell: powershell
+        run: |
+          # Snapshot PATH before install so we can detect new entries afterwards
+          $pathBefore = $Env:Path
+          $branch = "${{ github.head_ref || github.ref_name }}"
+          $url = "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/$branch/bin/install.ps1"
+          Write-Host "==> Fetching install.ps1 from: $url"
+          Invoke-RestMethod $url -OutFile install.ps1
+          Write-Host "==> Running install.ps1 with `"-Branch $branch -SkipAdminCheck`""
+          .\install.ps1 -Branch $branch -SkipAdminCheck
+          # Export PATH entries added by install (compare against pre-install snapshot)
+          $Env:Path -split ";" | Where-Object { $_ -and $pathBefore -notlike "*$_*" } |
+              Out-File -FilePath $Env:GITHUB_PATH -Append -Encoding utf8
+          # Export SHORTCUTS_DIR for later steps (test dependencies and test runner)
+          "SHORTCUTS_DIR=$Env:USERPROFILE\shortcuts" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "==> Debug: GITHUB_PATH content:"
+          Get-Content $Env:GITHUB_PATH -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+          Write-Host "==> Debug: GITHUB_ENV content:"
+          Get-Content $Env:GITHUB_ENV -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+
+      # Steps below use shell: cmd and invoke the matrix shell explicitly,
+      # because the shell: key does not resolve matrix expressions.
+      - name: Install test dependencies
+        shell: cmd
+        run: |
+          ${{ matrix.shell }} -Command "Set-Location $Env:SHORTCUTS_DIR; .\test\bin\init.ps1"
+
+      - name: Execute tests
+        continue-on-error: true # let the report step decide pass/fail
+        shell: cmd
+        run: |
+          ${{ matrix.shell }} -Command "Set-Location $Env:SHORTCUTS_DIR; .\test\bin\testrunner.ps1 -Coverage"
+
+      - name: Publish Test Report
+        if: always()
         uses: mikepenz/action-junit-report@v6
         with:
-          report_paths: "all-results/**/junit.xml"
+          report_paths: "${{ env.SHORTCUTS_DIR }}/test/out/junit.xml"
           detailed_summary: true
           include_passed: true
           fail_on_failure: true
           fail_on_parse_error: true
           require_tests: true
-          check_name: "Pester Test Results"
+          check_name: "Test Results (${{ matrix.shell_name }})"
