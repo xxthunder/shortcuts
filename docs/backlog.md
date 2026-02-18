@@ -8,80 +8,80 @@
 
 **Status**: Open
 **Priority**: Medium
-**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
 **Related**: FEAT-001, Dev Container workflow
 
 **Description**:
-Add functionality to install and configure Podman as a Docker alternative in WSL distributions. This includes rootless Podman setup, Docker CLI compatibility, and VS Code Dev Containers integration.
+Add a `setup-podman` command to wsl-manager that installs and configures rootless Podman in a WSL2 Debian/Ubuntu distribution. Mirrors the existing `setup-docker` pattern exactly.
 
 **Rationale**:
-Podman provides a daemonless, rootless container runtime that's compatible with Docker workflows. It's especially useful for security-conscious environments and can fully replace Docker for Dev Container usage.
+Podman provides a daemonless, rootless container runtime compatible with Docker workflows. It's especially useful for security-conscious environments and can fully replace Docker for Dev Container usage.
 
-**Implementation Steps**:
+**Scope Decisions** (agreed in refinement 2026-02-18):
+- **Debian/Ubuntu only** — consistent with `setup-docker`; Fedora/RHEL deferred
+- **Mutual exclusion with Docker** — `setup-podman` fails fast if Docker is already installed in the distro
+- **Rootless only** — no `-Mode` parameter; rootful mode deferred to a follow-up
+- **VS Code integration is documentation-only** — no code touches Windows-side settings
 
-**Step 1: Install Podman**
-- Detect distribution type (Ubuntu, Debian, Fedora, etc.)
-- Install Podman using appropriate package manager
-- Verify installation and version
+**Implementation** (follows `docker.ps1` / `install-docker.sh` pattern):
 
-**Step 2: Configure Rootless Podman**
-- Enable user namespaces if needed
-- Set up rootless Podman configuration
-- Start Podman socket service:
-  ```bash
-  systemctl --user enable --now podman.socket
-  ```
-- Configure socket path for Docker compatibility
+**Step 1: `lib/podman.ps1`** — PowerShell library functions
+- `Test-WslPodmanInstalled -DistroName` — checks if `podman --version` succeeds
+- `Test-WslDockerInstalledForPodman -DistroName` — checks Docker presence (mutual exclusion guard)
+- `Install-WslPodman -DistroName [-Username]` — orchestrates the install:
+  - Same prerequisite checks as `Install-WslDockerEngine` (WSL installed, distro exists, WSL2, Debian/Ubuntu, default user)
+  - Fails fast with clear error if Docker is already installed
+  - Ensures systemd and interop are configured (reuse existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
+  - Executes `install-podman.sh` via `Invoke-WslDistroScript`
 
-**Step 3: Docker CLI Compatibility**
-- Create Docker CLI alias/symlink to Podman:
-  ```bash
-  sudo ln -s /usr/bin/podman /usr/local/bin/docker
-  ```
-- Or configure shell alias: `alias docker=podman`
-- Set `DOCKER_HOST` environment variable for socket access
+**Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent)
+- Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
+- Installs `podman` via apt
+- Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user)
+- Sets `DOCKER_HOST` in `~/.bashrc` pointing to the Podman socket
+- Verifies `podman run --rm hello-world` succeeds
+- Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
 
-**Step 4: VS Code Dev Containers Integration**
-- Configure Podman socket for VS Code access
-- Set up Docker context if needed
-- Update `~/.docker/config.json` or equivalent
-- Document any VS Code settings required
+**Step 3: `wsl-manager.ps1`** — wire up the new command
+- Add `setup-podman` to `ValidateSet` and `Invoke-WslManager` switch
+- Add `Invoke-SetupPodmanInteractive` (mirrors `Invoke-SetupDockerInteractive`)
+- Add `[P] Setup Podman` to interactive menu
 
-**Step 5: Documentation**
-- Create/update `docs/wsl-podman-setup.md` with:
-  - Podman vs Docker comparison
-  - Rootless benefits and limitations
-  - Troubleshooting common issues
-  - Performance considerations
-  - Migration guide from Docker
+**Step 4: `docs/wsl-podman-setup.md`** — documentation
+- Podman vs Docker comparison
+- Rootless benefits and limitations
+- VS Code Dev Containers: add `"dev.containers.dockerPath": "podman"` to VS Code settings manually
+- DOCKER_HOST usage and socket path
+- Troubleshooting
 
 **Acceptance Criteria**:
-- [ ] New command in wsl-manager (e.g., `wsl-manager setup-podman <distro>`)
-- [ ] Detects and installs Podman for supported distributions
-- [ ] Configures rootless Podman with systemd socket
-- [ ] Sets up Docker CLI compatibility
-- [ ] Verifies Podman works with simple container test
-- [ ] VS Code Dev Containers can use Podman
-- [ ] Option to choose between rootless and rootful modes
-- [ ] Clear error messages if prerequisites missing
+- [ ] `wsl-manager setup-podman <distro>` command works
+- [ ] Interactive menu option `[P] Setup Podman` works
+- [ ] Installs Podman on Debian/Ubuntu distributions
+- [ ] Fails fast with clear error if Docker is already installed in the distro
+- [ ] Configures rootless Podman systemd socket (`podman.socket`)
+- [ ] Sets `DOCKER_HOST` env variable in `~/.bashrc`
+- [ ] Verifies Podman works (`podman run --rm hello-world`)
+- [ ] Idempotent — safe to re-run for repair
+- [ ] Requires systemd-enabled distro (error if not configured)
+- [ ] Requires non-root default user (error if missing)
+- [ ] Clear error messages for all failure paths
 - [ ] Documentation in `docs/wsl-podman-setup.md`
-- [ ] Unit tests for configuration logic
-- [ ] Integration test on fresh WSL distro
-- [ ] Handles case where Docker is already installed
+- [ ] Unit tests in `lib/podman.Tests.ps1`
+- [ ] All existing tests continue to pass
 
 **Technical Notes**:
-- Ubuntu 20.10+ has native Podman packages
-- Earlier versions may need third-party PPAs
-- Rootless mode requires systemd and user namespaces
-- Some containers may require rootful mode (privileged operations)
-- Socket path typically: `unix:///run/user/$UID/podman/podman.sock`
-- VS Code may need `"dev.containers.dockerPath": "podman"` setting
+- Socket path: `unix:///run/user/$UID/podman/podman.sock`
+- `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` in `~/.bashrc`
+- `systemctl --user` commands must run as the target user, not root (use `sudo -u $USER systemctl --user ...` or `su - $USER -c ...`)
+- Ubuntu 22.04+ and Debian 11+ have native Podman packages; no PPA needed for these versions
+- VS Code setting (manual): `"dev.containers.dockerPath": "podman"`
 
 **Dependencies**:
-- WSL 2
-- Systemd-enabled distribution
-- User namespace support (for rootless)
-- Sudo access for installation
+- WSL2
+- Systemd-enabled distribution (configured by `Install-WslDockerEngine` or manually)
+- Non-root default user (same as Docker setup)
+- Sudo access for apt installation
 
 **Related Documentation**:
 - https://podman.io/
