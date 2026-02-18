@@ -89,7 +89,91 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ### Technical Debt
 
-*No items — DEBT-001 absorbed into FEAT-004*
+### [REFACT-001] Add `-Name` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Blocks**: REFACT-003
+
+**Description**:
+`Invoke-UpdateDistro` and `Invoke-RemoveDistro` have no parameters — they are purely interactive, always calling `Read-Host` to prompt for a distribution name. This prevents non-interactive invocation (tests, scripts, CI).
+
+Add an optional `-Name` parameter to both functions, following the existing pattern in `Invoke-TerminateDistro`. When `-Name` is provided, skip the `Read-Host` prompt and proceed directly with the named distribution. Update `Invoke-WslManager` to pass `$Name` through for the `"update"` and `"remove"` commands.
+
+**Implementation**:
+1. Add `[string]$Name = ""` parameter to `Invoke-UpdateDistro`; skip `Read-Host` when non-empty
+2. Repeat for `Invoke-RemoveDistro`
+3. Update `Invoke-WslManager` switch: `"update"` → `Invoke-UpdateDistro -Name $Name`, `"remove"` → `Invoke-RemoveDistro -Name $Name`
+4. Update unit tests in `wsl-manager.Tests.ps1` to cover both interactive and non-interactive paths
+
+**Acceptance Criteria**:
+- [ ] `Invoke-WslManager -Command "update" -Name "Debian"` updates without prompting
+- [ ] `Invoke-WslManager -Command "remove" -Name "debian-test"` removes without prompting
+- [ ] When `-Name` is omitted, interactive behaviour (Read-Host prompt) is unchanged
+- [ ] Unit tests cover both non-interactive (name provided) and interactive paths
+- [ ] All existing tests continue to pass
+
+---
+
+### [REFACT-002] Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Blocks**: REFACT-003
+
+**Description**:
+`Invoke-SetupUser` places the `Test-RunningInCIorTestEnvironment` guard at the top of the function, causing it to return early whenever running under Pester — even if username and password are passed programmatically. The guard should only block the interactive `Read-Host` prompts, not the call to `New-WslUser`.
+
+Add optional `-Username` and `-Password` parameters. When both are supplied, skip the prompts entirely. Move the CI guard to protect only the `Read-Host` block.
+
+**Implementation**:
+1. Add `[string]$Username = ""` and `[string]$Password = ""` parameters to `Invoke-SetupUser`
+2. When both are non-empty, skip `Read-Host` prompts and call `New-WslUser` directly
+3. Move `Test-RunningInCIorTestEnvironment` guard to protect only the prompt block, not the whole function
+4. Update `Invoke-WslManager` to accept and forward `-Username`/`-Password` for the `"setup-user"` command
+5. Update unit tests in `wsl-manager.Tests.ps1`
+
+**Acceptance Criteria**:
+- [ ] `Invoke-SetupUser -DistroName "debian-test" -Username "testuser" -Password "pass"` works under Pester
+- [ ] When `-Username`/`-Password` are omitted, interactive behaviour (Read-Host prompts) is unchanged
+- [ ] CI guard blocks interactive prompts in test environment but does not short-circuit when params are provided
+- [ ] Unit tests cover both non-interactive (params provided) and interactive paths
+- [ ] All existing tests continue to pass
+
+---
+
+### [REFACT-003] Refactor wsl-manager integration tests to call wsl-manager functions
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+**Blocked by**: REFACT-001, REFACT-002
+
+**Description**:
+The integration test mixes subprocess invocations of `wsl-manager.ps1` with direct pslib calls, bypassing wsl-manager's own workflow functions (`Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser`) entirely. The test should exercise wsl-manager's public surface.
+
+Refactor the tests to dot-source `wsl-manager.ps1` and call its functions in-process. Replace subprocess calls and direct pslib calls for every operation that has a wsl-manager wrapper. Operations without a wsl-manager wrapper (`Invoke-WslDistroScript`, `Install-WslDockerEngine`, etc.) should remain on pslib.
+
+**Changes**:
+- `BeforeAll`: dot-source `wsl-manager.ps1` in addition to `wsl.ps1`
+- `Create Distribution`: `& $wslManagerPath create ...` → `Invoke-WslManager -Command "create" -Name ...`
+- `Update Base Distribution`: `Update-WslDistro` (pslib) → `Invoke-WslManager -Command "update" -Name ...`
+- `Clone Distribution`: `Copy-WslDistro` (pslib) → `Invoke-WslManager -Command "clone" -Name ... -TargetName ...`
+- `Setup User`: `New-WslUser` (pslib) → `Invoke-WslManager -Command "setup-user" ...` with explicit params (REFACT-002)
+- `List Distributions`: `& $wslManagerPath list` → `Show-WslDistroList`
+- `Terminate Distribution`: `& $wslManagerPath terminate ...` → `Invoke-WslManager -Command "terminate" -Name ...`
+- Remove `$script:wslManagerPath` and all subprocess invocations
+- `Script Execution` and `Docker Setup` contexts: **keep pslib** — no wsl-manager wrapper exists for those
+
+**Acceptance Criteria**:
+- [ ] No subprocess calls (`& $script:wslManagerPath`) remain in the test file
+- [ ] No direct pslib calls for operations that have a wsl-manager wrapper
+- [ ] `Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser` are exercised by the integration tests
+- [ ] `Script Execution` and `Docker Setup` contexts retain their direct pslib calls unchanged
+- [ ] Output assertions updated to match in-process output (no null-char stripping or stream merging workarounds)
+- [ ] All integration tests pass end-to-end
 
 ### Documentation
 
