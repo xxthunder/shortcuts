@@ -419,8 +419,9 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Create a temporary test script with Unix line endings
             $testScriptContent = "#!/bin/bash`necho `"Script executed successfully`"`necho `"Argument 1: `$1`"`necho `"Argument 2: `$2`"`nexit 42"
             $testScriptPath = Join-Path $env:TEMP "wsl-test-script-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
-            # Write with LF line endings only (Unix format)
-            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, [System.Text.Encoding]::UTF8)
+            # Write with LF line endings only (Unix format, no BOM)
+            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, $utf8NoBom)
 
             try {
                 # Execute the script
@@ -452,8 +453,9 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Create a test script that checks if running as root with Unix line endings
             $testScriptContent = "#!/bin/bash`nif [ `"`$(id -u)`" -eq 0 ]; then`n    echo `"Running as root`"`n    exit 0`nelse`n    echo `"Not running as root`"`n    exit 1`nfi"
             $testScriptPath = Join-Path $env:TEMP "wsl-test-root-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
-            # Write with LF line endings only (Unix format)
-            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, [System.Text.Encoding]::UTF8)
+            # Write with LF line endings only (Unix format, no BOM)
+            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, $utf8NoBom)
 
             try {
                 # Execute with AsRoot=true
