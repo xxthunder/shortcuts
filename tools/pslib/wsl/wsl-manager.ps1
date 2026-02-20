@@ -205,7 +205,14 @@ function Invoke-RemoveDistro {
     <#
     .SYNOPSIS
         Handles the remove distribution workflow.
+    .PARAMETER Selection
+        The name or number of the distribution to remove. If not provided, user is prompted.
     #>
+    [CmdletBinding()]
+    param(
+        [string]$Selection = ""
+    )
+
     if (-not (Test-WslInstalled)) {
         throw "WSL is not installed. Please install WSL first."
     }
@@ -227,18 +234,20 @@ function Invoke-RemoveDistro {
     }
     Write-Host ""
 
-    # Prompt for distribution selection (number or name)
-    $selection = Read-Host "Enter number or name of the distribution to remove"
+    # Prompt for distribution selection (number or name) only when not already provided
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
+        $Selection = Read-Host "Enter number or name of the distribution to remove"
+    }
 
-    if ([string]::IsNullOrWhiteSpace($selection)) {
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
         Write-WarningMsg "No selection provided. Cancelling."
         return
     }
 
     # Check if selection is a number
     $selectedName = $null
-    if ($selection -match '^\d+$') {
-        $selectionNum = [int]$selection
+    if ($Selection -match '^\d+$') {
+        $selectionNum = [int]$Selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
             $selectedName = $distros[$selectionNum - 1].Name
         }
@@ -248,7 +257,7 @@ function Invoke-RemoveDistro {
         }
     }
     else {
-        $selectedName = $selection
+        $selectedName = $Selection
     }
 
     # Remove the distribution (skip confirmation since we're handling it interactively)
@@ -259,7 +268,14 @@ function Invoke-UpdateDistro {
     <#
     .SYNOPSIS
         Handles the update distribution workflow.
+    .PARAMETER Selection
+        The name or number of the distribution to update. If not provided, user is prompted.
     #>
+    [CmdletBinding()]
+    param(
+        [string]$Selection = ""
+    )
+
     if (-not (Test-WslInstalled)) {
         throw "WSL is not installed. Please install WSL first."
     }
@@ -281,18 +297,20 @@ function Invoke-UpdateDistro {
     }
     Write-Host ""
 
-    # Prompt for distribution selection (number or name)
-    $selection = Read-Host "Enter number or name of the distribution to update"
+    # Prompt for distribution selection (number or name) only when not already provided
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
+        $Selection = Read-Host "Enter number or name of the distribution to update"
+    }
 
-    if ([string]::IsNullOrWhiteSpace($selection)) {
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
         Write-WarningMsg "No selection provided. Cancelling."
         return
     }
 
     # Check if selection is a number
     $selectedName = $null
-    if ($selection -match '^\d+$') {
-        $selectionNum = [int]$selection
+    if ($Selection -match '^\d+$') {
+        $selectionNum = [int]$Selection
         if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
             $selectedName = $distros[$selectionNum - 1].Name
         }
@@ -302,7 +320,7 @@ function Invoke-UpdateDistro {
         }
     }
     else {
-        $selectedName = $selection
+        $selectedName = $Selection
     }
 
     # Update the distribution (skip confirmation since we're handling it interactively)
@@ -822,10 +840,10 @@ function Invoke-WslManager {
             Invoke-CloneDistro -SourceName $Name -TargetName $TargetName
         }
         "remove" {
-            Invoke-RemoveDistro
+            Invoke-RemoveDistro -Selection $Name
         }
         "update" {
-            Invoke-UpdateDistro
+            Invoke-UpdateDistro -Selection $Name
         }
         "setup-user" {
             Invoke-SetupUser -DistroName $Name

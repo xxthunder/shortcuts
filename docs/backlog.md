@@ -89,33 +89,6 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ### Technical Debt
 
-### [REFACT-001] Add `-Name` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
-
-**Status**: Open
-**Priority**: Medium
-**Component**: `tools/pslib/wsl/wsl-manager.ps1`
-**Blocks**: REFACT-003
-
-**Description**:
-`Invoke-UpdateDistro` and `Invoke-RemoveDistro` have no parameters — they are purely interactive, always calling `Read-Host` to prompt for a distribution name. This prevents non-interactive invocation (tests, scripts, CI).
-
-Add an optional `-Name` parameter to both functions, following the existing pattern in `Invoke-TerminateDistro`. When `-Name` is provided, skip the `Read-Host` prompt and proceed directly with the named distribution. Update `Invoke-WslManager` to pass `$Name` through for the `"update"` and `"remove"` commands.
-
-**Implementation**:
-1. Add `[string]$Name = ""` parameter to `Invoke-UpdateDistro`; skip `Read-Host` when non-empty
-2. Repeat for `Invoke-RemoveDistro`
-3. Update `Invoke-WslManager` switch: `"update"` → `Invoke-UpdateDistro -Name $Name`, `"remove"` → `Invoke-RemoveDistro -Name $Name`
-4. Update unit tests in `wsl-manager.Tests.ps1` to cover both interactive and non-interactive paths
-
-**Acceptance Criteria**:
-- [ ] `Invoke-WslManager -Command "update" -Name "Debian"` updates without prompting
-- [ ] `Invoke-WslManager -Command "remove" -Name "debian-test"` removes without prompting
-- [ ] When `-Name` is omitted, interactive behaviour (Read-Host prompt) is unchanged
-- [ ] Unit tests cover both non-interactive (name provided) and interactive paths
-- [ ] All existing tests continue to pass
-
----
-
 ### [REFACT-002] Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
 
 **Status**: Open
@@ -126,19 +99,20 @@ Add an optional `-Name` parameter to both functions, following the existing patt
 **Description**:
 `Invoke-SetupUser` places the `Test-RunningInCIorTestEnvironment` guard at the top of the function, causing it to return early whenever running under Pester — even if username and password are passed programmatically. The guard should only block the interactive `Read-Host` prompts, not the call to `New-WslUser`.
 
-Add optional `-Username` and `-Password` parameters. When both are supplied, skip the prompts entirely. Move the CI guard to protect only the `Read-Host` block.
+Add optional `-Username` and `-Password` parameters. Guard each `Read-Host` call individually: if the parameter is already provided, skip the prompt. Move the CI guard to wrap only the prompting block. Single code path — `New-WslUser` always runs when parameters are valid (no early exit for non-interactive path).
 
 **Implementation**:
-1. Add `[string]$Username = ""` and `[string]$Password = ""` parameters to `Invoke-SetupUser`
-2. When both are non-empty, skip `Read-Host` prompts and call `New-WslUser` directly
-3. Move `Test-RunningInCIorTestEnvironment` guard to protect only the prompt block, not the whole function
-4. Update `Invoke-WslManager` to accept and forward `-Username`/`-Password` for the `"setup-user"` command
+1. Add `[string]$Username = ""` and `[string]$Password = ""` parameters to `Invoke-SetupUser`; suppress `PSAvoidUsingPlainTextForPassword` on `$Password`
+2. Guard each `Read-Host` with `IsNullOrWhiteSpace`: if `$Username` is provided skip its prompt, if `$Password` is provided skip its prompt and the `SecureString` conversion; `New-WslUser` always runs at the end
+3. Move `Test-RunningInCIorTestEnvironment` guard to wrap the prompting block only — it must not fire when both params are already supplied
+4. Add `-Username` and `-Password` to `Invoke-WslManager`'s own `param()` block and pass them through to `Invoke-SetupUser` for the `"setup-user"` command
 5. Update unit tests in `wsl-manager.Tests.ps1`
 
 **Acceptance Criteria**:
-- [ ] `Invoke-SetupUser -DistroName "debian-test" -Username "testuser" -Password "pass"` works under Pester
-- [ ] When `-Username`/`-Password` are omitted, interactive behaviour (Read-Host prompts) is unchanged
-- [ ] CI guard blocks interactive prompts in test environment but does not short-circuit when params are provided
+- [ ] `Invoke-SetupUser -DistroName "debian-test" -Username "testuser" -Password "pass"` calls `New-WslUser` without prompting, even under Pester
+- [ ] `Invoke-WslManager -Command "setup-user" -Name "debian-test" -Username "testuser" -Password "pass"` passes both params through to `Invoke-SetupUser`
+- [ ] When `-Username`/`-Password` are omitted, interactive behaviour (Read-Host prompts + CI guard) is unchanged
+- [ ] CI guard fires when prompting is needed but is bypassed when both params are provided
 - [ ] Unit tests cover both non-interactive (params provided) and interactive paths
 - [ ] All existing tests continue to pass
 
@@ -149,7 +123,7 @@ Add optional `-Username` and `-Password` parameters. When both are supplied, ski
 **Status**: Open
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
-**Blocked by**: REFACT-001, REFACT-002
+**Blocked by**: REFACT-002
 
 **Description**:
 The integration test mixes subprocess invocations of `wsl-manager.ps1` with direct pslib calls, bypassing wsl-manager's own workflow functions (`Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser`) entirely. The test should exercise wsl-manager's public surface.
@@ -182,6 +156,27 @@ Refactor the tests to dot-source `wsl-manager.ps1` and call its functions in-pro
 ---
 
 ## DONE
+
+### [REFACT-001] ✅ COMPLETED - Add `-Selection` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
+
+**Status**: **Completed** (2026-02-20) | **Branch**: `feature/feat-002-podman-wsl`
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Blocks**: REFACT-003
+
+**Description**:
+`Invoke-UpdateDistro` and `Invoke-RemoveDistro` had no parameters — they were purely interactive, always calling `Read-Host`. Added an optional `-Selection` parameter to both functions. When `-Selection` is provided, `Read-Host` is skipped; all other logic (list display, number/name resolution, validation) runs in both cases — single code path. `Invoke-WslManager` passes `$Name` as `-Selection` for the `"update"` and `"remove"` commands.
+
+**Acceptance Criteria**:
+- [x] `Invoke-RemoveDistro -Selection "debian-test"` removes without prompting
+- [x] `Invoke-UpdateDistro -Selection "Debian"` updates without prompting
+- [x] `Invoke-WslManager -Command "remove" -Name "debian-test"` passes `$Name` as `-Selection`
+- [x] `Invoke-WslManager -Command "update" -Name "Debian"` passes `$Name` as `-Selection`
+- [x] When `-Selection` is omitted, interactive behaviour (Read-Host prompt) is unchanged
+- [x] Unit tests cover both non-interactive (selection provided) and interactive paths
+- [x] All existing tests continue to pass
+
+---
 
 ### [FEAT-004] ✅ COMPLETED - Replace Bootstrap with Self-Contained install.ps1
 

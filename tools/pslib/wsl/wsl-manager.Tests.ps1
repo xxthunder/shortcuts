@@ -310,6 +310,24 @@ Describe "Invoke-WslManager" {
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
             Should -Invoke Remove-WslDistro -Times 0
         }
+
+        It "Should remove using provided selection without prompting" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "debian-test"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host {}
+            Mock Remove-WslDistro {}
+
+            Invoke-WslManager -Command "remove" -Name "debian-test"
+
+            Should -Invoke Read-Host -Times 0
+            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "debian-test" -and $Confirm -eq $false }
+        }
     }
 
     Context "When called with 'create' argument" {
@@ -733,6 +751,24 @@ Describe "Invoke-WslManager" {
             Mock Update-WslDistro { throw "Distribution 'Arch' is not a Debian/Ubuntu distribution" }
 
             { Invoke-WslManager -Command "update" } | Should -Throw "*not a Debian/Ubuntu*"
+        }
+
+        It "Should update using provided selection without prompting" {
+            Mock Test-WslInstalled { $true }
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host {}
+            Mock Update-WslDistro {}
+
+            Invoke-WslManager -Command "update" -Name "Debian"
+
+            Should -Invoke Read-Host -Times 0
+            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
         }
     }
 
