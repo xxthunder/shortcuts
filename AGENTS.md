@@ -521,6 +521,8 @@ Agent: *uses EnterPlanMode to explore architecture, understand relationships,
 6. **Document**: Add comments and help documentation
 7. **Integration**: Ensure Keypirinha can discover new shortcuts if applicable
 
+> **Backlog tracking is mandatory** — see Development Workflow in `docs/development-principles.md` for the full start/finish protocol.
+
 #### When Modifying Existing Functions
 
 **CRITICAL: Never modify implementation without updating tests!**

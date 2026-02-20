@@ -102,16 +102,20 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **All code changes MUST follow this workflow:**
 
-1. **Research**: Check if functionality exists in `tools/pslib/` or other scripts
-2. **Design**: Plan the script structure and identify reusable components
-3. **Test First**: Write Pester tests before implementation (Red phase)
-4. **Implement**: Write the PowerShell script following guidelines (Green phase)
-5. **Test Again**: Verify all tests pass (Red-Green-Refactor complete)
-6. **Pre-Commit Validation**: Run unit tests and integration tests
-7. **Document**: Add comments and help documentation
-8. **Commit Together**: Tests and implementation in same commit
+1. **Update Backlog (Start)**: Move the backlog item to IN PROGRESS and check off any acceptance criteria that are already met
+2. **Research**: Check if functionality exists in `tools/pslib/` or other scripts
+3. **Design**: Plan the script structure and identify reusable components
+4. **Test First**: Write Pester tests before implementation (Red phase)
+5. **Implement**: Write the PowerShell script following guidelines (Green phase)
+6. **Test Again**: Verify all tests pass (Red-Green-Refactor complete)
+7. **Pre-Commit Validation**: Run unit tests and integration tests
+8. **Document**: Add comments and help documentation
+9. **Update Backlog (Finish)**: Check off completed acceptance criteria, update status, and move to DONE when all criteria are met
+10. **Commit Together**: Tests, implementation, and backlog updates in same commit
 
 **Critical checkpoint**: NEVER modify implementation without updating tests first.
+
+**Critical checkpoint**: NEVER commit without updating `docs/backlog.md` — acceptance criteria MUST reflect the current state of the work.
 
 ---
 

@@ -33,7 +33,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
     BeforeAll {
         $script:baseDistroName = "Debian"
         $script:customDistroName = "debian-custom-test"
-        $script:wslManagerPath = Join-Path $PSScriptRoot "wsl-manager.ps1"
         $script:outputCapture = @()
 
         # Verify WSL is installed
@@ -48,6 +47,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         # Load the library functions
         . (Join-Path $PSScriptRoot "wsl.ps1")
         . (Join-Path $PSScriptRoot "..\utils\utils.ps1")
+        . (Join-Path $PSScriptRoot "wsl-manager.ps1")
 
         # Check if base distro already exists
         $existingDistros = Get-WslDistroList
@@ -133,8 +133,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
                 Write-Host "`n==> TEST: Creating $script:baseDistroName ..." -ForegroundColor Magenta
 
                 # Capture output
-                $output = & $script:wslManagerPath create $script:baseDistroName *>&1 | Out-String
-                $output = $output -replace '\x00',''
+                $output = Invoke-WslManager -Command "create" -Name $script:baseDistroName *>&1 | Out-String
 
                 Write-Host "==> Captured Output:" -ForegroundColor Cyan
                 Write-Host $output
@@ -165,8 +164,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             }
 
             # Capture output from Update-WslDistro
-            $output = Update-WslDistro -Name $script:baseDistroName -Confirm:$false *>&1 | Out-String
-            $output = $output -replace '\x00',''
+            $output = Invoke-WslManager -Command "update" -Name $script:baseDistroName *>&1 | Out-String
 
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
@@ -194,8 +192,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             }
 
             # Capture output from Copy-WslDistro
-            $output = Copy-WslDistro -SourceName $script:baseDistroName -TargetName $script:customDistroName -Confirm:$false *>&1 | Out-String
-            $output = $output -replace '\x00',''
+            $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:customDistroName *>&1 | Out-String
 
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
@@ -224,8 +221,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $testPassword = "testpass123"
 
             # Capture output from New-WslUser
-            $output = New-WslUser -DistroName $script:customDistroName -Username $testUsername -Password $testPassword -Confirm:$false *>&1 | Out-String
-            $output = $output -replace '\x00',''
+            $output = Invoke-WslManager -Command "setup-user" -Name $script:customDistroName -Username $testUsername -Password $testPassword *>&1 | Out-String
 
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
@@ -254,7 +250,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Try to create the same user again (should fail with proper error message)
             Write-Host "`n==> TEST: Attempting to create same user again (should fail) ..." -ForegroundColor Magenta
-            { New-WslUser -DistroName $script:customDistroName -Username $testUsername -Password $testPassword -Confirm:$false -ErrorAction Stop } | Should -Throw -ExpectedMessage "*User '$testUsername' already exists in distribution '$script:customDistroName'*"
+            { Invoke-WslManager -Command "setup-user" -Name $script:customDistroName -Username $testUsername -Password $testPassword } | Should -Throw -ExpectedMessage "*User '$testUsername' already exists in distribution '$script:customDistroName'*"
 
             Write-Host "    Correctly rejected duplicate user creation" -ForegroundColor Green
         }
@@ -265,7 +261,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Listing distributions ..." -ForegroundColor Magenta
 
             # Call the script to display the list (for visual verification)
-            & $script:wslManagerPath list
+            Show-WslDistroList
 
             Write-Host "`n==> Captured Output:" -ForegroundColor Cyan
 
@@ -291,7 +287,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Try to update (should fail with error message)
             Write-Host "    Attempting update on running distribution ..." -ForegroundColor Cyan
-            { Update-WslDistro -Name $script:customDistroName -Confirm:$false -ErrorAction Stop } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
+            { Invoke-WslManager -Command "update" -Name $script:customDistroName } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
 
             Write-Host "    State validation correctly blocked update" -ForegroundColor Green
         }
@@ -309,7 +305,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Try to clone (should fail with error message)
             Write-Host "    Attempting clone of running distribution ..." -ForegroundColor Cyan
-            { Copy-WslDistro -SourceName $script:customDistroName -TargetName "clone-test-temp" -Confirm:$false -ErrorAction Stop } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
+            { Invoke-WslManager -Command "clone" -Name $script:customDistroName -TargetName "clone-test-temp" } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
 
             Write-Host "    State validation correctly blocked clone" -ForegroundColor Green
         }
@@ -327,7 +323,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Try to remove (should fail with error message)
             Write-Host "    Attempting remove of running distribution ..." -ForegroundColor Cyan
-            { Remove-WslDistro -Name $script:customDistroName -Confirm:$false -ErrorAction Stop } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
+            { Invoke-WslManager -Command "remove" -Name $script:customDistroName } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
 
             Write-Host "    State validation correctly blocked remove" -ForegroundColor Green
         }
@@ -345,7 +341,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Update should succeed now
             Write-Host "    Attempting update on stopped distribution ..." -ForegroundColor Cyan
-            { Update-WslDistro -Name $script:customDistroName -Confirm:$false -ErrorAction Stop } | Should -Not -Throw
+            { Invoke-WslManager -Command "update" -Name $script:customDistroName } | Should -Not -Throw
 
             Write-Host "    Update succeeded after termination" -ForegroundColor Green
         }
@@ -374,8 +370,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             # Test the terminate command via wsl-manager
             Write-Host "    Terminating distribution ..." -ForegroundColor Cyan
-            $output = & $script:wslManagerPath terminate $script:customDistroName *>&1 | Out-String
-            $output = $output -replace '\x00',''
+            $output = Invoke-WslManager -Command "terminate" -Name $script:customDistroName *>&1 | Out-String
 
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
@@ -397,8 +392,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    Initial state: $initialState" -ForegroundColor Cyan
 
             # Try to terminate (should succeed with informational message)
-            $output = & $script:wslManagerPath terminate $script:customDistroName *>&1 | Out-String
-            $output = $output -replace '\x00',''
+            $output = Invoke-WslManager -Command "terminate" -Name $script:customDistroName *>&1 | Out-String
 
             Write-Host "==> Captured Output:" -ForegroundColor Cyan
             Write-Host $output
