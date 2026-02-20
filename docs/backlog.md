@@ -100,22 +100,30 @@ The integration test mixes subprocess invocations of `wsl-manager.ps1` with dire
 
 Refactor the tests to dot-source `wsl-manager.ps1` and call its functions in-process. Replace subprocess calls and direct pslib calls for every operation that has a wsl-manager wrapper. Operations without a wsl-manager wrapper (`Invoke-WslDistroScript`, `Install-WslDockerEngine`, etc.) should remain on pslib.
 
+**Scope Decisions** (agreed in refinement 2026-02-20):
+- **`Invoke-WslManager` only** — all operations route through the main entry point (not direct wrapper calls). Wrappers like `Invoke-UpdateDistro` are exercised indirectly via `Invoke-WslManager` routing.
+- **State Validation context switches to wsl-manager** — `Update-WslDistro`, `Copy-WslDistro`, `Remove-WslDistro` replaced with `Invoke-WslManager` calls. Errors propagate through wrappers.
+- **BeforeAll/AfterAll keep pslib** — setup/teardown is test infrastructure, not SUT. Direct pslib calls (`Get-WslDistroList`, `Stop-WslDistro`, `Remove-WslDistro`, `Get-WslDistroState`) remain.
+
 **Changes**:
-- `BeforeAll`: dot-source `wsl-manager.ps1` in addition to `wsl.ps1`
+- `BeforeAll`: dot-source `wsl-manager.ps1` in addition to `wsl.ps1`; remove `$script:wslManagerPath`
 - `Create Distribution`: `& $wslManagerPath create ...` → `Invoke-WslManager -Command "create" -Name ...`
 - `Update Base Distribution`: `Update-WslDistro` (pslib) → `Invoke-WslManager -Command "update" -Name ...`
 - `Clone Distribution`: `Copy-WslDistro` (pslib) → `Invoke-WslManager -Command "clone" -Name ... -TargetName ...`
-- `Setup User`: `New-WslUser` (pslib) → `Invoke-WslManager -Command "setup-user" ...` with explicit params (REFACT-002)
+- `Setup User`: `New-WslUser` (pslib) → `Invoke-WslManager -Command "setup-user" -Name ... -Username ... -Password ...`
 - `List Distributions`: `& $wslManagerPath list` → `Show-WslDistroList`
 - `Terminate Distribution`: `& $wslManagerPath terminate ...` → `Invoke-WslManager -Command "terminate" -Name ...`
+- `State Validation`: `Update-WslDistro` / `Copy-WslDistro` / `Remove-WslDistro` → corresponding `Invoke-WslManager` calls
 - Remove `$script:wslManagerPath` and all subprocess invocations
+- Remove null-char stripping (`-replace '\x00',''`) — no longer needed for in-process calls
 - `Script Execution` and `Docker Setup` contexts: **keep pslib** — no wsl-manager wrapper exists for those
 
 **Acceptance Criteria**:
 - [ ] No subprocess calls (`& $script:wslManagerPath`) remain in the test file
-- [ ] No direct pslib calls for operations that have a wsl-manager wrapper
-- [ ] `Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser` are exercised by the integration tests
+- [ ] No direct pslib calls for operations that have a wsl-manager wrapper (including State Validation)
+- [ ] `Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser` are exercised indirectly via `Invoke-WslManager` routing
 - [ ] `Script Execution` and `Docker Setup` contexts retain their direct pslib calls unchanged
+- [ ] BeforeAll/AfterAll retain pslib calls for setup/teardown
 - [ ] Output assertions updated to match in-process output (no null-char stripping or stream merging workarounds)
 - [ ] All integration tests pass end-to-end
 
