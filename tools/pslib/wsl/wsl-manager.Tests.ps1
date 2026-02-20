@@ -3,18 +3,12 @@
     Pester tests for wsl-manager.ps1
 #>
 
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Test code uses ConvertTo-SecureString with -AsPlainText for mocking secure password input in Pester tests.')]
 param()
 
 BeforeAll {
     . "$PSScriptRoot\..\utils\utils.ps1"
     . "$PSScriptRoot\wsl.ps1"
     . "$PSScriptRoot\wsl-manager.ps1"
-
-    # Create SecureString objects at top level for PowerShell 5.1 compatibility
-    # Note: ConvertTo-SecureString is available by default in PowerShell, no explicit module import needed
-    $script:testSecurePass = ConvertTo-SecureString "testpass" -AsPlainText -Force
-    $script:devSecurePass = ConvertTo-SecureString "password123" -AsPlainText -Force
 }
 
 Describe "Show-WslDistroList" {
@@ -773,38 +767,11 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'setup-user' argument" {
-        It "Should prompt for username" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "testuser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "setup-user" -Name "Debian"
-
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*username*" }
-        }
-
-        It "Should prompt for password securely" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-Host { "testuser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "setup-user" -Name "Debian"
-
-            Should -Invoke Read-Host -ParameterFilter { $AsSecureString -eq $true }
-        }
-
         It "Should call New-WslUser with correct parameters" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "testuser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser {}
 
-            Invoke-WslManager -Command "setup-user" -Name "Debian"
+            Invoke-WslManager -Command "setup-user" -Name "Debian" -Username "testuser" -Password "pass"
 
             Should -Invoke New-WslUser -ParameterFilter {
                 $DistroName -eq "Debian" -and
@@ -814,83 +781,64 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should display success message after user creation" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "developer" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:devSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser {}
 
-            Invoke-WslManager -Command "setup-user" -Name "Ubuntu"
+            Invoke-WslManager -Command "setup-user" -Name "Ubuntu" -Username "developer" -Password "pass"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully created user*" }
         }
 
         It "Should display restart instructions" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "developer" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:devSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser {}
 
-            Invoke-WslManager -Command "setup-user" -Name "Ubuntu"
+            Invoke-WslManager -Command "setup-user" -Name "Ubuntu" -Username "developer" -Password "pass"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
         }
 
         It "Should handle invalid username with validation error" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "InvalidUser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser { throw "Invalid username 'InvalidUser'. Username must start with a lowercase letter" }
 
-            { Invoke-WslManager -Command "setup-user" -Name "Debian" } | Should -Throw "*Invalid username*"
+            { Invoke-WslManager -Command "setup-user" -Name "Debian" -Username "InvalidUser" -Password "pass" } | Should -Throw "*Invalid username*"
         }
 
         It "Should handle username that is too long" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
             $longUsername = "a" * 40
-            Mock Read-Host { $longUsername } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser { throw "Username '$longUsername' is too long. Maximum length is 32 characters." }
 
-            { Invoke-WslManager -Command "setup-user" -Name "Debian" } | Should -Throw "*too long*"
+            { Invoke-WslManager -Command "setup-user" -Name "Debian" -Username $longUsername -Password "pass" } | Should -Throw "*too long*"
         }
 
         It "Should handle user already exists error" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "existinguser" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock Read-Host { $script:testSecurePass } -ParameterFilter { $AsSecureString }
             Mock New-WslUser { throw "User 'existinguser' already exists in distribution 'Debian'" }
 
-            { Invoke-WslManager -Command "setup-user" -Name "Debian" } | Should -Throw "*already exists*"
+            { Invoke-WslManager -Command "setup-user" -Name "Debian" -Username "existinguser" -Password "pass" } | Should -Throw "*already exists*"
         }
 
-        It "Should cancel when username is empty" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
+        It "Should skip when credentials are not provided" {
             Mock Write-Host {}
-            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*username*" }
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "setup-user" -Name "Debian"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
-            Should -Invoke New-WslUser -Times 0
-        }
-
-        It "Should skip in CI environment" {
-            Mock Test-RunningInCIorTestEnvironment { $true }
-            Mock Write-Host {}
-            Mock Read-Host {}
             Mock New-WslUser {}
 
             Invoke-WslManager -Command "setup-user" -Name "Debian"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Skipping user setup in CI*" }
-            Should -Invoke Read-Host -Times 0
             Should -Invoke New-WslUser -Times 0
+        }
+
+        It "Should call New-WslUser without prompting when Username and Password are provided" {
+            Mock Write-Host {}
+            Mock New-WslUser {}
+
+            Invoke-WslManager -Command "setup-user" -Name "Debian" -Username "testuser" -Password "pass"
+
+            Should -Invoke New-WslUser -ParameterFilter {
+                $DistroName -eq "Debian" -and $Username -eq "testuser" -and $Confirm -eq $false
+            }
         }
     }
 

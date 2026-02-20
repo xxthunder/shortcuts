@@ -419,53 +419,61 @@ function Invoke-SetupUser {
         Handles the user setup workflow interactively.
     .PARAMETER DistroName
         The name of the distribution to create a user in.
+    .PARAMETER Username
+        The username to create. If not provided, user is prompted.
+    .PARAMETER Password
+        The password for the new user. If not provided, user is prompted.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Plain-text password is required by chpasswd inside the WSL distribution.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are required together for non-interactive WSL user creation.')]
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$DistroName
+        [string]$DistroName,
+
+        [string]$Username = "",
+        [string]$Password = ""
     )
 
-    # Skip in CI environment
-    if (Test-RunningInCIorTestEnvironment) {
-        Write-Host "Skipping user setup in CI/test environment." -ForegroundColor Yellow
-        return
-    }
-
-    Write-Host ""
-    Write-Host "Setting up user account in '$DistroName' ..." -ForegroundColor Cyan
-    Write-Host ""
-
-    # Prompt for username
-    $username = Read-Host "Enter username"
-
-    if ([string]::IsNullOrWhiteSpace($username)) {
-        Write-WarningMsg "No username provided. Cancelling user setup."
-        return
-    }
-
-    # Prompt for password securely
-    $securePassword = Read-Host "Enter password" -AsSecureString
-
-    # Convert SecureString to plain text for chpasswd
-    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-    $passwordPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-
-    try {
-        # Create the user (skip confirmation since we're handling it interactively)
-        New-WslUser -DistroName $DistroName -Username $username -Password $passwordPlain -Confirm:$false
+    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+        # CI guard - only fires when prompting is needed
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-Host "Skipping user setup in CI/test environment." -ForegroundColor Yellow
+            return
+        }
 
         Write-Host ""
-        Write-Success "Successfully created user '$username' in '$DistroName'."
+        Write-Host "Setting up user account in '$DistroName' ..." -ForegroundColor Cyan
+        Write-Host ""
+
+        if ([string]::IsNullOrWhiteSpace($Username)) {
+            $Username = Read-Host "Enter username"
+            if ([string]::IsNullOrWhiteSpace($Username)) {
+                Write-WarningMsg "No username provided. Cancelling user setup."
+                return
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Password)) {
+            $securePassword = Read-Host "Enter password" -AsSecureString
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+            $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+
+    try {
+        New-WslUser -DistroName $DistroName -Username $Username -Password $Password -Confirm:$false
+
+        Write-Host ""
+        Write-Success "Successfully created user '$Username' in '$DistroName'."
         Write-Host ""
         Write-Host "To apply the default user change, restart the distribution with:" -ForegroundColor Yellow
         Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
     }
     finally {
-        # Clear the plain text password from memory
-        $passwordPlain = $null
+        $Password = $null
     }
 }
 
@@ -817,16 +825,22 @@ function Invoke-WslManager {
     .SYNOPSIS
         Main entry point for WSL Manager.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
+        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "repair-interop", "terminate", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
         [string]$Name = "",
 
         [Parameter(Position = 2)]
-        [string]$TargetName = ""
+        [string]$TargetName = "",
+
+        [string]$Username = "",
+        [string]$Password = ""
     )
 
     switch ($Command.ToLower()) {
@@ -846,7 +860,7 @@ function Invoke-WslManager {
             Invoke-UpdateDistro -Selection $Name
         }
         "setup-user" {
-            Invoke-SetupUser -DistroName $Name
+            Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password
         }
         "setup-docker" {
             if ([string]::IsNullOrWhiteSpace($Name)) {

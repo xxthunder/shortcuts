@@ -91,7 +91,7 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ### [REFACT-002] Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
 
-**Status**: Open
+**Status**: Done
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.ps1`
 **Blocks**: REFACT-003

@@ -378,6 +378,11 @@ powershell -File ".\test\bin\testrunner.ps1"
 - Test both success and failure paths
 - Ensure tests pass on both PowerShell 5.1 and 7.x
 
+**Never mock `Test-RunningInCIorTestEnvironment`.**
+This function exists solely to prevent interactive prompts (`Read-Host`) in CI/test
+environments. Mocking it to `$false` defeats its purpose. Tests that need to exercise
+non-interactive code paths must provide explicit parameters that bypass the guard.
+
 See `tools/pslib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations
