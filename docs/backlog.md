@@ -89,41 +89,11 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ### Technical Debt
 
-### [REFACT-002] Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
-
-**Status**: Done
-**Priority**: Medium
-**Component**: `tools/pslib/wsl/wsl-manager.ps1`
-**Blocks**: REFACT-003
-
-**Description**:
-`Invoke-SetupUser` places the `Test-RunningInCIorTestEnvironment` guard at the top of the function, causing it to return early whenever running under Pester — even if username and password are passed programmatically. The guard should only block the interactive `Read-Host` prompts, not the call to `New-WslUser`.
-
-Add optional `-Username` and `-Password` parameters. Guard each `Read-Host` call individually: if the parameter is already provided, skip the prompt. Move the CI guard to wrap only the prompting block. Single code path — `New-WslUser` always runs when parameters are valid (no early exit for non-interactive path).
-
-**Implementation**:
-1. Add `[string]$Username = ""` and `[string]$Password = ""` parameters to `Invoke-SetupUser`; suppress `PSAvoidUsingPlainTextForPassword` on `$Password`
-2. Guard each `Read-Host` with `IsNullOrWhiteSpace`: if `$Username` is provided skip its prompt, if `$Password` is provided skip its prompt and the `SecureString` conversion; `New-WslUser` always runs at the end
-3. Move `Test-RunningInCIorTestEnvironment` guard to wrap the prompting block only — it must not fire when both params are already supplied
-4. Add `-Username` and `-Password` to `Invoke-WslManager`'s own `param()` block and pass them through to `Invoke-SetupUser` for the `"setup-user"` command
-5. Update unit tests in `wsl-manager.Tests.ps1`
-
-**Acceptance Criteria**:
-- [ ] `Invoke-SetupUser -DistroName "debian-test" -Username "testuser" -Password "pass"` calls `New-WslUser` without prompting, even under Pester
-- [ ] `Invoke-WslManager -Command "setup-user" -Name "debian-test" -Username "testuser" -Password "pass"` passes both params through to `Invoke-SetupUser`
-- [ ] When `-Username`/`-Password` are omitted, interactive behaviour (Read-Host prompts + CI guard) is unchanged
-- [ ] CI guard fires when prompting is needed but is bypassed when both params are provided
-- [ ] Unit tests cover both non-interactive (params provided) and interactive paths
-- [ ] All existing tests continue to pass
-
----
-
 ### [REFACT-003] Refactor wsl-manager integration tests to call wsl-manager functions
 
 **Status**: Open
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
-**Blocked by**: REFACT-002
 
 **Description**:
 The integration test mixes subprocess invocations of `wsl-manager.ps1` with direct pslib calls, bypassing wsl-manager's own workflow functions (`Invoke-UpdateDistro`, `Invoke-CloneDistro`, `Invoke-SetupUser`) entirely. The test should exercise wsl-manager's public surface.
@@ -156,6 +126,39 @@ Refactor the tests to dot-source `wsl-manager.ps1` and call its functions in-pro
 ---
 
 ## DONE
+
+### [BUG-003] ✅ COMPLETED - UTF-8 BOM in integration test bash scripts causes shebang error
+
+**Status**: **Completed** (2026-02-20) | **Branch**: `feature/feat-002-podman-wsl`
+**Priority**: Low
+**Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+
+**Description**:
+The "Script Execution" integration tests wrote temporary bash scripts using `[System.Text.Encoding]::UTF8`, which in .NET includes a BOM (`EF BB BF`). Bash cannot parse a BOM before the shebang, producing: `/mnt/c/.../script.sh: line 1: ﻿#!/bin/bash: No such file or directory`. Tests still passed because bash continued past the failed shebang, but the error message was misleading.
+
+**Fix**: Replaced with `New-Object System.Text.UTF8Encoding($false)` (BOM-less UTF-8) in both test script writers.
+
+---
+
+### [REFACT-002] ✅ COMPLETED - Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
+
+**Status**: **Completed** (2026-02-20) | **Branch**: `feature/feat-002-podman-wsl`
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Blocks**: REFACT-003
+
+**Description**:
+Added optional `-Username` and `-Password` parameters to `Invoke-SetupUser`. Moved the `Test-RunningInCIorTestEnvironment` guard to wrap only the prompting block, so programmatic calls with explicit parameters work even under Pester. `Invoke-WslManager` passes both params through for the `"setup-user"` command.
+
+**Acceptance Criteria**:
+- [x] `Invoke-SetupUser -DistroName "debian-test" -Username "testuser" -Password "pass"` calls `New-WslUser` without prompting, even under Pester
+- [x] `Invoke-WslManager -Command "setup-user" -Name "debian-test" -Username "testuser" -Password "pass"` passes both params through
+- [x] When `-Username`/`-Password` are omitted, interactive behaviour is unchanged
+- [x] CI guard fires when prompting is needed but is bypassed when both params are provided
+- [x] Unit tests cover both non-interactive and interactive paths
+- [x] All existing tests continue to pass
+
+---
 
 ### [REFACT-001] ✅ COMPLETED - Add `-Selection` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
 
