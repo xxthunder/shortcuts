@@ -2,27 +2,7 @@
 
 ## IN PROGRESS
 
-### [CI-001] Upload code coverage and test results to Codecov
-
-**Status**: In Progress
-**Priority**: Low
-**Component**: `.github/workflows/test.yml`
-
-**Description**:
-Add Codecov upload steps to the CI workflow so coverage data and test results from the Pester test runs are reported to codecov.io. The test runner already generates JaCoCo XML at `test/out/coverage.xml` and JUnit XML at `test/out/junit.xml` when `-Coverage` is used.
-
-**Implementation**:
-- Add `codecov/codecov-action@v5` coverage upload step after the test execution step
-- Add `codecov/codecov-action@v5` test results upload step (`report-type: test_results`)
-- Upload both files with matrix-specific flags (`PS7`/`PS5`) for per-shell tracking
-- Use `CODECOV_TOKEN` from repository secrets
-
-**Acceptance Criteria**:
-- [ ] Coverage XML is uploaded to Codecov after each CI run
-- [ ] JUnit XML test results are uploaded to Codecov after each CI run
-- [ ] Both PS7 and PS5 matrix entries upload with distinct flags
-- [ ] Upload failures fail the build (`fail_ci_if_error: true`)
-- [ ] Uses `CODECOV_TOKEN` secret for authentication
+*No items*
 
 ## TODO
 
@@ -120,6 +100,24 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 ---
 
 ## DONE
+
+### [CI-001] ✅ COMPLETED - Upload code coverage and test results to Codecov
+
+**Status**: **Completed** (2026-02-21) | **Branch**: `feature/ci-codecov-upload`
+**Priority**: Low
+**Component**: `.github/workflows/test.yml`
+
+**Description**:
+Added Codecov upload steps to the CI workflow. Coverage data (JaCoCo XML) and test results (JUnit XML) from Pester test runs are now reported to codecov.io, enabling coverage tracking and Test Analytics (flaky test detection, failure rates, PR comments).
+
+**Acceptance Criteria**:
+- [x] Coverage XML is uploaded to Codecov after each CI run
+- [x] JUnit XML test results are uploaded to Codecov after each CI run
+- [x] Both PS7 and PS5 matrix entries upload with distinct flags
+- [x] Upload failures fail the build (`fail_ci_if_error: true`)
+- [x] Uses `CODECOV_TOKEN` secret for authentication
+
+---
 
 ### [REFACT-003] ✅ COMPLETED - Refactor wsl-manager integration tests to call wsl-manager functions
 
