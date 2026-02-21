@@ -2,7 +2,25 @@
 
 ## IN PROGRESS
 
-*No items*
+### [CI-001] Upload code coverage to Codecov
+
+**Status**: In Progress
+**Priority**: Low
+**Component**: `.github/workflows/test.yml`
+
+**Description**:
+Add a Codecov upload step to the CI workflow so coverage data from the Pester test runs is reported to codecov.io. The test runner already generates JaCoCo XML at `test/out/coverage.xml` when `-Coverage` is used.
+
+**Implementation**:
+- Add `codecov/codecov-action@v5` step after the test execution step
+- Upload `coverage.xml` with matrix-specific flags (`PS7`/`PS5`) for per-shell tracking
+- Use `CODECOV_TOKEN` from repository secrets
+
+**Acceptance Criteria**:
+- [ ] Coverage XML is uploaded to Codecov after each CI run
+- [ ] Both PS7 and PS5 matrix entries upload with distinct flags
+- [ ] Upload failures fail the build (`fail_ci_if_error: true`)
+- [ ] Uses `CODECOV_TOKEN` secret for authentication
 
 ## TODO
 

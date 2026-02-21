@@ -71,6 +71,15 @@ jobs:
         run: |
           ${{ matrix.shell }} -Command "Set-Location $Env:SHORTCUTS_DIR; .\test\bin\testrunner.ps1 -Coverage"
 
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: "${{ env.SHORTCUTS_DIR }}/test/out/coverage.xml"
+          flags: ${{ matrix.shell_label }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
       - name: Publish Test Report
         if: always()
         uses: mikepenz/action-junit-report@v6
