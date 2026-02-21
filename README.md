@@ -19,6 +19,9 @@
   <a href="https://github.com/xxthunder/shortcuts">
     <img src="https://img.shields.io/badge/platform-Windows-lightgrey.svg" alt="Platform: Windows">
   </a>
+  <a href="https://codecov.io/gh/xxthunder/shortcuts">
+    <img src="https://codecov.io/gh/xxthunder/shortcuts/graph/badge.svg?token=VC0D30KTIF" alt="codecov">
+  </a>
 </p>
 
 ---
