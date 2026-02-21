@@ -297,22 +297,22 @@ function ConvertTo-RelativeJaCoCoXml {
 
     foreach ($pkg in $xml.SelectNodes('//package')) {
         if ($pkg.name.StartsWith($prefix)) {
-            $pkg.name = $pkg.name.Substring($prefix.Length)
+            $pkg.name = [string]$pkg.name.Substring($prefix.Length)
         }
     }
 
     foreach ($cls in $xml.SelectNodes('//class')) {
         if ($cls.HasAttribute('name') -and $cls.name.StartsWith($prefix)) {
-            $cls.name = $cls.name.Substring($prefix.Length)
+            $cls.name = [string]$cls.name.Substring($prefix.Length)
         }
         if ($cls.HasAttribute('sourcefilename')) {
-            $cls.sourcefilename = Split-Path $cls.sourcefilename -Leaf
+            $cls.sourcefilename = [string](Split-Path $cls.sourcefilename -Leaf)
         }
     }
 
     foreach ($src in $xml.SelectNodes('//sourcefile')) {
         if ($src.HasAttribute('name')) {
-            $src.name = Split-Path $src.name -Leaf
+            $src.name = [string](Split-Path $src.name -Leaf)
         }
     }
 
