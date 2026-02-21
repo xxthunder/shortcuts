@@ -210,8 +210,8 @@ function ConvertTo-RelativeJUnitXml {
         [string]$RepoRoot
     )
 
-    # Resolve to absolute path and normalize trailing separator
-    $RepoRoot = (Resolve-Path $RepoRoot).Path.TrimEnd('\', '/')
+    # Normalize trailing separator
+    $RepoRoot = $RepoRoot.TrimEnd('\', '/')
     $escapedRoot = [regex]::Escape($RepoRoot + '\')
 
     [xml]$xml = Get-Content $Path -Raw
@@ -376,7 +376,7 @@ if ($MyInvocation.InvocationName -ne '.') {
             $exitCode = 1
         } else {
             if (Test-Path $ReportPath) {
-                ConvertTo-RelativeJUnitXml -Path $ReportPath -RepoRoot $repoRoot
+                ConvertTo-RelativeJUnitXml -Path $ReportPath -RepoRoot (Resolve-Path $repoRoot).Path
                 Write-Success "Test report generated at: $ReportPath"
             } else {
                 Write-Warning "Test report was not generated at: $ReportPath"
