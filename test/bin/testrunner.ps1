@@ -192,6 +192,50 @@ function New-TestSummaryMarkdown {
     $markdownContent | Out-File -FilePath $OutputPath -Encoding UTF8 -Force
     Write-Output "`nTest summary markdown generated at: $OutputPath"
 }
+function ConvertTo-RelativeJUnitXml {
+    <#
+    .SYNOPSIS
+        Normalizes absolute Windows paths in JUnit XML to relative forward-slash paths.
+    .DESCRIPTION
+        Strips the repo root prefix from testsuite name/package and testcase classname/name
+        attributes, then converts backslashes to forward slashes. This enables Codecov's
+        test-results-parser to properly identify test files.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Function modifies a build artifact in-place, no confirmation needed')]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [string]$RepoRoot
+    )
+
+    # Resolve to absolute path and normalize trailing separator
+    $RepoRoot = (Resolve-Path $RepoRoot).Path.TrimEnd('\', '/')
+    $escapedRoot = [regex]::Escape($RepoRoot + '\')
+
+    [xml]$xml = Get-Content $Path -Raw
+
+    foreach ($suite in $xml.SelectNodes('//testsuite')) {
+        if ($suite.HasAttribute('name')) {
+            $suite.name = ($suite.name -replace $escapedRoot, '').Replace('\', '/')
+        }
+        if ($suite.HasAttribute('package')) {
+            $suite.package = ($suite.package -replace $escapedRoot, '').Replace('\', '/')
+        }
+    }
+
+    foreach ($tc in $xml.SelectNodes('//testcase')) {
+        if ($tc.HasAttribute('classname')) {
+            $tc.classname = ($tc.classname -replace $escapedRoot, '').Replace('\', '/')
+        }
+        if ($tc.HasAttribute('name')) {
+            $tc.name = ($tc.name -replace $escapedRoot, '').Replace('\', '/')
+        }
+    }
+
+    $xml.Save($Path)
+}
 #endregion
 
 if (-not $ReportPath) {
@@ -332,6 +376,7 @@ if ($MyInvocation.InvocationName -ne '.') {
             $exitCode = 1
         } else {
             if (Test-Path $ReportPath) {
+                ConvertTo-RelativeJUnitXml -Path $ReportPath -RepoRoot $repoRoot
                 Write-Success "Test report generated at: $ReportPath"
             } else {
                 Write-Warning "Test report was not generated at: $ReportPath"

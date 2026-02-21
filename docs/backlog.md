@@ -101,6 +101,28 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ## DONE
 
+### [CI-002] ✅ COMPLETED - Normalize JUnit XML paths for Codecov Test Analytics
+
+**Status**: **Completed** (2026-02-21) | **Branch**: `feature/ci-001-normalize-junit-xml`
+**Priority**: Low
+**Component**: `test/bin/testrunner.ps1`, `test/bin/testrunner.Tests.ps1` (new)
+
+**Description**:
+Codecov's test-results-parser cannot properly process Pester's JUnit XML output because Pester embeds absolute Windows paths (with backslashes and drive letters) into `testsuite name/package`, `testcase classname`, and `testcase name` attributes. Added `ConvertTo-RelativeJUnitXml` helper to post-process the JUnit XML after Pester generates it, stripping the repo root prefix and converting backslashes to forward slashes.
+
+**Acceptance Criteria**:
+- [x] `ConvertTo-RelativeJUnitXml` helper function added to `testrunner.ps1`
+- [x] Strips repo root from `testsuite` `name` and `package` attributes
+- [x] Strips repo root from `testcase` `classname` and `name` attributes
+- [x] Converts backslashes to forward slashes in all normalized attributes
+- [x] Preserves non-path content in attributes (e.g., `.Shall not have deviations`)
+- [x] Handles trailing backslash on repo root (with and without)
+- [x] File is saved as valid XML
+- [x] Unit tests in `testrunner.Tests.ps1` (8 tests)
+- [x] All existing tests continue to pass (708 total)
+
+---
+
 ### [CI-001] ✅ COMPLETED - Upload code coverage and test results to Codecov
 
 **Status**: **Completed** (2026-02-21) | **Branch**: `feature/ci-codecov-upload`
