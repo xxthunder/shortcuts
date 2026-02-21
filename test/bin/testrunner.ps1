@@ -236,6 +236,88 @@ function ConvertTo-RelativeJUnitXml {
 
     $xml.Save($Path)
 }
+
+function Import-XmlWithoutDtd {
+    <#
+    .SYNOPSIS
+        Loads an XML file while ignoring DTD processing.
+    .DESCRIPTION
+        JaCoCo XML files include a DOCTYPE declaration referencing report.dtd.
+        Under Set-StrictMode, the default [xml] cast fails to resolve properties
+        when DTD processing is attempted. This function uses XmlReaderSettings
+        to skip DTD validation.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $settings = New-Object System.Xml.XmlReaderSettings
+    $settings.DtdProcessing = [System.Xml.DtdProcessing]::Ignore
+    $reader = [System.Xml.XmlReader]::Create($Path, $settings)
+    try {
+        $doc = New-Object System.Xml.XmlDocument
+        $doc.Load($reader)
+        return $doc
+    } finally {
+        $reader.Close()
+    }
+}
+
+function ConvertTo-RelativeJaCoCoXml {
+    <#
+    .SYNOPSIS
+        Normalizes Pester JaCoCo XML paths so Codecov can resolve source files.
+    .DESCRIPTION
+        Pester's JaCoCo output uses a common-parent-leaf prefix (e.g., "shortcuts/")
+        in package and class names, and full relative paths in sourcefile names.
+        Codecov constructs paths as <package>/<sourcefile>, causing path duplication.
+        This function detects and strips the common prefix, and reduces sourcefile
+        and class sourcefilename attributes to bare filenames.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Function modifies a build artifact in-place, no confirmation needed')]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $xml = Import-XmlWithoutDtd -Path $Path
+
+    # Detect the common-parent-leaf prefix from the first package name.
+    # Pester prepends the repo folder name (e.g., "shortcuts/") to all packages.
+    $firstPkg = $xml.SelectSingleNode('//package')
+    if ($null -eq $firstPkg) { return }
+
+    $pkgName = $firstPkg.name
+    # The prefix is the first path segment followed by a slash (e.g., "shortcuts/")
+    $slashIndex = $pkgName.IndexOf('/')
+    if ($slashIndex -lt 0) { return }
+
+    $prefix = $pkgName.Substring(0, $slashIndex + 1)
+
+    foreach ($pkg in $xml.SelectNodes('//package')) {
+        if ($pkg.name.StartsWith($prefix)) {
+            $pkg.name = $pkg.name.Substring($prefix.Length)
+        }
+    }
+
+    foreach ($cls in $xml.SelectNodes('//class')) {
+        if ($cls.HasAttribute('name') -and $cls.name.StartsWith($prefix)) {
+            $cls.name = $cls.name.Substring($prefix.Length)
+        }
+        if ($cls.HasAttribute('sourcefilename')) {
+            $cls.sourcefilename = Split-Path $cls.sourcefilename -Leaf
+        }
+    }
+
+    foreach ($src in $xml.SelectNodes('//sourcefile')) {
+        if ($src.HasAttribute('name')) {
+            $src.name = Split-Path $src.name -Leaf
+        }
+    }
+
+    $xml.Save($Path)
+}
 #endregion
 
 if (-not $ReportPath) {
@@ -405,6 +487,7 @@ if ($MyInvocation.InvocationName -ne '.') {
                     Write-Output "  Coverage: $($coverageMetrics.Percent)%"
 
                     if (Test-Path $coverageXmlPath) {
+                        ConvertTo-RelativeJaCoCoXml -Path $coverageXmlPath
                         Write-Success "Coverage XML report generated at: $coverageXmlPath"
                     }
                 }
