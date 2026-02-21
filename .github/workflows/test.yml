@@ -87,7 +87,7 @@ jobs:
           files: "${{ env.SHORTCUTS_DIR }}/test/out/junit.xml"
           flags: ${{ matrix.shell_label }}
           token: ${{ secrets.CODECOV_TOKEN }}
-          report-type: test_results
+          report_type: test_results
           fail_ci_if_error: true
 
       - name: Publish Test Report
