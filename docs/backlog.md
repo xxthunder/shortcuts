@@ -89,6 +89,41 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - https://podman.io/
 - https://code.visualstudio.com/docs/devcontainers/containers
 
+### [FEAT-005] Scoop Update Helper Script
+
+**Status**: Open
+**Priority**: Low
+**Component**: `tools/scoop/update-scoop.ps1` (new), `tools/scoop/update-scoop.bat` (new), `tools/scoop/update-scoop.Tests.ps1` (new)
+
+**Description**:
+Interactive helper script to update installed Scoop packages. Launched via Keypirinha or FlowLauncher (`.bat` wrapper). Always runs `scoop update` first to refresh Scoop and bucket info, then asks the user whether to update all packages or specific ones. For specific packages, shows a numbered list of installed packages for selection.
+
+**Behavior**:
+1. Run `scoop update` (refresh Scoop itself + bucket info)
+2. Prompt: "Update [A]ll packages or [S]pecific packages?"
+3. **All**: Run `scoop update *`
+4. **Specific**: List installed packages (numbered), user selects by number(s), run `scoop update <selected>`
+
+**Implementation** (follows `tools/flow-launcher/` pattern):
+- Standalone executable script with `Set-StrictMode`, sources `pslib/utils/utils.ps1`
+- Uses `Invoke-CommandLine` for all Scoop commands
+- Uses `Write-Status` / `Write-Success` / `Write-ErrorMsg` for output
+- CI/test environment awareness via `Test-RunningInCIorTestEnvironment`
+- `.bat` wrapper for launcher integration
+
+**Acceptance Criteria**:
+- [ ] `update-scoop.ps1` script created in `tools/scoop/`
+- [ ] `.bat` wrapper created for Keypirinha/FlowLauncher launch
+- [ ] Runs `scoop update` to refresh Scoop before updating packages
+- [ ] Prompts user to choose "all" or "specific" update mode
+- [ ] "All" mode runs `scoop update *`
+- [ ] "Specific" mode shows numbered list of installed packages
+- [ ] User can select one or more packages by number
+- [ ] Uses `Invoke-CommandLine` for all external commands
+- [ ] Clear status/success/error output
+- [ ] Unit tests with mocked Scoop commands
+- [ ] All existing tests continue to pass
+
 ### Technical Debt
 
 *No items*
