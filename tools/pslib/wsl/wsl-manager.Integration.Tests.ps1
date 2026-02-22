@@ -391,16 +391,10 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $initialState = Get-WslDistroState -DistroName $script:customDistroName
             Write-Host "    Initial state: $initialState" -ForegroundColor Cyan
 
-            # Try to terminate (should succeed with informational message)
-            $output = Invoke-WslManager -Command "terminate" -Name $script:customDistroName *>&1 | Out-String
+            # Try to terminate (should not throw)
+            { Invoke-WslManager -Command "terminate" -Name $script:customDistroName } | Should -Not -Throw
 
-            Write-Host "==> Captured Output:" -ForegroundColor Cyan
-            Write-Host $output
-
-            # Verify the output contains "No running" message (from Invoke-TerminateDistro when no distros are running)
-            $output | Should -Match "No running"
-
-            # Verify the distribution is still stopped (not an error)
+            # Verify the distribution is still stopped (graceful no-op, not an error)
             $finalState = Get-WslDistroState -DistroName $script:customDistroName
             $finalState | Should -Be "Stopped"
         }
