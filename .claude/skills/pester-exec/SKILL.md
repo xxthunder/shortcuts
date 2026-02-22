@@ -77,7 +77,6 @@ Before every commit:
 |--------|----------|-------------|
 | JUnit XML | `test/out/junit.xml` | Test results for CI |
 | Coverage XML | `test/out/coverage.xml` | JaCoCo format coverage |
-| Summary MD | `test/out/test-summary.md` | Markdown summary for PR comments |
 
 ## Test Infrastructure
 

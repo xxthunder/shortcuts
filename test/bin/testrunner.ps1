@@ -56,7 +56,7 @@
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File contains Unicode emojis for CI/PR summaries. UTF-8 encoding is properly handled.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File contains Unicode symbols for console output. UTF-8 encoding is properly handled.')]
 param(
     [Parameter(Mandatory = $false)]
     [string[]]$TestPath,
@@ -145,53 +145,6 @@ function Get-CoverageSummary {
     }
 }
 
-function New-TestSummaryMarkdown {
-    <#
-    .SYNOPSIS
-        Generates a markdown summary of test results.
-    .DESCRIPTION
-        Creates a markdown file with test results and optionally coverage metrics.
-    #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Function writes a simple output file, no confirmation needed')]
-    param(
-        $TestResult,
-        $CoverageMetrics,
-        [string]$OutputPath
-    )
-
-    $testStatus = if ($TestResult.FailedCount -gt 0) { '❌' } else { '✅' }
-    $executionTime = [math]::Round($TestResult.Duration.TotalSeconds, 2)
-
-    $lines = @(
-        "# $testStatus Test Results (PowerShell $($PSVersionTable.PSVersion))"
-        ""
-        "## Test Summary"
-        ""
-        "| Status | Count |"
-        "|--------|-------|"
-        "| ✅ Passed | $($TestResult.PassedCount) |"
-        "| ❌ Failed | $($TestResult.FailedCount) |"
-        "| ⏭️ Skipped | $($TestResult.SkippedCount) |"
-        "| **Total** | **$($TestResult.TotalCount)** |"
-        "| ⏱️ Duration | ${executionTime}s |"
-    )
-
-    if ($null -ne $CoverageMetrics) {
-        $coverageEmoji = if ($CoverageMetrics.Percent -ge 80) { '✅' } elseif ($CoverageMetrics.Percent -ge 60) { '⚠️' } else { '❌' }
-        $lines += @(
-            ""
-            "## $coverageEmoji Code Coverage"
-            ""
-            "| Metric | Coverage |"
-            "|--------|----------|"
-            "| Commands | $($CoverageMetrics.CoveredCommands)/$($CoverageMetrics.TotalCommands) ($($CoverageMetrics.Percent)%) |"
-        )
-    }
-
-    $markdownContent = $lines -join "`n"
-    $markdownContent | Out-File -FilePath $OutputPath -Encoding UTF8 -Force
-    Write-Output "`nTest summary markdown generated at: $OutputPath"
-}
 function ConvertTo-RelativeJUnitXml {
     <#
     .SYNOPSIS
@@ -380,7 +333,6 @@ if ($MyInvocation.InvocationName -ne '.') {
 
         # Define coverage paths upfront to avoid scope issues
         $coverageXmlPath = Join-Path $reportDir "coverage.xml"
-        $summaryPath = Join-Path $reportDir "test-summary.md"
 
         # Code Coverage Logic
         # Dynamically discover source files based on existing test files
@@ -492,9 +444,6 @@ if ($MyInvocation.InvocationName -ne '.') {
                     }
                 }
             }
-
-            # Always generate test summary markdown
-            New-TestSummaryMarkdown -TestResult $testResult -CoverageMetrics $coverageMetrics -OutputPath $summaryPath
 
             # Clear large objects before exit to prevent serialization issues
             $testResult = $null

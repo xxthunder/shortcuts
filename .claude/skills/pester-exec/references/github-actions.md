@@ -174,7 +174,6 @@ The `init.ps1` script installs:
 |----------|------|-------------|
 | JUnit XML | `test/out/junit.xml` | Test results for reporting |
 | Coverage XML | `test/out/coverage.xml` | JaCoCo format coverage |
-| Summary MD | `test/out/test-summary.md` | PR comment summary |
 
 ## Using mikepenz/action-junit-report
 

@@ -130,9 +130,6 @@ cat test/out/junit.xml
 
 # Read coverage report
 cat test/out/coverage.xml
-
-# Read markdown summary
-cat test/out/test-summary.md
 ```
 
 ### Parsing Test Output
