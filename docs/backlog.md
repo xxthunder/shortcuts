@@ -24,15 +24,15 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 **Implementation** (follows `docker.ps1` / `install-docker.sh` pattern):
 
-**Step 1: `lib/podman.ps1`** — PowerShell library functions
+**Step 1: `lib/podman.ps1`** — PowerShell library functions ✅ **DONE**
 - `Test-WslPodmanInstalled -DistroName` — checks if `podman --version` succeeds
-- `Test-WslDockerInstalledForPodman -DistroName` — checks Docker presence (mutual exclusion guard)
 - `Install-WslPodman -DistroName [-Username]` — orchestrates the install:
   - Same prerequisite checks as `Install-WslDockerEngine` (WSL installed, distro exists, WSL2, Debian/Ubuntu, default user)
-  - Fails fast with clear error if Docker is already installed
-  - Ensures systemd and interop are configured (reuse existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
+  - Calls `Test-WslDockerInstalled` directly for mutual exclusion (no separate wrapper needed — `wsl.ps1` dot-sources both `docker.ps1` and `podman.ps1`)
+  - Ensures systemd and interop are configured (reuses existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
   - Configures `mount --make-rshared /` in wsl.conf `[boot] command` (required for rootless containers to avoid mount propagation warnings)
   - Executes `install-podman.sh` via `Invoke-WslDistroScript`
+- 42 Pester unit tests in `podman.Tests.ps1` (all passing)
 
 **Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent)
 - Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
@@ -66,21 +66,21 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - [ ] `wsl-manager setup-podman <distro>` command works
 - [ ] Interactive menu option `[P] Setup Podman` works
 - [ ] Installs Podman and slirp4netns on Debian/Ubuntu distributions
-- [ ] Fails fast with clear error if Docker is already installed in the distro
+- [x] Fails fast with clear error if Docker is already installed in the distro
 - [ ] Configures rootless Podman systemd socket (`podman.socket`)
 - [ ] Enables `loginctl enable-linger` for persistent user services
 - [ ] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
-- [ ] Configures `mount --make-rshared /` via wsl.conf boot command
+- [x] Configures `mount --make-rshared /` via wsl.conf boot command
 - [ ] Sets `DOCKER_HOST` env variable in `~/.bashrc`
 - [ ] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
 - [ ] Verifies Podman works (`podman info` + socket exists)
-- [ ] Idempotent — safe to re-run for repair
-- [ ] Requires systemd-enabled distro (error if not configured)
-- [ ] Requires non-root default user (error if missing)
-- [ ] Clear error messages for all failure paths
+- [x] Idempotent — safe to re-run for repair
+- [x] Requires systemd-enabled distro (error if not configured)
+- [x] Requires non-root default user (error if missing)
+- [x] Clear error messages for all failure paths
 - [ ] Documentation in `docs/wsl-podman-setup.md`
-- [ ] Unit tests in `lib/podman.Tests.ps1`
-- [ ] All existing tests continue to pass
+- [x] Unit tests in `lib/podman.Tests.ps1`
+- [x] All existing tests continue to pass
 
 **Technical Notes**:
 - Socket path: `unix:///run/user/$UID/podman/podman.sock`
