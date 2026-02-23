@@ -8,7 +8,8 @@
       "Write",
       "Create",
       "Delete",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch"
     ],
     "deny": [
       "Bash(rm -rf /*)",

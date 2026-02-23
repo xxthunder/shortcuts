@@ -2,13 +2,9 @@
 
 ## IN PROGRESS
 
-*No items*
-
-## TODO
-
 ### [FEAT-002] Set up Podman as Docker alternative in WSL
 
-**Status**: Open
+**Status**: In Progress
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
 **Related**: FEAT-001, Dev Container workflow
@@ -19,11 +15,12 @@ Add a `setup-podman` command to wsl-manager that installs and configures rootles
 **Rationale**:
 Podman provides a daemonless, rootless container runtime compatible with Docker workflows. It's especially useful for security-conscious environments and can fully replace Docker for Dev Container usage.
 
-**Scope Decisions** (agreed in refinement 2026-02-18):
+**Scope Decisions** (agreed in refinement 2026-02-18, updated 2026-02-23):
 - **Debian/Ubuntu only** — consistent with `setup-docker`; Fedora/RHEL deferred
-- **Mutual exclusion with Docker** — `setup-podman` fails fast if Docker is already installed in the distro
+- **Mutual exclusion with Docker** — `setup-podman` fails fast if Docker is already installed in the distro (UX choice — they can technically coexist but `DOCKER_HOST` confusion is not worth it)
 - **Rootless only** — no `-Mode` parameter; rootful mode deferred to a follow-up
 - **VS Code integration is documentation-only** — no code touches Windows-side settings
+- **cgroups v2 is documentation-only** — requires Windows-side `.wslconfig` change, script should detect and warn but not modify Windows files
 
 **Implementation** (follows `docker.ps1` / `install-docker.sh` pattern):
 
@@ -34,14 +31,18 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
   - Same prerequisite checks as `Install-WslDockerEngine` (WSL installed, distro exists, WSL2, Debian/Ubuntu, default user)
   - Fails fast with clear error if Docker is already installed
   - Ensures systemd and interop are configured (reuse existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
+  - Configures `mount --make-rshared /` in wsl.conf `[boot] command` (required for rootless containers to avoid mount propagation warnings)
   - Executes `install-podman.sh` via `Invoke-WslDistroScript`
 
 **Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent)
 - Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
-- Installs `podman` via apt
-- Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user)
+- Installs `podman` and `slirp4netns` via apt (slirp4netns needed for rootless networking)
+- Enables `loginctl enable-linger $USERNAME` (keeps systemd user services alive across sessions)
+- Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc` (WSL2 systemd session reliability)
+- Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user, NOT root)
 - Sets `DOCKER_HOST` in `~/.bashrc` pointing to the Podman socket
-- Verifies `podman run --rm hello-world` succeeds
+- Checks cgroups v2 status and emits a warning if not using pure cgroups v2 (with instructions for `.wslconfig`)
+- Verifies `podman info` succeeds and socket exists (no `hello-world` — mirrors Docker script which also skips container pull; avoids network dependency)
 - Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
 
 **Step 3: `wsl-manager.ps1`** — wire up the new command
@@ -52,18 +53,27 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 **Step 4: `docs/wsl-podman-setup.md`** — documentation
 - Podman vs Docker comparison
 - Rootless benefits and limitations
-- VS Code Dev Containers: add `"dev.containers.dockerPath": "podman"` to VS Code settings manually
+- Prerequisites: cgroups v2 setup (`.wslconfig` kernel command line)
+- VS Code Dev Containers configuration:
+  - `"dev.containers.dockerPath": "podman"` (manual VS Code setting)
+  - `"dev.containers.mountWaylandSocket": false` (avoids WSL2 socket error)
+  - `--userns=keep-id` in `devcontainer.json` `runArgs` (critical for rootless file permissions)
 - DOCKER_HOST usage and socket path
-- Troubleshooting
+- Performance note: store projects in WSL filesystem, not `/mnt/c/`
+- Troubleshooting (WSL systemd race condition, cgroups, socket issues)
 
 **Acceptance Criteria**:
 - [ ] `wsl-manager setup-podman <distro>` command works
 - [ ] Interactive menu option `[P] Setup Podman` works
-- [ ] Installs Podman on Debian/Ubuntu distributions
+- [ ] Installs Podman and slirp4netns on Debian/Ubuntu distributions
 - [ ] Fails fast with clear error if Docker is already installed in the distro
 - [ ] Configures rootless Podman systemd socket (`podman.socket`)
+- [ ] Enables `loginctl enable-linger` for persistent user services
+- [ ] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
+- [ ] Configures `mount --make-rshared /` via wsl.conf boot command
 - [ ] Sets `DOCKER_HOST` env variable in `~/.bashrc`
-- [ ] Verifies Podman works (`podman run --rm hello-world`)
+- [ ] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
+- [ ] Verifies Podman works (`podman info` + socket exists)
 - [ ] Idempotent — safe to re-run for repair
 - [ ] Requires systemd-enabled distro (error if not configured)
 - [ ] Requires non-root default user (error if missing)
@@ -75,19 +85,31 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 **Technical Notes**:
 - Socket path: `unix:///run/user/$UID/podman/podman.sock`
 - `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` in `~/.bashrc`
+- `XDG_RUNTIME_DIR=/run/user/$(id -u)` in `~/.bashrc`
+- `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` in `~/.bashrc`
 - `systemctl --user` commands must run as the target user, not root (use `sudo -u $USER systemctl --user ...` or `su - $USER -c ...`)
-- Ubuntu 22.04+ and Debian 11+ have native Podman packages; no PPA needed for these versions
+- `loginctl enable-linger $USER` requires root — run before switching to target user
+- `mount --make-rshared /` in `[boot] command=` — prevents rootless container mount propagation warnings
+- Ubuntu 22.04+ and Debian 11+ have native Podman packages; no PPA needed
+- Debian 12: podman 4.3.1, Ubuntu 24.04: podman 4.9.3 — both sufficient for Dev Containers
+- cgroups v2: requires `.wslconfig` `kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` (Windows-side, documentation-only)
 - VS Code setting (manual): `"dev.containers.dockerPath": "podman"`
+- VS Code setting (manual): `"dev.containers.mountWaylandSocket": false`
+- `devcontainer.json` (manual): `"runArgs": ["--userns=keep-id"]` for rootless file permission mapping
 
 **Dependencies**:
 - WSL2
 - Systemd-enabled distribution (configured by `Install-WslDockerEngine` or manually)
 - Non-root default user (same as Docker setup)
 - Sudo access for apt installation
+- cgroups v2 recommended (`.wslconfig` — documented, warned if missing)
 
 **Related Documentation**:
 - https://podman.io/
 - https://code.visualstudio.com/docs/devcontainers/containers
+- https://github.com/containers/podman/discussions/25607 (WSL2 + Dev Containers comprehensive guide)
+
+## TODO
 
 ### [FEAT-005] Scoop Update Helper Script
 
