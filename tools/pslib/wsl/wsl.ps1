@@ -16,3 +16,4 @@
 . "$PSScriptRoot\lib\user.ps1"
 . "$PSScriptRoot\lib\exec.ps1"
 . "$PSScriptRoot\lib\docker.ps1"
+. "$PSScriptRoot\lib\podman.ps1"
