@@ -34,15 +34,15 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
   - Executes `install-podman.sh` via `Invoke-WslDistroScript`
 - 42 Pester unit tests in `podman.Tests.ps1` (all passing)
 
-**Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent)
+**Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent) ✅ **DONE**
 - Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
-- Installs `podman` and `slirp4netns` via apt (slirp4netns needed for rootless networking)
+- Installs `podman`, `slirp4netns`, and `uidmap` via apt (rootless networking + user namespace mapping)
 - Enables `loginctl enable-linger $USERNAME` (keeps systemd user services alive across sessions)
 - Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc` (WSL2 systemd session reliability)
 - Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user, NOT root)
 - Sets `DOCKER_HOST` in `~/.bashrc` pointing to the Podman socket
 - Checks cgroups v2 status and emits a warning if not using pure cgroups v2 (with instructions for `.wslconfig`)
-- Verifies `podman info` succeeds and socket exists (no `hello-world` — mirrors Docker script which also skips container pull; avoids network dependency)
+- Verifies `podman --version`, socket exists, and `podman info` succeeds as target user
 - Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
 
 **Step 3: `wsl-manager.ps1`** — wire up the new command
@@ -65,15 +65,15 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 **Acceptance Criteria**:
 - [ ] `wsl-manager setup-podman <distro>` command works
 - [ ] Interactive menu option `[P] Setup Podman` works
-- [ ] Installs Podman and slirp4netns on Debian/Ubuntu distributions
+- [x] Installs Podman and slirp4netns on Debian/Ubuntu distributions
 - [x] Fails fast with clear error if Docker is already installed in the distro
-- [ ] Configures rootless Podman systemd socket (`podman.socket`)
-- [ ] Enables `loginctl enable-linger` for persistent user services
-- [ ] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
+- [x] Configures rootless Podman systemd socket (`podman.socket`)
+- [x] Enables `loginctl enable-linger` for persistent user services
+- [x] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
 - [x] Configures `mount --make-rshared /` via wsl.conf boot command
-- [ ] Sets `DOCKER_HOST` env variable in `~/.bashrc`
-- [ ] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
-- [ ] Verifies Podman works (`podman info` + socket exists)
+- [x] Sets `DOCKER_HOST` env variable in `~/.bashrc`
+- [x] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
+- [x] Verifies Podman works (`podman info` + socket exists)
 - [x] Idempotent — safe to re-run for repair
 - [x] Requires systemd-enabled distro (error if not configured)
 - [x] Requires non-root default user (error if missing)
