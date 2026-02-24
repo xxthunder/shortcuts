@@ -148,7 +148,41 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 
 ### Technical Debt
 
-*No items*
+#### [REFACT-004] Remove redundant `Test-WslInstalled` guard checks (DRY violation)
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`, `tools/pslib/wsl/lib/core.ps1`, `tools/pslib/wsl/lib/exec.ps1`, `tools/pslib/wsl/lib/docker.ps1`, `tools/pslib/wsl/lib/podman.ps1`, `tools/pslib/wsl/lib/install.ps1`, `tools/pslib/wsl/lib/ops.ps1`, `tools/pslib/wsl/lib/user.ps1`
+**Description**:
+`Test-WslInstalled` is called as a guard (`if (-not (Test-WslInstalled)) { ... }`) in **32 functions** across **8 source files**. Every function independently checks whether WSL is installed, even though they are all called through `Invoke-WslManager` or by each other in call chains — the check executes multiple times per user action. This also causes ~250 `Mock Test-WslInstalled { $true }` boilerplate lines in the test suite.
+
+**Affected Functions (32 guard blocks)**:
+
+| File | Functions | Count |
+|---|---|---|
+| `wsl-manager.ps1` | `Show-WslDistroList`, `Invoke-CreateDistro`, `Invoke-RemoveDistro`, `Invoke-UpdateDistro`, `Invoke-TerminateDistro`, `Invoke-SetupUserInteractive`, `Invoke-SetupDockerInteractive`, `Invoke-CloneDistro` | 8 |
+| `lib/core.ps1` | `Get-WslDistroList`, `Get-WslDistroState`, `Test-WslDistroExists`, `Test-WslDistroRunning`, `Get-WslDistroType`, `Test-Wsl2Version`, `Test-WslSystemd`, `Stop-WslDistro` | 8 |
+| `lib/user.ps1` | 5 functions | 5 |
+| `lib/ops.ps1` | 3 functions | 3 |
+| `lib/exec.ps1` | `Invoke-WslCommand`, `Invoke-WslDistroScript` | 2 |
+| `lib/docker.ps1` | `Test-WslDockerInstalled`, `Install-WslDockerEngine` | 2 |
+| `lib/podman.ps1` | `Test-WslPodmanInstalled`, `Install-WslPodman` | 2 |
+| `lib/install.ps1` | 2 functions | 2 |
+
+**Proposed Solution**:
+1. Add `Assert-WslInstalled` function that throws a terminating error if WSL is not installed
+2. Call the assertion once in `Invoke-WslManager` before dispatching to any sub-command
+3. Remove all 32 redundant guard blocks from individual functions
+4. Remove ~250 `Mock Test-WslInstalled` lines from test files (keep only in `Invoke-WslManager` tests and `Assert-WslInstalled` unit tests)
+
+**Acceptance Criteria**:
+- [ ] New `Assert-WslInstalled` function that throws if WSL is not installed
+- [ ] `Invoke-WslManager` calls the assertion once before dispatching
+- [ ] All 32 `if (-not (Test-WslInstalled))` guard blocks removed from individual functions
+- [ ] Test mock boilerplate for `Test-WslInstalled` removed from all test files except where directly testing the guard behavior
+- [ ] `Test-WslInstalled` (the boolean check) remains available for non-throwing use cases
+- [ ] All existing tests continue to pass
+- [ ] No change in user-facing behavior (same error messages when WSL is missing)
 
 ### Documentation
 
