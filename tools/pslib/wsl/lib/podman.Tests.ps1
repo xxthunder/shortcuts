@@ -12,17 +12,8 @@ BeforeAll {
 }
 
 Describe "Test-WslPodmanInstalled" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Test-WslPodmanInstalled -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Test-WslPodmanInstalled -DistroName "Debian" } | Should -Throw "*does not exist*"
@@ -31,7 +22,7 @@ Describe "Test-WslPodmanInstalled" {
 
     Context "When Podman is installed" {
         It "Should return true when podman --version succeeds" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "podman version 4.3.1"
@@ -43,7 +34,7 @@ Describe "Test-WslPodmanInstalled" {
         }
 
         It "Should execute podman --version command" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "podman version 4.3.1"
@@ -62,7 +53,7 @@ Describe "Test-WslPodmanInstalled" {
 
     Context "When Podman is not installed" {
         It "Should return false when podman command not found" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 throw "podman: command not found"
@@ -74,7 +65,7 @@ Describe "Test-WslPodmanInstalled" {
         }
 
         It "Should return false when podman --version returns empty output" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter {
                 $Command -like "*podman --version*"
@@ -94,17 +85,8 @@ Describe "Test-WslPodmanInstalled" {
 }
 
 Describe "Install-WslPodman" {
-    Context "Prerequisite validation - WSL installation" {
-        It "Should throw when WSL is not installed" {
-            Mock Test-WslInstalled { $false }
-
-            { Install-WslPodman -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "Prerequisite validation - Distribution existence" {
         It "Should throw when distribution does not exist" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Install-WslPodman -DistroName "Debian" -Confirm:$false } | Should -Throw "*does not exist*"
@@ -113,7 +95,7 @@ Describe "Install-WslPodman" {
 
     Context "Prerequisite validation - WSL2 version" {
         It "Should throw when distribution is WSL1" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $false }
 
@@ -121,7 +103,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should provide upgrade command in error message for WSL1" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $false }
 
@@ -131,7 +113,7 @@ Describe "Install-WslPodman" {
 
     Context "Prerequisite validation - Distribution type" {
         It "Should throw when distribution is not Debian/Ubuntu" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Arch") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -142,7 +124,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should accept Debian distribution" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -162,7 +144,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should accept Ubuntu distribution" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Ubuntu") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -184,7 +166,7 @@ Describe "Install-WslPodman" {
 
     Context "Prerequisite validation - Default user" {
         It "Should throw when no default user is configured and Username not provided" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -194,7 +176,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should provide setup-user command in error message" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -204,7 +186,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should use provided Username parameter when specified" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -224,7 +206,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should auto-detect default user from wsl.conf when Username not provided" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -247,7 +229,7 @@ Describe "Install-WslPodman" {
 
     Context "Mutual exclusion - Docker installed" {
         It "Should throw when Docker is already installed" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -258,7 +240,7 @@ Describe "Install-WslPodman" {
         }
 
         It "Should mention mutual exclusion in error message" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -271,7 +253,7 @@ Describe "Install-WslPodman" {
 
     Context "Idempotent behavior - Podman already installed" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -315,7 +297,7 @@ Describe "Install-WslPodman" {
 
     Context "SupportsShouldProcess" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -351,7 +333,7 @@ Describe "Install-WslPodman" {
 
     Context "Bash script execution" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -446,7 +428,7 @@ Describe "Install-WslPodman" {
 
     Context "Systemd, interop, and boot command configuration" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }

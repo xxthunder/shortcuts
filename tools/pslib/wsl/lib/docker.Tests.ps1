@@ -12,17 +12,8 @@ BeforeAll {
 }
 
 Describe "Test-WslDockerInstalled" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Test-WslDockerInstalled -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Test-WslDockerInstalled -DistroName "Debian" } | Should -Throw "*does not exist*"
@@ -31,7 +22,7 @@ Describe "Test-WslDockerInstalled" {
 
     Context "When Docker is installed" {
         It "Should return true when docker --version succeeds" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "Docker version 24.0.7, build afdd53b"
@@ -43,7 +34,7 @@ Describe "Test-WslDockerInstalled" {
         }
 
         It "Should execute docker --version command" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "Docker version 24.0.7, build afdd53b"
@@ -62,7 +53,7 @@ Describe "Test-WslDockerInstalled" {
 
     Context "When Docker is not installed" {
         It "Should return false when docker command not found" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 throw "docker: command not found"
@@ -74,7 +65,7 @@ Describe "Test-WslDockerInstalled" {
         }
 
         It "Should return false when docker --version returns empty output" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter {
                 $Command -like "*docker --version*"
@@ -94,17 +85,8 @@ Describe "Test-WslDockerInstalled" {
 }
 
 Describe "Install-WslDockerEngine" {
-    Context "Prerequisite validation - WSL installation" {
-        It "Should throw when WSL is not installed" {
-            Mock Test-WslInstalled { $false }
-
-            { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "Prerequisite validation - Distribution existence" {
         It "Should throw when distribution does not exist" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Install-WslDockerEngine -DistroName "Debian" -Confirm:$false } | Should -Throw "*does not exist*"
@@ -113,7 +95,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Prerequisite validation - WSL2 version" {
         It "Should throw when distribution is WSL1" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $false }
 
@@ -121,7 +103,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should provide upgrade command in error message for WSL1" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $false }
 
@@ -132,7 +114,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Prerequisite validation - Distribution type" {
         It "Should throw when distribution is not Debian/Ubuntu" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Arch") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -143,7 +125,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should accept Debian distribution" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -159,7 +141,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should accept Ubuntu distribution" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Ubuntu") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -177,7 +159,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Prerequisite validation - Default user" {
         It "Should throw when no default user is configured and Username not provided" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -187,7 +169,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should provide setup-user command in error message" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }
@@ -197,7 +179,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should use provided Username parameter when specified" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -213,7 +195,7 @@ Describe "Install-WslDockerEngine" {
         }
 
         It "Should auto-detect default user from wsl.conf when Username not provided" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -233,7 +215,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Idempotent behavior - Docker already installed" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -273,7 +255,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "SupportsShouldProcess" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -305,7 +287,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Bash script execution (refactored implementation)" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
@@ -392,7 +374,7 @@ Describe "Install-WslDockerEngine" {
 
     Context "Systemd and interop prerequisite configuration" {
         BeforeEach {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Test-Wsl2Version { $true }
             Mock Get-WslDistroType { "debian" }

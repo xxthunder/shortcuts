@@ -12,17 +12,8 @@ BeforeAll {
 }
 
 Describe "New-WslUser" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" } | Should -Throw "*does not exist*"
@@ -31,7 +22,7 @@ Describe "New-WslUser" {
 
     Context "Username validation" {
         It "Should accept valid username" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -41,14 +32,14 @@ Describe "New-WslUser" {
         }
 
         It "Should throw for username starting with number" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
 
             { New-WslUser -DistroName "Debian" -Username "1user" -Password "testpass" } | Should -Throw "*invalid username*"
         }
 
         It "Should throw for username with uppercase letters" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -56,14 +47,14 @@ Describe "New-WslUser" {
         }
 
         It "Should throw for username with special characters" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
 
             { New-WslUser -DistroName "Debian" -Username "test@user" -Password "testpass" } | Should -Throw "*invalid username*"
         }
 
         It "Should accept username with hyphens and underscores" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -73,14 +64,14 @@ Describe "New-WslUser" {
         }
 
         It "Should throw for username longer than 32 characters" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
 
             { New-WslUser -DistroName "Debian" -Username ("a" * 33) -Password "testpass" } | Should -Throw "*too long*"
         }
 
         It "Should accept username with exactly 32 characters" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -92,7 +83,7 @@ Describe "New-WslUser" {
 
     Context "When user already exists" {
         It "Should throw error when user exists" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "1001" } -ParameterFilter { $Command -like "*id -u*" }
 
@@ -100,7 +91,7 @@ Describe "New-WslUser" {
         }
 
         It "Should continue when user does not exist" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -113,7 +104,7 @@ Describe "New-WslUser" {
 
     Context "When creating user" {
         It "Should create user with useradd command" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -126,7 +117,7 @@ Describe "New-WslUser" {
         }
 
         It "Should set user password with chpasswd" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -139,7 +130,7 @@ Describe "New-WslUser" {
         }
 
         It "Should add user to sudo group" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -152,7 +143,7 @@ Describe "New-WslUser" {
         }
 
         It "Should configure NOPASSWD in sudoers.d" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -167,7 +158,7 @@ Describe "New-WslUser" {
         }
 
         It "Should set default user in wsl.conf" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -182,7 +173,7 @@ Describe "New-WslUser" {
         }
 
         It "Should display restart message" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -196,7 +187,7 @@ Describe "New-WslUser" {
         }
 
         It "Should trim username" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -211,7 +202,7 @@ Describe "New-WslUser" {
 
     Context "When handling passwords" {
         It "Should accept password string" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -224,7 +215,7 @@ Describe "New-WslUser" {
         }
 
         It "Should handle password with special characters" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -239,7 +230,7 @@ Describe "New-WslUser" {
 
     Context "When ShouldProcess is used" {
         It "Should skip user creation when user cancels confirmation" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -251,7 +242,7 @@ Describe "New-WslUser" {
 
     Context "When user creation fails" {
         It "Should throw error when useradd fails" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { throw "useradd failed" } -ParameterFilter { $Command -like "*useradd*" }
@@ -260,7 +251,7 @@ Describe "New-WslUser" {
         }
 
         It "Should throw error when password setting fails" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*useradd*" }
@@ -270,7 +261,7 @@ Describe "New-WslUser" {
         }
 
         It "Should not display success message when user creation fails" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { throw "useradd failed" } -ParameterFilter { $Command -like "*useradd*" }
@@ -306,7 +297,7 @@ Describe "New-WslUser" {
 
     Context "NOPASSWD warning display" {
         It "Should display warning about NOPASSWD sudo security implications" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -324,17 +315,8 @@ Describe "New-WslUser" {
 }
 
 Describe "Get-WslDefaultUser" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Get-WslDefaultUser -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Get-WslDefaultUser -DistroName "Debian" } | Should -Throw "*does not exist*"
@@ -343,7 +325,7 @@ Describe "Get-WslDefaultUser" {
 
     Context "When wsl.conf does not exist" {
         It "Should return null" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" } -ParameterFilter {
                 $Command -like "*cat /etc/wsl.conf*"
@@ -357,7 +339,7 @@ Describe "Get-WslDefaultUser" {
 
     Context "When wsl.conf exists but has no [user] section" {
         It "Should return null" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -374,7 +356,7 @@ systemd=true
 
     Context "When [user] section exists but has no default= line" {
         It "Should return null" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -391,7 +373,7 @@ systemd=true
 
     Context "When default user is configured" {
         It "Should return username from 'default=username' format" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -406,7 +388,7 @@ default=developer
         }
 
         It "Should return username from 'default = username' format (with spaces)" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -421,7 +403,7 @@ default = johndoe
         }
 
         It "Should return username when [user] section is not first" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -439,7 +421,7 @@ default=testuser
         }
 
         It "Should return username when there are comments in the file" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -458,7 +440,7 @@ default=admin
 
     Context "Defensive parsing with malformed content" {
         It "Should return null when wsl.conf has missing closing bracket" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -473,7 +455,7 @@ default=testuser
         }
 
         It "Should return null when wsl.conf has invalid characters in value" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -491,7 +473,7 @@ default=user@#$%
         }
 
         It "Should return null when wsl.conf has empty [user] section" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -508,7 +490,7 @@ systemd=true
         }
 
         It "Should return first value when wsl.conf has duplicate default keys" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -525,7 +507,7 @@ default=user2
         }
 
         It "Should not throw exception on any malformed content" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "completely invalid content with no structure @#$%^&*()"
@@ -544,17 +526,8 @@ default=user2
 }
 
 Describe "Test-WslSystemdConfigured" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Test-WslSystemdConfigured -DistroName "Debian" } | Should -Throw "*does not exist*"
@@ -563,7 +536,7 @@ Describe "Test-WslSystemdConfigured" {
 
     Context "When wsl.conf does not exist" {
         It "Should return false when wsl.conf is not found" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
 
@@ -575,7 +548,7 @@ Describe "Test-WslSystemdConfigured" {
 
     Context "When systemd is configured in wsl.conf" {
         It "Should return true when systemd=true is set in [boot] section" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`nsystemd=true`n[user]`ndefault=developer"
@@ -587,7 +560,7 @@ Describe "Test-WslSystemdConfigured" {
         }
 
         It "Should return true when systemd=true with spaces around equals" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`nsystemd = true"
@@ -599,7 +572,7 @@ Describe "Test-WslSystemdConfigured" {
         }
 
         It "Should return true when systemd=true with extra whitespace" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`n  systemd  =  true  "
@@ -613,7 +586,7 @@ Describe "Test-WslSystemdConfigured" {
 
     Context "When systemd is not configured in wsl.conf" {
         It "Should return false when [boot] section does not exist" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[user]`ndefault=developer"
@@ -625,7 +598,7 @@ Describe "Test-WslSystemdConfigured" {
         }
 
         It "Should return false when systemd is not set in [boot] section" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`n# systemd=true"
@@ -637,7 +610,7 @@ Describe "Test-WslSystemdConfigured" {
         }
 
         It "Should return false when systemd=false" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`nsystemd=false"
@@ -649,7 +622,7 @@ Describe "Test-WslSystemdConfigured" {
         }
 
         It "Should return false when wsl.conf is empty" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -661,7 +634,7 @@ Describe "Test-WslSystemdConfigured" {
 
     Context "When systemd setting is in different sections" {
         It "Should only check [boot] section, not [other] sections" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[other]`nsystemd=true`n[boot]`nsystemd=false"
@@ -675,7 +648,7 @@ Describe "Test-WslSystemdConfigured" {
 
     Context "Defensive parsing with malformed content" {
         It "Should return false when wsl.conf has missing closing bracket" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -690,7 +663,7 @@ systemd=true
         }
 
         It "Should return false when wsl.conf has invalid characters in value" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -706,7 +679,7 @@ systemd=tr@ue!
         }
 
         It "Should return false when wsl.conf has empty [boot] section" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -723,7 +696,7 @@ default=testuser
         }
 
         It "Should return true for first value when wsl.conf has duplicate systemd keys" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -740,7 +713,7 @@ systemd=false
         }
 
         It "Should not throw exception on any malformed content" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "completely invalid content with no structure @#$%^&*()"
@@ -761,17 +734,8 @@ systemd=false
 }
 
 Describe "Test-WslInteropConfigured" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Test-WslInteropConfigured -DistroName "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Test-WslInteropConfigured -DistroName "Debian" } | Should -Throw "*does not exist*"
@@ -780,7 +744,7 @@ Describe "Test-WslInteropConfigured" {
 
     Context "When wsl.conf does not exist" {
         It "Should return false when wsl.conf is not found" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
 
@@ -792,7 +756,7 @@ Describe "Test-WslInteropConfigured" {
 
     Context "When Windows interop is fully configured in wsl.conf" {
         It "Should return true when both enabled=true and appendWindowsPath=true are set" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nenabled=true`nappendWindowsPath=true`n[boot]`nsystemd=true"
@@ -804,7 +768,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return true with spaces around equals" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nenabled = true`nappendWindowsPath = true"
@@ -816,7 +780,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return true with extra whitespace" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`n  enabled  =  true  `n  appendWindowsPath  =  true  "
@@ -830,7 +794,7 @@ Describe "Test-WslInteropConfigured" {
 
     Context "When Windows interop is not configured in wsl.conf" {
         It "Should return false when [interop] section does not exist" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`nsystemd=true"
@@ -842,7 +806,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return false when only enabled=true is set" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nenabled=true"
@@ -854,7 +818,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return false when only appendWindowsPath=true is set" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nappendWindowsPath=true"
@@ -866,7 +830,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return false when enabled=false" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nenabled=false`nappendWindowsPath=true"
@@ -878,7 +842,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return false when appendWindowsPath=false" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[interop]`nenabled=true`nappendWindowsPath=false"
@@ -890,7 +854,7 @@ Describe "Test-WslInteropConfigured" {
         }
 
         It "Should return false when wsl.conf is empty" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" }
 
@@ -902,7 +866,7 @@ Describe "Test-WslInteropConfigured" {
 
     Context "When interop settings are in different sections" {
         It "Should only check [interop] section, not [other] sections" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[other]`nenabled=true`nappendWindowsPath=true`n[interop]`nenabled=false"
@@ -922,17 +886,8 @@ Describe "Test-WslInteropConfigured" {
 }
 
 Describe "Set-WslConf" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslDistroList { @("Ubuntu") }
 
             { Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } } | Should -Throw "*does not exist*"
@@ -941,7 +896,7 @@ Describe "Set-WslConf" {
 
     Context "When wsl.conf does not exist" {
         It "Should create new wsl.conf with specified sections" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -958,7 +913,7 @@ Describe "Set-WslConf" {
 
     Context "When wsl.conf exists with existing sections" {
         It "Should preserve existing [user] section when adding [boot]" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[user]`ndefault=myuser"
@@ -976,7 +931,7 @@ Describe "Set-WslConf" {
         }
 
         It "Should update existing [boot] section when systemd value changes" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[boot]`nsystemd=false"
@@ -993,7 +948,7 @@ Describe "Set-WslConf" {
         }
 
         It "Should preserve unrelated [network] section when modifying [boot]" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -1015,7 +970,7 @@ generateHosts=false
         }
 
         It "Should merge multiple sections in one call" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[user]`ndefault=myuser"
@@ -1037,7 +992,7 @@ generateHosts=false
         }
 
         It "Should preserve comments in existing wsl.conf" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 @"
@@ -1060,7 +1015,7 @@ default=myuser
 
     Context "When backing up existing wsl.conf" {
         It "Should create backup when wsl.conf exists" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand {
                 "[user]`ndefault=myuser"
@@ -1075,7 +1030,7 @@ default=myuser
         }
 
         It "Should not create backup when wsl.conf does not exist" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -1090,7 +1045,7 @@ default=myuser
 
     Context "ShouldProcess support" {
         It "Should skip modification when WhatIf is used" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
             Mock Invoke-WslDistroCommand { "" }
@@ -1109,7 +1064,7 @@ default=myuser
         }
 
         It "Should throw when Sections is empty" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslDistroList { @("Debian") }
 
             { Set-WslConf -DistroName "Debian" -Sections @{} -Confirm:$false } | Should -Throw "*null*"

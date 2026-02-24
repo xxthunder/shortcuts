@@ -106,10 +106,6 @@ function Show-WslDistroList {
     .SYNOPSIS
         Displays a list of installed WSL distributions with state information.
     #>
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     $distros = @(Get-WslDistroList -Detailed)
 
     Write-Host ""
@@ -140,10 +136,6 @@ function Invoke-CreateDistro {
     param(
         [string]$Name = ""
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Get available distributions dynamically
     $availableDistros = Get-WslAvailableDistro
@@ -213,10 +205,6 @@ function Invoke-RemoveDistro {
         [string]$Selection = ""
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
@@ -275,10 +263,6 @@ function Invoke-UpdateDistro {
     param(
         [string]$Selection = ""
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     $distros = @(Get-WslDistroList -Detailed)
 
@@ -339,10 +323,6 @@ function Invoke-TerminateDistro {
         [Parameter(Mandatory = $false)]
         [string]$Name
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Get running distributions
     $allDistros = @(Get-WslDistroList -Detailed)
@@ -518,10 +498,6 @@ function Invoke-SetupUserInteractive {
     .SYNOPSIS
         Handles the user setup workflow interactively by prompting for distribution name.
     #>
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
@@ -572,10 +548,6 @@ function Invoke-SetupDockerInteractive {
     .SYNOPSIS
         Handles the Docker setup workflow interactively by prompting for distribution name.
     #>
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     $distros = @(Get-WslDistroList -Detailed)
 
     if ($distros.Count -eq 0) {
@@ -635,10 +607,6 @@ function Invoke-CloneDistro {
         [string]$SourceName = "",
         [string]$TargetName = ""
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     $distros = @(Get-WslDistroList -Detailed)
 

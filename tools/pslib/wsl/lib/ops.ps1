@@ -34,10 +34,6 @@ function Remove-WslDistro {
         [string]$Name
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Check if distribution exists
     $distros = Get-WslDistroList
     if ($Name -notin $distros) {
@@ -103,10 +99,6 @@ function Copy-WslDistro {
         [Parameter(Mandatory = $false)]
         [string]$InstallPath = ""
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim names to handle whitespace
     $SourceName = $SourceName.Trim()
@@ -196,10 +188,6 @@ function Update-WslDistro {
         [ValidateNotNullOrEmpty()]
         [string]$Name
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim name
     $Name = $Name.Trim()

@@ -40,10 +40,6 @@ function Test-WslPodmanInstalled {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Trim input
     $DistroName = $DistroName.Trim()
 
@@ -141,12 +137,7 @@ function Install-WslPodman {
 
     # Prerequisite validation - fail-fast approach
 
-    # 1. Check WSL is installed
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first. See: https://docs.microsoft.com/en-us/windows/wsl/install"
-    }
-
-    # 2. Validate distribution exists
+    # 1. Validate distribution exists
     $distros = Get-WslDistroList
     if ($DistroName -notin $distros) {
         $availableDistros = $distros -join ", "

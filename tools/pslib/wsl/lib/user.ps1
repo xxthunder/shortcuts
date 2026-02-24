@@ -64,10 +64,6 @@ function New-WslUser {
         $Password
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Trim inputs
     $DistroName = $DistroName.Trim()
     $Username = $Username.Trim()
@@ -214,10 +210,6 @@ function Set-WslConf {
         [ValidateNotNullOrEmpty()]
         [hashtable]$Sections
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim input
     $DistroName = $DistroName.Trim()
@@ -396,10 +388,6 @@ function Get-WslDefaultUser {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Trim input
     $DistroName = $DistroName.Trim()
 
@@ -496,10 +484,6 @@ function Test-WslSystemdConfigured {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Trim input
     $DistroName = $DistroName.Trim()
 
@@ -594,10 +578,6 @@ function Test-WslInteropConfigured {
         [ValidateNotNullOrEmpty()]
         [string]$DistroName
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim input
     $DistroName = $DistroName.Trim()

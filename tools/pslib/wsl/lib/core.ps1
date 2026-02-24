@@ -97,10 +97,6 @@ function Get-WslDistroList {
         [switch]$Detailed
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     if ($Detailed) {
         # Get verbose output with state and version information
         $output = wsl.exe --list --verbose 2>&1
@@ -226,10 +222,6 @@ function Get-WslDistroState {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Validate distribution exists
     $distros = Get-WslDistroList
     if ($DistroName -notin $distros) {
@@ -286,10 +278,6 @@ function Test-WslDistroExists {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     $distros = Get-WslDistroList
     return $DistroName -in $distros
 }
@@ -325,10 +313,6 @@ function Test-WslDistroRunning {
         [ValidateNotNullOrEmpty()]
         [string]$DistroName
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Validate distribution exists
     if (-not (Test-WslDistroExists -DistroName $DistroName)) {
@@ -371,10 +355,6 @@ function Get-WslDistroType {
         [ValidateNotNullOrEmpty()]
         [string]$DistroName
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Validate distribution exists
     $distros = Get-WslDistroList
@@ -444,10 +424,6 @@ function Test-Wsl2Version {
         [string]$DistroName
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Trim input
     $DistroName = $DistroName.Trim()
 
@@ -505,10 +481,6 @@ function Test-WslSystemd {
         [ValidateNotNullOrEmpty()]
         [string]$DistroName
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim input
     $DistroName = $DistroName.Trim()
@@ -571,10 +543,6 @@ function Stop-WslDistro {
         [ValidateNotNullOrEmpty()]
         [string]$Name
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim name
     $Name = $Name.Trim()

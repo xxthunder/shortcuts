@@ -12,17 +12,8 @@ BeforeAll {
 }
 
 Describe "Get-WslAvailableDistro" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { Get-WslAvailableDistro } | Should -Throw "*WSL is not installed*"
-        }
-    }
-
     Context "When WSL is installed" {
         It "Should parse English output correctly" {
-            Mock Test-WslInstalled { $true }
             $englishOutput = @"
 NAME                        FRIENDLY NAME
 Debian                      Debian GNU/Linux
@@ -45,7 +36,7 @@ kali-linux                  Kali Linux Rolling
         }
 
         It "Should handle localized headers (German example)" {
-            Mock Test-WslInstalled { $true }
+
             $germanOutput = @"
 NAME                        ANZEIGENAME
 Debian                      Debian GNU/Linux
@@ -64,7 +55,7 @@ Ubuntu-22.04                Ubuntu 22.04 LTS
         }
 
         It "Should handle null characters in output" {
-            Mock Test-WslInstalled { $true }
+
             $output = "N`0A`0M`0E`0`nD`0e`0b`0i`0a`0n`0      Debian GNU/Linux"
             Mock wsl { $output } -ParameterFilter { $args[0] -eq "--list" -and $args[1] -eq "--online" }
 
@@ -74,7 +65,7 @@ Ubuntu-22.04                Ubuntu 22.04 LTS
         }
 
         It "Should handle distributions with dots and underscores" {
-            Mock Test-WslInstalled { $true }
+
             $output = @"
 NAME                        FRIENDLY NAME
 Oracle_Linux_8_10           Oracle Linux 8.10
@@ -91,26 +82,8 @@ openSUSE-Leap-15.6          openSUSE Leap 15.6
 }
 
 Describe "New-WslDistro" {
-    Context "When WSL is not installed" {
-        It "Should throw an error" {
-            Mock Test-WslInstalled { $false }
-
-            { New-WslDistro -Name "Debian" } | Should -Throw "*WSL is not installed*"
-        }
-
-        It "Should not attempt installation" {
-            Mock Test-WslInstalled { $false }
-            Mock Invoke-CommandLine {}
-
-            { New-WslDistro -Name "Ubuntu" } | Should -Throw
-
-            Should -Invoke Invoke-CommandLine -Times 0
-        }
-    }
-
     Context "When distribution already exists" {
         It "Should throw an error for existing distribution" {
-            Mock Test-WslInstalled { $true }
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock Get-WslDistroList { @("Debian") }
 
@@ -120,7 +93,7 @@ Describe "New-WslDistro" {
 
     Context "When distribution name is not available" {
         It "Should throw an error with available distributions listed" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04", "kali-linux") }
             Mock Get-WslDistroList { @() }
 
@@ -140,7 +113,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should accept any distribution from available list" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04", "kali-linux", "archlinux") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -158,7 +131,7 @@ Describe "New-WslDistro" {
             @{ DistroName = "Ubuntu-22.04" }
             @{ DistroName = "kali-linux" }
         ) {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04", "kali-linux") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -169,7 +142,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should display success message" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -180,7 +153,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should display how to start the distribution" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Ubuntu") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -191,7 +164,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should trim whitespace from distribution name" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -202,7 +175,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should skip installation when user cancels confirmation" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {}
@@ -213,7 +186,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should throw error and stop execution when wsl command fails" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {
@@ -225,7 +198,7 @@ Describe "New-WslDistro" {
         }
 
         It "Should not display success message when wsl command fails" {
-            Mock Test-WslInstalled { $true }
+
             Mock Get-WslAvailableDistro { @("Debian") }
             Mock Get-WslDistroList { @() }
             Mock Invoke-CommandLine {

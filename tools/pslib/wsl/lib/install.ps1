@@ -28,10 +28,6 @@ function Get-WslAvailableDistro {
         Uses pattern-based parsing to handle localized WSL output.
         Distribution names are alphanumeric with hyphens, underscores, and dots.
     #>
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     try {
         # Get available distributions
         $output = wsl.exe --list --online 2>&1
@@ -111,10 +107,6 @@ function New-WslDistro {
         [ValidateNotNullOrEmpty()]
         [string]$Name
     )
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
 
     # Trim the name to handle any whitespace issues
     $Name = $Name.Trim()

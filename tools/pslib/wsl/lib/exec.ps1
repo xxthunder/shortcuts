@@ -77,10 +77,6 @@ function Invoke-WslDistroCommand {
         [switch]$PassThru
     )
 
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
-    }
-
     # Validate distribution exists
     $distros = Get-WslDistroList
     if ($DistroName -notin $distros) {
@@ -184,10 +180,6 @@ function Invoke-WslDistroScript {
     # Validate script exists
     if (-not (Test-Path $ScriptPath)) {
         throw "Script not found: $ScriptPath"
-    }
-
-    if (-not (Test-WslInstalled)) {
-        throw "WSL is not installed. Please install WSL first."
     }
 
     # Validate distribution exists
