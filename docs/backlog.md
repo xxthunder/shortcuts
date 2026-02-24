@@ -207,7 +207,7 @@ Removed 32 redundant `Test-WslInstalled` guard blocks from 8 source files and ~2
 
 **Status**: **Completed** (2026-02-22) | **Branch**: `refinement`
 **Priority**: Low
-**Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+**Component**: `tools/pslib/wsl/wsl-manager.docker.Integration.Tests.ps1`
 
 **Description**:
 The "Should handle terminating an already stopped distribution gracefully" integration test was flaky. It asserted the output matched `"No running"`, which is the early-exit message from `Invoke-TerminateDistro` when zero distros are running. However, when other WSL distros happened to be running on the machine, the code took a different path through `Stop-WslDistro`, which emits `"Distribution '<name>' is not running."` — failing the regex match.
@@ -305,7 +305,7 @@ Added Codecov upload steps to the CI workflow. Coverage data (JaCoCo XML) and te
 
 **Status**: **Completed** (2026-02-21) | **Branch**: `feature/refact-001-002-003`
 **Priority**: Medium
-**Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+**Component**: `tools/pslib/wsl/wsl-manager.docker.Integration.Tests.ps1`
 
 **Description**:
 Refactored integration tests to dot-source `wsl-manager.ps1` and call `Invoke-WslManager` in-process instead of subprocess invocations. All operations with a wsl-manager wrapper now route through the public API. BeforeAll/AfterAll retain pslib calls for setup/teardown. Script Execution and Docker Setup contexts retain direct pslib calls (no wsl-manager wrapper exists).
@@ -325,7 +325,7 @@ Refactored integration tests to dot-source `wsl-manager.ps1` and call `Invoke-Ws
 
 **Status**: **Completed** (2026-02-20) | **Branch**: `feature/feat-002-podman-wsl`
 **Priority**: Low
-**Component**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+**Component**: `tools/pslib/wsl/wsl-manager.docker.Integration.Tests.ps1`
 
 **Description**:
 The "Script Execution" integration tests wrote temporary bash scripts using `[System.Text.Encoding]::UTF8`, which in .NET includes a BOM (`EF BB BF`). Bash cannot parse a BOM before the shebang, producing: `/mnt/c/.../script.sh: line 1: ﻿#!/bin/bash: No such file or directory`. Tests still passed because bash continued past the failed shebang, but the error message was misleading.

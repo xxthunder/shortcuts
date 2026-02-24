@@ -192,7 +192,8 @@ tools/pslib/wsl/
     ├── wsl.Tests.ps1                       # Unit tests
     ├── wsl.Integration.Tests.ps1           # Integration tests
     ├── wsl-manager.Tests.ps1               # Manager unit tests
-    └── wsl-manager.Integration.Tests.ps1   # Manager integration tests
+    ├── wsl-manager.docker.Integration.Tests.ps1   # Docker integration tests
+    └── wsl-manager.podman.Integration.Tests.ps1  # Podman integration tests
 ```
 
 ### Key Design Decisions

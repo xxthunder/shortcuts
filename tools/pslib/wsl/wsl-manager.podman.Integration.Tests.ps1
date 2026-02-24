@@ -4,7 +4,7 @@
     These tests execute WSL commands and verify the complete Podman workflow.
 
     Test workflow:
-    1. Use existing Ubuntu as base distro
+    1. Use existing Ubuntu or install it (base distro)
     2. Clone Ubuntu to ubuntu-podman-test
     3. Setup user in ubuntu-podman-test (testuser with sudo)
     4. Install Podman (rootless, includes systemd/interop/mount --make-rshared)
@@ -47,49 +47,144 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         . (Join-Path $PSScriptRoot "..\utils\utils.ps1")
         . (Join-Path $PSScriptRoot "wsl-manager.ps1")
 
-        # Verify base distro exists
-        $baseExists = Get-WslDistroList | Where-Object { $_ -eq $script:baseDistroName }
-        if (-not $baseExists) {
-            Write-Warning "$($script:baseDistroName) base distro not found. Skipping Podman integration tests."
-            Set-ItResult -Skipped -Because "$($script:baseDistroName) is not installed"
-            return
+        # Check if base distro already exists
+        $existingDistros = Get-WslDistroList
+
+        if ($script:baseDistroName -in $existingDistros) {
+            Write-Host "    $script:baseDistroName already exists, will use it" -ForegroundColor Green
+        }
+        else {
+            Write-Host "    $script:baseDistroName not found, will create it during tests" -ForegroundColor Yellow
         }
 
-        # Clean slate: remove test distro if it exists
-        $testExists = Get-WslDistroList | Where-Object { $_ -eq $script:podmanTestDistroName }
-        if ($testExists) {
-            Write-Host "    Removing existing $($script:podmanTestDistroName) ..." -ForegroundColor Yellow
+        # Terminate base distro if it's running (required for clone operations)
+        if ($script:baseDistroName -in $existingDistros) {
+            $baseState = Get-WslDistroState -DistroName $script:baseDistroName
+            if ($baseState -eq "Running") {
+                Write-Host "    Stopping $script:baseDistroName before tests ..." -ForegroundColor Yellow
+                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+            }
+        }
+
+        # Always remove test distro before tests (clean slate)
+        if ($script:podmanTestDistroName -in $existingDistros) {
+            Write-Host "    Removing existing $script:podmanTestDistroName for fresh test run ..." -ForegroundColor Yellow
+            # Stop it first if running
+            $testState = Get-WslDistroState -DistroName $script:podmanTestDistroName
+            if ($testState -eq "Running") {
+                Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
+            }
             Remove-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
         }
 
-        # Clone Ubuntu to test distro
-        Write-Host "    Cloning $($script:baseDistroName) -> $($script:podmanTestDistroName) ..." -ForegroundColor Cyan
-        Copy-WslDistro -SourceName $script:baseDistroName -TargetName $script:podmanTestDistroName -Confirm:$false
-
-        # Setup user
-        Write-Host "    Setting up testuser in $($script:podmanTestDistroName) ..." -ForegroundColor Cyan
-        Invoke-WslManager -Command "setup-user" -Name $script:podmanTestDistroName -Username "testuser" -Password "testpass123"
-
-        # Restart to apply user changes
-        Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
-        Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName -Command "echo 'restarted'" -PrintCommand $false -Silent $true
-
-        Write-Host "    Podman test environment ready" -ForegroundColor Green
+        Write-Host "    NOTE: Test distributions will be preserved after tests for exploratory testing" -ForegroundColor Cyan
     }
 
     AfterAll {
-        # Stop test distro if running (preserve for exploration)
-        $testExists = Get-WslDistroList | Where-Object { $_ -eq $script:podmanTestDistroName }
-        if ($testExists) {
-            Write-Host "==> Stopping $($script:podmanTestDistroName) (preserved for exploration) ..." -ForegroundColor Cyan
-            Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
+        # Ensure test distributions are stopped after tests to prevent failures on next run
+        Write-Host "`n==> Cleaning up test environment ..." -ForegroundColor Cyan
+
+        $existingDistros = Get-WslDistroList
+
+        # Stop test distro if it's running
+        if ($script:podmanTestDistroName -in $existingDistros) {
+            try {
+                $state = Get-WslDistroState -DistroName $script:podmanTestDistroName
+                if ($state -eq "Running") {
+                    Write-Host "    Stopping $script:podmanTestDistroName ..." -ForegroundColor Yellow
+                    Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
+                }
+            }
+            catch {
+                Write-Host "    Warning: Could not stop $script:podmanTestDistroName : $_" -ForegroundColor Yellow
+            }
         }
 
-        # Stop base distro if running
-        $baseRunning = Get-WslDistroList -Detailed | Where-Object { $_.Name -eq $script:baseDistroName -and $_.State -eq "Running" }
-        if ($baseRunning) {
-            Write-Host "==> Stopping $($script:baseDistroName) ..." -ForegroundColor Cyan
-            Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+        # Stop base distro if it's running
+        if ($script:baseDistroName -in $existingDistros) {
+            try {
+                $state = Get-WslDistroState -DistroName $script:baseDistroName
+                if ($state -eq "Running") {
+                    Write-Host "    Stopping $script:baseDistroName ..." -ForegroundColor Yellow
+                    Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+                }
+            }
+            catch {
+                Write-Host "    Warning: Could not stop $script:baseDistroName : $_" -ForegroundColor Yellow
+            }
+        }
+
+        Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
+    }
+
+    Context "Create Base Distribution" {
+        It "Should use existing or create Ubuntu" {
+            # Check if base distro exists
+            $existingDistros = Get-WslDistroList
+
+            if ($script:baseDistroName -in $existingDistros) {
+                Write-Host "`n==> TEST: Using existing $script:baseDistroName ..." -ForegroundColor Magenta
+                # Verify it exists
+                $existingDistros | Should -Contain $script:baseDistroName
+            }
+            else {
+                Write-Host "`n==> TEST: Creating $script:baseDistroName ..." -ForegroundColor Magenta
+
+                # Capture output
+                $output = Invoke-WslManager -Command "create" -Name $script:baseDistroName *>&1 | Out-String
+
+                Write-Host "==> Captured Output:" -ForegroundColor Cyan
+                Write-Host $output
+
+                # Verify distribution was created
+                $existingDistros = Get-WslDistroList
+                $existingDistros | Should -Contain $script:baseDistroName
+
+                # Verify commands were printed
+                $output | Should -Match "Executing:.*wsl.exe --install"
+                $output | Should -Match "Successfully created '$script:baseDistroName'"
+            }
+        }
+    }
+
+    Context "Clone and Prepare Test Distribution" {
+        It "Should clone Ubuntu to test distro" {
+            Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:podmanTestDistroName ..." -ForegroundColor Magenta
+
+            # Ensure base distribution is stopped before cloning
+            if (Test-WslDistroRunning -DistroName $script:baseDistroName) {
+                Write-Host "    Stopping '$script:baseDistroName' before cloning..." -ForegroundColor Yellow
+                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
+            }
+
+            $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:podmanTestDistroName *>&1 | Out-String
+
+            Write-Host "==> Captured Output:" -ForegroundColor Cyan
+            Write-Host $output
+
+            # Verify clone was created
+            $existingDistros = Get-WslDistroList
+            $existingDistros | Should -Contain $script:podmanTestDistroName
+        }
+
+        It "Should setup test user in cloned distro" {
+            Write-Host "`n==> TEST: Setting up user in $script:podmanTestDistroName ..." -ForegroundColor Magenta
+
+            $output = Invoke-WslManager -Command "setup-user" -Name $script:podmanTestDistroName -Username "testuser" -Password "testpass123" *>&1 | Out-String
+
+            Write-Host "==> Captured Output:" -ForegroundColor Cyan
+            Write-Host $output
+
+            $output | Should -Match "Successfully created user 'testuser'"
+
+            # Restart to apply user changes
+            Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
+            Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName -Command "echo 'restarted'" -PrintCommand $false -Silent $true
+
+            # Verify testuser is the default user
+            $currentUser = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "whoami" -PrintCommand $false -PassThru
+            $currentUser.Trim() | Should -Be "testuser"
         }
     }
 
@@ -126,8 +221,11 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
             Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName -Command "echo 'restarted'" -PrintCommand $false -Silent $true
 
             # Verify Podman socket exists
+            $uid = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "id -u testuser" -PrintCommand $false -PassThru
+            $uid = $uid.Trim()
             $socketCheck = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
-                -Command 'test -S /run/user/$(id -u testuser)/podman/podman.sock && echo "exists" || echo "not-found"' `
+                -Command "test -S /run/user/$uid/podman/podman.sock && echo exists || echo not-found" `
                 -PrintCommand $false -PassThru -StopAtError $false
             Write-Host "    Podman socket: $socketCheck" -ForegroundColor Cyan
             $socketCheck.Trim() | Should -Be "exists"
@@ -142,7 +240,7 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         }
 
         It "Should verify systemd is configured and running" {
-            Write-Host "`n==> TEST: Verifying systemd configuration in $($script:podmanTestDistroName) ..." -ForegroundColor Magenta
+            Write-Host "`n==> TEST: Verifying systemd configuration in $script:podmanTestDistroName ..." -ForegroundColor Magenta
 
             # Verify systemd is configured in wsl.conf
             $wslConfContent = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `

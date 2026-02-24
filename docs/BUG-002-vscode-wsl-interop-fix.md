@@ -207,7 +207,7 @@ function Repair-WslInteropConfiguration {
 
 ### 3. Update Integration Tests (TDD Approach)
 
-**File**: `tools/pslib/wsl/wsl-manager.Integration.Tests.ps1`
+**File**: `tools/pslib/wsl/wsl-manager.docker.Integration.Tests.ps1`
 
 **Test 1: Replace rc.local test** (lines 619-655):
 
