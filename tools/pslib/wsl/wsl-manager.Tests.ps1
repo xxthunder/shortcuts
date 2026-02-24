@@ -178,6 +178,7 @@ Describe "Show-InteractiveMenu" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Install*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Remove*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Setup Podman*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Quit*" }
         }
 
@@ -191,6 +192,29 @@ Describe "Show-InteractiveMenu" {
             $result = Show-InteractiveMenu
 
             $result | Should -Be $true
+        }
+
+        It "Should dispatch to Invoke-SetupPodmanInteractive when P is selected" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "P" }
+                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
+                else { "Q" }
+            }
+            Mock Invoke-SetupPodmanInteractive {}
+
+            Show-InteractiveMenu
+
+            Should -Invoke Invoke-SetupPodmanInteractive -Times 1
         }
     }
 }
@@ -993,6 +1017,145 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Install-WslDockerEngine -Times 0
+        }
+    }
+
+    Context "When called with 'setup-podman' argument" {
+        It "Should prompt for distribution when Name is not provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should call Install-WslPodman when Name is provided" {
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman" -Name "Debian"
+
+            Should -Invoke Install-WslPodman -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after Podman installation" {
+            Mock Write-Host {}
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Podman*" }
+        }
+
+        It "Should display restart instructions" {
+            Mock Write-Host {}
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
+        }
+
+        It "Should handle WSL1 distribution error" {
+            Mock Install-WslPodman { throw "Distribution 'OldDebian' is using WSL1.`nPodman requires WSL2. Upgrade with:`n  wsl.exe --set-version OldDebian 2" }
+
+            { Invoke-WslManager -Command "setup-podman" -Name "OldDebian" } | Should -Throw "*WSL1*"
+        }
+
+        It "Should handle Docker already installed (mutual exclusion) error" {
+            Mock Install-WslPodman { throw "Docker is already installed in 'Debian'. Podman and Docker cannot coexist." }
+
+            { Invoke-WslManager -Command "setup-podman" -Name "Debian" } | Should -Throw "*Docker is already installed*"
+        }
+
+        It "Should handle no default user error" {
+            Mock Install-WslPodman { throw "No default user configured in 'Debian'.`nPodman setup requires a non-root user" }
+
+            { Invoke-WslManager -Command "setup-podman" -Name "Debian" } | Should -Throw "*default user*"
+        }
+
+        It "Should support selection by number" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman"
+
+            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman"
+
+            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Alpine" }
+        }
+
+        It "Should reject invalid number selection" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Install-WslPodman -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Install-WslPodman { $true }
+
+            Invoke-WslManager -Command "setup-podman"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Install-WslPodman -Times 0
         }
     }
 

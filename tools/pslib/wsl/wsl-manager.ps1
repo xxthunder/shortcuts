@@ -9,7 +9,7 @@
     creating, and removing distributions.
 
 .PARAMETER Command
-    The command to execute: list, create, clone, remove, update, setup-user, setup-docker, repair-interop, terminate.
+    The command to execute: list, create, clone, remove, update, setup-user, setup-docker, setup-podman, repair-interop, terminate.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -48,7 +48,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "repair-interop", "terminate", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -593,6 +593,92 @@ function Invoke-SetupDockerInteractive {
     Invoke-SetupDocker -DistroName $selectedName
 }
 
+function Invoke-SetupPodman {
+    <#
+    .SYNOPSIS
+        Handles the Podman setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install Podman in.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    Write-Host ""
+    Write-Host "Setting up Podman in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    try {
+        # Install Podman (skip confirmation since we're handling it interactively)
+        $result = Install-WslPodman -DistroName $DistroName -Confirm:$false
+
+        if ($result) {
+            Write-Host ""
+            Write-Success "Successfully installed Podman in '$DistroName'."
+            Write-Host ""
+            Write-Host "To apply configuration changes, restart the distribution with:" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
+            Write-Host "  wsl.exe --distribution $DistroName" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        throw $_
+    }
+}
+
+function Invoke-SetupPodmanInteractive {
+    <#
+    .SYNOPSIS
+        Handles the Podman setup workflow interactively by prompting for distribution name.
+    #>
+    $distros = @(Get-WslDistroList -Detailed)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Format-DistroListEntry -Index $index -Distro $distro
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to setup Podman in"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1].Name
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Setup Podman in the selected distribution
+    Invoke-SetupPodman -DistroName $selectedName
+}
+
 function Invoke-CloneDistro {
     <#
     .SYNOPSIS
@@ -704,6 +790,7 @@ function Show-InteractiveMenu {
         Write-Host "  [U] Update distribution" -ForegroundColor White
         Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
+        Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
@@ -757,6 +844,15 @@ function Show-InteractiveMenu {
                 }
                 Read-Host -Prompt "Press Enter to continue ..."
             }
+            "P" {
+                try {
+                    Invoke-SetupPodmanInteractive
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
             "R" {
                 try {
                     Invoke-RemoveDistro
@@ -798,7 +894,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "repair-interop", "terminate", "")]
+        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -838,6 +934,14 @@ function Invoke-WslManager {
             }
             else {
                 Invoke-SetupDocker -DistroName $Name
+            }
+        }
+        "setup-podman" {
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Invoke-SetupPodmanInteractive
+            }
+            else {
+                Invoke-SetupPodman -DistroName $Name
             }
         }
         "repair-interop" {

@@ -63,8 +63,8 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - Troubleshooting (WSL systemd race condition, cgroups, socket issues)
 
 **Acceptance Criteria**:
-- [ ] `wsl-manager setup-podman <distro>` command works
-- [ ] Interactive menu option `[P] Setup Podman` works
+- [x] `wsl-manager setup-podman <distro>` command works
+- [x] Interactive menu option `[P] Setup Podman` works
 - [x] Installs Podman and slirp4netns on Debian/Ubuntu distributions
 - [x] Fails fast with clear error if Docker is already installed in the distro
 - [x] Configures rootless Podman systemd socket (`podman.socket`)
