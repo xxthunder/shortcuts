@@ -148,7 +148,74 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 
 ### Technical Debt
 
-*No items yet*
+#### [REFACT-005] Extract `Assert-WslDistroExists` guard to replace inline distro validation (DRY)
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/` (7 source files, 7 test files)
+**Related**: REFACT-004 (same pattern — entry-point guard extraction)
+
+**Description**:
+21 call sites across 7 source files repeat the same inline pattern:
+
+```powershell
+$DistroName = $DistroName.Trim()
+$distros = Get-WslDistroList
+if ($DistroName -notin $distros) {
+    throw "Distribution '$DistroName' does not exist."
+}
+```
+
+Plus one site in `core.ps1` (`Test-WslDistroRunning`) already calls `Test-WslDistroExists` but still does the throw inline.
+
+A boolean `Test-WslDistroExists` already exists in `core.ps1` but is only used in that one place. Create a throwing `Assert-WslDistroExists` guard function (following the `Assert-Wsl2Installed` pattern from REFACT-004) and replace all 22 inline checks.
+
+**Affected call sites** (21 inline `Get-WslDistroList` + `-notin` + throw, plus 1 `Test-WslDistroExists` + throw):
+| File | Occurrences | Functions |
+|------|-------------|-----------|
+| `lib/core.ps1` | 5 inline + 1 via `Test-WslDistroExists` | `Get-WslDistroState` (line 227), `Get-WslDistroType` (361), `Test-Wsl2Version` (432), `Test-WslSystemd` (490), `Stop-WslDistro` (557), `Test-WslDistroRunning` (318 — already uses `Test-WslDistroExists`) |
+| `lib/user.ps1` | 5 | `New-WslUser` (84), `Set-WslConf` (219), `Get-WslDefaultUser` (396), `Test-WslSystemdConfigured` (492), `Test-WslInteropConfigured` (587) |
+| `lib/ops.ps1` | 3 | `Remove-WslDistro` (39), `Copy-WslDistro` (109 — source check; line 114 reuses `$distros` for target-already-exists), `Update-WslDistro` (197) |
+| `lib/docker.ps1` | 2 | `Test-WslDockerInstalled` (48), `Install-WslDockerEngine` (142 — enhanced msg with available list) |
+| `lib/podman.ps1` | 2 | `Test-WslPodmanInstalled` (48), `Install-WslPodman` (142 — enhanced msg with available list) |
+| `lib/exec.ps1` | 2 | `Invoke-WslDistroCommand` (82), `Invoke-WslDistroScript` (187) |
+| `lib/ops.ps1` | (see above — `Copy-WslDistro` also has a target-already-exists check at line 114 that reuses the same `$distros` variable) |
+
+**Not in scope** (different semantics):
+- `wsl-manager.ps1:180` — validates against `Get-WslAvailableDistro` (installable distros, not existing)
+- `wsl-manager.ps1:388` — validates against running distros only
+- `lib/install.ps1:118` — validates against `Get-WslAvailableDistro`
+- `wsl-manager.ps1` display/UI calls — use `Get-WslDistroList -Detailed` for listing, not existence checks
+
+**Implementation**:
+1. Absorb `.Trim()` into `Test-WslDistroExists` in `core.ps1` (the boolean function trims before checking)
+2. Add `Assert-WslDistroExists` function in `core.ps1` (next to `Test-WslDistroExists`)
+   - Takes `-DistroName` parameter
+   - Calls `Test-WslDistroExists` (which now trims internally), throws if `$false`
+   - Consistent error message: `"Distribution '<name>' does not exist."`
+3. Replace all 22 call sites with a single `Assert-WslDistroExists` call
+4. Remove the now-redundant `$DistroName.Trim()` / `$Name.Trim()` calls that precede the validation
+5. `Assert-WslDistroExists` always includes installed distros in the error message:
+   - Message: `"Distribution '<name>' does not exist. Installed distributions: <list>"`
+   - The list is cheap to compute (already fetched for the existence check) and always helpful
+   - This standardizes all 20 call sites to the richer message (currently only `Install-WslDockerEngine` / `Install-WslPodman` had it)
+6. Handle `Copy-WslDistro` (source-exists + target-not-exists):
+   - Source check (line 109): replace with `Assert-WslDistroExists -DistroName $SourceName`
+   - Target check (line 114): add `Assert-WslDistroNotExists` guard function (or name it `Assert-WslDistroDoesNotExist`) — same pattern, inverse logic, message: `"Distribution '<name>' already exists."`
+   - Both trims on lines 104–105 are absorbed into the respective guards
+7. Update test files: remove `Mock Get-WslDistroList` that only existed to satisfy the inline guard; add mocks for `Assert-WslDistroExists` / `Assert-WslDistroNotExists` instead
+8. Keep `Test-WslDistroExists` (the boolean check) for non-throwing use cases
+
+**Acceptance Criteria**:
+- [ ] `Test-WslDistroExists` absorbs `.Trim()` internally
+- [ ] New `Assert-WslDistroExists` function with unit tests
+- [ ] New `Assert-WslDistroNotExists` function with unit tests (for `Copy-WslDistro` target check)
+- [ ] All 22 inline distro-existence checks replaced (including the 2 enhanced-message sites and the inverse check)
+- [ ] Redundant `$DistroName.Trim()` / `$Name.Trim()` calls removed where they only served the validation
+- [ ] `Test-WslDistroExists` (boolean) remains available for non-throwing use
+- [ ] Error message always includes installed distros list: `"Distribution '<name>' does not exist. Installed distributions: <list>"`
+- [ ] All existing tests pass (mock updates only, no behavior change)
+- [ ] No change in user-facing behavior
 
 ### Documentation
 
