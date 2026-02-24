@@ -2,9 +2,15 @@
 
 ## IN PROGRESS
 
-### [FEAT-002] Set up Podman as Docker alternative in WSL
+*No items currently in progress*
 
-**Status**: In Progress
+---
+
+## DONE
+
+### [FEAT-002] ✅ COMPLETED - Set up Podman as Docker alternative in WSL
+
+**Status**: **Completed** (2026-02-24) | **Branch**: `feature/feat-002-podman-wsl`
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
 **Related**: FEAT-001, Dev Container workflow
@@ -45,12 +51,12 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - Verifies `podman --version`, socket exists, and `podman info` succeeds as target user
 - Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
 
-**Step 3: `wsl-manager.ps1`** — wire up the new command
+**Step 3: `wsl-manager.ps1`** — wire up the new command ✅ **DONE**
 - Add `setup-podman` to `ValidateSet` and `Invoke-WslManager` switch
 - Add `Invoke-SetupPodmanInteractive` (mirrors `Invoke-SetupDockerInteractive`)
 - Add `[P] Setup Podman` to interactive menu
 
-**Step 4: `docs/wsl-podman-setup.md`** — documentation
+**Step 4: `docs/wsl-podman-setup.md`** — documentation ✅ **DONE**
 - Podman vs Docker comparison
 - Rootless benefits and limitations
 - Prerequisites: cgroups v2 setup (`.wslconfig` kernel command line)
@@ -78,7 +84,7 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - [x] Requires systemd-enabled distro (error if not configured)
 - [x] Requires non-root default user (error if missing)
 - [x] Clear error messages for all failure paths
-- [ ] Documentation in `docs/wsl-podman-setup.md`
+- [x] Documentation in `docs/wsl-podman-setup.md`
 - [x] Unit tests in `lib/podman.Tests.ps1`
 - [x] All existing tests continue to pass
 
@@ -155,8 +161,6 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 *No items yet*
 
 ---
-
-## DONE
 
 ### [REFACT-005] ✅ COMPLETED - Extract `Assert-WslDistroExists` guard to replace inline distro validation (DRY)
 

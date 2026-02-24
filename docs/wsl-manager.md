@@ -10,7 +10,7 @@ The WSL Manager is a PowerShell-based tool for managing Windows Subsystem for Li
 
 **Core Files**:
 - `tools/pslib/wsl/wsl.ps1` - Library functions (28 functions)
-- `tools/pslib/wsl/lib/` - Modular implementation (core, docker, exec, install, ops, user)
+- `tools/pslib/wsl/lib/` - Modular implementation (core, docker, exec, install, ops, podman, user)
 - `tools/pslib/wsl/wsl-manager.ps1` - Interactive interface
 - `tools/pslib/wsl/wsl-manager.bat` - Batch wrapper for Keypirinha
 
@@ -168,6 +168,24 @@ These user stories were identified but not yet prioritized for implementation:
 **Not yet implemented**:
 - Docker uninstall command (users can manually uninstall via apt-get)
 
+### User Story 9 - Setup Rootless Podman (P9) - ✅ COMPLETED
+
+**Status**: Fully implemented in both CLI and interactive menu with idempotent behavior.
+
+**Features**:
+- ✅ Podman installation via `Install-WslPodman` (fully idempotent)
+- ✅ Interactive menu: `[P] Setup Podman (rootless, includes systemd/interop)`
+- ✅ CLI command: `wsl-manager setup-podman <distro-name>`
+- ✅ Automatic prerequisite configuration (systemd, interop, mount --make-rshared)
+- ✅ Podman status check via `Test-WslPodmanInstalled`
+- ✅ Mutual exclusion with Docker (fails fast if Docker is installed)
+- ✅ Rootless socket activation (`podman.socket` as user service)
+- ✅ `DOCKER_HOST` pointing to Podman socket for Docker CLI compatibility
+- ✅ Safe to run multiple times - verifies or repairs existing installations
+- ✅ cgroups v2 detection with user-friendly warning
+
+**Reference**: See `docs/wsl-podman-setup.md` for complete setup guide and `docs/backlog.md` FEAT-002
+
 ---
 
 ## Technical Architecture
@@ -185,9 +203,11 @@ tools/pslib/wsl/
 │   ├── exec.ps1               # Script execution in WSL
 │   ├── install.ps1            # Clone, remove operations
 │   ├── ops.ps1                # Update, state, terminate operations
+│   ├── podman.ps1             # Podman installation & verification
 │   └── user.ps1               # User account creation & configuration
 ├── scripts/
-│   └── install-docker.sh      # Docker Engine installation script
+│   ├── install-docker.sh      # Docker Engine installation script
+│   └── install-podman.sh      # Rootless Podman installation script
 └── tests/
     ├── wsl.Tests.ps1                       # Unit tests
     ├── wsl.Integration.Tests.ps1           # Integration tests
