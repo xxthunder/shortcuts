@@ -40,14 +40,8 @@ function Test-WslDockerInstalled {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Try to run docker --version
     try {
@@ -130,7 +124,6 @@ function Install-WslDockerEngine {
     )
 
     # Trim input
-    $DistroName = $DistroName.Trim()
     if ($Username) {
         $Username = $Username.Trim()
     }
@@ -138,11 +131,7 @@ function Install-WslDockerEngine {
     # Prerequisite validation - fail-fast approach
 
     # 1. Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        $availableDistros = $distros -join ", "
-        throw "Distribution '$DistroName' does not exist. Available distributions: $availableDistros"
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # 3. Check WSL2 (not WSL1)
     if (-not (Test-Wsl2Version -DistroName $DistroName)) {

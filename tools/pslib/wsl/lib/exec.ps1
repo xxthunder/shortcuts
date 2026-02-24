@@ -78,10 +78,7 @@ function Invoke-WslDistroCommand {
     )
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Escape double quotes for bash and dollar signs for PowerShell
     # We use double quotes around the command to allow bash variable expansion (e.g., $ID from /etc/os-release)
@@ -183,10 +180,7 @@ function Invoke-WslDistroScript {
     }
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Convert Windows path to WSL mount path
     # Extract drive letter and convert to lowercase (C:, D:, etc.)

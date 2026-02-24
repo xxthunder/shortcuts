@@ -10,7 +10,7 @@ BeforeAll {
 
 Describe "Module Structure - Backward Compatibility" {
     Context "When wsl.ps1 is sourced" {
-        It "Should export all 20 core WSL functions" {
+        It "Should export all 22 core WSL functions" {
             # Define all functions that must remain accessible after refactoring
             $expectedFunctions = @(
                 'Test-WslInstalled'
@@ -33,6 +33,8 @@ Describe "Module Structure - Backward Compatibility" {
                 'Test-Wsl2Version'
                 'Test-WslDockerInstalled'
                 'Install-WslDockerEngine'
+                'Assert-WslDistroExists'
+                'Assert-WslDistroNotExists'
             )
 
             # Verify each function is accessible

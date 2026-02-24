@@ -256,7 +256,7 @@ Use 'wsl --list --online' to list available distributions.
 Describe "Get-WslDistroType" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
             { Get-WslDistroType -DistroName "Debian" } | Should -Throw "*does not exist*"
         }
@@ -265,7 +265,7 @@ Describe "Get-WslDistroType" {
     Context "When detecting distribution types" {
         It "Should detect Debian distribution" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "debian" } -ParameterFilter {
                 $Command -like '*os-release*' -and $DistroName -eq "Debian"
             }
@@ -277,7 +277,7 @@ Describe "Get-WslDistroType" {
 
         It "Should detect Ubuntu distribution" {
 
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "ubuntu" } -ParameterFilter {
                 $Command -like '*os-release*' -and $DistroName -eq "Ubuntu"
             }
@@ -289,7 +289,7 @@ Describe "Get-WslDistroType" {
 
         It "Should detect Arch distribution" {
 
-            Mock Get-WslDistroList { @("Arch") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "arch" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -301,7 +301,7 @@ Describe "Get-WslDistroType" {
 
         It "Should detect Fedora as rhel family" {
 
-            Mock Get-WslDistroList { @("Fedora") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "fedora" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -313,7 +313,7 @@ Describe "Get-WslDistroType" {
 
         It "Should detect CentOS as rhel family" {
 
-            Mock Get-WslDistroList { @("CentOS") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "centos" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -325,7 +325,7 @@ Describe "Get-WslDistroType" {
 
         It "Should detect RHEL as rhel family" {
 
-            Mock Get-WslDistroList { @("RHEL") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "rhel" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -337,7 +337,7 @@ Describe "Get-WslDistroType" {
 
         It "Should return unknown for unrecognized distributions" {
 
-            Mock Get-WslDistroList { @("CustomLinux") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "customlinux" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -351,7 +351,7 @@ Describe "Get-WslDistroType" {
     Context "When parsing os-release output" {
         It "Should execute command silently without printing" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "debian" }
 
             Get-WslDistroType -DistroName "Debian"
@@ -363,7 +363,7 @@ Describe "Get-WslDistroType" {
 
         It "Should parse ID field from os-release" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "debian" }
 
             Get-WslDistroType -DistroName "Debian"
@@ -376,7 +376,7 @@ Describe "Get-WslDistroType" {
 
         It "Should handle output with quotes" {
 
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { '"ubuntu"' } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -388,7 +388,7 @@ Describe "Get-WslDistroType" {
 
         It "Should handle output with whitespace" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "  debian  " } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -400,7 +400,7 @@ Describe "Get-WslDistroType" {
 
         It "Should normalize to lowercase" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "DEBIAN" } -ParameterFilter {
                 $Command -like '*os-release*'
             }
@@ -421,7 +421,7 @@ Describe "Get-WslDistroType" {
 Describe "Test-WslSystemd" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
             { Test-WslSystemd -DistroName "Debian" } | Should -Throw "*does not exist*"
         }
@@ -430,7 +430,7 @@ Describe "Test-WslSystemd" {
     Context "When systemd is available and running" {
         It "Should return true when systemctl --version succeeds" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand {
                 "systemd 249 (249.11-0ubuntu3.12)"
             } -ParameterFilter { $Command -like "*systemctl --version*" }
@@ -442,7 +442,7 @@ Describe "Test-WslSystemd" {
 
         It "Should execute systemctl --version command" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "systemd 249" } -ParameterFilter {
                 $Command -like "*systemctl --version*"
             }
@@ -461,7 +461,7 @@ Describe "Test-WslSystemd" {
     Context "When systemd is not available or not running" {
         It "Should return false when systemctl command fails" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { throw "systemctl: command not found" } -ParameterFilter {
                 $Command -like "*systemctl --version*"
             }
@@ -473,7 +473,7 @@ Describe "Test-WslSystemd" {
 
         It "Should return false when systemctl returns non-zero exit code" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { "" } -ParameterFilter {
                 $Command -like "*systemctl --version*"
             }
@@ -485,7 +485,7 @@ Describe "Test-WslSystemd" {
 
         It "Should return false when systemd is not enabled in wsl.conf" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-WslDistroCommand { throw "System has not been booted with systemd" } -ParameterFilter {
                 $Command -like "*systemctl --version*"
             }
@@ -506,7 +506,7 @@ Describe "Test-WslSystemd" {
 Describe "Test-Wsl2Version" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
             { Test-Wsl2Version -DistroName "Debian" } | Should -Throw "*does not exist*"
         }
@@ -515,7 +515,7 @@ Describe "Test-Wsl2Version" {
     Context "When distribution is WSL2" {
         It "Should return true using Get-WslDistroList -Detailed" {
 
-            Mock Get-WslDistroList { @("Debian") } -ParameterFilter { -not $Detailed }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
@@ -527,7 +527,7 @@ Describe "Test-Wsl2Version" {
 
         It "Should handle distribution name with special characters" {
 
-            Mock Get-WslDistroList { @("Ubuntu-22.04") } -ParameterFilter { -not $Detailed }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Ubuntu-22.04"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
@@ -541,7 +541,7 @@ Describe "Test-Wsl2Version" {
     Context "When distribution is WSL1" {
         It "Should return false using Get-WslDistroList -Detailed" {
 
-            Mock Get-WslDistroList { @("Debian") } -ParameterFilter { -not $Detailed }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 1; IsDefault = $true })
             } -ParameterFilter { $Detailed }
@@ -562,7 +562,7 @@ Describe "Test-Wsl2Version" {
 Describe "Get-WslDistroState" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu, Alpine" }
 
             { Get-WslDistroState -DistroName "NonExistent" } | Should -Throw -ExpectedMessage "*Distribution 'NonExistent' does not exist*"
         }
@@ -571,7 +571,7 @@ Describe "Get-WslDistroState" {
     Context "When distribution is running" {
         It "Should return 'Running' using Get-WslDistroList -Detailed" {
 
-            Mock Get-WslDistroList { @("Debian") } -ParameterFilter { -not $Detailed }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
@@ -584,7 +584,7 @@ Describe "Get-WslDistroState" {
     Context "When distribution is stopped" {
         It "Should return 'Stopped' using Get-WslDistroList -Detailed" {
 
-            Mock Get-WslDistroList { @("Debian") } -ParameterFilter { -not $Detailed }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
@@ -639,12 +639,82 @@ Describe "Test-WslDistroExists" {
             $result | Should -Be $false
         }
     }
+
+    Context "When input has whitespace" {
+        It "Should trim whitespace from DistroName" {
+
+            Mock Get-WslDistroList { @("Debian") }
+
+            $result = Test-WslDistroExists -DistroName "  Debian  "
+            $result | Should -Be $true
+        }
+    }
+}
+
+Describe "Assert-WslDistroExists" {
+    Context "When distribution exists" {
+        It "Should not throw when distribution exists" {
+            Mock Get-WslDistroList { @("Debian", "Ubuntu") }
+
+            { Assert-WslDistroExists -DistroName "Debian" } | Should -Not -Throw
+        }
+    }
+
+    Context "When distribution does not exist" {
+        It "Should throw with installed list when distribution does not exist" {
+            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+
+            { Assert-WslDistroExists -DistroName "Debian" } | Should -Throw "*does not exist*Installed distributions: Ubuntu, Alpine*"
+        }
+    }
+
+    Context "When input has whitespace" {
+        It "Should trim whitespace from DistroName" {
+            Mock Get-WslDistroList { @("Debian") }
+
+            { Assert-WslDistroExists -DistroName "  Debian  " } | Should -Not -Throw
+        }
+    }
+
+    Context "When no distributions are installed" {
+        It "Should handle empty distro list" {
+            Mock Get-WslDistroList { @() }
+
+            { Assert-WslDistroExists -DistroName "Debian" } | Should -Throw "*does not exist*Installed distributions: *"
+        }
+    }
+}
+
+Describe "Assert-WslDistroNotExists" {
+    Context "When distribution does not exist" {
+        It "Should not throw when distribution does not exist" {
+            Mock Test-WslDistroExists { $false }
+
+            { Assert-WslDistroNotExists -DistroName "Debian" } | Should -Not -Throw
+        }
+    }
+
+    Context "When distribution already exists" {
+        It "Should throw when distribution already exists" {
+            Mock Test-WslDistroExists { $true }
+
+            { Assert-WslDistroNotExists -DistroName "Debian" } | Should -Throw "*already exists*"
+        }
+    }
+
+    Context "When input has whitespace" {
+        It "Should trim whitespace" {
+            Mock Test-WslDistroExists { $true }
+
+            { Assert-WslDistroNotExists -DistroName "  Debian  " } | Should -Throw "*'Debian' already exists*"
+        }
+    }
 }
 
 Describe "Test-WslDistroRunning" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Test-WslDistroExists { $false }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: " }
 
             { Test-WslDistroRunning -DistroName "NonExistent" } | Should -Throw -ExpectedMessage "*Distribution 'NonExistent' does not exist*"
         }
@@ -653,7 +723,7 @@ Describe "Test-WslDistroRunning" {
     Context "When distribution is running" {
         It "Should return true" {
 
-            Mock Test-WslDistroExists { $true }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroState { "Running" } -ParameterFilter { $DistroName -eq "Debian" }
 
             $result = Test-WslDistroRunning -DistroName "Debian"
@@ -662,7 +732,7 @@ Describe "Test-WslDistroRunning" {
 
         It "Should call Get-WslDistroState" {
 
-            Mock Test-WslDistroExists { $true }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroState { "Running" }
 
             Test-WslDistroRunning -DistroName "Debian"
@@ -674,7 +744,7 @@ Describe "Test-WslDistroRunning" {
     Context "When distribution is stopped" {
         It "Should return false" {
 
-            Mock Test-WslDistroExists { $true }
+            Mock Assert-WslDistroExists { }
             Mock Get-WslDistroState { "Stopped" } -ParameterFilter { $DistroName -eq "Debian" }
 
             $result = Test-WslDistroRunning -DistroName "Debian"
@@ -692,7 +762,7 @@ Describe "Test-WslDistroRunning" {
 Describe "Stop-WslDistro" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu, Alpine" }
 
             { Stop-WslDistro -Name "NonExistent" } | Should -Throw -ExpectedMessage "*Distribution 'NonExistent' does not exist*"
         }
@@ -701,7 +771,7 @@ Describe "Stop-WslDistro" {
     Context "When distribution is already stopped" {
         It "Should display informational message and not call terminate" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false } -ParameterFilter { $DistroName -eq "Debian" }
             Mock Invoke-CommandLine { }
             Mock Write-Information { }
@@ -718,7 +788,7 @@ Describe "Stop-WslDistro" {
 
         It "Should not throw error when distribution is already stopped" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
             Mock Invoke-CommandLine { }
 
@@ -729,7 +799,7 @@ Describe "Stop-WslDistro" {
     Context "When distribution is running" {
         It "Should call wsl.exe --terminate with distribution name" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
 
@@ -742,7 +812,7 @@ Describe "Stop-WslDistro" {
 
         It "Should display success message after termination" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
             Mock Write-Information { }
@@ -756,7 +826,7 @@ Describe "Stop-WslDistro" {
 
         It "Should trim whitespace from distribution name" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
 
@@ -771,7 +841,7 @@ Describe "Stop-WslDistro" {
     Context "ShouldProcess support" {
         It "Should skip termination when -WhatIf is specified" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
 
@@ -782,7 +852,7 @@ Describe "Stop-WslDistro" {
 
         It "Should proceed when -Confirm:$false is specified" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
 
@@ -795,7 +865,7 @@ Describe "Stop-WslDistro" {
 
         It "Should proceed in CI environment without prompting" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
             Mock Test-RunningInCIorTestEnvironment { $true }
@@ -811,7 +881,7 @@ Describe "Stop-WslDistro" {
     Context "Error handling" {
         It "Should throw when wsl terminate command fails" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine {
                 $global:LASTEXITCODE = 1
@@ -823,7 +893,7 @@ Describe "Stop-WslDistro" {
 
         It "Should not display success message when terminate fails" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { throw "Terminate failed" }
             Mock Write-Information { }
@@ -848,7 +918,7 @@ Describe "Stop-WslDistro" {
 
         It "Should throw when Name is whitespace only" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { throw "Distribution '' does not exist. Installed distributions: Debian" }
 
             { Stop-WslDistro -Name "   " } | Should -Throw
         }

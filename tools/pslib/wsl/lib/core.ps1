@@ -223,10 +223,7 @@ function Get-WslDistroState {
     )
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Get verbose list output - call wsl.exe directly to capture output
     # (Invoke-CommandLine doesn't return captured output)
@@ -278,8 +275,59 @@ function Test-WslDistroExists {
         [string]$DistroName
     )
 
+    $DistroName = $DistroName.Trim()
     $distros = Get-WslDistroList
     return $DistroName -in $distros
+}
+
+function Assert-WslDistroExists {
+    <#
+    .SYNOPSIS
+        Throws if the specified WSL distribution does not exist.
+    .DESCRIPTION
+        Guard function that validates a WSL distribution exists. Calls Get-WslDistroList
+        directly (not Test-WslDistroExists) because it needs the list for the error message.
+        Trims the distribution name internally.
+    .PARAMETER DistroName
+        The name of the WSL distribution to validate.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Exists is a singular verb form, not a plural noun')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    $distros = Get-WslDistroList
+    $DistroName = $DistroName.Trim()
+    if ($DistroName -notin $distros) {
+        $installed = $distros -join ", "
+        throw "Distribution '$DistroName' does not exist. Installed distributions: $installed"
+    }
+}
+
+function Assert-WslDistroNotExists {
+    <#
+    .SYNOPSIS
+        Throws if the specified WSL distribution already exists.
+    .DESCRIPTION
+        Guard function that validates a WSL distribution does not exist.
+        Uses Test-WslDistroExists which handles .Trim() internally.
+    .PARAMETER DistroName
+        The name of the WSL distribution to validate.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Exists is a singular verb form, not a plural noun')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    if (Test-WslDistroExists -DistroName $DistroName) {
+        throw "Distribution '$($DistroName.Trim())' already exists."
+    }
 }
 
 function Test-WslDistroRunning {
@@ -315,9 +363,7 @@ function Test-WslDistroRunning {
     )
 
     # Validate distribution exists
-    if (-not (Test-WslDistroExists -DistroName $DistroName)) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     $state = Get-WslDistroState -DistroName $DistroName
     return $state -eq 'Running'
@@ -357,10 +403,7 @@ function Get-WslDistroType {
     )
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Warm up the distro (ensure it's started and file system is accessible)
     # This is especially important for freshly imported/cloned distributions
@@ -424,14 +467,8 @@ function Test-Wsl2Version {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Get WSL version list - Refactored to use Get-WslDistroList -Detailed
     $distros = Get-WslDistroList -Detailed
@@ -482,14 +519,8 @@ function Test-WslSystemd {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Try to run systemctl --version
     try {
@@ -544,19 +575,11 @@ function Stop-WslDistro {
         [string]$Name
     )
 
-    # Trim name
+    # Validate distribution exists
+    Assert-WslDistroExists -DistroName $Name
+
+    # Trim name for use in commands below
     $Name = $Name.Trim()
-
-    # Validate not empty after trim
-    if ([string]::IsNullOrWhiteSpace($Name)) {
-        throw "Distribution name cannot be empty or whitespace."
-    }
-
-    # Check if distribution exists
-    $distros = Get-WslDistroList
-    if ($Name -notin $distros) {
-        throw "Distribution '$Name' does not exist."
-    }
 
     # Check if distribution is running
     $isRunning = Test-WslDistroRunning -DistroName $Name

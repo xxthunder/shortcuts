@@ -14,7 +14,7 @@ BeforeAll {
 Describe "Invoke-WslDistroCommand" {
     Context "When distribution does not exist" {
         It "Should throw an error" {
-            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu, Alpine" }
 
             { Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" } | Should -Throw "*does not exist*"
         }
@@ -23,7 +23,7 @@ Describe "Invoke-WslDistroCommand" {
     Context "When executing valid command" {
         It "Should execute command with correct wsl parameters" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { "command output" }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
@@ -35,7 +35,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should pass StopAtError parameter to Invoke-CommandLine" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -StopAtError $false
@@ -47,7 +47,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should pass PrintCommand parameter to Invoke-CommandLine" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PrintCommand $false
@@ -59,7 +59,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should print commands by default when PrintCommand is not specified" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
@@ -73,7 +73,7 @@ Describe "Invoke-WslDistroCommand" {
     Context "When using -PassThru switch" {
         It "Should capture and return output when -PassThru is specified" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { "command output" }
 
             $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
@@ -86,7 +86,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should return output when -PassThru is not specified" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { "command output" }
 
             $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
@@ -96,7 +96,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should join multiple output lines with newline when -PassThru is used" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { @("line1", "line2", "line3") }
 
             $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test" -PassThru
@@ -106,7 +106,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should not join multiple output lines when -PassThru is not used" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { @("line1", "line2", "line3") }
 
             $result = Invoke-WslDistroCommand -DistroName "Debian" -Command "echo test"
@@ -121,7 +121,7 @@ Describe "Invoke-WslDistroCommand" {
     Context "When command contains special characters" {
         It "Should handle double quotes in command (escaping with backslash)" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command 'echo "hello world"'
@@ -133,7 +133,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should handle commands with pipes" {
 
-            Mock Get-WslDistroList { @("Ubuntu") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Ubuntu" -Command "cat file.txt | grep pattern"
@@ -145,7 +145,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should handle commands with && operator" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             Invoke-WslDistroCommand -DistroName "Debian" -Command "apt update && apt upgrade"
@@ -159,7 +159,7 @@ Describe "Invoke-WslDistroCommand" {
     Context "When command fails" {
         It "Should throw when StopAtError is true and command fails" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { throw "Command failed with exit code 1" }
 
             { Invoke-WslDistroCommand -DistroName "Debian" -Command "false" -StopAtError $true } | Should -Throw "*Command failed*"
@@ -167,7 +167,7 @@ Describe "Invoke-WslDistroCommand" {
 
         It "Should not throw when StopAtError is false and command fails" {
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { }
 
             { Invoke-WslDistroCommand -DistroName "Debian" -Command "false" -StopAtError $false } | Should -Not -Throw
@@ -197,7 +197,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should accept valid Windows script path" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
 
             { Invoke-WslDistroScript -ScriptPath "C:\Users\test.sh" -DistroName "Debian" } |
@@ -212,7 +212,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should convert C: drive path to /mnt/c/" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $CommandLine -like "*wsl.exe*" -and $CommandLine -like "*/mnt/c/*"
             }
@@ -227,7 +227,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should convert D: drive path to /mnt/d/" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $CommandLine -like "*/mnt/d/*"
             }
@@ -242,7 +242,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should convert backslashes to forward slashes" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
 
             Invoke-WslDistroScript -ScriptPath "C:\path\to\script.sh" -DistroName "Debian"
@@ -257,7 +257,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should pass multiple arguments correctly" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $CommandLine -like "*--arg1=value1*" -and $CommandLine -like "*--arg2=value2*"
             }
@@ -271,7 +271,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should execute without arguments if none provided" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
 
             Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian"
@@ -282,7 +282,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should handle empty Arguments array" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
 
             Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Arguments @()
@@ -295,7 +295,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should return exit code 0 from successful script" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine {
                 $global:LASTEXITCODE = 0
                 return ""
@@ -309,7 +309,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should return exit code 2 from failed script" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine {
                 $global:LASTEXITCODE = 2
                 return ""
@@ -324,7 +324,7 @@ Describe "Invoke-WslDistroScript" {
     Context "WSL Validation" {
         It "Should throw when distribution does not exist" {
             Mock Test-Path { $true }
-            Mock Get-WslDistroList { @("Ubuntu", "Alpine") }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu, Alpine" }
 
             { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" } |
                 Should -Throw "*does not exist*"
@@ -335,7 +335,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should pass StopAtError parameter to Invoke-CommandLine" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $StopAtError -eq $false
             }
@@ -350,7 +350,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should pass PrintCommand parameter to Invoke-CommandLine" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $PrintCommand -eq $false
             }
@@ -365,7 +365,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should execute with sudo when AsRoot is true" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $CommandLine -like "*sudo bash*"
             }
@@ -380,7 +380,7 @@ Describe "Invoke-WslDistroScript" {
         It "Should execute without sudo when AsRoot is false" {
             Mock Test-Path { $true }
 
-            Mock Get-WslDistroList { @("Debian") }
+            Mock Assert-WslDistroExists { }
             Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
                 $CommandLine -like "*--exec bash*" -and $CommandLine -notlike "*sudo*"
             }

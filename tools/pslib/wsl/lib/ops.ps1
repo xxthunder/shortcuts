@@ -35,10 +35,7 @@ function Remove-WslDistro {
     )
 
     # Check if distribution exists
-    $distros = Get-WslDistroList
-    if ($Name -notin $distros) {
-        throw "Distribution '$Name' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $Name
 
     # Check if distribution is running (must be stopped for removal)
     if (Test-WslDistroRunning -DistroName $Name) {
@@ -100,20 +97,15 @@ function Copy-WslDistro {
         [string]$InstallPath = ""
     )
 
-    # Trim names to handle whitespace
-    $SourceName = $SourceName.Trim()
-    $TargetName = $TargetName.Trim()
-
     # Check if source distribution exists
-    $distros = Get-WslDistroList
-    if ($SourceName -notin $distros) {
-        throw "Source distribution '$SourceName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $SourceName
 
     # Check if target name already exists
-    if ($TargetName -in $distros) {
-        throw "Distribution '$TargetName' already exists."
-    }
+    Assert-WslDistroNotExists -DistroName $TargetName
+
+    # Trim names for use in commands below
+    $SourceName = $SourceName.Trim()
+    $TargetName = $TargetName.Trim()
 
     # Check if source distribution is running (must be stopped for export)
     if (Test-WslDistroRunning -DistroName $SourceName) {
@@ -189,14 +181,11 @@ function Update-WslDistro {
         [string]$Name
     )
 
-    # Trim name
-    $Name = $Name.Trim()
-
     # Check if distribution exists
-    $distros = Get-WslDistroList
-    if ($Name -notin $distros) {
-        throw "Distribution '$Name' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $Name
+
+    # Trim name for use in commands below
+    $Name = $Name.Trim()
 
     # Check if distribution is running (must be stopped for update)
     if (Test-WslDistroRunning -DistroName $Name) {

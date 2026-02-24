@@ -65,7 +65,6 @@ function New-WslUser {
     )
 
     # Trim inputs
-    $DistroName = $DistroName.Trim()
     $Username = $Username.Trim()
 
     # Validate username pattern BEFORE checking distribution (must start with lowercase letter or underscore, contain only lowercase, numbers, underscore, hyphen)
@@ -80,10 +79,7 @@ function New-WslUser {
     }
 
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Convert SecureString to plain text if needed
     $plainPassword = if ($Password -is [SecureString]) {
@@ -211,14 +207,8 @@ function Set-WslConf {
         [hashtable]$Sections
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Validate at least one section provided
     if ($Sections.Count -eq 0) {
@@ -388,14 +378,8 @@ function Get-WslDefaultUser {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Try to read wsl.conf
     try {
@@ -484,14 +468,8 @@ function Test-WslSystemdConfigured {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Try to read wsl.conf
     try {
@@ -579,14 +557,8 @@ function Test-WslInteropConfigured {
         [string]$DistroName
     )
 
-    # Trim input
-    $DistroName = $DistroName.Trim()
-
     # Validate distribution exists
-    $distros = Get-WslDistroList
-    if ($DistroName -notin $distros) {
-        throw "Distribution '$DistroName' does not exist."
-    }
+    Assert-WslDistroExists -DistroName $DistroName
 
     # Try to read wsl.conf
     try {
