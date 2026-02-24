@@ -205,6 +205,24 @@ Describe "Show-InteractiveMenu" {
 }
 
 Describe "Invoke-WslManager" {
+    BeforeEach {
+        Mock Assert-Wsl2Installed { }
+    }
+
+    Context "When WSL 2 is not available" {
+        It "Should throw for any command when Assert-Wsl2Installed fails" {
+            Mock Assert-Wsl2Installed { throw "WSL is not installed. Please install WSL first." }
+
+            { Invoke-WslManager -Command "list" } | Should -Throw "*WSL is not installed*"
+        }
+
+        It "Should throw for interactive mode when Assert-Wsl2Installed fails" {
+            Mock Assert-Wsl2Installed { throw "WSL 2 is required but only WSL 1 was detected. Please upgrade: wsl --update" }
+
+            { Invoke-WslManager } | Should -Throw "*WSL 2 is required*"
+        }
+    }
+
     Context "When called with 'list' argument" {
         It "Should call Show-WslDistroList" {
             Mock Show-WslDistroList {}

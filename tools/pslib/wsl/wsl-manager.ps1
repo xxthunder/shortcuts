@@ -843,6 +843,8 @@ function Invoke-WslManager {
         [string]$Password = ""
     )
 
+    Assert-Wsl2Installed
+
     switch ($Command.ToLower()) {
         "list" {
             Show-WslDistroList
