@@ -25,6 +25,36 @@ Describe "Test-WslInstalled" {
     }
 }
 
+Describe "Assert-Wsl2Installed" {
+    Context "When WSL 2 is installed" {
+        It "Should not throw" {
+            Mock Test-WslInstalled { $true }
+            Mock wsl { "WSL version: 2.0.0" } -ParameterFilter { $args[0] -eq "--version" }
+            $global:LASTEXITCODE = 0
+
+            { Assert-Wsl2Installed } | Should -Not -Throw
+        }
+    }
+
+    Context "When WSL is not installed" {
+        It "Should throw 'WSL is not installed'" {
+            Mock Test-WslInstalled { $false }
+
+            { Assert-Wsl2Installed } | Should -Throw "*WSL is not installed*"
+        }
+    }
+
+    Context "When only WSL 1 is detected" {
+        It "Should throw 'WSL 2 is required'" {
+            Mock Test-WslInstalled { $true }
+            Mock wsl { "error" } -ParameterFilter { $args[0] -eq "--version" }
+            $global:LASTEXITCODE = 1
+
+            { Assert-Wsl2Installed } | Should -Throw "*WSL 2 is required*"
+        }
+    }
+}
+
 Describe "Get-WslDistroList" {
     Context "When WSL is not installed" {
         It "Should throw an error" {

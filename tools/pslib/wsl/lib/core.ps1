@@ -34,6 +34,26 @@ function Test-WslInstalled {
     }
 }
 
+function Assert-Wsl2Installed {
+    <#
+    .SYNOPSIS
+        Throws if WSL 2 is not installed. Entry-point guard for Invoke-WslManager.
+    .DESCRIPTION
+        Validates that WSL is installed (wsl.exe exists) and that it is WSL 2
+        (wsl --version succeeds). On legacy WSL 1 systems, wsl --version is not
+        available. Intended to be called once at the Invoke-WslManager entry point.
+    #>
+    if (-not (Test-WslInstalled)) {
+        throw "WSL is not installed. Please install WSL first."
+    }
+
+    # wsl --version only exists in WSL 2 (store app). On WSL 1 it fails.
+    $null = wsl --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "WSL 2 is required but only WSL 1 was detected. Please upgrade: wsl --update"
+    }
+}
+
 function Get-WslDistroList {
     <#
     .SYNOPSIS
