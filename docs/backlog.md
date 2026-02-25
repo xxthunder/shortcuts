@@ -1,5 +1,44 @@
 # Backlog
 
+## Status Legend
+
+- **IN PROGRESS** - Currently being worked on
+- **TODO** - Ready to be picked up
+- **DONE** - Completed
+
+## Table of Contents
+
+### In Progress
+- [CHORE-002 — Backlog refinement](#chore-002-backlog-refinement)
+
+### TODO
+- [FEAT-007 — Add `shutdown` command to wsl-manager](#feat-007-add-shutdown-command-to-wsl-manager)
+- [FEAT-006 — Stop action functions from reprinting distro table](#feat-006-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
+- [REFACT-007 — Consolidate documentation and make all docs reachable from README](#refact-007-consolidate-documentation-and-make-all-docs-reachable-from-readme)
+- [REFACT-006 — Move argument validation into action functions](#refact-006-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
+- [FEAT-005 — Scoop Update Helper Script](#feat-005-scoop-update-helper-script)
+
+### Done
+- [FEAT-002 — Set up Podman as Docker alternative in WSL](#feat-002--completed---set-up-podman-as-docker-alternative-in-wsl)
+- [REFACT-005 — Extract `Assert-WslDistroExists` guard (DRY)](#refact-005--completed---extract-assert-wsldistroexists-guard-to-replace-inline-distro-validation-dry)
+- [REFACT-004 — Remove redundant `Test-WslInstalled` guard checks (DRY)](#refact-004--completed---remove-redundant-test-wslinstalled-guard-checks-dry)
+- [BUG-004 — Flaky integration test for terminating stopped distribution](#bug-004--completed---flaky-integration-test-for-terminating-already-stopped-distribution)
+- [CHORE-001 — Move reusable skills to global ~/.claude/skills](#chore-001--completed---move-reusable-skills-to-global-claudeskills)
+- [CI-003 — Normalize JaCoCo XML paths for Codecov](#ci-003--completed---normalize-jacoco-xml-paths-for-codecov-coverage)
+- [CI-002 — Normalize JUnit XML paths for Codecov](#ci-002--completed---normalize-junit-xml-paths-for-codecov-test-analytics)
+- [CI-001 — Upload code coverage and test results to Codecov](#ci-001--completed---upload-code-coverage-and-test-results-to-codecov)
+- [REFACT-003 — Refactor wsl-manager integration tests](#refact-003--completed---refactor-wsl-manager-integration-tests-to-call-wsl-manager-functions)
+- [BUG-003 — UTF-8 BOM in integration test bash scripts](#bug-003--completed---utf-8-bom-in-integration-test-bash-scripts-causes-shebang-error)
+- [REFACT-002 — Fix `Invoke-SetupUser` CI guard scope](#refact-002--completed---fix-invoke-setupuser-ci-guard-scope-and-add-explicit-parameters)
+- [REFACT-001 — Add `-Selection` parameter to Update/Remove](#refact-001--completed---add--selection-parameter-to-invoke-updatedistro-and-invoke-removedistro)
+- [FEAT-004 — Replace Bootstrap with self-contained install.ps1](#feat-004--completed---replace-bootstrap-with-self-contained-installps1)
+- [FEAT-003 — Add Flow Launcher as standalone optional tool](#feat-003--completed---add-flow-launcher-as-standalone-optional-tool)
+- [BUG-002 — VS Code WSL Interop interference fixed](#bug-002--completed---vs-code-wsl-interop-interference-fixed)
+- [FEAT-001 — DevContainer Prep → Docker Prerequisites](#feat-001--completed---devcontainer-prep--docker-prerequisites)
+- [BUG-001 — WSL Manager fails when no distributions installed](#bug-001-wsl-manager-fails-when-no-distributions-are-installed)
+
+---
+
 ## IN PROGRESS
 
 ### [CHORE-002] Backlog refinement
@@ -11,115 +50,6 @@
 Ongoing backlog refinement — create, review, clarify, and update user stories. Add research findings, scope decisions, acceptance criteria, and implementation details as needed. This item is never completed; all refinement commits reference this ID.
 
 ---
-
-## DONE
-
-### [FEAT-002] ✅ COMPLETED - Set up Podman as Docker alternative in WSL
-
-**Status**: **Completed** (2026-02-24) | **Branch**: `feature/feat-002-podman-wsl`
-**Priority**: Medium
-**Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
-**Related**: FEAT-001, Dev Container workflow
-
-**Description**:
-Add a `setup-podman` command to wsl-manager that installs and configures rootless Podman in a WSL2 Debian/Ubuntu distribution. Mirrors the existing `setup-docker` pattern exactly.
-
-**Rationale**:
-Podman provides a daemonless, rootless container runtime compatible with Docker workflows. It's especially useful for security-conscious environments and can fully replace Docker for Dev Container usage.
-
-**Scope Decisions** (agreed in refinement 2026-02-18, updated 2026-02-23):
-- **Debian/Ubuntu only** — consistent with `setup-docker`; Fedora/RHEL deferred
-- **Mutual exclusion with Docker** — `setup-podman` fails fast if Docker is already installed in the distro (UX choice — they can technically coexist but `DOCKER_HOST` confusion is not worth it)
-- **Rootless only** — no `-Mode` parameter; rootful mode deferred to a follow-up
-- **VS Code integration is documentation-only** — no code touches Windows-side settings
-- **cgroups v2 is documentation-only** — requires Windows-side `.wslconfig` change, script should detect and warn but not modify Windows files
-
-**Implementation** (follows `docker.ps1` / `install-docker.sh` pattern):
-
-**Step 1: `lib/podman.ps1`** — PowerShell library functions ✅ **DONE**
-- `Test-WslPodmanInstalled -DistroName` — checks if `podman --version` succeeds
-- `Install-WslPodman -DistroName [-Username]` — orchestrates the install:
-  - Same prerequisite checks as `Install-WslDockerEngine` (WSL installed, distro exists, WSL2, Debian/Ubuntu, default user)
-  - Calls `Test-WslDockerInstalled` directly for mutual exclusion (no separate wrapper needed — `wsl.ps1` dot-sources both `docker.ps1` and `podman.ps1`)
-  - Ensures systemd and interop are configured (reuses existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
-  - Configures `mount --make-rshared /` in wsl.conf `[boot] command` (required for rootless containers to avoid mount propagation warnings)
-  - Executes `install-podman.sh` via `Invoke-WslDistroScript`
-- 42 Pester unit tests in `podman.Tests.ps1` (all passing)
-
-**Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent) ✅ **DONE**
-- Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
-- Installs `podman`, `slirp4netns`, and `uidmap` via apt (rootless networking + user namespace mapping)
-- Enables `loginctl enable-linger $USERNAME` (keeps systemd user services alive across sessions)
-- Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc` (WSL2 systemd session reliability)
-- Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user, NOT root)
-- Sets `DOCKER_HOST` in `~/.bashrc` pointing to the Podman socket
-- Checks cgroups v2 status and emits a warning if not using pure cgroups v2 (with instructions for `.wslconfig`)
-- Verifies `podman --version`, socket exists, and `podman info` succeeds as target user
-- Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
-
-**Step 3: `wsl-manager.ps1`** — wire up the new command ✅ **DONE**
-- Add `setup-podman` to `ValidateSet` and `Invoke-WslManager` switch
-- Add `Invoke-SetupPodmanInteractive` (mirrors `Invoke-SetupDockerInteractive`)
-- Add `[P] Setup Podman` to interactive menu
-
-**Step 4: `docs/wsl-podman-setup.md`** — documentation ✅ **DONE**
-- Podman vs Docker comparison
-- Rootless benefits and limitations
-- Prerequisites: cgroups v2 setup (`.wslconfig` kernel command line)
-- VS Code Dev Containers configuration:
-  - `"dev.containers.dockerPath": "podman"` (manual VS Code setting)
-  - `"dev.containers.mountWaylandSocket": false` (avoids WSL2 socket error)
-  - `--userns=keep-id` in `devcontainer.json` `runArgs` (critical for rootless file permissions)
-- DOCKER_HOST usage and socket path
-- Performance note: store projects in WSL filesystem, not `/mnt/c/`
-- Troubleshooting (WSL systemd race condition, cgroups, socket issues)
-
-**Acceptance Criteria**:
-- [x] `wsl-manager setup-podman <distro>` command works
-- [x] Interactive menu option `[P] Setup Podman` works
-- [x] Installs Podman and slirp4netns on Debian/Ubuntu distributions
-- [x] Fails fast with clear error if Docker is already installed in the distro
-- [x] Configures rootless Podman systemd socket (`podman.socket`)
-- [x] Enables `loginctl enable-linger` for persistent user services
-- [x] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
-- [x] Configures `mount --make-rshared /` via wsl.conf boot command
-- [x] Sets `DOCKER_HOST` env variable in `~/.bashrc`
-- [x] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
-- [x] Verifies Podman works (`podman info` + socket exists)
-- [x] Idempotent — safe to re-run for repair
-- [x] Requires systemd-enabled distro (error if not configured)
-- [x] Requires non-root default user (error if missing)
-- [x] Clear error messages for all failure paths
-- [x] Documentation in `docs/wsl-podman-setup.md`
-- [x] Unit tests in `lib/podman.Tests.ps1`
-- [x] All existing tests continue to pass
-
-**Technical Notes**:
-- Socket path: `unix:///run/user/$UID/podman/podman.sock`
-- `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` in `~/.bashrc`
-- `XDG_RUNTIME_DIR=/run/user/$(id -u)` in `~/.bashrc`
-- `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` in `~/.bashrc`
-- `systemctl --user` commands must run as the target user, not root (use `sudo -u $USER systemctl --user ...` or `su - $USER -c ...`)
-- `loginctl enable-linger $USER` requires root — run before switching to target user
-- `mount --make-rshared /` in `[boot] command=` — prevents rootless container mount propagation warnings
-- Ubuntu 22.04+ and Debian 11+ have native Podman packages; no PPA needed
-- Debian 12: podman 4.3.1, Ubuntu 24.04: podman 4.9.3 — both sufficient for Dev Containers
-- cgroups v2: requires `.wslconfig` `kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` (Windows-side, documentation-only)
-- VS Code setting (manual): `"dev.containers.dockerPath": "podman"`
-- VS Code setting (manual): `"dev.containers.mountWaylandSocket": false`
-- `devcontainer.json` (manual): `"runArgs": ["--userns=keep-id"]` for rootless file permission mapping
-
-**Dependencies**:
-- WSL2
-- Systemd-enabled distribution (configured by `Install-WslDockerEngine` or manually)
-- Non-root default user (same as Docker setup)
-- Sudo access for apt installation
-- cgroups v2 recommended (`.wslconfig` — documented, warned if missing)
-
-**Related Documentation**:
-- https://podman.io/
-- https://code.visualstudio.com/docs/devcontainers/containers
-- https://github.com/containers/podman/discussions/25607 (WSL2 + Dev Containers comprehensive guide)
 
 ## TODO
 
@@ -286,13 +216,116 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 - [ ] Unit tests with mocked Scoop commands
 - [ ] All existing tests continue to pass
 
-### Technical Debt
+---
 
-*No items yet*
+## DONE
 
-### Documentation
+### [FEAT-002] ✅ COMPLETED - Set up Podman as Docker alternative in WSL
 
-*No items yet*
+**Status**: **Completed** (2026-02-24) | **Branch**: `feature/feat-002-podman-wsl`
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
+**Related**: FEAT-001, Dev Container workflow
+
+**Description**:
+Add a `setup-podman` command to wsl-manager that installs and configures rootless Podman in a WSL2 Debian/Ubuntu distribution. Mirrors the existing `setup-docker` pattern exactly.
+
+**Rationale**:
+Podman provides a daemonless, rootless container runtime compatible with Docker workflows. It's especially useful for security-conscious environments and can fully replace Docker for Dev Container usage.
+
+**Scope Decisions** (agreed in refinement 2026-02-18, updated 2026-02-23):
+- **Debian/Ubuntu only** — consistent with `setup-docker`; Fedora/RHEL deferred
+- **Mutual exclusion with Docker** — `setup-podman` fails fast if Docker is already installed in the distro (UX choice — they can technically coexist but `DOCKER_HOST` confusion is not worth it)
+- **Rootless only** — no `-Mode` parameter; rootful mode deferred to a follow-up
+- **VS Code integration is documentation-only** — no code touches Windows-side settings
+- **cgroups v2 is documentation-only** — requires Windows-side `.wslconfig` change, script should detect and warn but not modify Windows files
+
+**Implementation** (follows `docker.ps1` / `install-docker.sh` pattern):
+
+**Step 1: `lib/podman.ps1`** — PowerShell library functions ✅ **DONE**
+- `Test-WslPodmanInstalled -DistroName` — checks if `podman --version` succeeds
+- `Install-WslPodman -DistroName [-Username]` — orchestrates the install:
+  - Same prerequisite checks as `Install-WslDockerEngine` (WSL installed, distro exists, WSL2, Debian/Ubuntu, default user)
+  - Calls `Test-WslDockerInstalled` directly for mutual exclusion (no separate wrapper needed — `wsl.ps1` dot-sources both `docker.ps1` and `podman.ps1`)
+  - Ensures systemd and interop are configured (reuses existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
+  - Configures `mount --make-rshared /` in wsl.conf `[boot] command` (required for rootless containers to avoid mount propagation warnings)
+  - Executes `install-podman.sh` via `Invoke-WslDistroScript`
+- 42 Pester unit tests in `podman.Tests.ps1` (all passing)
+
+**Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent) ✅ **DONE**
+- Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
+- Installs `podman`, `slirp4netns`, and `uidmap` via apt (rootless networking + user namespace mapping)
+- Enables `loginctl enable-linger $USERNAME` (keeps systemd user services alive across sessions)
+- Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc` (WSL2 systemd session reliability)
+- Enables rootless Podman socket: `systemctl --user enable --now podman.socket` (as target user, NOT root)
+- Sets `DOCKER_HOST` in `~/.bashrc` pointing to the Podman socket
+- Checks cgroups v2 status and emits a warning if not using pure cgroups v2 (with instructions for `.wslconfig`)
+- Verifies `podman --version`, socket exists, and `podman info` succeeds as target user
+- Exit codes: 0 success, 1 prereq failure, 2 install failure, 3 verification failure, 4 argument error
+
+**Step 3: `wsl-manager.ps1`** — wire up the new command ✅ **DONE**
+- Add `setup-podman` to `ValidateSet` and `Invoke-WslManager` switch
+- Add `Invoke-SetupPodmanInteractive` (mirrors `Invoke-SetupDockerInteractive`)
+- Add `[P] Setup Podman` to interactive menu
+
+**Step 4: `docs/wsl-podman-setup.md`** — documentation ✅ **DONE**
+- Podman vs Docker comparison
+- Rootless benefits and limitations
+- Prerequisites: cgroups v2 setup (`.wslconfig` kernel command line)
+- VS Code Dev Containers configuration:
+  - `"dev.containers.dockerPath": "podman"` (manual VS Code setting)
+  - `"dev.containers.mountWaylandSocket": false` (avoids WSL2 socket error)
+  - `--userns=keep-id` in `devcontainer.json` `runArgs` (critical for rootless file permissions)
+- DOCKER_HOST usage and socket path
+- Performance note: store projects in WSL filesystem, not `/mnt/c/`
+- Troubleshooting (WSL systemd race condition, cgroups, socket issues)
+
+**Acceptance Criteria**:
+- [x] `wsl-manager setup-podman <distro>` command works
+- [x] Interactive menu option `[P] Setup Podman` works
+- [x] Installs Podman and slirp4netns on Debian/Ubuntu distributions
+- [x] Fails fast with clear error if Docker is already installed in the distro
+- [x] Configures rootless Podman systemd socket (`podman.socket`)
+- [x] Enables `loginctl enable-linger` for persistent user services
+- [x] Sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` in `~/.bashrc`
+- [x] Configures `mount --make-rshared /` via wsl.conf boot command
+- [x] Sets `DOCKER_HOST` env variable in `~/.bashrc`
+- [x] Warns if cgroups v2 is not enabled (with `.wslconfig` instructions)
+- [x] Verifies Podman works (`podman info` + socket exists)
+- [x] Idempotent — safe to re-run for repair
+- [x] Requires systemd-enabled distro (error if not configured)
+- [x] Requires non-root default user (error if missing)
+- [x] Clear error messages for all failure paths
+- [x] Documentation in `docs/wsl-podman-setup.md`
+- [x] Unit tests in `lib/podman.Tests.ps1`
+- [x] All existing tests continue to pass
+
+**Technical Notes**:
+- Socket path: `unix:///run/user/$UID/podman/podman.sock`
+- `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` in `~/.bashrc`
+- `XDG_RUNTIME_DIR=/run/user/$(id -u)` in `~/.bashrc`
+- `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` in `~/.bashrc`
+- `systemctl --user` commands must run as the target user, not root (use `sudo -u $USER systemctl --user ...` or `su - $USER -c ...`)
+- `loginctl enable-linger $USER` requires root — run before switching to target user
+- `mount --make-rshared /` in `[boot] command=` — prevents rootless container mount propagation warnings
+- Ubuntu 22.04+ and Debian 11+ have native Podman packages; no PPA needed
+- Debian 12: podman 4.3.1, Ubuntu 24.04: podman 4.9.3 — both sufficient for Dev Containers
+- cgroups v2: requires `.wslconfig` `kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` (Windows-side, documentation-only)
+- VS Code setting (manual): `"dev.containers.dockerPath": "podman"`
+- VS Code setting (manual): `"dev.containers.mountWaylandSocket": false`
+- `devcontainer.json` (manual): `"runArgs": ["--userns=keep-id"]` for rootless file permission mapping
+
+**Dependencies**:
+- WSL2
+- Systemd-enabled distribution (configured by `Install-WslDockerEngine` or manually)
+- Non-root default user (same as Docker setup)
+- Sudo access for apt installation
+- cgroups v2 recommended (`.wslconfig` — documented, warned if missing)
+
+**Related Documentation**:
+- https://podman.io/
+- https://code.visualstudio.com/docs/devcontainers/containers
+- https://github.com/containers/podman/discussions/25607 (WSL2 + Dev Containers comprehensive guide)
 
 ---
 
@@ -591,13 +624,6 @@ The idempotent Docker setup will:
 - `tools/pslib/wsl/wsl-manager.ps1` - simplified menu
 - Integration tests - binfmt.d verification
 
-**Commits**:
-- `a82c3f1` + `5debe4e` + `ec504ff` - feat(wsl): implement Docker installation with binfmt.d interop and idempotent setup
-
-**Documentation**:
-- See `docs/BUG-002-vscode-wsl-interop-fix.md` for technical details
-- See `docs/wsl-devcontainer-setup.md` for full setup workflow
-
 ---
 
 ### [FEAT-001] ✅ COMPLETED - DevContainer Prep → Docker Prerequisites
@@ -673,21 +699,6 @@ Completed with comprehensive end-to-end documentation.
 - [x] Old DevContainer prep code removed (cleaner codebase)
 - [x] Users just run `wsl-manager setup-docker` and get everything
 
-**Test Coverage**:
-- 520 unit tests passing (PowerShell 7.x)
-- 31 integration tests passing
-- Tests for: Set-WslConf, Docker systemd/interop config, rc.local fix
-- Pre-commit hook validation enabled
-
-**Commits**:
-- `d6e8a58` - feat(wsl): add Set-WslConf and Initialize-WslDevContainer functions
-- `a88782e` - docs(wsl): add comprehensive WSL DevContainer setup guide
-- `1a1ffc8` - feat(wsl): add DevContainer preparation to wsl-manager interactive menu
-- `aeff01d` - feat(wsl): configure systemd and interop automatically in Docker installation
-- `f9f25d4` - feat(wsl): add rc.local fix for Windows executable interop in Docker installation
-- `adf01f5` - refactor(wsl): remove standalone DevContainer preparation functionality
-- `2dbc043` - docs(wsl): complete FEAT-001 with comprehensive DevContainer workflow documentation
-
 ---
 
 ### [BUG-001] WSL Manager fails when no distributions are installed
@@ -695,8 +706,6 @@ Completed with comprehensive end-to-end documentation.
 **Status**: Completed
 **Priority**: High
 **Component**: `tools/pslib/wsl/lib/core.ps1`
-**Affected Commit**: `1bbca8a`
-**Fixed In**: Next commit
 
 **Description**:
 When no WSL distributions are installed, `wsl-manager` crashed with a type conversion error when parsing WSL verbose output that contained informational messages instead of distribution entries.
