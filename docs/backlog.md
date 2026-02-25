@@ -250,7 +250,7 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
   - Ensures systemd and interop are configured (reuses existing `Test-WslSystemdConfigured` / `Test-WslInteropConfigured`)
   - Configures `mount --make-rshared /` in wsl.conf `[boot] command` (required for rootless containers to avoid mount propagation warnings)
   - Executes `install-podman.sh` via `Invoke-WslDistroScript`
-- 42 Pester unit tests in `podman.Tests.ps1` (all passing)
+- Pester unit tests in `podman.Tests.ps1`
 
 **Step 2: `scripts/install-podman.sh`** — Bash installation script (idempotent) ✅ **DONE**
 - Args: `--distro-id`, `--codename`, `--arch`, `--username` (same interface as `install-docker.sh`)
@@ -341,13 +341,13 @@ Extracted throwing `Assert-WslDistroExists` and `Assert-WslDistroNotExists` guar
 
 **Acceptance Criteria**:
 - [x] `Test-WslDistroExists` absorbs `.Trim()` internally
-- [x] New `Assert-WslDistroExists` function with unit tests (4 tests)
-- [x] New `Assert-WslDistroNotExists` function with unit tests (3 tests)
+- [x] New `Assert-WslDistroExists` function with unit tests
+- [x] New `Assert-WslDistroNotExists` function with unit tests
 - [x] All 22 inline distro-existence checks replaced (including the 2 enhanced-message sites and the inverse check)
 - [x] Redundant `$DistroName.Trim()` / `$Name.Trim()` calls removed where they only served the validation
 - [x] `Test-WslDistroExists` (boolean) remains available for non-throwing use
 - [x] Error message always includes installed distros list: `"Distribution '<name>' does not exist. Installed distributions: <list>"`
-- [x] All 745 tests pass (mock updates only, no behavior change)
+- [x] All tests pass (mock updates only, no behavior change)
 - [x] No change in user-facing behavior
 
 ---
@@ -369,7 +369,7 @@ Removed 32 redundant `Test-WslInstalled` guard blocks from 8 source files and ~2
 - [x] ~250 `Mock Test-WslInstalled { $true }` lines removed from remaining test contexts
 - [x] Mocks preserved in `Test-WslInstalled` and `Assert-Wsl2Installed` test describes
 - [x] `Test-WslInstalled` (the boolean check) remains available for non-throwing use cases
-- [x] All 737 tests pass (down from 764 — 27 removed tests were redundant guard tests)
+- [x] All tests pass (27 redundant guard tests removed)
 - [x] No change in user-facing behavior
 
 ---
@@ -427,8 +427,8 @@ Codecov could not display line-by-line coverage because Pester's JaCoCo XML embe
 - [x] Reduces `class` `sourcefilename` to bare filename
 - [x] Handles single and multiple packages
 - [x] File is saved as valid XML
-- [x] Unit tests in `testrunner.Tests.ps1` (7 tests)
-- [x] All existing tests continue to pass (715 total)
+- [x] Unit tests in `testrunner.Tests.ps1`
+- [x] All existing tests continue to pass
 
 ---
 
@@ -449,8 +449,8 @@ Codecov's test-results-parser cannot properly process Pester's JUnit XML output 
 - [x] Preserves non-path content in attributes (e.g., `.Shall not have deviations`)
 - [x] Handles trailing backslash on repo root (with and without)
 - [x] File is saved as valid XML
-- [x] Unit tests in `testrunner.Tests.ps1` (8 tests)
-- [x] All existing tests continue to pass (708 total)
+- [x] Unit tests in `testrunner.Tests.ps1`
+- [x] All existing tests continue to pass
 
 ---
 
@@ -563,7 +563,7 @@ Replaced external `avengineers/bootstrap` dependency with a self-contained `inst
 - Created `scoop_optional.json` (pwsh, windows-terminal, ditto, winmerge, sysinternals, vscode, autohotkey)
 - Removed `scoopfile.json` and all `avengineers/bootstrap` references
 - Exposed functions: `Install-Scoop`, `Install-ScoopDependency`, `Install-Git`, `Install-MandatoryToolset`, `Install-OptionalToolset`
-- 45 unit tests covering all functions, dot-source support, JSON validation
+- Unit tests covering all functions, dot-source support, JSON validation
 - Removed `.bootstrap` from `.gitignore`
 
 ---
@@ -575,13 +575,13 @@ Replaced external `avengineers/bootstrap` dependency with a self-contained `inst
 **Component**: `tools/flow-launcher/`
 
 **Description**:
-Flow Launcher offered as a standalone optional tool alongside the default Keypirinha launcher. Originally implemented as a full migration (`7104fe9`), rescoped to keep Keypirinha as default and provide Flow Launcher independently.
+Flow Launcher offered as a standalone optional tool alongside the default Keypirinha launcher. Originally implemented as a full migration, rescoped to keep Keypirinha as default and provide Flow Launcher independently.
 
 **Implementation**:
 - ✅ Reverted Keypirinha-to-Flow-Launcher migration (restored all default Keypirinha references)
-- ✅ Created `tools/flow-launcher/install-flow-launcher.ps1` - standalone installer (TDD, 17 tests)
+- ✅ Created `tools/flow-launcher/install-flow-launcher.ps1` - standalone installer (TDD)
 - ✅ Created `tools/flow-launcher/install-flow-launcher.bat` wrapper
-- ✅ `configure-program-plugin.ps1` + tests (584 tests) - configures Program plugin
+- ✅ `configure-program-plugin.ps1` + tests - configures Program plugin
 - ✅ Program plugin scans `shortcuts/` (root) and `shortcuts_private/`
 - ✅ Updated `docs/flow-launcher-setup.md` for standalone usage
 
@@ -605,7 +605,7 @@ Replaced rc.local with kernel-level `/etc/binfmt.d/WSLInterop.conf` configuratio
 - ✅ Made Docker installation fully idempotent (safe to re-run for repair)
 - ✅ Updated integration tests to verify binfmt.d configuration
 - ✅ Removed separate "Fix interop" menu option (now part of idempotent Docker setup)
-- ✅ All 569 unit tests + 31 integration tests passing
+- ✅ All unit tests + integration tests passing
 
 **Repair/Verification**:
 Users can verify or repair their Docker installation by simply re-running:
@@ -695,7 +695,7 @@ Completed with comprehensive end-to-end documentation.
 - [x] Complete end-to-end documentation (8-step workflow)
 - [x] README.md links to WSL documentation
 - [x] wsl-manager.md reflects actual implementation
-- [x] Unit tests updated (520 tests passing)
+- [x] Unit tests updated
 - [x] Old DevContainer prep code removed (cleaner codebase)
 - [x] Users just run `wsl-manager setup-docker` and get everything
 
@@ -725,7 +725,7 @@ Added validation using `[int]::TryParse()` before attempting to convert the vers
 - [x] Clear message indicating no distributions are available
 - [x] Proper exit handling (gracefully returns empty array)
 - [x] Unit tests covering zero-distribution scenario
-- [x] All 492 tests pass
+- [x] All tests pass
 
 ---
 
