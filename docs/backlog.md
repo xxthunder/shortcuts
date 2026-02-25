@@ -2,7 +2,13 @@
 
 ## IN PROGRESS
 
-*No items currently in progress*
+### [CHORE-002] Backlog refinement
+
+**Status**: Ongoing
+**Priority**: —
+
+**Description**:
+Ongoing backlog refinement — create, review, clarify, and update user stories. Add research findings, scope decisions, acceptance criteria, and implementation details as needed. This item is never completed; all refinement commits reference this ID.
 
 ---
 
@@ -116,6 +122,102 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - https://github.com/containers/podman/discussions/25607 (WSL2 + Dev Containers comprehensive guide)
 
 ## TODO
+
+### [FEAT-006] Stop action functions from reprinting distro table in interactive mode
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+**Depends on**: REFACT-006
+
+**Summary**:
+As a WSL manager user, I want the interactive menu to show the distro table only once so that I can select a distribution without being confused by redundant or inconsistently numbered lists.
+
+**Description**:
+In interactive mode, `Show-InteractiveMenu` already displays the numbered distro table via `Show-WslDistroList`. When the user selects an action (e.g., Update, Remove, Terminate), the action function (`Invoke-UpdateDistro`, `Invoke-RemoveDistro`, `Invoke-TerminateDistro`, `Invoke-SetupUserInteractive`, `Invoke-SetupDockerInteractive`, `Invoke-SetupPodmanInteractive`, `Invoke-CloneDistro`) re-fetches and reprints its own distro table before prompting for a selection. This is redundant and confusing — especially for `Invoke-TerminateDistro`, which filters to running distros only, producing different numbering than the main menu table.
+
+**Current behavior**:
+1. Main menu shows: `1. Debian (Stopped) / 2. Ubuntu (Running) / 3. Fedora (Running)`
+2. User selects `[T] Terminate`
+3. Terminate shows: `1. Ubuntu (Running) / 2. Fedora (Running)` — Debian gone, numbering shifted
+4. User remembers Fedora as `3` from the main menu, but now it's `2`
+
+**Scope decisions**:
+- `Invoke-WslManager` fetches the distro list once and passes it to all action functions via a mandatory `-Distros` parameter — applies to both CLI and interactive mode
+- In interactive mode: `Show-InteractiveMenu` displays the table; action functions skip reprinting it; numbering stays consistent
+- In CLI mode: action functions receive the list from `Invoke-WslManager` but may still print it if needed for standalone context
+- `Invoke-TerminateDistro` uses the full list with consistent numbering and validates that the selected distro is running (clear error if not, instead of silently filtering)
+- Removes 7 redundant `Get-WslDistroList -Detailed` calls from action functions (only `Invoke-WslManager` fetches)
+
+**Acceptance Criteria**:
+- [ ] Action functions do not reprint the distro table when invoked from interactive mode
+- [ ] Numbering stays consistent with the main menu table
+- [ ] `Invoke-TerminateDistro` handles non-running selection gracefully (error message instead of silent filter)
+- [ ] CLI mode (`wsl-manager <command> <name>`) behavior unchanged
+- [ ] Unit tests updated
+- [ ] All existing tests continue to pass
+
+---
+
+### [REFACT-007] Consolidate documentation and make all docs reachable from README
+
+**Status**: Open
+**Priority**: Low
+**Component**: `README.md`, `docs/`
+
+**Summary**:
+As a user or contributor, I want to discover all project documentation from the README so that I don't have to browse the `docs/` folder to find relevant guides.
+
+**Description**:
+The README currently links to only 2 of 8 docs files (`wsl-devcontainer-setup.md`, `wsl-manager.md`). The remaining files — including user-facing guides (`flow-launcher-setup.md`, `wsl-podman-setup.md`), development resources (`roadmap.md`, `backlog.md`, `development-principles.md`), and `input.md` — are unreachable from the README. Additionally, `BUG-002-vscode-wsl-interop-fix.md` is a standalone technical deep-dive for a bug that's already fully documented in the backlog; its content should be folded into the backlog entry or linked from there, not kept as a separate orphan file.
+
+**Scope decisions**:
+- Add a documentation index to the README linking all docs files, organized by audience (user guides vs. development/contributing)
+- Fold `BUG-002-vscode-wsl-interop-fix.md` content into the backlog entry and remove the standalone file
+- No new documentation to write — just link and consolidate what exists
+
+**Acceptance Criteria**:
+- [ ] All docs files reachable from README (directly or via a documentation section)
+- [ ] User-facing guides and development docs clearly separated
+- [ ] `BUG-002-vscode-wsl-interop-fix.md` content consolidated into backlog entry and standalone file removed
+- [ ] No dead links
+
+---
+
+### [REFACT-006] Move argument validation from Invoke-WslManager switch into action functions
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+
+**Summary**:
+As a WSL manager user, I want action commands to prompt me for missing arguments so that I don't have to remember the exact CLI syntax to use a command.
+
+**Description**:
+The `Invoke-WslManager` switch block inconsistently handles missing arguments like `$Name`. Some commands pass arguments through and let the action function prompt (e.g., `remove`, `update`), some branch to separate `*Interactive` functions (e.g., `setup-docker`, `setup-podman`, `terminate`), and one hard-fails with `exit 1` (e.g., `repair-interop`). Each action function should own its argument validation: accept what's given, prompt for what's missing. This eliminates the `IsNullOrWhiteSpace` checks in the switch, removes the need for separate `*Interactive` wrapper functions, and makes every command usable without arguments.
+
+**Current inconsistencies** in `Invoke-WslManager` switch:
+- `remove`, `update`, `clone` — pass `$Name` through; action functions prompt if missing
+- `setup-docker`, `setup-podman`, `terminate` — check `$Name` in switch, branch to `*Interactive` vs non-Interactive function
+- `repair-interop` — checks `$Name`, hard-fails with `exit 1` if missing
+- `setup-user` — passes through; function handles it internally
+
+**Scope decisions**:
+- Each action function checks its own required arguments and prompts via `Read-Host` when missing
+- `Invoke-WslManager` switch becomes a simple pass-through dispatcher — no `IsNullOrWhiteSpace` checks
+- Separate `*Interactive` wrapper functions (`Invoke-SetupDockerInteractive`, `Invoke-SetupPodmanInteractive`) are merged into their non-Interactive counterparts
+- `repair-interop` prompts for distro name instead of hard-failing
+
+**Acceptance Criteria**:
+- [ ] All `IsNullOrWhiteSpace` checks removed from `Invoke-WslManager` switch
+- [ ] Each action function prompts for missing required arguments
+- [ ] `Invoke-SetupDockerInteractive` and `Invoke-SetupPodmanInteractive` merged into `Invoke-SetupDocker` and `Invoke-SetupPodman`
+- [ ] `repair-interop` prompts for distro name when not provided
+- [ ] CLI mode with all arguments provided behaves unchanged (no prompts)
+- [ ] Unit tests updated
+- [ ] All existing tests continue to pass
+
+---
 
 ### [FEAT-005] Scoop Update Helper Script
 
