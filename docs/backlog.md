@@ -123,6 +123,38 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 
 ## TODO
 
+### [FEAT-007] Add `shutdown` command to wsl-manager
+
+**Status**: Open
+**Priority**: Medium
+**Component**: `tools/pslib/wsl/wsl-manager.ps1`
+
+**Summary**:
+As a WSL manager user, I want a `wsl-manager shutdown` command so that I can restart the entire WSL subsystem from the manager instead of running `wsl --shutdown` manually.
+
+**Description**:
+The Podman setup documentation (`docs/wsl-podman-setup.md`) instructs users to edit `%USERPROFILE%\.wslconfig` for cgroups v2 and then run `wsl --shutdown` to apply changes. This shutdown step should be available as a wsl-manager action command so that users stay within the manager workflow. Unlike `terminate` (which stops a single distro), `shutdown` stops the entire WSL subsystem including all running distributions and the WSL2 lightweight VM.
+
+**Scope decisions**:
+- Command name: `shutdown` (mirrors `wsl --shutdown` semantics)
+- No distro name parameter — shuts down all of WSL
+- Should warn the user that all running distros will be stopped
+- Interactive menu: add `[S] Shutdown WSL` option
+- SupportsShouldProcess for `-WhatIf` / `-Confirm` support
+
+**Acceptance Criteria**:
+- [ ] `wsl-manager shutdown` command executes `wsl.exe --shutdown`
+- [ ] Interactive menu option `[S] Shutdown WSL` available
+- [ ] Warning message before shutdown listing running distros (if any)
+- [ ] SupportsShouldProcess (`-WhatIf`, `-Confirm`) support
+- [ ] Idempotent — safe to run when no distros are running
+- [ ] `ValidateSet` and `Invoke-WslManager` switch updated
+- [ ] Unit tests
+- [ ] `docs/wsl-podman-setup.md` updated to use `wsl-manager shutdown` instead of `wsl --shutdown`
+- [ ] All existing tests continue to pass
+
+---
+
 ### [FEAT-006] Stop action functions from reprinting distro table in interactive mode
 
 **Status**: Open
