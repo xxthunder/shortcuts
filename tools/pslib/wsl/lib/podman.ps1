@@ -201,12 +201,12 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
         # Build wsl.conf sections
         $sections = @{}
 
-        # Add boot section with systemd and mount command for rootless Podman
+        # Always add boot command for rootless Podman; add systemd only if not yet configured
+        $sections.boot = @{
+            command = "mount --make-rshared /"
+        }
         if (-not $systemdConfigured) {
-            $sections.boot = @{
-                systemd = "true"
-                command = "mount --make-rshared /"
-            }
+            $sections.boot.systemd = "true"
         }
 
         # Add interop section if not configured

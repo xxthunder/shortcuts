@@ -517,6 +517,21 @@ Describe "Install-WslPodman" {
             }
         }
 
+        It "Should configure boot command when systemd is configured but interop is not" {
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslPodman -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -ParameterFilter {
+                $Sections.boot.command -eq "mount --make-rshared /"
+            }
+        }
+
         It "Should restart distribution after wsl.conf changes" {
             Mock Test-WslSystemdConfigured { $false }
             Mock Test-WslInteropConfigured { $false }
