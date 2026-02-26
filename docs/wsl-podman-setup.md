@@ -176,6 +176,51 @@ loginctl show-user $(whoami) -p Linger
 
 ---
 
+## Git and SSH Configuration
+
+Once your WSL distribution is set up with Podman, you'll want git and SSH working for repository access. Since `setup-podman` enables WSL interop (`[interop] enabled=true`), you can reuse your Windows git and SSH configuration directly.
+
+### Reuse Windows `.gitconfig` via Symlink
+
+Instead of duplicating git settings, symlink your Windows `.gitconfig`:
+
+```bash
+ln -s /mnt/c/Users/<your-windows-username>/.gitconfig ~/.gitconfig
+git config --global --list   # verify
+```
+
+### Reuse Windows SSH Keys via `ssh.exe`
+
+Ensure your `.gitconfig` (Windows or symlinked) contains:
+
+```ini
+[core]
+    sshCommand = ssh.exe
+```
+
+If not, add it:
+
+```bash
+git config --global core.sshCommand "ssh.exe"
+```
+
+With interop enabled, this tells git to use the **Windows OpenSSH client**, which means:
+
+- **SSH keys** in `%USERPROFILE%\.ssh\` are used automatically — no need to copy keys into WSL.
+- **SSH config** (`%USERPROFILE%\.ssh\config`) with host aliases, proxy settings, etc. is shared.
+- The **Windows SSH Agent** handles authentication, so keys loaded via `ssh-add` on Windows work inside WSL.
+
+**Verify:**
+
+```bash
+ssh.exe -T git@github.com
+# Expected: Hi <username>! You've successfully authenticated...
+```
+
+For the full DevContainer setup workflow (SSH agent, VS Code settings, validation), see [WSL DevContainer Setup Guide](wsl-devcontainer-setup.md).
+
+---
+
 ## Performance
 
 **Store projects in the WSL filesystem, not `/mnt/c/`.**

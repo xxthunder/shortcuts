@@ -191,34 +191,57 @@ ssh-add -l
 wsl --distribution debian-devcon
 ```
 
-**Configure git identity:**
+#### Option A: Reuse Windows `.gitconfig` via Symlink (Recommended)
+
+If you already have a working `.gitconfig` in your Windows profile, you can symlink it into WSL instead of duplicating settings:
+
+```bash
+# Remove any existing .gitconfig in WSL (back up first if needed)
+rm -f ~/.gitconfig
+
+# Symlink to Windows .gitconfig
+ln -s /mnt/c/Users/<your-windows-username>/.gitconfig ~/.gitconfig
+
+# Verify
+git config --global --list
+```
+
+This reuses your Windows git identity, aliases, and all other settings. Any changes made on either side take effect immediately.
+
+**Important:** Your Windows `.gitconfig` must include the SSH command setting for SSH key reuse (see below). If it doesn't, add it:
+
+```bash
+git config --global core.sshCommand "ssh.exe"
+```
+
+#### Option B: Configure Git Manually
+
+If you prefer separate git configuration inside WSL:
 
 ```bash
 # Set your name and email
 git config --global user.name "Your Name"
 git config --global user.email "your.email@example.com"
-```
 
-**Configure SSH command to use Windows SSH agent:**
-
-```bash
-# Use ssh.exe from Windows for git operations
+# Use ssh.exe from Windows for git operations (see explanation below)
 git config --global core.sshCommand "ssh.exe"
-```
 
-**Configure credential helper:**
-
-```bash
 # Use Git Credential Manager from Windows
 git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe"
-```
 
-**Configure line endings:**
-
-```bash
 # Prevent line ending conversion issues
 git config --global core.autocrlf input
 ```
+
+#### Why `core.sshCommand = ssh.exe`?
+
+With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can execute Windows binaries directly. Setting `core.sshCommand` to `ssh.exe` tells git to use the **Windows OpenSSH client** instead of the Linux one. This means:
+
+- **SSH keys** stored in `%USERPROFILE%\.ssh\` are reused automatically — no need to copy or manage keys inside each WSL distribution.
+- **SSH config** (`%USERPROFILE%\.ssh\config`) with host aliases, proxy settings, etc. is reused as well.
+- The **Windows SSH Agent** handles key authentication, so keys loaded via `ssh-add` on Windows are available to git inside WSL.
+
+**Prerequisite:** WSL interop must be enabled (the automated Docker/Podman setup handles this).
 
 **Verify configuration:**
 
