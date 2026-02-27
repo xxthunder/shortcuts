@@ -124,23 +124,40 @@ In interactive mode, `Show-InteractiveMenu` already displays the numbered distro
 ### [SC-004] Consolidate documentation and make all docs reachable from README
 
 **Status**: Open
-**Priority**: Low
+**Priority**: Medium
 **Component**: `README.md`, `docs/`
 
 **Summary**:
-As a user or contributor, I want to discover all project documentation from the README so that I don't have to browse the `docs/` folder to find relevant guides.
+As a user or contributor, I want a single WSL setup guide that walks me from zero to running VS Code DevContainers, and I want all project documentation discoverable from the README.
 
 **Description**:
-The README currently links to only 2 of 8 docs files (`wsl-devcontainer-setup.md`, `wsl-manager.md`). The remaining files — including user-facing guides (`flow-launcher-setup.md`, `wsl-podman-setup.md`), development resources (`roadmap.md`, `backlog.md`, `development-principles.md`), and `input.md` — are unreachable from the README. Additionally, `BUG-002-vscode-wsl-interop-fix.md` is a standalone technical deep-dive for a bug that's already fully documented in the backlog; its content should be folded into the backlog entry or linked from there, not kept as a separate orphan file.
+Two problems:
+
+1. **Fragmented WSL guides**: The Docker path (`wsl-devcontainer-setup.md`) and Podman path (`wsl-podman-setup.md`) are separate documents that duplicate the shared manual steps (SSH agent, Git config, VS Code settings). The container runtime choice should be one step in a unified workflow, not the organizing principle of two separate guides.
+
+2. **Orphan documentation**: The README links to only 2 of 8 docs files (`wsl-devcontainer-setup.md`, `wsl-manager.md`). The remaining files — `flow-launcher-setup.md`, `wsl-podman-setup.md`, `roadmap.md`, `backlog.md`, `development-principles.md` — are unreachable. `BUG-002-vscode-wsl-interop-fix.md` is a standalone deep-dive for a bug already documented in the backlog.
 
 **Scope decisions**:
-- Add a documentation index to the README linking all docs files, organized by audience (user guides vs. development/contributing)
+- Merge `wsl-devcontainer-setup.md` and `wsl-podman-setup.md` into a single unified guide (e.g., `docs/wsl-devcontainer-setup.md`) structured as a linear workflow:
+  1. **Install a distribution** — `wsl --install` or wsl-manager
+  2. **Setup a user** — `wsl-manager setup-user`
+  3. **Install container runtime** — choose Docker _or_ Podman (two subsections, each self-contained for that choice)
+  4. **Manual configuration** — SSH agent, Git config, VS Code settings (shared, written once)
+  5. **Verify** — run a DevContainer end-to-end
+- Keep `wsl-manager.md` as the technical reference (not a user guide)
+- Add a documentation index to the README linking all docs, organized by audience (user guides vs. development/contributing)
 - Fold `BUG-002-vscode-wsl-interop-fix.md` content into the backlog entry and remove the standalone file
-- No new documentation to write — just link and consolidate what exists
+- Update README "WSL Development Setup" section to point to the unified guide
 
 **Acceptance Criteria**:
+- [ ] Single unified WSL guide replaces both `wsl-devcontainer-setup.md` and `wsl-podman-setup.md`
+- [ ] Guide follows linear workflow: install distro → setup user → container runtime (Docker/Podman) → manual config → verify
+- [ ] Shared steps (SSH agent, Git config, VS Code settings) written once, not duplicated per runtime
+- [ ] Docker and Podman each have a self-contained subsection within the container runtime step
+- [ ] Guide matches actual wsl-manager commands and implementation
 - [ ] All docs files reachable from README (directly or via a documentation section)
-- [ ] User-facing guides and development docs clearly separated
+- [ ] User-facing guides and development docs clearly separated in README
+- [ ] README "WSL Development Setup" section updated to reference the unified guide
 - [ ] `BUG-002-vscode-wsl-interop-fix.md` content consolidated into backlog entry and standalone file removed
 - [ ] No dead links
 
