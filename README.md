@@ -229,14 +229,28 @@ This automatically configures:
 
 **Complete DevContainer setup:**
 
-For full VS Code DevContainer development (SSH agent forwarding, git configuration, etc.), see:
+For full VS Code DevContainer development (SSH agent forwarding, git configuration, etc.), see the DevContainer chapter in the WSL Manager guide:
 
-**[📖 WSL DevContainer Setup Guide](docs/wsl-devcontainer-setup.md)**
+**[📖 WSL Manager — DevContainer Setup](docs/wsl-manager.md#vs-code-devcontainer-setup)**
 
 ### Documentation
 
-- **[WSL Manager Documentation](docs/wsl-manager.md)** - Complete guide to WSL Manager features and commands
-- **[WSL DevContainer Setup](docs/wsl-devcontainer-setup.md)** - Step-by-step guide for VS Code DevContainer development
+- **[WSL Manager](docs/wsl-manager.md)** — Complete guide to WSL Manager: commands, DevContainer setup, troubleshooting, and reference
+
+---
+
+## Documentation
+
+### User Guides
+
+- **[WSL Manager](docs/wsl-manager.md)** — WSL Manager: commands, VS Code DevContainer setup (Docker & Podman), troubleshooting, and function reference
+- **[Flow Launcher Setup](docs/flow-launcher-setup.md)** — Optional Flow Launcher installation and configuration
+
+### Development / Contributing
+
+- **[Development Principles](docs/development-principles.md)** — Coding standards, TDD approach, and project conventions
+- **[Roadmap](docs/roadmap.md)** — Project vision and future direction
+- **[Backlog](docs/backlog.md)** — Current work items, priorities, and completed features
 
 ---
 

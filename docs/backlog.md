@@ -14,11 +14,11 @@
 ### TODO
 - [SC-002 — Add `shutdown` command to wsl-manager](#sc-002-add-shutdown-command-to-wsl-manager)
 - [SC-003 — Stop action functions from reprinting distro table](#sc-003-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
-- [SC-004 — Consolidate documentation and make all docs reachable from README](#sc-004-consolidate-documentation-and-make-all-docs-reachable-from-readme)
 - [SC-005 — Move argument validation into action functions](#sc-005-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
 - [SC-006 — Scoop Update Helper Script](#sc-006-scoop-update-helper-script)
 
 ### Done
+- [SC-004 — Consolidate documentation and make all docs reachable from README](#sc-004--completed---consolidate-documentation-and-make-all-docs-reachable-from-readme)
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](#feat-002--completed---set-up-podman-as-docker-alternative-in-wsl)
 - [REFACT-005 — Extract `Assert-WslDistroExists` guard (DRY)](#refact-005--completed---extract-assert-wsldistroexists-guard-to-replace-inline-distro-validation-dry)
 - [REFACT-004 — Remove redundant `Test-WslInstalled` guard checks (DRY)](#refact-004--completed---remove-redundant-test-wslinstalled-guard-checks-dry)
@@ -63,7 +63,7 @@ Ongoing backlog refinement — create, review, clarify, and update user stories.
 As a WSL manager user, I want a `wsl-manager shutdown` command so that I can restart the entire WSL subsystem from the manager instead of running `wsl --shutdown` manually.
 
 **Description**:
-The Podman setup documentation (`docs/wsl-podman-setup.md`) instructs users to edit `%USERPROFILE%\.wslconfig` for cgroups v2 and then run `wsl --shutdown` to apply changes. This shutdown step should be available as a wsl-manager action command so that users stay within the manager workflow. Unlike `terminate` (which stops a single distro), `shutdown` stops the entire WSL subsystem including all running distributions and the WSL2 lightweight VM.
+The Podman setup documentation (`docs/wsl-manager.md`) instructs users to edit `%USERPROFILE%\.wslconfig` for cgroups v2 and then run `wsl --shutdown` to apply changes. This shutdown step should be available as a wsl-manager action command so that users stay within the manager workflow. Unlike `terminate` (which stops a single distro), `shutdown` stops the entire WSL subsystem including all running distributions and the WSL2 lightweight VM.
 
 **Scope decisions**:
 - Command name: `shutdown` (mirrors `wsl --shutdown` semantics)
@@ -80,7 +80,7 @@ The Podman setup documentation (`docs/wsl-podman-setup.md`) instructs users to e
 - [ ] Idempotent — safe to run when no distros are running
 - [ ] `ValidateSet` and `Invoke-WslManager` switch updated
 - [ ] Unit tests
-- [ ] `docs/wsl-podman-setup.md` updated to use `wsl-manager shutdown` instead of `wsl --shutdown`
+- [ ] `docs/wsl-manager.md` updated to use `wsl-manager shutdown` instead of `wsl --shutdown`
 - [ ] All existing tests continue to pass
 
 ---
@@ -120,46 +120,6 @@ In interactive mode, `Show-InteractiveMenu` already displays the numbered distro
 - [ ] All existing tests continue to pass
 
 ---
-
-### [SC-004] Consolidate documentation and make all docs reachable from README
-
-**Status**: Open
-**Priority**: Medium
-**Component**: `README.md`, `docs/`
-
-**Summary**:
-As a user or contributor, I want a single WSL setup guide that walks me from zero to running VS Code DevContainers, and I want all project documentation discoverable from the README.
-
-**Description**:
-Two problems:
-
-1. **Fragmented WSL guides**: The Docker path (`wsl-devcontainer-setup.md`) and Podman path (`wsl-podman-setup.md`) are separate documents that duplicate the shared manual steps (SSH agent, Git config, VS Code settings). The container runtime choice should be one step in a unified workflow, not the organizing principle of two separate guides.
-
-2. **Orphan documentation**: The README links to only 2 of 8 docs files (`wsl-devcontainer-setup.md`, `wsl-manager.md`). The remaining files — `flow-launcher-setup.md`, `wsl-podman-setup.md`, `roadmap.md`, `backlog.md`, `development-principles.md` — are unreachable. `BUG-002-vscode-wsl-interop-fix.md` is a standalone deep-dive for a bug already documented in the backlog.
-
-**Scope decisions**:
-- Merge `wsl-devcontainer-setup.md` and `wsl-podman-setup.md` into a single unified guide (e.g., `docs/wsl-devcontainer-setup.md`) structured as a linear workflow:
-  1. **Install a distribution** — `wsl --install` or wsl-manager
-  2. **Setup a user** — `wsl-manager setup-user`
-  3. **Install container runtime** — choose Docker _or_ Podman (two subsections, each self-contained for that choice)
-  4. **Manual configuration** — SSH agent, Git config, VS Code settings (shared, written once)
-  5. **Verify** — run a DevContainer end-to-end
-- Keep `wsl-manager.md` as the technical reference (not a user guide)
-- Add a documentation index to the README linking all docs, organized by audience (user guides vs. development/contributing)
-- Fold `BUG-002-vscode-wsl-interop-fix.md` content into the backlog entry and remove the standalone file
-- Update README "WSL Development Setup" section to point to the unified guide
-
-**Acceptance Criteria**:
-- [ ] Single unified WSL guide replaces both `wsl-devcontainer-setup.md` and `wsl-podman-setup.md`
-- [ ] Guide follows linear workflow: install distro → setup user → container runtime (Docker/Podman) → manual config → verify
-- [ ] Shared steps (SSH agent, Git config, VS Code settings) written once, not duplicated per runtime
-- [ ] Docker and Podman each have a self-contained subsection within the container runtime step
-- [ ] Guide matches actual wsl-manager commands and implementation
-- [ ] All docs files reachable from README (directly or via a documentation section)
-- [ ] User-facing guides and development docs clearly separated in README
-- [ ] README "WSL Development Setup" section updated to reference the unified guide
-- [ ] `BUG-002-vscode-wsl-interop-fix.md` content consolidated into backlog entry and standalone file removed
-- [ ] No dead links
 
 ---
 
@@ -237,6 +197,34 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 
 ## DONE
 
+### [SC-004] ✅ COMPLETED - Consolidate documentation and make all docs reachable from README
+
+**Status**: **Completed** (2026-02-27) | **Branch**: `refinement`
+**Priority**: Medium
+**Component**: `README.md`, `docs/`
+
+**Summary**:
+As a user or contributor, I want a single WSL setup guide that walks me from zero to running VS Code DevContainers, and I want all project documentation discoverable from the README.
+
+**Description**:
+Rewrote `wsl-manager.md` as the single WSL Manager doc — a user-facing tool guide with commands, a DevContainer setup chapter (absorbing all content from `wsl-devcontainer-setup.md`), troubleshooting, and technical reference. Dropped internal/stale content (phase history, remaining checklists, future enhancements, SpecKit references). Deleted `wsl-devcontainer-setup.md` and `wsl-podman-setup.md`. Updated README to link one WSL doc (`wsl-manager.md`). Removed orphan `BUG-002-vscode-wsl-interop-fix.md` (content already in backlog).
+
+**Acceptance Criteria**:
+- [x] `wsl-manager.md` is the single WSL Manager doc (commands, DevContainer walkthrough, troubleshooting, reference)
+- [x] DevContainer content from `wsl-devcontainer-setup.md` absorbed as a chapter in `wsl-manager.md`
+- [x] `wsl-devcontainer-setup.md` and `wsl-podman-setup.md` deleted
+- [x] Guide follows linear workflow: install distro → setup user → container runtime (Docker/Podman) → manual config → verify
+- [x] Shared steps (SSH agent, Git config, VS Code settings) written once, not duplicated per runtime
+- [x] Docker and Podman each have a self-contained subsection within the container runtime step
+- [x] Guide matches actual wsl-manager commands and implementation
+- [x] Internal/stale content dropped (phase history, checklists, SpecKit refs, AI-generated options)
+- [x] All docs files reachable from README (directly or via a documentation section)
+- [x] README links one WSL entry (`wsl-manager.md`), not two
+- [x] `BUG-002-vscode-wsl-interop-fix.md` content consolidated into backlog entry and standalone file removed
+- [x] No dead links
+
+---
+
 ### [FEAT-002] ✅ COMPLETED - Set up Podman as Docker alternative in WSL
 
 **Status**: **Completed** (2026-02-24) | **Branch**: `feature/feat-002-podman-wsl`
@@ -313,7 +301,7 @@ Podman provides a daemonless, rootless container runtime compatible with Docker 
 - [x] Requires systemd-enabled distro (error if not configured)
 - [x] Requires non-root default user (error if missing)
 - [x] Clear error messages for all failure paths
-- [x] Documentation in `docs/wsl-podman-setup.md`
+- [x] Documentation in `docs/wsl-manager.md` (unified guide)
 - [x] Unit tests in `lib/podman.Tests.ps1`
 - [x] All existing tests continue to pass
 
@@ -683,7 +671,7 @@ Completed with comprehensive end-to-end documentation.
 
 **Documentation** (Comprehensive):
 - **README.md**: Added "WSL Development Setup" section with quick start and links
-- **docs/wsl-devcontainer-setup.md**: Complete 8-step workflow:
+- **docs/wsl-manager.md**: Complete 8-step DevContainer workflow:
   1. Install Debian (Microsoft Store or `wsl --install`)
   2. Update distribution (`wsl-manager update`)
   3. Clone (optional) for isolated environments (`wsl-manager clone`)
