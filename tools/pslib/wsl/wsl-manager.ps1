@@ -9,7 +9,7 @@
     creating, and removing distributions.
 
 .PARAMETER Command
-    The command to execute: list, create, clone, remove, update, setup-user, setup-docker, setup-podman, repair-interop, terminate.
+    The command to execute: list, create, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -48,7 +48,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -457,6 +457,87 @@ function Invoke-SetupUser {
     }
 }
 
+function Invoke-SetupProxy {
+    <#
+    .SYNOPSIS
+        Handles the proxy setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to configure proxy in.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    Write-Host ""
+    Write-Host "Setting up proxy in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    try {
+        $result = Install-WslProxy -DistroName $DistroName -Confirm:$false
+
+        if ($result) {
+            Write-Host ""
+            Write-Success "Successfully configured proxy in '$DistroName'."
+        }
+    }
+    catch {
+        throw $_
+    }
+}
+
+function Invoke-SetupProxyInteractive {
+    <#
+    .SYNOPSIS
+        Handles the proxy setup workflow interactively by prompting for distribution name.
+    #>
+    $distros = @(Get-WslDistroList -Detailed)
+
+    if ($distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return
+    }
+
+    # Show available distributions
+    Write-Host ""
+    Write-Host "Available distributions:" -ForegroundColor Cyan
+    $index = 1
+    foreach ($distro in $distros) {
+        Format-DistroListEntry -Index $index -Distro $distro
+        $index++
+    }
+    Write-Host ""
+
+    # Prompt for distribution selection (number or name)
+    $selection = Read-Host "Enter number or name of the distribution to setup proxy in"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return
+    }
+
+    # Check if selection is a number
+    $selectedName = $null
+    if ($selection -match '^\d+$') {
+        $selectionNum = [int]$selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $distros.Count) {
+            $selectedName = $distros[$selectionNum - 1].Name
+        }
+        else {
+            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($distros.Count)."
+            return
+        }
+    }
+    else {
+        $selectedName = $selection
+    }
+
+    # Setup proxy in the selected distribution
+    Invoke-SetupProxy -DistroName $selectedName
+}
+
 function Invoke-SetupDocker {
     <#
     .SYNOPSIS
@@ -791,6 +872,7 @@ function Show-InteractiveMenu {
         Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
         Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
+        Write-Host "  [X] Setup proxy (corporate, from env)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
@@ -853,6 +935,15 @@ function Show-InteractiveMenu {
                 }
                 Read-Host -Prompt "Press Enter to continue ..."
             }
+            "X" {
+                try {
+                    Invoke-SetupProxyInteractive
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
             "R" {
                 try {
                     Invoke-RemoveDistro
@@ -894,7 +985,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -927,6 +1018,14 @@ function Invoke-WslManager {
         }
         "setup-user" {
             Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password
+        }
+        "setup-proxy" {
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Invoke-SetupProxyInteractive
+            }
+            else {
+                Invoke-SetupProxy -DistroName $Name
+            }
         }
         "setup-docker" {
             if ([string]::IsNullOrWhiteSpace($Name)) {

@@ -109,6 +109,16 @@ This command:
 - Adds the user to the sudo group with NOPASSWD
 - Configures `/etc/wsl.conf` to set as default user
 
+### Setup Proxy
+
+Configure corporate proxy settings (reads `$Env:HTTPS_PROXY` and `$Env:NO_PROXY`).
+
+```powershell
+wsl-manager setup-proxy debian-devcon
+```
+
+See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+
 ### Setup Docker
 
 Install Docker Engine with automatic prerequisite configuration.
@@ -202,7 +212,37 @@ wsl-manager setup-user debian-devcon
 New-WslUser -DistroName debian-devcon -Username vscode -Password "YourPassword"
 ```
 
-#### Step 5: Install Container Runtime
+#### Step 5: Configure Proxy (Corporate Networks)
+
+If you're behind a corporate proxy, configure proxy settings before installing container runtimes. This ensures `apt`, Docker, and Podman all route through the proxy.
+
+**Prerequisite:** Set proxy environment variables in your PowerShell session first:
+
+```powershell
+# If you have a setProxy.ps1 script:
+setProxy.ps1 -askForCreds
+
+# Or set manually:
+$Env:HTTPS_PROXY = "http://your-proxy:8080"
+$Env:NO_PROXY = "localhost,127.0.0.1,*.internal.corp"
+```
+
+Then run:
+
+```powershell
+wsl-manager setup-proxy debian-devcon
+```
+
+**What this configures automatically:**
+
+1. **`~/.bashrc` managed block** — exports `http_proxy`, `https_proxy`, `HTTP_PROXY`, `HTTPS_PROXY`, `no_proxy`, `NO_PROXY`
+2. **`/etc/apt/apt.conf.d/99proxy`** — `Acquire::http::Proxy` and `Acquire::https::Proxy`
+3. **`~/.docker/config.json`** — `proxies.default` with `httpProxy`, `httpsProxy`, `noProxy`
+4. **`~/.config/containers/containers.conf`** — `[engine] env` with proxy variables
+
+**Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). If `$Env:NO_PROXY` is not set, defaults to `localhost,127.0.0.1`.
+
+#### Step 6: Install Container Runtime
 
 Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
 
@@ -288,7 +328,7 @@ wsl-manager setup-podman debian-devcon
 
 **Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
 
-#### Step 6: Windows SSH Agent Setup
+#### Step 7: Windows SSH Agent Setup
 
 **These steps must be performed on your Windows host (PowerShell as Administrator).**
 
@@ -318,7 +358,7 @@ ssh-add ~\.ssh\id_rsa
 ssh-add -l
 ```
 
-#### Step 7: Git Configuration
+#### Step 8: Git Configuration
 
 **These steps must be performed inside your WSL distribution.**
 
@@ -376,7 +416,7 @@ With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can 
 
 **Prerequisite:** WSL interop must be enabled (the automated Docker/Podman setup handles this).
 
-#### Step 8: VS Code Settings
+#### Step 9: VS Code Settings
 
 Open your VS Code `settings.json` (File > Preferences > Settings > Open Settings (JSON)) and add the settings for your chosen runtime.
 
@@ -744,10 +784,12 @@ tools/pslib/wsl/
 │   ├── install.ps1            # Clone, remove operations
 │   ├── ops.ps1                # Update, state, terminate operations
 │   ├── podman.ps1             # Podman installation & verification
+│   ├── proxy.ps1              # Proxy configuration
 │   └── user.ps1               # User account creation & configuration
 ├── scripts/
 │   ├── install-docker.sh      # Docker Engine installation script
-│   └── install-podman.sh      # Rootless Podman installation script
+│   ├── install-podman.sh      # Rootless Podman installation script
+│   └── setup-proxy.sh         # Proxy configuration script
 └── tests/
     ├── wsl.Tests.ps1
     ├── wsl.Integration.Tests.ps1
@@ -781,6 +823,9 @@ tools/pslib/wsl/
 **Docker** (`lib/docker.ps1`):
 - `Install-WslDockerEngine -DistroName [-Username]` — Install Docker with automatic prerequisite configuration
 - `Test-WslDockerInstalled -DistroName` — Check Docker installation
+
+**Proxy** (`lib/proxy.ps1`):
+- `Install-WslProxy -DistroName [-ProxyUrl] [-NoProxy]` — Configure proxy settings (reads `$Env:HTTPS_PROXY` / `$Env:NO_PROXY`)
 
 **Podman** (`lib/podman.ps1`):
 - `Install-WslPodman -DistroName [-Username]` — Install rootless Podman with automatic prerequisite configuration
