@@ -16,6 +16,7 @@
 - [SC-003 — Stop action functions from reprinting distro table](#sc-003-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
 - [SC-005 — Move argument validation into action functions](#sc-005-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
 - [SC-006 — Scoop Update Helper Script](#sc-006-scoop-update-helper-script)
+- [SC-007 — Add `setup-proxy` action to wsl-manager](#sc-007-add-setup-proxy-action-to-wsl-manager-for-corporate-proxy-configuration)
 
 ### Done
 - [SC-004 — Consolidate documentation and make all docs reachable from README](#sc-004--completed---consolidate-documentation-and-make-all-docs-reachable-from-readme)
@@ -192,6 +193,116 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 - [ ] Clear status/success/error output
 - [ ] Unit tests with mocked Scoop commands
 - [ ] All existing tests continue to pass
+
+---
+
+### [SC-007] Add `setup-proxy` action to wsl-manager for corporate proxy configuration
+
+**Status**: Open
+**Priority**: Urgent
+**Component**: `tools/pslib/wsl/lib/proxy.ps1` (new), `tools/pslib/wsl/scripts/setup-proxy.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
+**Related**: FEAT-002 (Podman setup — `.bashrc` pattern), FEAT-001 (Docker setup)
+
+**Summary**:
+As a developer in a corporate environment with an authenticating proxy, I want `wsl-manager setup-proxy` to configure all proxy settings inside my WSL distro so that apt, Docker, Podman, and general shell traffic all route through the proxy without manual configuration.
+
+**Workflow**:
+1. User runs `setProxy.ps1 -askForCreds` in PowerShell → sets `$Env:HTTPS_PROXY` (with embedded credentials) and `$Env:NO_PROXY`
+2. User launches `wsl-manager` from that same PowerShell session
+3. `setup-proxy` reads `$Env:HTTPS_PROXY` and `$Env:NO_PROXY`, validates, and configures the target distro
+
+**Ordering context**:
+- `setup-proxy` runs after `setup-user` but before `setup-docker` / `setup-podman`
+- Docker and Podman are NOT installed yet at this point — proxy configs are pre-staged unconditionally
+- When Docker/Podman are installed later, they pick up the existing proxy configs automatically
+
+**Scope Decisions**:
+- **Canonical value**: `$Env:HTTPS_PROXY` from the PowerShell session (contains `http://user:urlEncodedPass@host:port`)
+- **All proxy vars reuse HTTPS_PROXY**: `HTTP_PROXY`, `https_proxy`, `http_proxy`, `HTTPS_PROXY` all get the same value
+- **NO_PROXY**: Propagate `$Env:NO_PROXY` from Windows session, fallback to `localhost,127.0.0.1`
+- **apt proxy**: Write `/etc/apt/apt.conf.d/99proxy` with `Acquire::http::Proxy` and `Acquire::https::Proxy`
+- **Docker runtime proxy**: Write `~/.docker/config.json` `proxies.default` unconditionally (pre-stages config before Docker install)
+- **Podman runtime proxy**: Write `~/.config/containers/containers.conf` `[engine]` env unconditionally (pre-stages config before Podman install)
+
+**Implementation**:
+
+**PowerShell side — `lib/proxy.ps1`**:
+- `Install-WslProxy -DistroName [-ProxyUrl] [-NoProxy]`
+- Reads `$Env:HTTPS_PROXY` and `$Env:NO_PROXY` if params not provided
+- Validates `HTTPS_PROXY` is non-empty (fail early with guidance to run `setProxy.ps1` first)
+- Gets default user via `Get-WslDefaultUser`
+- Calls `scripts/setup-proxy.sh` via `Invoke-WslDistroScript`
+
+**Bash script — `scripts/setup-proxy.sh`**:
+- Args: `--proxy-url <url>`, `--no-proxy <list>`, `--username <user>`
+- Runs as root, follows exit code convention (0 success / 1 prereq failure / 2 config failure / 3 verification failure / 4 argument error)
+- Resolves user home: `TARGET_HOME=$(eval echo "~$TARGET_USER")` (same pattern as `install-podman.sh`)
+- All user-home files written under `$TARGET_HOME`, not `/root`; ownership set with `chown $TARGET_USER:$TARGET_USER`
+- Idempotent: uses marker comments (`# BEGIN wsl-manager proxy` / `# END wsl-manager proxy`) for managed blocks, replaces on re-run
+- Configures:
+  1. **`$TARGET_HOME/.bashrc`** — managed block with all 6 exports (`HTTPS_PROXY`, `HTTP_PROXY`, `https_proxy`, `http_proxy`, `NO_PROXY`, `no_proxy`)
+  2. **`/etc/apt/apt.conf.d/99proxy`** — full file replacement (idempotent by nature, owned by root) with `Acquire::http::Proxy` and `Acquire::https::Proxy`
+  3. **`$TARGET_HOME/.docker/config.json`** — write `proxies.default` block unconditionally, `chown` to target user (pre-stages before Docker install)
+  4. **`$TARGET_HOME/.config/containers/containers.conf`** — write `[engine]` env block unconditionally, `chown` to target user (pre-stages before Podman install)
+
+**wsl-manager.ps1**:
+- Add `setup-proxy` to `ValidateSet` and `Invoke-WslManager` switch
+- Add `Invoke-SetupProxy` + `Invoke-SetupProxyInteractive` following existing pattern
+- Interactive menu: `[X] Setup proxy (corporate, from env)` — placed between Podman and Remove
+- Menu key `[X]` (proXy) to avoid conflicts with existing keys
+
+**Acceptance Criteria**:
+- [ ] `wsl-manager setup-proxy <distro>` command works
+- [ ] Interactive menu option `[X] Setup proxy (corporate, from env)` works
+- [ ] Validates `HTTPS_PROXY` is set before proceeding (clear error with guidance to run `setProxy.ps1 -askForCreds`)
+- [ ] `.bashrc` exports all 6 proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `https_proxy`, `http_proxy`, `NO_PROXY`, `no_proxy`) using managed block with marker comments
+- [ ] All proxy vars (`HTTP_PROXY`, `https_proxy`, `http_proxy`, `HTTPS_PROXY`) get the same value from `$Env:HTTPS_PROXY`
+- [ ] `NO_PROXY` / `no_proxy` propagated from `$Env:NO_PROXY`, fallback to `localhost,127.0.0.1`
+- [ ] `/etc/apt/apt.conf.d/99proxy` written with `Acquire::http::Proxy` and `Acquire::https::Proxy`
+- [ ] `~/.docker/config.json` written with `proxies.default` (unconditional, pre-staged before Docker install)
+- [ ] `~/.config/containers/containers.conf` written with `[engine]` env (unconditional, pre-staged before Podman install)
+- [ ] Idempotent — safe to re-run with new credentials (managed blocks replaced, files overwritten)
+- [ ] All user-home files owned by target user, not root
+- [ ] Exit codes follow convention (0/1/2/3/4)
+- [ ] Unit tests for `lib/proxy.ps1` (Pester)
+- [ ] `docs/wsl-manager.md` updated with proxy setup step in the workflow
+- [ ] All existing tests continue to pass
+
+**Technical Notes**:
+- `.bashrc` managed block pattern (same approach as `install-podman.sh`):
+  ```bash
+  # BEGIN wsl-manager proxy
+  export HTTPS_PROXY="http://user:pass@proxy:8080"
+  export HTTP_PROXY="http://user:pass@proxy:8080"
+  export https_proxy="http://user:pass@proxy:8080"
+  export http_proxy="http://user:pass@proxy:8080"
+  export NO_PROXY="localhost,127.0.0.1,.corp.example.com"
+  export no_proxy="localhost,127.0.0.1,.corp.example.com"
+  # END wsl-manager proxy
+  ```
+- `/etc/apt/apt.conf.d/99proxy`:
+  ```
+  Acquire::http::Proxy "http://user:pass@proxy:8080";
+  Acquire::https::Proxy "http://user:pass@proxy:8080";
+  ```
+- `~/.docker/config.json` (merge-safe — preserve existing keys):
+  ```json
+  {
+    "proxies": {
+      "default": {
+        "httpProxy": "http://user:pass@proxy:8080",
+        "httpsProxy": "http://user:pass@proxy:8080",
+        "noProxy": "localhost,127.0.0.1"
+      }
+    }
+  }
+  ```
+- `~/.config/containers/containers.conf`:
+  ```toml
+  [engine]
+  env = ["https_proxy=http://user:pass@proxy:8080", "http_proxy=http://user:pass@proxy:8080", "no_proxy=localhost,127.0.0.1"]
+  ```
+- Credentials are URL-encoded in the proxy URL (e.g., `p%40ss` for `p@ss`) — script passes them through as-is, no encoding/decoding needed
 
 ---
 
