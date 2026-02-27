@@ -9,14 +9,14 @@
 ## Table of Contents
 
 ### In Progress
-- [CHORE-002 — Backlog refinement](#chore-002-backlog-refinement)
+- [SC-001 — Backlog refinement](#sc-001-backlog-refinement)
 
 ### TODO
-- [FEAT-007 — Add `shutdown` command to wsl-manager](#feat-007-add-shutdown-command-to-wsl-manager)
-- [FEAT-006 — Stop action functions from reprinting distro table](#feat-006-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
-- [REFACT-007 — Consolidate documentation and make all docs reachable from README](#refact-007-consolidate-documentation-and-make-all-docs-reachable-from-readme)
-- [REFACT-006 — Move argument validation into action functions](#refact-006-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
-- [FEAT-005 — Scoop Update Helper Script](#feat-005-scoop-update-helper-script)
+- [SC-002 — Add `shutdown` command to wsl-manager](#sc-002-add-shutdown-command-to-wsl-manager)
+- [SC-003 — Stop action functions from reprinting distro table](#sc-003-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
+- [SC-004 — Consolidate documentation and make all docs reachable from README](#sc-004-consolidate-documentation-and-make-all-docs-reachable-from-readme)
+- [SC-005 — Move argument validation into action functions](#sc-005-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
+- [SC-006 — Scoop Update Helper Script](#sc-006-scoop-update-helper-script)
 
 ### Done
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](#feat-002--completed---set-up-podman-as-docker-alternative-in-wsl)
@@ -41,7 +41,7 @@
 
 ## IN PROGRESS
 
-### [CHORE-002] Backlog refinement
+### [SC-001] Backlog refinement
 
 **Status**: Ongoing
 **Priority**: —
@@ -53,7 +53,7 @@ Ongoing backlog refinement — create, review, clarify, and update user stories.
 
 ## TODO
 
-### [FEAT-007] Add `shutdown` command to wsl-manager
+### [SC-002] Add `shutdown` command to wsl-manager
 
 **Status**: Open
 **Priority**: Medium
@@ -85,12 +85,12 @@ The Podman setup documentation (`docs/wsl-podman-setup.md`) instructs users to e
 
 ---
 
-### [FEAT-006] Stop action functions from reprinting distro table in interactive mode
+### [SC-003] Stop action functions from reprinting distro table in interactive mode
 
 **Status**: Open
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.ps1`
-**Depends on**: REFACT-006
+**Depends on**: SC-005
 
 **Summary**:
 As a WSL manager user, I want the interactive menu to show the distro table only once so that I can select a distribution without being confused by redundant or inconsistently numbered lists.
@@ -121,7 +121,7 @@ In interactive mode, `Show-InteractiveMenu` already displays the numbered distro
 
 ---
 
-### [REFACT-007] Consolidate documentation and make all docs reachable from README
+### [SC-004] Consolidate documentation and make all docs reachable from README
 
 **Status**: Open
 **Priority**: Low
@@ -146,7 +146,7 @@ The README currently links to only 2 of 8 docs files (`wsl-devcontainer-setup.md
 
 ---
 
-### [REFACT-006] Move argument validation from Invoke-WslManager switch into action functions
+### [SC-005] Move argument validation from Invoke-WslManager switch into action functions
 
 **Status**: Open
 **Priority**: Medium
@@ -181,7 +181,7 @@ The `Invoke-WslManager` switch block inconsistently handles missing arguments li
 
 ---
 
-### [FEAT-005] Scoop Update Helper Script
+### [SC-006] Scoop Update Helper Script
 
 **Status**: Open
 **Priority**: Low
@@ -731,6 +731,7 @@ Added validation using `[int]::TryParse()` before attempting to convert the vers
 
 ## Notes
 
-- Use format `[TYPE-###]` for item IDs (e.g., `BUG-001`, `FEAT-001`, `DEBT-001`)
+- **ID prefix**: `SC` (shortcuts)
+- Use format `[SC-###]` for item IDs — global sequential numbering
 - Keep items actionable with clear acceptance criteria
 - Do NOT list commit hashes in backlog entries — the backlog is part of the commit itself, so hashes are circular and go stale after squash/rebase

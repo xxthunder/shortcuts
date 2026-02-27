@@ -51,25 +51,22 @@ The backlog is a single markdown file with these sections in order:
 
 ## Notes
 
-- Use format `[TYPE-###]` for item IDs (e.g., `BUG-001`, `FEAT-001`, `DEBT-001`)
+- **ID prefix**: `PREFIX` (e.g., `HSH` for HomeSweetHome)
 - Keep items actionable with clear acceptance criteria
 - Do NOT list commit hashes in backlog entries — the backlog is part of the commit itself, so hashes are circular and go stale after squash/rebase
 ```
 
 ## Item ID Convention
 
-Format: `[TYPE-###]` — type prefix + zero-padded sequential number.
+Format: `[PREFIX-###]` — project prefix + zero-padded sequential number.
 
-| Type    | Use for                          | Example    |
-|---------|----------------------------------|------------|
-| FEAT    | New feature                      | FEAT-001   |
-| BUG     | Bug fix                          | BUG-002    |
-| REFACT  | Refactoring                      | REFACT-003 |
-| CHORE   | Maintenance / housekeeping       | CHORE-001  |
-| CI      | CI/CD pipeline changes           | CI-001     |
-| DEBT    | Technical debt                   | DEBT-001   |
+- The prefix is a short, memorable abbreviation of the repository/project name (e.g., `HSH` for HomeSweetHome).
+- Numbers are **global and sequential** across all items — no per-type numbering, no gaps intentional.
+- The prefix is stored in the **Notes** section of the backlog so it is always discoverable.
 
-Numbers are global across all types (i.e., after FEAT-001 and BUG-002, the next item is ###-003 regardless of type).
+Examples: `HSH-001`, `HSH-002`, `HSH-015`
+
+When adding a new item, scan all existing IDs in the backlog to find the highest number, then increment by one.
 
 ## Entry Fields
 
@@ -79,7 +76,7 @@ Numbers are global across all types (i.e., after FEAT-001 and BUG-002, the next 
 |------------------------|----------------------------------------------------------|
 | **Status**             | `Open` (TODO), `Ongoing` (IN PROGRESS), or completed format (see below) |
 | **Priority**           | `High`, `Medium`, `Low`, or `—` (none)                  |
-| **Component**          | File path(s) affected (e.g., `tools/pslib/wsl/wsl-manager.ps1`) |
+| **Component**          | File path(s) affected (e.g., `roles/ssl-certify/`)       |
 | **Summary**            | User story: "As a [user], I want [feature] so that [benefit]" |
 | **Description**        | Detailed problem statement, current state, rationale     |
 | **Acceptance Criteria**| Checkbox list: `- [ ] Criterion` (unchecked) / `- [x] Criterion` (checked) |
@@ -88,7 +85,7 @@ Numbers are global across all types (i.e., after FEAT-001 and BUG-002, the next 
 
 | Field                    | When to include                                     |
 |--------------------------|-----------------------------------------------------|
-| **Depends on**           | When blocked by another item (e.g., `REFACT-006`)   |
+| **Depends on**           | When blocked by another item (e.g., `HSH-006`)     |
 | **Related**              | When related to other items (not blocking)           |
 | **Scope Decisions**      | When key architectural choices have been made        |
 | **Technical Notes**      | Implementation-specific details (socket paths, config snippets) |
@@ -98,7 +95,7 @@ Numbers are global across all types (i.e., after FEAT-001 and BUG-002, the next 
 ### Open / TODO entry
 
 ```markdown
-### [FEAT-001] Brief descriptive title
+### [HSH-015] Brief descriptive title
 
 **Status**: Open
 **Priority**: Medium
@@ -123,7 +120,7 @@ Same as TODO but with `**Status**: Ongoing` and some criteria may be checked off
 ### Completed entry
 
 ```markdown
-### [FEAT-001] ✅ COMPLETED - Brief descriptive title
+### [HSH-001] ✅ COMPLETED - Brief descriptive title
 
 **Status**: **Completed** (YYYY-MM-DD) | **Branch**: `branch-name`
 **Priority**: Medium
@@ -136,13 +133,13 @@ Same as TODO but with `**Status**: Ongoing` and some criteria may be checked off
 
 ```markdown
 ### In Progress
-- [CHORE-002 — Backlog refinement](#chore-002-backlog-refinement)
+- [HSH-014 — Backlog refinement](#hsh-014-backlog-refinement)
 
 ### TODO
-- [FEAT-001 — Brief title](#feat-001-brief-descriptive-title)
+- [HSH-015 — Brief title](#hsh-015-brief-descriptive-title)
 
 ### Done
-- [FEAT-001 — Brief title](#feat-001--completed---brief-descriptive-title)
+- [HSH-001 — Brief title](#hsh-001--completed---brief-descriptive-title)
 ```
 
 Note: completed items include `--completed---` in the anchor because of the `✅ COMPLETED -` prefix in the heading.
@@ -152,7 +149,7 @@ Note: completed items include `--completed---` in the anchor because of the `✅
 Every backlog should include an ongoing refinement item that is never completed. All refinement commits reference this ID:
 
 ```markdown
-### [CHORE-0XX] Backlog refinement
+### [PREFIX-0XX] Backlog refinement
 
 **Status**: Ongoing
 **Priority**: —

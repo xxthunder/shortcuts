@@ -1,3 +1,4 @@
+<!-- Source: https://github.com/xxthunder/my-agentic-skills/tree/develop/refinement -->
 ---
 name: refinement
 description: "Start a backlog refinement session to discuss the project mission, review backlog items, prioritize work, and align on next steps. Also bootstraps the backlog structure in greenfield projects. Trigger with: 'another refinement session', 'let's refine', 'refinement time', 'backlog refinement', or similar requests to discuss project direction and priorities."
@@ -40,9 +41,10 @@ When no backlog file is found, create one:
 
 1. Read **[references/backlog-format.md](references/backlog-format.md)** for the complete format specification
 2. Ask the user where the backlog should live (default: `docs/backlog.md`)
-3. Create the backlog file with the skeleton structure (Status Legend, TOC, empty sections, Notes)
-4. Create the ongoing refinement item (CHORE-001) as the first entry in IN PROGRESS
-5. Ask the user if they have initial ideas to seed the backlog — draft entries using the format from the reference
+3. Ask the user for a **project ID prefix** — a short uppercase abbreviation of the repo/project name (e.g., `HSH` for HomeSweetHome). Store it in the Notes section of the backlog.
+4. Create the backlog file with the skeleton structure (Status Legend, TOC, empty sections, Notes)
+5. Create the ongoing refinement item (`[PREFIX-001]`) as the first entry in IN PROGRESS
+6. Ask the user if they have initial ideas to seed the backlog — draft entries using the format from the reference
 
 **Do NOT commit automatically.** Let the user review via `git diff` first.
 
@@ -95,8 +97,9 @@ Use AskUserQuestion to let the user choose their focus area:
 #### New Ideas
 - Help the user articulate the idea
 - Read **[references/backlog-format.md](references/backlog-format.md)** for the entry template and ID convention
-- Determine the next available ID number (scan existing IDs across all types)
-- Draft a backlog entry with all required fields
+- Read the project prefix from the **Notes** section of the backlog
+- Determine the next available ID number (scan all existing IDs, take the highest number, increment by one)
+- Draft a backlog entry with all required fields using `[PREFIX-###]` format
 - Add to backlog after user approval
 
 #### Architecture
