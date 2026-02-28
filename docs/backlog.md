@@ -13,6 +13,7 @@
 - [SC-007 — Add `setup-proxy` action to wsl-manager](#sc-007-add-setup-proxy-action-to-wsl-manager-with-automatic-proxy-detection)
 
 ### TODO
+- [SC-008 — Split backlog into index and per-item files](#sc-008-split-backlog-into-index-and-per-item-files)
 - [SC-002 — Add `shutdown` command to wsl-manager](#sc-002-add-shutdown-command-to-wsl-manager)
 - [SC-003 — Stop action functions from reprinting distro table](#sc-003-stop-action-functions-from-reprinting-distro-table-in-interactive-mode)
 - [SC-005 — Move argument validation into action functions](#sc-005-move-argument-validation-from-invoke-wslmanager-switch-into-action-functions)
@@ -209,6 +210,33 @@ dot-source setProxy.ps1 (library mode)
 ---
 
 ## TODO
+
+### [SC-008] Split backlog into index and per-item files
+
+**Status**: Open
+**Priority**: Low
+**Component**: `docs/backlog.md` → `docs/backlog/index.md` + `docs/backlog/sc-*.md`
+
+**Summary**:
+As a contributor, I want each backlog item in its own file so that status changes (moving between In Progress / TODO / Done) only require editing the index, not cutting and pasting large blocks within a monolithic file.
+
+**Implementation**:
+- Create `docs/backlog/index.md` with the status legend, table of contents, and links to individual item files
+- Create one file per item (e.g., `docs/backlog/sc-007.md`, `docs/backlog/feat-001.md`)
+- Status sections (In Progress / TODO / Done) live only in the index as link lists
+- Changing an item's status = moving its link between sections in the index
+- Item files contain the full story (summary, workflow, ACs, technical notes)
+- Update `docs/backlog/index.md` redirect or symlink from old `docs/backlog.md` path
+
+**Acceptance Criteria**:
+- [ ] `docs/backlog/index.md` exists with status legend, ToC, and links to all items
+- [ ] Each backlog item has its own file under `docs/backlog/`
+- [ ] Old `docs/backlog.md` removed or redirects to new location
+- [ ] All cross-references (CLAUDE.md, README, etc.) updated
+- [ ] No content lost in migration
+- [ ] Refinement skill updated to work with new file structure
+
+---
 
 ### [SC-002] Add `shutdown` command to wsl-manager
 
