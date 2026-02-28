@@ -1,6 +1,6 @@
 <#
 .DESCRIPTION
-    Pester tests for lib/proxy.ps1 - WSL proxy configuration
+    Pester tests for lib/proxy.ps1 - WSL proxy configuration with auto-detection
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File is UTF-8 without BOM, which is standard for cross-platform compatibility.')]
@@ -9,199 +9,201 @@ param()
 BeforeAll {
     . "$PSScriptRoot\..\..\utils\utils.ps1"
     . "$PSScriptRoot\..\wsl.ps1"
+
+    # Source setProxy.ps1 in library mode so its functions exist for mocking
+    $env:SETPROXY_LIBRARY_MODE = '1'
+    . "$PSScriptRoot\..\..\..\proxy\setProxy.ps1"
+}
+
+AfterAll {
+    Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
 }
 
 Describe "Install-WslProxy" {
-    Context "Parameter validation" {
-        It "Should throw when DistroName is empty" {
-            { Install-WslProxy -DistroName "" -Confirm:$false } | Should -Throw
+    BeforeEach {
+        Mock Assert-WslDistroExists { }
+        Mock Get-WslDefaultUser { "developer" }
+        Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+    }
+
+    Context "PAC detected, resolves to proxy, no credentials" {
+        It "Should auto-detect proxy and call setup-proxy.sh with proxy URL" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
+                $Arguments -contains "--no-proxy=localhost,127.0.0.1" -and
+                $Arguments -contains "--username=developer"
+            }
         }
+    }
 
-        It "Should throw when no proxy URL provided and HTTPS_PROXY not set" {
-            $originalValue = $Env:HTTPS_PROXY
-            try {
-                $Env:HTTPS_PROXY = $null
+    Context "PAC detected, resolves to proxy, with credentials" {
+        It "Should embed credentials in proxy URL" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
+            # First Read-Host: credentials question → Y
+            Mock Read-Host { "Y" }
 
-                Mock Assert-WslDistroExists { }
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
 
-                { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*HTTPS_PROXY*"
-            }
-            finally {
-                $Env:HTTPS_PROXY = $originalValue
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://user1:p%40ss@proxy.corp.com:8080"
             }
         }
+    }
 
-        It "Should include guidance message when proxy URL missing" {
-            $originalValue = $Env:HTTPS_PROXY
-            try {
-                $Env:HTTPS_PROXY = $null
+    Context "PAC detected, resolves to DIRECT, user confirms DIRECT" {
+        It "Should call setup-proxy.sh with --remove flag" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
+            Mock Read-Host { "D" }
 
-                Mock Assert-WslDistroExists { }
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
 
-                { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*setProxy*"
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--remove" -and
+                $Arguments -contains "--username=developer"
             }
-            finally {
-                $Env:HTTPS_PROXY = $originalValue
+        }
+    }
+
+    Context "PAC detected, DIRECT, user chooses manual entry" {
+        It "Should use manually entered proxy URL" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
+            # First Read-Host: D/M choice → M, Second: host:port, Third: credentials → N
+            $script:readHostCallCount = 0
+            Mock Read-Host {
+                $script:readHostCallCount++
+                switch ($script:readHostCallCount) {
+                    1 { "M" }
+                    2 { "manual.proxy.com:3128" }
+                    3 { "N" }
+                    default { "" }
+                }
+            }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://manual.proxy.com:3128"
+            }
+        }
+    }
+
+    Context "No PAC, user enters manual proxy" {
+        It "Should prompt for manual proxy and configure it" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { $null }
+            # First Read-Host: M/D choice → M, Second: host:port, Third: credentials → N
+            $script:readHostCallCount = 0
+            Mock Read-Host {
+                $script:readHostCallCount++
+                switch ($script:readHostCallCount) {
+                    1 { "M" }
+                    2 { "myproxy.com:8080" }
+                    3 { "N" }
+                    default { "" }
+                }
+            }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://myproxy.com:8080" -and
+                $Arguments -contains "--no-proxy=localhost,127.0.0.1"
+            }
+        }
+    }
+
+    Context "No PAC, user chooses DIRECT" {
+        It "Should call setup-proxy.sh with --remove flag" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { $null }
+            Mock Read-Host { "D" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--remove" -and
+                $Arguments -contains "--username=developer"
             }
         }
     }
 
     Context "Prerequisite checks" {
         It "Should throw when distribution does not exist" {
-            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist." }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
 
-            { Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false } | Should -Throw "*does not exist*"
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*does not exist*"
         }
 
         It "Should throw when no default user is configured" {
-            Mock Assert-WslDistroExists { }
             Mock Get-WslDefaultUser { $null }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
 
-            { Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false } | Should -Throw "*default user*"
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*default user*"
         }
 
         It "Should provide setup-user command in error message when no user" {
-            Mock Assert-WslDistroExists { }
             Mock Get-WslDefaultUser { $null }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
 
-            { Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false } | Should -Throw "*setup-user*"
-        }
-    }
-
-    Context "Environment variable reading" {
-        It "Should read ProxyUrl from Env:HTTPS_PROXY when not provided" {
-            $originalValue = $Env:HTTPS_PROXY
-            try {
-                $Env:HTTPS_PROXY = "http://env-proxy:8080"
-
-                Mock Assert-WslDistroExists { }
-                Mock Get-WslDefaultUser { "developer" }
-                Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
-
-                Install-WslProxy -DistroName "Debian" -Confirm:$false
-
-                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                    $Arguments -contains "--proxy-url=http://env-proxy:8080"
-                }
-            }
-            finally {
-                $Env:HTTPS_PROXY = $originalValue
-            }
-        }
-
-        It "Should read NoProxy from Env:NO_PROXY when not provided" {
-            $originalNoProxy = $Env:NO_PROXY
-            try {
-                $Env:NO_PROXY = "internal.corp,10.0.0.0/8"
-
-                Mock Assert-WslDistroExists { }
-                Mock Get-WslDefaultUser { "developer" }
-                Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
-
-                Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
-
-                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                    $Arguments -contains "--no-proxy=internal.corp,10.0.0.0/8"
-                }
-            }
-            finally {
-                $Env:NO_PROXY = $originalNoProxy
-            }
-        }
-
-        It "Should default NoProxy to localhost,127.0.0.1 when Env:NO_PROXY not set" {
-            $originalNoProxy = $Env:NO_PROXY
-            try {
-                $Env:NO_PROXY = $null
-
-                Mock Assert-WslDistroExists { }
-                Mock Get-WslDefaultUser { "developer" }
-                Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
-
-                Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
-
-                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                    $Arguments -contains "--no-proxy=localhost,127.0.0.1"
-                }
-            }
-            finally {
-                $Env:NO_PROXY = $originalNoProxy
-            }
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*setup-user*"
         }
     }
 
     Context "SupportsShouldProcess" {
         BeforeEach {
-            Mock Assert-WslDistroExists { }
-            Mock Get-WslDefaultUser { "developer" }
-            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
         }
 
         It "Should not execute script when -WhatIf is specified" {
-            Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -WhatIf
+            Install-WslProxy -DistroName "Debian" -WhatIf
 
             Should -Invoke Invoke-WslDistroScript -Times 0
         }
 
         It "Should execute script when -Confirm:false is specified" {
-            Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroScript -Times 1
         }
     }
 
-    Context "Script arguments" {
-        BeforeEach {
-            Mock Assert-WslDistroExists { }
-            Mock Get-WslDefaultUser { "developer" }
-            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
-        }
-
-        It "Should pass correct arguments to Invoke-WslDistroScript" {
-            Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -NoProxy "localhost,127.0.0.1" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $Arguments -contains "--proxy-url=http://proxy:8080" -and
-                $Arguments -contains "--no-proxy=localhost,127.0.0.1" -and
-                $Arguments -contains "--username=developer"
-            }
-        }
-
-        It "Should call script with setup-proxy.sh" {
-            Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $ScriptPath -like "*setup-proxy.sh*"
-            }
-        }
-
-        It "Should execute script with AsRoot=true" {
-            Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $AsRoot -eq $true
-            }
-        }
-    }
-
     Context "Exit code handling" {
         BeforeEach {
-            Mock Assert-WslDistroExists { }
-            Mock Get-WslDefaultUser { "developer" }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
         }
 
         It "Should return true on exit code 0 (success)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false
-
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false
             $result | Should -Be $true
         }
 
         It "Should return false and write error on exit code 1 (prerequisite failure)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 1; return 1 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*Prerequisite check failed*"
         }
@@ -209,7 +211,7 @@ Describe "Install-WslProxy" {
         It "Should return false and write error on exit code 2 (configuration failure)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*Configuration failed*"
         }
@@ -217,7 +219,7 @@ Describe "Install-WslProxy" {
         It "Should return false and write error on exit code 3 (verification failure)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 3; return 3 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*Verification failed*"
         }
@@ -225,7 +227,7 @@ Describe "Install-WslProxy" {
         It "Should return false and write error on exit code 4 (argument error)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 4; return 4 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*Argument error*"
         }
@@ -233,9 +235,33 @@ Describe "Install-WslProxy" {
         It "Should return false and write error on unexpected exit code" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 99; return 99 }
 
-            $result = Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*exit code: 99*"
+        }
+    }
+
+    Context "Script invocation" {
+        BeforeEach {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
+        }
+
+        It "Should call script with setup-proxy.sh" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*setup-proxy.sh*"
+            }
+        }
+
+        It "Should execute script with AsRoot=true" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $AsRoot -eq $true
+            }
         }
     }
 }

@@ -872,7 +872,7 @@ function Show-InteractiveMenu {
         Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
         Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
-        Write-Host "  [X] Setup proxy (corporate, from env)" -ForegroundColor White
+        Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White

@@ -9,11 +9,12 @@
 function Install-WslProxy {
     <#
     .SYNOPSIS
-        Configures proxy settings inside a WSL distribution.
+        Configures or removes proxy settings inside a WSL distribution with automatic proxy detection.
 
     .DESCRIPTION
-        Reads proxy settings from PowerShell environment variables and configures
-        proxy for .bashrc, apt, Docker client, and Podman inside the distribution.
+        Auto-detects proxy settings by dot-sourcing setProxy.ps1 in library mode and calling
+        its PAC/registry detection functions. Prompts the user for credentials if needed.
+        Falls back to manual entry or DIRECT (no proxy) when auto-detection is unavailable.
 
         This function is idempotent - safe to run multiple times (overwrites config).
 
@@ -26,66 +27,107 @@ function Install-WslProxy {
     .PARAMETER DistroName
         The name of the WSL distribution to configure.
 
-    .PARAMETER ProxyUrl
-        The proxy URL. If not provided, reads from $Env:HTTPS_PROXY.
-
-    .PARAMETER NoProxy
-        Comma-separated list of hosts to bypass proxy. If not provided, reads
-        from $Env:NO_PROXY. Falls back to 'localhost,127.0.0.1'.
-
     .OUTPUTS
         System.Boolean
         Returns $true if configuration succeeds, $false otherwise.
 
     .EXAMPLE
         Install-WslProxy -DistroName "Debian" -Confirm:$false
-        Configures proxy in Debian using $Env:HTTPS_PROXY and $Env:NO_PROXY.
+        Auto-detects proxy from PAC/registry and configures Debian.
 
     .EXAMPLE
-        Install-WslProxy -DistroName "Debian" -ProxyUrl "http://proxy:8080" -NoProxy "localhost,127.0.0.1" -Confirm:$false
-        Configures proxy in Debian with explicit values.
+        Install-WslProxy -DistroName "Debian"
+        Interactive mode - prompts for credentials and DIRECT/manual choices.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$DistroName,
-
-        [Parameter(Mandatory = $false)]
-        [string]$ProxyUrl,
-
-        [Parameter(Mandatory = $false)]
-        [string]$NoProxy
+        [string]$DistroName
     )
 
-    # 1. Resolve proxy URL
-    if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $ProxyUrl = $Env:HTTPS_PROXY
+    # 1. Dot-source setProxy.ps1 in library mode to access detection functions
+    $originalLibraryMode = $env:SETPROXY_LIBRARY_MODE
+    $originalErrorActionPreference = $ErrorActionPreference
+    try {
+        $env:SETPROXY_LIBRARY_MODE = '1'
+        . "$PSScriptRoot\..\..\..\proxy\setProxy.ps1"
     }
-    if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        throw @"
-No proxy URL provided and `$Env:HTTPS_PROXY is not set.
-
-Either pass -ProxyUrl or set the environment variable first:
-  `$Env:HTTPS_PROXY = 'http://your-proxy:8080'
-
-Or run setProxy.ps1 -askForCreds to configure proxy environment variables.
-"@
-    }
-
-    # 2. Resolve no-proxy list
-    if ([string]::IsNullOrWhiteSpace($NoProxy)) {
-        $NoProxy = $Env:NO_PROXY
-    }
-    if ([string]::IsNullOrWhiteSpace($NoProxy)) {
-        $NoProxy = "localhost,127.0.0.1"
-        Write-Information "NO_PROXY not set, using default: $NoProxy"
+    finally {
+        $ErrorActionPreference = $originalErrorActionPreference
+        if ($null -eq $originalLibraryMode) {
+            Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:SETPROXY_LIBRARY_MODE = $originalLibraryMode
+        }
     }
 
-    # 3. Validate distribution exists
+    # 2. Auto-detect proxy from PAC/registry
+    $ProxyUrl = $null
+    $isDirect = $false
+
+    $internetSettings = Get-InternetSettingsFromRegistry
+    $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
+
+    if ($null -ne $pacResult) {
+        # PAC was found and resolved
+        if ($pacResult.IsDirect) {
+            # PAC says DIRECT - ask user to confirm or enter manual proxy
+            Write-Information "PAC resolved to DIRECT (no proxy needed)."
+            $choice = Read-Host "Choose: [D]irect (no proxy) or [M]anual entry"
+            if ($choice -eq 'M' -or $choice -eq 'm') {
+                $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
+                if ([string]::IsNullOrWhiteSpace($manualEntry)) {
+                    throw "No proxy host:port provided."
+                }
+                $ProxyUrl = "http://$manualEntry"
+            }
+            else {
+                $isDirect = $true
+            }
+        }
+        else {
+            # PAC resolved to a proxy URL
+            $ProxyUrl = $pacResult.ProxyUrl
+            Write-Information "Auto-detected proxy: $ProxyUrl"
+        }
+    }
+    else {
+        # No PAC detected - prompt user
+        Write-Information "No PAC/AutoConfigURL detected in registry."
+        $choice = Read-Host "Choose: [M]anual proxy entry or [D]irect (no proxy)"
+        if ($choice -eq 'D' -or $choice -eq 'd') {
+            $isDirect = $true
+        }
+        else {
+            $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
+            if ([string]::IsNullOrWhiteSpace($manualEntry)) {
+                throw "No proxy host:port provided."
+            }
+            $ProxyUrl = "http://$manualEntry"
+        }
+    }
+
+    # 3. If proxy URL resolved, ask about credentials
+    if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
+        $wantCreds = Read-Host "Do you want to provide proxy credentials? [Y/N]"
+        if ($wantCreds -eq 'Y' -or $wantCreds -eq 'y') {
+            $credentialPrefix = Get-ProxyCredentialsFromUser
+            if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
+                # Insert credentials into proxy URL: http://user:pass@host:port
+                $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
+            }
+        }
+    }
+
+    # 4. Set NoProxy default
+    $NoProxy = "localhost,127.0.0.1"
+
+    # 5. Validate distribution exists
     Assert-WslDistroExists -DistroName $DistroName
 
-    # 4. Detect default user
+    # 6. Detect default user
     $username = Get-WslDefaultUser -DistroName $DistroName
     if (-not $username) {
         throw @"
@@ -99,38 +141,62 @@ Then run setup-proxy again.
 "@
     }
 
-    # 5. SupportsShouldProcess
-    if (-not $PSCmdlet.ShouldProcess(
-            "Proxy configuration in '$DistroName'",
-            "Configure proxy settings (.bashrc, apt, Docker, Podman)",
-            "Confirm Proxy Setup"
-        )) {
+    # 7. SupportsShouldProcess
+    if ($isDirect) {
+        $action = "Remove proxy settings from '$DistroName'"
+        $description = "Remove proxy configurations (.bashrc, apt, Docker, Podman)"
+    }
+    else {
+        $action = "Proxy configuration in '$DistroName'"
+        $description = "Configure proxy settings (.bashrc, apt, Docker, Podman)"
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($action, $description, "Confirm Proxy Setup")) {
         return $false
     }
 
-    Write-Information "Configuring proxy in '$DistroName' ..."
-    Write-Information "  Proxy URL: $ProxyUrl"
-    Write-Information "  No Proxy:  $NoProxy"
-    Write-Information "  User:      $username"
+    if ($isDirect) {
+        Write-Information "Removing proxy configuration from '$DistroName' (DIRECT)..."
+        Write-Information "  User: $username"
+    }
+    else {
+        Write-Information "Configuring proxy in '$DistroName' ..."
+        Write-Information "  Proxy URL: $ProxyUrl"
+        Write-Information "  No Proxy:  $NoProxy"
+        Write-Information "  User:      $username"
+    }
     Write-Information ""
 
     try {
         $scriptPath = Join-Path $PSScriptRoot "..\scripts\setup-proxy.sh"
 
-        $scriptArgs = @(
-            "--proxy-url=$ProxyUrl",
-            "--no-proxy=$NoProxy",
-            "--username=$username"
-        )
+        if ($isDirect) {
+            $scriptArgs = @(
+                "--remove",
+                "--username=$username"
+            )
+        }
+        else {
+            $scriptArgs = @(
+                "--proxy-url=$ProxyUrl",
+                "--no-proxy=$NoProxy",
+                "--username=$username"
+            )
+        }
 
         $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -AsRoot $true
 
         switch ($exitCode) {
             0 {
                 Write-Information ""
-                Write-Information "Successfully configured proxy in '$DistroName'."
+                if ($isDirect) {
+                    Write-Information "Successfully removed proxy configuration from '$DistroName'."
+                }
+                else {
+                    Write-Information "Successfully configured proxy in '$DistroName'."
+                }
                 Write-Information ""
-                Write-Information "Configured targets:"
+                Write-Information "Affected targets:"
                 Write-Information "  - ~/.bashrc (environment variables)"
                 Write-Information "  - /etc/apt/apt.conf.d/99proxy"
                 Write-Information "  - ~/.docker/config.json"

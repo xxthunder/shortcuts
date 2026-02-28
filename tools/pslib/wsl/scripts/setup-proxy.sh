@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup-proxy.sh
-# Configures proxy settings inside a WSL distribution
+# Configures or removes proxy settings inside a WSL distribution
 # Targets: .bashrc, apt, Docker client, Podman (containers.conf)
 # This script is idempotent - safe to run multiple times (overwrites config)
 # Exit Codes:
@@ -11,7 +11,8 @@
 # 3: Verification failure
 # 4: Argument error
 
-USAGE="Usage: $0 --proxy-url=<url> --no-proxy=<hosts> --username=<user>"
+USAGE="Usage: $0 --proxy-url=<url> --no-proxy=<hosts> --username=<user>
+       $0 --remove --username=<user>"
 
 # 1. Validation
 if [ "$EUID" -ne 0 ]; then
@@ -22,6 +23,7 @@ fi
 PROXY_URL=""
 NO_PROXY=""
 TARGET_USER=""
+REMOVE_MODE=false
 
 for i in "$@"; do
   case $i in
@@ -34,15 +36,26 @@ for i in "$@"; do
     --username=*)
       TARGET_USER="${i#*=}"
       ;;
+    --remove)
+      REMOVE_MODE=true
+      ;;
     *)
       ;;
   esac
 done
 
-if [ -z "$PROXY_URL" ] || [ -z "$NO_PROXY" ] || [ -z "$TARGET_USER" ]; then
-    echo "Error: Missing required arguments." >&2
-    echo "$USAGE" >&2
-    exit 4
+if [ "$REMOVE_MODE" = true ]; then
+    if [ -z "$TARGET_USER" ]; then
+        echo "Error: --username is required with --remove." >&2
+        echo "$USAGE" >&2
+        exit 4
+    fi
+else
+    if [ -z "$PROXY_URL" ] || [ -z "$NO_PROXY" ] || [ -z "$TARGET_USER" ]; then
+        echo "Error: Missing required arguments." >&2
+        echo "$USAGE" >&2
+        exit 4
+    fi
 fi
 
 log_info() {
@@ -56,11 +69,59 @@ log_error() {
 TARGET_HOME=$(eval echo "~$TARGET_USER")
 BASHRC="$TARGET_HOME/.bashrc"
 
-# 2. Configure .bashrc managed block
-log_info "Configuring proxy environment variables in $BASHRC..."
-
 MARKER_BEGIN="# BEGIN wsl-manager proxy"
 MARKER_END="# END wsl-manager proxy"
+
+# --- Remove mode ---
+remove_proxy_configs() {
+    log_info "Removing proxy configurations for user '$TARGET_USER'..."
+
+    # Remove managed block from .bashrc
+    if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
+        log_info "Removed proxy block from $BASHRC"
+    else
+        log_info "No proxy block found in $BASHRC (already clean)"
+    fi
+
+    # Remove apt proxy config
+    if [ -f /etc/apt/apt.conf.d/99proxy ]; then
+        rm -f /etc/apt/apt.conf.d/99proxy
+        log_info "Removed /etc/apt/apt.conf.d/99proxy"
+    else
+        log_info "No apt proxy config found (already clean)"
+    fi
+
+    # Remove Docker proxy config
+    local docker_config="$TARGET_HOME/.docker/config.json"
+    if [ -f "$docker_config" ]; then
+        rm -f "$docker_config"
+        log_info "Removed $docker_config"
+    else
+        log_info "No Docker proxy config found (already clean)"
+    fi
+
+    # Remove Podman proxy config
+    local containers_conf="$TARGET_HOME/.config/containers/containers.conf"
+    if [ -f "$containers_conf" ]; then
+        rm -f "$containers_conf"
+        log_info "Removed $containers_conf"
+    else
+        log_info "No Podman proxy config found (already clean)"
+    fi
+
+    log_info "Proxy configurations removed successfully!"
+}
+
+if [ "$REMOVE_MODE" = true ]; then
+    remove_proxy_configs || { log_error "Failed to remove proxy configurations"; exit 2; }
+    exit 0
+fi
+
+# --- Configure mode ---
+
+# 2. Configure .bashrc managed block
+log_info "Configuring proxy environment variables in $BASHRC..."
 
 configure_bashrc() {
     # Remove existing managed block if present
