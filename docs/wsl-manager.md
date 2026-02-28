@@ -111,7 +111,7 @@ This command:
 
 ### Setup Proxy
 
-Configure corporate proxy settings (reads `$Env:HTTPS_PROXY` and `$Env:NO_PROXY`).
+Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
 
 ```powershell
 wsl-manager setup-proxy debian-devcon
@@ -216,22 +216,18 @@ New-WslUser -DistroName debian-devcon -Username vscode -Password "YourPassword"
 
 If you're behind a corporate proxy, configure proxy settings before installing container runtimes. This ensures `apt`, Docker, and Podman all route through the proxy.
 
-**Prerequisite:** Set proxy environment variables in your PowerShell session first:
-
-```powershell
-# If you have a setProxy.ps1 script:
-setProxy.ps1 -askForCreds
-
-# Or set manually:
-$Env:HTTPS_PROXY = "http://your-proxy:8080"
-$Env:NO_PROXY = "localhost,127.0.0.1,*.internal.corp"
-```
-
-Then run:
-
 ```powershell
 wsl-manager setup-proxy debian-devcon
 ```
+
+The command auto-detects your proxy configuration:
+
+1. **PAC/registry detection** — reads `AutoConfigURL` from Windows Internet Settings and resolves the proxy URL automatically via `setProxy.ps1` functions
+2. **Credentials** — asks whether you want to provide proxy credentials (username/password embedded in URL)
+3. **Manual fallback** — if no PAC is configured, prompts you to enter `host:port` manually or choose DIRECT (no proxy)
+4. **DIRECT mode** — when no proxy is needed, removes all managed proxy configurations from the distro
+
+No prerequisite steps are needed — proxy detection is fully self-contained.
 
 **What this configures automatically:**
 
@@ -240,7 +236,7 @@ wsl-manager setup-proxy debian-devcon
 3. **`~/.docker/config.json`** — `proxies.default` with `httpProxy`, `httpsProxy`, `noProxy`
 4. **`~/.config/containers/containers.conf`** — `[engine] env` with proxy variables
 
-**Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). If `$Env:NO_PROXY` is not set, defaults to `localhost,127.0.0.1`.
+**Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). `NO_PROXY` defaults to `localhost,127.0.0.1`.
 
 #### Step 6: Install Container Runtime
 
@@ -825,7 +821,7 @@ tools/pslib/wsl/
 - `Test-WslDockerInstalled -DistroName` — Check Docker installation
 
 **Proxy** (`lib/proxy.ps1`):
-- `Install-WslProxy -DistroName [-ProxyUrl] [-NoProxy]` — Configure proxy settings (reads `$Env:HTTPS_PROXY` / `$Env:NO_PROXY`)
+- `Install-WslProxy -DistroName` — Configure proxy settings (auto-detects from PAC/registry, supports DIRECT/remove)
 
 **Podman** (`lib/podman.ps1`):
 - `Install-WslPodman -DistroName [-Username]` — Install rootless Podman with automatic prerequisite configuration

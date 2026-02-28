@@ -144,26 +144,26 @@ dot-source setProxy.ps1 (library mode)
 - Menu key `[X]` (proXy) to avoid conflicts with existing keys
 
 **Acceptance Criteria**:
-- [ ] `wsl-manager setup-proxy <distro>` command works
-- [ ] Interactive menu option `[X] Setup proxy (corporate)` works
-- [ ] `setProxy.ps1` guard renamed from `SETPROXY_TEST_MODE` to `SETPROXY_LIBRARY_MODE`
-- [ ] Auto-detects proxy from PAC/registry via dot-sourced `setProxy.ps1` functions
-- [ ] Asks user whether they want to provide proxy credentials; prompts if yes
-- [ ] When no PAC detected, prompts user to enter `host:port` or choose "no proxy (DIRECT)"
-- [ ] When PAC resolves to DIRECT, offers "no proxy" confirmation
-- [ ] DIRECT / "no proxy" removes managed proxy blocks from distro (`--remove` flag)
-- [ ] `.bashrc` exports all 6 proxy variables using managed block with marker comments
-- [ ] All proxy vars get the same value
-- [ ] `NO_PROXY` / `no_proxy` fallback to `localhost,127.0.0.1`
-- [ ] `/etc/apt/apt.conf.d/99proxy` written with `Acquire::http::Proxy` and `Acquire::https::Proxy`
-- [ ] `~/.docker/config.json` written with `proxies.default` (unconditional, pre-staged before Docker install)
-- [ ] `~/.config/containers/containers.conf` written with `[engine]` env (unconditional, pre-staged before Podman install)
-- [ ] Idempotent — safe to re-run with new credentials (managed blocks replaced, files overwritten)
-- [ ] All user-home files owned by target user, not root
-- [ ] Exit codes follow convention (0/1/2/3/4)
-- [ ] Unit tests for `lib/proxy.ps1` (Pester)
-- [ ] `docs/wsl-manager.md` updated with proxy setup step in the workflow
-- [ ] All existing tests continue to pass
+- [x] `wsl-manager setup-proxy <distro>` command works
+- [x] Interactive menu option `[X] Setup proxy (corporate)` works
+- [x] `setProxy.ps1` guard renamed from `SETPROXY_TEST_MODE` to `SETPROXY_LIBRARY_MODE`
+- [x] Auto-detects proxy from PAC/registry via dot-sourced `setProxy.ps1` functions
+- [x] Asks user whether they want to provide proxy credentials; prompts if yes
+- [x] When no PAC detected, prompts user to enter `host:port` or choose "no proxy (DIRECT)"
+- [x] When PAC resolves to DIRECT, offers "no proxy" confirmation
+- [x] DIRECT / "no proxy" removes managed proxy blocks from distro (`--remove` flag)
+- [x] `.bashrc` exports all 6 proxy variables using managed block with marker comments
+- [x] All proxy vars get the same value
+- [x] `NO_PROXY` / `no_proxy` fallback to `localhost,127.0.0.1`
+- [x] `/etc/apt/apt.conf.d/99proxy` written with `Acquire::http::Proxy` and `Acquire::https::Proxy`
+- [x] `~/.docker/config.json` written with `proxies.default` (unconditional, pre-staged before Docker install)
+- [x] `~/.config/containers/containers.conf` written with `[engine]` env (unconditional, pre-staged before Podman install)
+- [x] Idempotent — safe to re-run with new credentials (managed blocks replaced, files overwritten)
+- [x] All user-home files owned by target user, not root
+- [x] Exit codes follow convention (0/1/2/3/4)
+- [x] Unit tests for `lib/proxy.ps1` (Pester)
+- [x] `docs/wsl-manager.md` updated with proxy setup step in the workflow
+- [x] All existing tests continue to pass
 
 **Technical Notes**:
 - `.bashrc` managed block pattern (same approach as `install-podman.sh`):
