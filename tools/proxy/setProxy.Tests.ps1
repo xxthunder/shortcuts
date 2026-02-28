@@ -14,8 +14,8 @@
 param()
 
 BeforeAll {
-    # Set test mode to prevent auto-execution when dot-sourcing
-    $env:SETPROXY_TEST_MODE = '1'
+    # Set library mode to prevent auto-execution when dot-sourcing
+    $env:SETPROXY_LIBRARY_MODE = '1'
 
     # Save original environment state to restore after tests
     $script:OriginalHttpProxy = $Env:HTTP_PROXY
@@ -28,8 +28,8 @@ BeforeAll {
 }
 
 AfterAll {
-    # Clean up test mode flag
-    Remove-Item Env:\SETPROXY_TEST_MODE -ErrorAction SilentlyContinue
+    # Clean up library mode flag
+    Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
 
     # Restore original environment state
     if ($null -eq $script:OriginalHttpProxy) {

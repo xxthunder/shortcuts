@@ -438,9 +438,9 @@ function Initialize-ProxyConfiguration {
 
 #region Main
 
-# Execute main logic unless explicitly in test mode
-# Set environment variable SETPROXY_TEST_MODE=1 in tests to prevent auto-execution
-if (-not $env:SETPROXY_TEST_MODE) {
+# Execute main logic unless in library mode (dot-sourced for function access only)
+# Set environment variable SETPROXY_LIBRARY_MODE=1 to expose functions without executing main logic
+if (-not $env:SETPROXY_LIBRARY_MODE) {
     Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost -AskForCreds:$askForCreds
 }
 
