@@ -137,6 +137,53 @@ Describe "Install-WslProxy" {
         }
     }
 
+    Context "NO_PROXY environment variable" {
+        BeforeEach {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host { "N" }
+        }
+
+        It "Should use existing NO_PROXY env var when set" {
+            $originalNoProxy = $env:NO_PROXY
+            try {
+                $env:NO_PROXY = "localhost,127.0.0.1,*.corp.com,10.0.0.0/8"
+
+                Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                    $Arguments -contains "--no-proxy=localhost,127.0.0.1,*.corp.com,10.0.0.0/8"
+                }
+            }
+            finally {
+                if ($null -eq $originalNoProxy) {
+                    Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+                }
+                else {
+                    $env:NO_PROXY = $originalNoProxy
+                }
+            }
+        }
+
+        It "Should fall back to default when NO_PROXY env var is not set" {
+            $originalNoProxy = $env:NO_PROXY
+            try {
+                Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+
+                Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                    $Arguments -contains "--no-proxy=localhost,127.0.0.1"
+                }
+            }
+            finally {
+                if ($null -ne $originalNoProxy) {
+                    $env:NO_PROXY = $originalNoProxy
+                }
+            }
+        }
+    }
+
     Context "Prerequisite checks" {
         It "Should throw when distribution does not exist" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist." }

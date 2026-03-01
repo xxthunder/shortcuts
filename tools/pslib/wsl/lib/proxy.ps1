@@ -121,8 +121,8 @@ function Install-WslProxy {
         }
     }
 
-    # 4. Set NoProxy default
-    $NoProxy = "localhost,127.0.0.1"
+    # 4. Set NoProxy — prefer existing env var, fall back to default
+    $NoProxy = if ($env:NO_PROXY) { $env:NO_PROXY } else { "localhost,127.0.0.1" }
 
     # 5. Validate distribution exists
     Assert-WslDistroExists -DistroName $DistroName
