@@ -164,7 +164,7 @@ log_info "Configuring Docker client proxy..."
 
 configure_docker() {
     local docker_dir="$TARGET_HOME/.docker"
-    mkdir -p "$docker_dir"
+    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$docker_dir"
 
     cat > "$docker_dir/config.json" <<EOF
 {
@@ -178,7 +178,7 @@ configure_docker() {
 }
 EOF
 
-    chown -R "$TARGET_USER:$TARGET_USER" "$docker_dir"
+    chown "$TARGET_USER:$TARGET_USER" "$docker_dir/config.json"
     log_info "Docker client proxy configured in $docker_dir/config.json"
 }
 configure_docker || { log_error "Failed to configure Docker proxy"; exit 2; }
@@ -187,15 +187,17 @@ configure_docker || { log_error "Failed to configure Docker proxy"; exit 2; }
 log_info "Configuring Podman proxy..."
 
 configure_podman() {
-    local containers_dir="$TARGET_HOME/.config/containers"
-    mkdir -p "$containers_dir"
+    local config_dir="$TARGET_HOME/.config"
+    local containers_dir="$config_dir/containers"
+    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$config_dir"
+    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$containers_dir"
 
     cat > "$containers_dir/containers.conf" <<EOF
 [engine]
 env = ["http_proxy=$PROXY_URL", "https_proxy=$PROXY_URL", "no_proxy=$NO_PROXY"]
 EOF
 
-    chown -R "$TARGET_USER:$TARGET_USER" "$containers_dir"
+    chown "$TARGET_USER:$TARGET_USER" "$containers_dir/containers.conf"
     log_info "Podman proxy configured in $containers_dir/containers.conf"
 }
 configure_podman || { log_error "Failed to configure Podman proxy"; exit 2; }
