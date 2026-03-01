@@ -5,7 +5,7 @@
     Integration tests for bin/install.ps1 — validates post-install conditions.
 
 .DESCRIPTION
-    Smoke test assertions that run after install.ps1 completes in CI.
+    Smoke test assertions that run after install.ps1 completes.
     Validates that Scoop, git, mandatory tools, and configuration are present.
 #>
 
@@ -13,12 +13,7 @@
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'UTF-8 without BOM is standard for cross-platform')]
 param()
 
-BeforeDiscovery {
-    # Skip unless running in CI (these tests require a real install to have completed)
-    $script:skipTests = -not (Test-Path env:CI)
-}
-
-Describe 'Post-Install: Scoop' -Tag 'Integration' -Skip:$script:skipTests {
+Describe 'Post-Install: Scoop' -Tag 'Integration' {
 
     It 'scoop is available in PATH' {
         Get-Command scoop -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
@@ -41,7 +36,7 @@ Describe 'Post-Install: Scoop' -Tag 'Integration' -Skip:$script:skipTests {
     }
 }
 
-Describe 'Post-Install: Git' -Tag 'Integration' -Skip:$script:skipTests {
+Describe 'Post-Install: Git' -Tag 'Integration' {
 
     It 'git is available in PATH' {
         Get-Command git -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
@@ -54,7 +49,7 @@ Describe 'Post-Install: Git' -Tag 'Integration' -Skip:$script:skipTests {
     }
 }
 
-Describe 'Post-Install: Scoop Buckets' -Tag 'Integration' -Skip:$script:skipTests {
+Describe 'Post-Install: Scoop Buckets' -Tag 'Integration' {
 
     It 'extras bucket is registered' {
         $buckets = & scoop bucket list 2>&1 | Out-String
@@ -62,7 +57,7 @@ Describe 'Post-Install: Scoop Buckets' -Tag 'Integration' -Skip:$script:skipTest
     }
 }
 
-Describe 'Post-Install: Keypirinha' -Tag 'Integration' -Skip:$script:skipTests {
+Describe 'Post-Install: Keypirinha' -Tag 'Integration' {
 
     It 'keypirinha binary exists' {
         $kpPath = Join-Path $env:USERPROFILE 'scoop\apps\keypirinha\current\keypirinha.exe'
@@ -75,19 +70,10 @@ Describe 'Post-Install: Keypirinha' -Tag 'Integration' -Skip:$script:skipTests {
     }
 }
 
-Describe 'Post-Install: Private Shortcuts Directory' -Tag 'Integration' -Skip:$script:skipTests {
+Describe 'Post-Install: Private Shortcuts Directory' -Tag 'Integration' {
 
     It 'shortcuts_private directory exists' {
         $privatePath = Join-Path $env:USERPROFILE 'shortcuts_private'
         Test-Path $privatePath | Should -BeTrue
-    }
-}
-
-Describe 'Post-Install: Optional Tools Skipped in CI' -Tag 'Integration' -Skip:$script:skipTests {
-
-    It 'vscode is NOT installed (CI auto-skips optional tools)' {
-        $output = & scoop list vscode 2>&1 | Out-String
-        # scoop list for a missing app will not show a matching entry
-        $output | Should -Not -Match 'vscode\s+\d'
     }
 }
