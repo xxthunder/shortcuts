@@ -105,30 +105,27 @@ log_info "Configuring environment variables in ~/.bashrc..."
 TARGET_HOME=$(eval echo "~$TARGET_USER")
 BASHRC="$TARGET_HOME/.bashrc"
 
+MARKER_BEGIN="# BEGIN wsl-manager podman"
+MARKER_END="# END wsl-manager podman"
+
 configure_bashrc() {
-    # XDG_RUNTIME_DIR — required for rootless Podman socket
-    if ! grep -q 'export XDG_RUNTIME_DIR=/run/user/\$(id -u)' "$BASHRC" 2>/dev/null; then
-        echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> "$BASHRC"
-        log_info "Added XDG_RUNTIME_DIR to $BASHRC"
-    else
-        log_info "XDG_RUNTIME_DIR already set in $BASHRC"
+    # Remove existing managed block if present (idempotent overwrite)
+    if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
+        log_info "Removed existing podman block from $BASHRC"
     fi
 
-    # DBUS_SESSION_BUS_ADDRESS — required for systemd user session
-    if ! grep -q 'export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus' "$BASHRC" 2>/dev/null; then
-        echo 'export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus' >> "$BASHRC"
-        log_info "Added DBUS_SESSION_BUS_ADDRESS to $BASHRC"
-    else
-        log_info "DBUS_SESSION_BUS_ADDRESS already set in $BASHRC"
-    fi
+    # Append managed block
+    cat >> "$BASHRC" <<EOF
+$MARKER_BEGIN
+export XDG_RUNTIME_DIR=/run/user/\$(id -u)
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus
+export DOCKER_HOST=unix:///run/user/\$(id -u)/podman/podman.sock
+$MARKER_END
+EOF
 
-    # DOCKER_HOST — points Docker-compatible tools to Podman socket
-    if ! grep -q 'export DOCKER_HOST=unix:///run/user/\$(id -u)/podman/podman.sock' "$BASHRC" 2>/dev/null; then
-        echo 'export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock' >> "$BASHRC"
-        log_info "Added DOCKER_HOST to $BASHRC"
-    else
-        log_info "DOCKER_HOST already set in $BASHRC"
-    fi
+    chown "$TARGET_USER:$TARGET_USER" "$BASHRC"
+    log_info "Podman environment variables configured in $BASHRC"
 }
 configure_bashrc || { log_error "Failed to configure environment variables"; exit 2; }
 
