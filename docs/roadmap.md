@@ -42,4 +42,4 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 
 ---
 
-*For detailed tasks and bug fixes, see `docs/backlog.md`*
+*For detailed tasks and bug fixes, see `docs/backlog/index.md`*

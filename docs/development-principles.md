@@ -6,7 +6,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 > **Note**: This document covers *how* we develop code. For *what* we plan to build, see:
 > - `docs/roadmap.md` - High-level vision and planned features
-> - `docs/backlog.md` - Detailed backlog of tasks and improvements
+> - `docs/backlog/index.md` - Detailed backlog of tasks and improvements
 
 ---
 
@@ -115,7 +115,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **Critical checkpoint**: NEVER modify implementation without updating tests first.
 
-**Critical checkpoint**: NEVER commit without updating `docs/backlog.md` — acceptance criteria MUST reflect the current state of the work.
+**Critical checkpoint**: NEVER commit without updating `docs/backlog/` — acceptance criteria MUST reflect the current state of the work.
 
 ---
 

@@ -485,7 +485,7 @@ Using `shell: ${{ matrix.shell }}` will fail. Instead, use `shell: cmd` and invo
 **ALWAYS use EnterPlanMode before implementation when:**
 
 1. **User says "review" or "plan"** - They explicitly want exploration, not implementation
-2. **Backlog items** - Items in `docs/backlog.md` require architectural understanding before coding
+2. **Backlog items** - Items in `docs/backlog/` require architectural understanding before coding
 3. **New features** - Adding functionality, not just fixing bugs
 4. **Architectural decisions** - Unclear where functionality belongs in existing structure
 5. **"Belongs to" questions** - When you're unsure which module/function should own the code

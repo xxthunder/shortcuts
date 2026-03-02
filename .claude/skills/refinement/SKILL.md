@@ -23,7 +23,7 @@ Interactive backlog refinement session. Reviews project mission, current state, 
 Discover and read project documentation to understand current state. Look for:
 
 1. **`README.md`** - Project mission and user-facing documentation
-2. **Backlog file** - `docs/backlog.md`, `BACKLOG.md`, or equivalent
+2. **Backlog file** - `docs/backlog/index.md`, `BACKLOG.md`, or equivalent
 3. **Roadmap** - `docs/roadmap.md` or equivalent
 4. **Development principles** - `docs/development-principles.md`, `CONTRIBUTING.md`, or equivalent
 
@@ -40,7 +40,7 @@ Also check:
 When no backlog file is found, create one:
 
 1. Read **[references/backlog-format.md](references/backlog-format.md)** for the complete format specification
-2. Ask the user where the backlog should live (default: `docs/backlog.md`)
+2. Ask the user where the backlog should live (default: `docs/backlog/index.md`)
 3. Ask the user for a **project ID prefix** — a short uppercase abbreviation of the repo/project name (e.g., `HSH` for HomeSweetHome). Store it in the Notes section of the backlog.
 4. Create the backlog file with the skeleton structure (Status Legend, TOC, empty sections, Notes)
 5. Create the ongoing refinement item (`[PREFIX-001]`) as the first entry in IN PROGRESS

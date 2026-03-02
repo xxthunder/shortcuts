@@ -250,7 +250,7 @@ For full VS Code DevContainer development (SSH agent forwarding, git configurati
 
 - **[Development Principles](docs/development-principles.md)** — Coding standards, TDD approach, and project conventions
 - **[Roadmap](docs/roadmap.md)** — Project vision and future direction
-- **[Backlog](docs/backlog.md)** — Current work items, priorities, and completed features
+- **[Backlog](docs/backlog/index.md)** — Current work items, priorities, and completed features
 
 ---
 
