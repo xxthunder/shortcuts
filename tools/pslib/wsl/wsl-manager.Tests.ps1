@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for wsl-manager.ps1
 #>
@@ -215,6 +215,29 @@ Describe "Show-InteractiveMenu" {
             Show-InteractiveMenu
 
             Should -Invoke Invoke-SetupPodmanInteractive -Times 1
+        }
+
+        It "Should dispatch to Invoke-SetupProxyInteractive when X is selected" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "X" }
+                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
+                else { "Q" }
+            }
+            Mock Invoke-SetupProxyInteractive {}
+
+            Show-InteractiveMenu
+
+            Should -Invoke Invoke-SetupProxyInteractive -Times 1
         }
     }
 }
@@ -1156,6 +1179,126 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Install-WslPodman -Times 0
+        }
+    }
+
+    Context "When called with 'setup-proxy' argument" {
+        It "Should prompt for distribution when Name is not provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should call Install-WslProxy when Name is provided" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy" -Name "Debian"
+
+            Should -Invoke Install-WslProxy -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after proxy configuration" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully configured proxy*" }
+        }
+
+        It "Should propagate errors from Install-WslProxy" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { throw "Proxy configuration failed: Prerequisite check failed." }
+
+            { Invoke-WslManager -Command "setup-proxy" -Name "Debian" } | Should -Throw "*Prerequisite check failed*"
+        }
+
+        It "Should support selection by number" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy"
+
+            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy"
+
+            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Alpine" }
+        }
+
+        It "Should reject invalid number selection" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Install-WslProxy -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Install-WslProxy { $true }
+
+            Invoke-WslManager -Command "setup-proxy"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Install-WslProxy -Times 0
         }
     }
 
