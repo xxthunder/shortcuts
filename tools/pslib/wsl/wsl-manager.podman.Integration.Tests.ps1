@@ -131,7 +131,7 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
                 Write-Host "`n==> TEST: Creating $script:baseDistroName ..." -ForegroundColor Magenta
 
                 # Capture output
-                $output = Invoke-WslManager -Command "create" -Name $script:baseDistroName *>&1 | Out-String
+                $output = Invoke-WslManager -Command "install" -Name $script:baseDistroName *>&1 | Out-String
 
                 Write-Host "==> Captured Output:" -ForegroundColor Cyan
                 Write-Host $output

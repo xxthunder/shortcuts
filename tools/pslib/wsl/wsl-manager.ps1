@@ -48,7 +48,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -985,7 +985,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "create", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -1004,7 +1004,7 @@ function Invoke-WslManager {
         "list" {
             Show-WslDistroList
         }
-        "create" {
+        "install" {
             Invoke-CreateDistro -Name $Name
         }
         "clone" {

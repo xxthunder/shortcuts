@@ -385,7 +385,7 @@ Describe "Invoke-WslManager" {
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create" -Name "Debian"
+            Invoke-WslManager -Command "install" -Name "Debian"
 
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
@@ -394,7 +394,7 @@ Describe "Invoke-WslManager" {
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create" -Name "Ubuntu-22.04"
+            Invoke-WslManager -Command "install" -Name "Ubuntu-22.04"
 
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Ubuntu-22.04" }
         }
@@ -406,7 +406,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "Debian" }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create"
+            Invoke-WslManager -Command "install"
 
             Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
@@ -419,7 +419,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "1" }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create"
+            Invoke-WslManager -Command "install"
 
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
@@ -431,7 +431,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "Debian" }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create"
+            Invoke-WslManager -Command "install"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
@@ -445,7 +445,7 @@ Describe "Invoke-WslManager" {
             Mock Write-Host {}
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create" -Name "InvalidDistro"
+            Invoke-WslManager -Command "install" -Name "InvalidDistro"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" }
             Should -Invoke New-WslDistro -Times 0
@@ -458,7 +458,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "99" }
             Mock New-WslDistro {}
 
-            Invoke-WslManager -Command "create"
+            Invoke-WslManager -Command "install"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
             Should -Invoke New-WslDistro -Times 0

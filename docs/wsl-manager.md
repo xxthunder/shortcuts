@@ -50,7 +50,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 Install a new WSL distribution from Microsoft Store or the web.
 
 - **Menu**: `[I] Install new distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 create <distro>`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 install <distro>`
 
 ### Clone Distribution
 
@@ -152,7 +152,7 @@ Choose one container runtime per distribution. They cannot coexist in the same W
 #### Step 1: Install WSL Distribution
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 create Debian
+.\tools\pslib\wsl\wsl-manager.ps1 install Debian
 ```
 
 #### Step 2: Setup User Account
