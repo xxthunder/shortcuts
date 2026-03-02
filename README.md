@@ -33,7 +33,8 @@
 - [Installation](#installation)
 - [Using Keypirinha](#using-keypirinha)
 - [Managing Shortcuts](#managing-shortcuts)
-- [WSL Development Setup](#wsl-development-setup)
+- [WSL Manager](#wsl-manager)
+- [More Features](#more-features)
 - [Update](#update)
 - [Troubleshooting](#troubleshooting)
 - [Uninstallation](#uninstallation)
@@ -193,64 +194,23 @@ scoop install vscode      # Visual Studio Code
 
 ---
 
-## WSL Development Setup
+## WSL Manager
 
-> **For Developers:** This section is for developers who want to use WSL (Windows Subsystem for Linux) for development with Docker and VS Code DevContainers.
+WSL Manager is a PowerShell tool for managing WSL distributions from the Windows side.
+It provides both an interactive menu and CLI commands to:
 
-### What You Can Do
+- **Manage WSL distributions** — list, clone, update, remove, and terminate
+- **Set up container engines** — one-command Docker or Podman installation
+- **Configure DevContainers** — complete VS Code DevContainer setup (SSH agent, git, etc.)
+- **Manage users and proxy** — create users with sudo, configure corporate proxy settings
 
-The Shortcuts project includes **WSL Manager**, a PowerShell tool for managing WSL distributions and setting up development environments:
-
-- **Manage WSL distributions**: List, clone, update, and remove distributions
-- **Setup Docker Engine**: One-command Docker installation with automatic prerequisite configuration
-- **Configure DevContainers**: Complete setup guide for VS Code DevContainer development
-- **User management**: Create users with sudo privileges in WSL distributions
-
-### Quick Start
-
-**Install Docker in WSL (automated):**
-
-```powershell
-# Interactive menu
-wsl-manager
-# Then select: [D] Setup/Repair Docker (idempotent, includes systemd/interop)
-
-# Or direct command
-wsl-manager setup-docker Debian
-```
-
-This automatically configures:
-- Docker Engine and Docker Compose
-- Systemd (required for Docker)
-- Windows executable interop (using binfmt.d for VS Code compatibility)
-- User permissions
-
-**Note:** This setup is idempotent - safe to run multiple times for verification or repair.
-
-**Complete DevContainer setup:**
-
-For full VS Code DevContainer development (SSH agent forwarding, git configuration, etc.), see the DevContainer chapter in the WSL Manager guide:
-
-**[📖 WSL Manager — DevContainer Setup](docs/wsl-manager.md#vs-code-devcontainer-setup)**
-
-### Documentation
-
-- **[WSL Manager](docs/wsl-manager.md)** — Complete guide to WSL Manager: commands, DevContainer setup, troubleshooting, and reference
+**[📖 WSL Manager Documentation](docs/wsl-manager.md)**
 
 ---
 
-## Documentation
+## More Features
 
-### User Guides
-
-- **[WSL Manager](docs/wsl-manager.md)** — WSL Manager: commands, VS Code DevContainer setup (Docker & Podman), troubleshooting, and function reference
-- **[Flow Launcher Setup](docs/flow-launcher-setup.md)** — Optional Flow Launcher installation and configuration
-
-### Development / Contributing
-
-- **[Development Principles](docs/development-principles.md)** — Coding standards, TDD approach, and project conventions
-- **[Roadmap](docs/roadmap.md)** — Project vision and future direction
-- **[Backlog](docs/backlog/index.md)** — Current work items, priorities, and completed features
+- **[Flow Launcher](docs/flow-launcher-setup.md)** — A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
 
 ---
 
@@ -410,6 +370,12 @@ Manually delete these folders if desired:
 ## Development
 
 > **For Contributors:** This section is for developers who want to contribute to Shortcuts.
+
+### Documentation
+
+- **[Development Principles](docs/development-principles.md)** — Coding standards, TDD approach, and project conventions
+- **[Roadmap](docs/roadmap.md)** — Project vision and future direction
+- **[Backlog](docs/backlog/index.md)** — Current work items, priorities, and completed features
 
 ### Getting Started
 

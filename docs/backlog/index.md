@@ -1,3 +1,5 @@
+[← Back to README](../../README.md)
+
 # Backlog
 
 ## Status Legend
@@ -11,6 +13,7 @@
 ### In Progress
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
 - [SC-007 — Add `setup-proxy` action to wsl-manager](in_progress/sc-007.md)
+- [SC-004 — Consolidate documentation and make all docs reachable from README](in_progress/sc-004.md)
 ### TODO
 - [SC-002 — Add `shutdown` command to wsl-manager](todo/sc-002.md)
 - [SC-003 — Stop action functions from reprinting distro table](todo/sc-003.md)
@@ -20,7 +23,6 @@
 ### Done
 - [SC-008 — Split backlog into index and per-item files](done/sc-008.md)
 - [SC-009 — PowerShell Lint Guard (skill + pre-commit hook)](done/sc-009.md)
-- [SC-004 — Consolidate documentation and make all docs reachable from README](done/sc-004.md)
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](done/feat-002.md)
 - [REFACT-005 — Extract `Assert-WslDistroExists` guard (DRY)](done/refact-005.md)
 - [REFACT-004 — Remove redundant `Test-WslInstalled` guard checks (DRY)](done/refact-004.md)
@@ -47,3 +49,7 @@
 - Use format `[SC-###]` for item IDs — global sequential numbering
 - Keep items actionable with clear acceptance criteria
 - Do NOT list commit hashes in backlog entries — the backlog is part of the commit itself, so hashes are circular and go stale after squash/rebase
+
+---
+
+[← Back to README](../../README.md)

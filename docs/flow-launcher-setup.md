@@ -1,3 +1,5 @@
+[← Back to README](../README.md)
+
 # Flow Launcher Setup Guide
 
 ## Overview
@@ -392,3 +394,7 @@ Flow Launcher supports advanced query syntax:
 | **Open Source** | ✅ Yes (MIT) | ✅ Yes (Zlib) |
 
 **Verdict**: Flow Launcher is the recommended choice for future-proof, actively maintained launcher integration.
+
+---
+
+[← Back to README](../README.md)

@@ -1,3 +1,5 @@
+[← Back to README](../README.md)
+
 # Shortcuts - Roadmap
 
 **Version**: 1.0.0 | **Created**: 2026-01-29
@@ -43,3 +45,7 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 ---
 
 *For detailed tasks and bug fixes, see `docs/backlog/index.md`*
+
+---
+
+[← Back to README](../README.md)

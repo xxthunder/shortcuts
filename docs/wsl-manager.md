@@ -1,108 +1,77 @@
+[← Back to README](../README.md)
+
 # WSL Manager
 
 ## Overview
 
 WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) distributions. It provides both an interactive menu and CLI commands for creating, cloning, configuring, and managing WSL distributions — including one-command Docker and Podman setup for VS Code DevContainer development.
 
-**Launch:**
+**Contents:**
 
-```powershell
-# Interactive menu
-wsl-manager
-
-# CLI
-wsl-manager <command> <distro>
-```
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+  - [Install New Distribution](#install-new-distribution)
+  - [Clone Distribution](#clone-distribution)
+  - [Update Distribution](#update-distribution)
+  - [Setup User Account](#setup-user-account)
+  - [Setup Proxy](#setup-proxy)
+  - [Setup Docker](#setup-docker)
+  - [Setup Podman](#setup-podman)
+  - [Remove Distribution](#remove-distribution)
+  - [Terminate Distribution](#terminate-distribution)
+- [VS Code DevContainer Setup](#vs-code-devcontainer-setup)
+- [Technical Reference](#technical-reference)
+- [Additional Resources](#additional-resources)
 
 ---
 
 ## Quick Start
 
-**Interactive mode** — launch and follow the menu:
+**Via Keypirinha or Flow Launcher** — search for `wsl-manager`.
+
+**Interactive menu** — launch and follow the on-screen prompts:
 
 ```powershell
-wsl-manager
+.\tools\pslib\wsl\wsl-manager.ps1
 ```
 
 **CLI mode** — run commands directly:
 
 ```powershell
-wsl-manager update Debian
-wsl-manager clone Debian
-wsl-manager setup-docker debian-devcon
-```
-
-**Library mode** — source and call functions in scripts:
-
-```powershell
-. "$PSScriptRoot\tools\pslib\wsl\wsl.ps1"
-
-Get-WslDistroList -Detailed
-Copy-WslDistro -SourceName Debian -TargetName MyProject
-New-WslUser -DistroName MyProject -Username developer -Password "SecurePass123"
-Install-WslDockerEngine -DistroName MyProject
+.\tools\pslib\wsl\wsl-manager.ps1 <command> <distro>
 ```
 
 ---
 
 ## Commands
 
-### List Distributions
+### Install New Distribution
 
-Show all installed WSL distributions with state and version info.
+Install a new WSL distribution from Microsoft Store or the web.
 
-```powershell
-# Interactive: launches the menu with the distro table displayed
-wsl-manager
-
-# Library
-Get-WslDistroList              # Names only
-Get-WslDistroList -Detailed    # Structured objects (name, state, version)
-```
-
-### Update Distribution
-
-Update all packages to latest versions (apt-based distributions).
-
-```powershell
-wsl-manager update Debian
-```
+- **Menu**: `[I] Install new distribution`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 create <distro>`
 
 ### Clone Distribution
 
 Export and re-import a distribution under a new name. The source must be stopped.
 
-```powershell
-wsl-manager clone Debian
-# Or via library
-Copy-WslDistro -SourceName Debian -TargetName debian-devcon
-```
+- **Menu**: `[C] Clone distribution`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 clone <distro>`
 
-### Remove Distribution
+### Update Distribution
 
-Unregister a distribution (with confirmation prompt in interactive mode).
+Update all packages to latest versions (apt-based distributions).
 
-```powershell
-wsl-manager remove debian-devcon
-```
-
-### Terminate Distribution
-
-Gracefully shut down a running distribution.
-
-```powershell
-wsl-manager terminate debian-devcon
-```
+- **Menu**: `[U] Update distribution`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 update <distro>`
 
 ### Setup User Account
 
 Create a non-root user with sudo privileges and set as default user.
 
-```powershell
-wsl-manager setup-user debian-devcon
-# Or via library
-New-WslUser -DistroName debian-devcon -Username vscode -Password "YourPassword"
-```
+- **Menu**: `[S] Setup user account`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-user <distro>`
 
 This command:
 - Creates the user with a home directory
@@ -113,9 +82,8 @@ This command:
 
 Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
 
-```powershell
-wsl-manager setup-proxy debian-devcon
-```
+- **Menu**: `[X] Setup proxy`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
 
@@ -123,21 +91,33 @@ See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkt
 
 Install Docker Engine with automatic prerequisite configuration.
 
-```powershell
-wsl-manager setup-docker debian-devcon
-```
+- **Menu**: `[D] Setup Docker`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-docker <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
 
-### Setup Podman (Rootless)
+### Setup Podman
 
 Install rootless Podman as a Docker alternative.
 
-```powershell
-wsl-manager setup-podman debian-devcon
-```
+- **Menu**: `[P] Setup Podman`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+
+### Remove Distribution
+
+Unregister a distribution (with confirmation prompt in interactive mode).
+
+- **Menu**: `[R] Remove distribution`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 remove <distro>`
+
+### Terminate Distribution
+
+Gracefully shut down a running distribution.
+
+- **Menu**: `[T] Terminate distribution`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 terminate <distro>`
 
 ---
 
@@ -171,53 +151,24 @@ Choose one container runtime per distribution. They cannot coexist in the same W
 
 #### Step 1: Install WSL Distribution
 
-Install Debian (or Ubuntu) from Microsoft Store or command line:
-
 ```powershell
-# Via Microsoft Store — search for "Debian" and click Install
-
-# Or via command line (requires admin PowerShell)
-wsl --install -d Debian
+.\tools\pslib\wsl\wsl-manager.ps1 create Debian
 ```
 
-After installation, launch Debian once to complete initial setup (create root password).
-
-#### Step 2: Update Distribution
-
-```powershell
-wsl-manager update Debian
-```
-
-This runs `apt-get update && apt-get upgrade -y` inside the distribution.
-
-#### Step 3: Clone Distribution (Optional)
-
-If you want to keep a clean base Debian and create a dedicated DevContainer distribution:
-
-```powershell
-wsl-manager clone Debian
-# Or via library
-Copy-WslDistro -SourceName Debian -TargetName debian-devcon
-```
-
-**Why clone?** Keep a pristine base for other projects, quickly create new environments, safely experiment without affecting your base.
-
-#### Step 4: Setup User Account
+#### Step 2: Setup User Account
 
 Create a non-root user with sudo privileges (required for both Docker and Podman):
 
 ```powershell
-wsl-manager setup-user debian-devcon
-# Or via library
-New-WslUser -DistroName debian-devcon -Username vscode -Password "YourPassword"
+.\tools\pslib\wsl\wsl-manager.ps1 setup-user Debian
 ```
 
-#### Step 5: Configure Proxy (Corporate Networks)
+#### Step 3: Configure Proxy (Corporate Networks)
 
-If you're behind a corporate proxy, configure proxy settings before installing container runtimes. This ensures `apt`, Docker, and Podman all route through the proxy.
+If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures `apt`, Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
 ```powershell
-wsl-manager setup-proxy debian-devcon
+.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy Debian
 ```
 
 The command auto-detects your proxy configuration:
@@ -238,93 +189,15 @@ No prerequisite steps are needed — proxy detection is fully self-contained.
 
 **Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). `NO_PROXY` defaults to `localhost,127.0.0.1`.
 
-#### Step 6: Install Container Runtime
-
-Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
-
-##### Option A: Docker
+#### Step 4: Update Distribution
 
 ```powershell
-wsl-manager setup-docker debian-devcon
+.\tools\pslib\wsl\wsl-manager.ps1 update Debian
 ```
 
-**What this configures automatically:**
+This runs `apt-get update && apt-get upgrade -y` inside the distribution.
 
-1. **wsl.conf settings:**
-   - `[boot]` section: `systemd=true` (enables systemd for Docker)
-   - `[interop]` section: `enabled=true`, `appendWindowsPath=true` (Windows executable access)
-   - Preserves existing `[user]` section if configured
-
-2. **Kernel-level interop via binfmt.d (VS Code compatible):**
-   - Creates `/etc/binfmt.d/WSLInterop.conf` with Windows executable registration
-   - Managed by `systemd-binfmt.service` (core system service)
-   - VS Code respects kernel configuration, preventing interference
-
-3. **Docker Engine packages:**
-   - Docker CE, Docker CLI, containerd
-   - Docker Compose plugin, Docker Buildx plugin
-   - Prerequisite packages: ca-certificates, curl, gnupg, wget, htop
-
-4. **Distribution restart:**
-   - Automatically restarts the distribution to apply wsl.conf changes
-
-**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation. After installation, you must restart your terminal for docker group membership to take effect.
-
-##### Option B: Rootless Podman
-
-###### Prerequisites: cgroups v2 (Recommended)
-
-Rootless Podman works best with cgroups v2. WSL2 may use a hybrid cgroups v1/v2 setup by default. To enable pure cgroups v2, add to `%USERPROFILE%\.wslconfig`:
-
-```ini
-[wsl2]
-kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
-```
-
-Then restart WSL:
-
-```powershell
-wsl --shutdown
-```
-
-**Note:** `setup-podman` will detect and warn if cgroups v2 is not enabled, but will not modify Windows-side files. Podman still works without pure cgroups v2, but some advanced features (resource limits) may be limited.
-
-###### Install Podman
-
-```powershell
-wsl-manager setup-podman debian-devcon
-```
-
-**What this configures automatically:**
-
-1. **wsl.conf settings:**
-   - `[boot] systemd=true` — enables systemd (required for socket activation)
-   - `[boot] command=mount --make-rshared /` — prevents rootless container mount propagation warnings
-   - `[interop] enabled=true, appendWindowsPath=true` — Windows executable access
-
-2. **Podman packages:**
-   - `podman` — container runtime
-   - `slirp4netns` — rootless networking (user-space network stack)
-   - `uidmap` — user namespace mapping for rootless containers
-
-3. **Rootless Podman socket:**
-   - `systemctl --user enable --now podman.socket` — socket activation as the default user
-   - Socket path: `/run/user/$UID/podman/podman.sock`
-
-4. **User session persistence:**
-   - `loginctl enable-linger $USER` — keeps systemd user services alive across sessions
-
-5. **Environment variables in `~/.bashrc`:**
-   - `XDG_RUNTIME_DIR=/run/user/$(id -u)` — systemd user runtime directory
-   - `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` — D-Bus session bus
-   - `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` — routes Docker CLI commands to Podman
-
-6. **Distribution restart:**
-   - Automatically restarts the distribution to apply wsl.conf changes
-
-**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
-
-#### Step 7: Windows SSH Agent Setup
+#### Step 5: Windows SSH Agent Setup
 
 **These steps must be performed on your Windows host (PowerShell as Administrator).**
 
@@ -354,12 +227,12 @@ ssh-add ~\.ssh\id_rsa
 ssh-add -l
 ```
 
-#### Step 8: Git Configuration
+#### Step 6: Git Configuration
 
 **These steps must be performed inside your WSL distribution.**
 
 ```bash
-wsl --distribution debian-devcon
+wsl --distribution Debian
 ```
 
 ##### Option A: Reuse Windows `.gitconfig` via Symlink (Recommended)
@@ -411,6 +284,102 @@ With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can 
 - The **Windows SSH Agent** handles key authentication, so keys loaded via `ssh-add` on Windows are available to git inside WSL.
 
 **Prerequisite:** WSL interop must be enabled (the automated Docker/Podman setup handles this).
+
+#### Step 7: Clone Distribution (Optional)
+
+If you want to keep a clean base Debian and create a dedicated DevContainer distribution:
+
+```powershell
+.\tools\pslib\wsl\wsl-manager.ps1 clone Debian debian-devcon
+```
+
+**Why clone?** Keep a pristine base for other projects, quickly create new environments, safely experiment without affecting your base.
+
+#### Step 8: Install Container Runtime
+
+Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
+
+##### Option A: Docker
+
+```powershell
+.\tools\pslib\wsl\wsl-manager.ps1 setup-docker debian-devcon
+```
+
+**What this configures automatically:**
+
+1. **wsl.conf settings:**
+   - `[boot]` section: `systemd=true` (enables systemd for Docker)
+   - `[interop]` section: `enabled=true`, `appendWindowsPath=true` (Windows executable access)
+   - Preserves existing `[user]` section if configured
+
+2. **Kernel-level interop via binfmt.d (VS Code compatible):**
+   - Creates `/etc/binfmt.d/WSLInterop.conf` with Windows executable registration
+   - Managed by `systemd-binfmt.service` (core system service)
+   - VS Code respects kernel configuration, preventing interference
+
+3. **Docker Engine packages:**
+   - Docker CE, Docker CLI, containerd
+   - Docker Compose plugin, Docker Buildx plugin
+   - Prerequisite packages: ca-certificates, curl, gnupg, wget, htop
+
+4. **Distribution restart:**
+   - Automatically restarts the distribution to apply wsl.conf changes
+
+**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation. After installation, you must restart your terminal for docker group membership to take effect.
+
+##### Option B: Rootless Podman
+
+###### Prerequisites: cgroups v2 (Recommended)
+
+Rootless Podman works best with cgroups v2. WSL2 may use a hybrid cgroups v1/v2 setup by default. To enable pure cgroups v2, add to `%USERPROFILE%\.wslconfig`:
+
+```ini
+[wsl2]
+kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
+```
+
+Then restart WSL:
+
+```powershell
+wsl --shutdown
+```
+
+**Note:** `setup-podman` will detect and warn if cgroups v2 is not enabled, but will not modify Windows-side files. Podman still works without pure cgroups v2, but some advanced features (resource limits) may be limited.
+
+###### Install Podman
+
+```powershell
+.\tools\pslib\wsl\wsl-manager.ps1 setup-podman debian-devcon
+```
+
+**What this configures automatically:**
+
+1. **wsl.conf settings:**
+   - `[boot] systemd=true` — enables systemd (required for socket activation)
+   - `[boot] command=mount --make-rshared /` — prevents rootless container mount propagation warnings
+   - `[interop] enabled=true, appendWindowsPath=true` — Windows executable access
+
+2. **Podman packages:**
+   - `podman` — container runtime
+   - `slirp4netns` — rootless networking (user-space network stack)
+   - `uidmap` — user namespace mapping for rootless containers
+
+3. **Rootless Podman socket:**
+   - `systemctl --user enable --now podman.socket` — socket activation as the default user
+   - Socket path: `/run/user/$UID/podman/podman.sock`
+
+4. **User session persistence:**
+   - `loginctl enable-linger $USER` — keeps systemd user services alive across sessions
+
+5. **Environment variables in `~/.bashrc`:**
+   - `XDG_RUNTIME_DIR=/run/user/$(id -u)` — systemd user runtime directory
+   - `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` — D-Bus session bus
+   - `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` — routes Docker CLI commands to Podman
+
+6. **Distribution restart:**
+   - Automatically restarts the distribution to apply wsl.conf changes
+
+**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
 
 #### Step 9: VS Code Settings
 
@@ -640,7 +609,7 @@ wsl --distribution Debian
 **Solution:** Re-run the idempotent Docker setup to migrate to kernel-level binfmt.d configuration:
 
 ```powershell
-wsl-manager setup-docker Debian
+.\tools\pslib\wsl\wsl-manager.ps1 setup-docker Debian
 ```
 
 This detects existing Docker (no reinstall), migrates from old rc.local to `/etc/binfmt.d/WSLInterop.conf` if needed, and verifies all components.
@@ -752,7 +721,7 @@ grep "mount --make-rshared" /etc/wsl.conf
 # Expected: command=mount --make-rshared /
 ```
 
-If missing, re-run `wsl-manager setup-podman <DistroName>` to repair.
+If missing, re-run `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <DistroName>` to repair.
 
 #### Docker Already Installed (Mutual Exclusion)
 
@@ -794,42 +763,10 @@ tools/pslib/wsl/
     └── wsl-manager.podman.Integration.Tests.ps1
 ```
 
-### All Implemented Functions
+### Library Usage
 
-**Distribution Information** (`lib/core.ps1`):
-- `Get-WslDistroList [-Detailed]` — List distributions
-- `Get-WslDistroType -DistroName` — Detect distro type (debian, ubuntu, arch, etc.)
-- `Get-WslDistroState -DistroName` — Get state (Running/Stopped)
-- `Test-WslDistroRunning -DistroName` — Check if running
-- `Test-Wsl2Version -DistroName` — Check if WSL2
-- `Test-WslSystemdConfigured -DistroName` — Check systemd in wsl.conf
-- `Test-WslSystemd -DistroName` — Check if systemd is running
-
-**Distribution Operations** (`lib/ops.ps1`, `lib/install.ps1`):
-- `Copy-WslDistro -SourceName -TargetName` — Clone distribution
-- `Remove-WslDistro -Name` — Unregister distribution
-- `Stop-WslDistro -Name` — Terminate distribution
-- `Update-WslDistro -Name` — Update packages (apt-based)
-
-**User Management** (`lib/user.ps1`):
-- `New-WslUser -DistroName -Username -Password` — Create user with sudo
-- `Get-WslDefaultUser -DistroName` — Get default user from wsl.conf
-- `Set-WslConf` — Safely merge wsl.conf sections (preserves existing config, creates timestamped backups)
-
-**Docker** (`lib/docker.ps1`):
-- `Install-WslDockerEngine -DistroName [-Username]` — Install Docker with automatic prerequisite configuration
-- `Test-WslDockerInstalled -DistroName` — Check Docker installation
-
-**Proxy** (`lib/proxy.ps1`):
-- `Install-WslProxy -DistroName` — Configure proxy settings (auto-detects from PAC/registry, supports DIRECT/remove)
-
-**Podman** (`lib/podman.ps1`):
-- `Install-WslPodman -DistroName [-Username]` — Install rootless Podman with automatic prerequisite configuration
-- `Test-WslPodmanInstalled -DistroName` — Check Podman installation
-
-**Script Execution** (`lib/exec.ps1`):
-- `Invoke-WslDistroCommand -DistroName -Command` — Run command
-- `Invoke-WslDistroScript -DistroName -ScriptPath [-Arguments] [-AsRoot]` — Run bash script
+All WSL Manager functionality is also available as PowerShell functions for scripting.
+See `tools/pslib/wsl/wsl.ps1` for the full library API.
 
 ### Configuration Files
 
@@ -902,3 +839,7 @@ export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 - **Why binfmt.d?** Uses kernel-level configuration managed by `systemd-binfmt.service` instead of late-boot rc.local scripts. This prevents VS Code from interfering with Windows executable interop when opening WSL folders.
 - **Why ssh.exe?** Using `ssh.exe` from Windows allows git operations inside WSL to leverage the Windows SSH agent, enabling seamless SSH key forwarding without managing keys inside each WSL distribution.
 - **Security consideration:** This setup forwards your SSH agent into containers. Only use with trusted DevContainer configurations.
+
+---
+
+[← Back to README](../README.md)
