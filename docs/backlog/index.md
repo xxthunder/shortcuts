@@ -12,8 +12,7 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
-- [SC-007 — Add `setup-proxy` action to wsl-manager](in_progress/sc-007.md)
-- [SC-004 — Consolidate documentation and make all docs reachable from README](in_progress/sc-004.md)
+
 ### TODO
 - [SC-002 — Add `shutdown` command to wsl-manager](todo/sc-002.md)
 - [SC-003 — Stop action functions from reprinting distro table](todo/sc-003.md)
@@ -21,6 +20,8 @@
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 
 ### Done
+- [SC-007 — Add `setup-proxy` action to wsl-manager](done/sc-007.md)
+- [SC-004 — Consolidate documentation and make all docs reachable from README](done/sc-004.md)
 - [SC-008 — Split backlog into index and per-item files](done/sc-008.md)
 - [SC-009 — PowerShell Lint Guard (skill + pre-commit hook)](done/sc-009.md)
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](done/feat-002.md)
@@ -49,6 +50,14 @@
 - Use format `[SC-###]` for item IDs — global sequential numbering
 - Keep items actionable with clear acceptance criteria
 - Do NOT list commit hashes in backlog entries — the backlog is part of the commit itself, so hashes are circular and go stale after squash/rebase
+
+### Closing an item (checklist)
+
+1. **Verify acceptance criteria** — all `[ ]` must be `[x]`. Do NOT close with unchecked items.
+2. **Update the heading** — add `✅ COMPLETED` (e.g., `# [SC-004] ✅ COMPLETED - …`)
+3. **Update the Status field** — change to `**Completed** (YYYY-MM-DD)`
+4. **Update this index** — move the entry from its current section to **Done**, change path from `in_progress/` (or `todo/`) to `done/`
+5. **Move the file** — `git mv docs/backlog/in_progress/sc-004.md docs/backlog/done/sc-004.md`
 
 ---
 
