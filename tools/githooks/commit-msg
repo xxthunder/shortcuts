@@ -11,11 +11,12 @@
 SUBJECT=$(head -1 "$1")
 
 # Conventional commit: type(optional-scope): description (BACKLOG-ITEM)
-if ! echo "$SUBJECT" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?!?: .+ \([A-Z]+-[0-9]+\)$'; then
+if ! echo "$SUBJECT" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?!?: .+ \([A-Z]+-[0-9]+(,[ ]?[A-Z]+-[0-9]+)*\)$'; then
     echo "" >&2
     echo "❌ Commit subject does not match required format:" >&2
     echo "" >&2
     echo "  type: description (ITEM-123)" >&2
+    echo "  type: description (ITEM-123, ITEM-456)" >&2
     echo "  type(scope): description (ITEM-123)" >&2
     echo "" >&2
     echo "Got: $SUBJECT" >&2
