@@ -1,11 +1,12 @@
-<#
+﻿<#
 .SYNOPSIS
     Installs git hooks for the repository.
 
 .DESCRIPTION
     Copies hooks from tools/githooks to .git/hooks.
     Currently installs:
-    - commit-msg
+    - commit-msg  (conventional commit format validation)
+    - pre-commit  (PSScriptAnalyzer + UTF-8 BOM checks for .ps1 files)
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -21,7 +22,7 @@ if (-not (Test-Path $gitHooksDir)) {
     exit 1
 }
 
-$hooks = @("commit-msg")
+$hooks = @("commit-msg", "pre-commit")
 
 foreach ($hook in $hooks) {
     $sourcePath = Join-Path $sourceDir $hook

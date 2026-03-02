@@ -14,6 +14,7 @@
     - Use -Unit to run only unit tests (excludes *.Integration.Tests.ps1).
     - Use -Integration to run only integration tests (*.Integration.Tests.ps1).
     - Use -TestPath to specify custom search directories or files.
+    - Use -LintOnly to run only PSScriptAnalyzer (no tests).
 
 .PARAMETER TestPath
     One or more paths to search for tests. Defaults to 'tools' and 'test' if not provided.
@@ -23,6 +24,11 @@
 
 .PARAMETER Integration
     Run integration tests only.
+
+.PARAMETER LintOnly
+    Run only PSScriptAnalyzer via linter.Tests.ps1 (no test files are executed).
+    Composes with -Unit, -Integration, and -TestPath to lint the same files
+    those modes would discover.
 
 .PARAMETER ReportPath
     Path to generate the JUnit XML test report.
@@ -53,6 +59,21 @@
     pwsh -File test/bin/testrunner.ps1 -TestPath "tools/pslib"
 
     Runs all tests in tools/pslib.
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -LintOnly
+
+    Lints all .ps1 files in default paths (no tests run).
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -LintOnly -TestPath "tools/pslib"
+
+    Lints only .ps1 files under tools/pslib.
+
+.EXAMPLE
+    pwsh -File test/bin/testrunner.ps1 -LintOnly -Unit
+
+    Lints the .ps1 files that -Unit would discover (unit test files).
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Write-Host is required for colored console output')]
@@ -67,7 +88,8 @@ param(
     [string]$ExcludePattern,
     [switch]$Coverage = $false,
     [switch]$Unit,
-    [switch]$Integration
+    [switch]$Integration,
+    [switch]$LintOnly
 )
 
 Set-StrictMode -Version Latest
@@ -322,8 +344,13 @@ if ($MyInvocation.InvocationName -ne '.') {
         # Pass test paths via env var like before.
         $env:PESTER_LINT_PATHS = $finalTestPaths -join ';'
 
-        # Add linter to HEAD of test list
-        $runList = @($linterTestPath) + $finalTestPaths
+        # Build run list: lint-only skips test files
+        if ($LintOnly) {
+            $runList = @($linterTestPath)
+            Write-Status "Lint only — skipping tests"
+        } else {
+            $runList = @($linterTestPath) + $finalTestPaths
+        }
 
         # Ensure output directory exists
         $reportDir = Split-Path $ReportPath -Parent

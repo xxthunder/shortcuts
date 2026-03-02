@@ -113,7 +113,30 @@ try {
 }
 ```
 
-### 3. Key Patterns
+### 3. Post-Edit Lint Check
+
+After creating or editing any `.ps1` file, **immediately** lint it via the testrunner:
+
+```bash
+pwsh -File "test/bin/testrunner.ps1" -LintOnly -TestPath '<file>'
+```
+
+If any violations are found (especially `PSUseBOMForUnicodeEncodedFile`), fix them before proceeding.
+
+**BOM fix** — if a `.ps1` file is missing the UTF-8 BOM (common after Write/Edit tool use), prepend it:
+
+```bash
+pwsh -Command "
+  \$path = '<file>'
+  \$content = [System.IO.File]::ReadAllText(\$path)
+  \$encoding = New-Object System.Text.UTF8Encoding(\$true)
+  [System.IO.File]::WriteAllText(\$path, \$content, \$encoding)
+"
+```
+
+This step is **not optional** — the pre-commit hook will block commits with lint errors.
+
+### 4. Key Patterns
 
 **Error Handling:**
 - Always use `Set-StrictMode -Version Latest`
@@ -147,7 +170,7 @@ if (Test-RunningInCIorTestEnvironment) {
 }
 ```
 
-### 4. Create .bat Wrapper (for executable scripts)
+### 5. Create .bat Wrapper (for executable scripts)
 
 For scripts meant to be run directly, create a .bat wrapper:
 
@@ -158,7 +181,7 @@ pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
 
 Save as `script-name.bat` in the same directory.
 
-### 5. Run Tests
+### 6. Run Tests
 
 ```bash
 # Unit tests (fast feedback)
@@ -171,7 +194,7 @@ pwsh -File ".\test\bin\testrunner.ps1" -Integration
 pwsh -File ".\test\bin\testrunner.ps1"
 ```
 
-### 6. Verify PowerShell 5.1 Compatibility
+### 7. Verify PowerShell 5.1 Compatibility
 
 Test on PowerShell 5.1:
 
@@ -217,11 +240,11 @@ Avoid PowerShell 6.0+ features:
 
 Before every commit:
 
+- [ ] **PSScriptAnalyzer clean on every edited `.ps1` file** (step 3 above — not optional, the pre-commit hook enforces this)
 - [ ] All unit tests pass: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
 - [ ] Integration tests pass (if modified): `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
 - [ ] Tests and implementation committed together
 - [ ] PowerShell 5.1 compatible (no 6.0+ features)
-- [ ] PSScriptAnalyzer passes (runs automatically with tests)
 
 ## Resources
 

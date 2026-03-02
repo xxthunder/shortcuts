@@ -20,6 +20,7 @@
 - [SC-006 — Scoop Update Helper Script](#sc-006-scoop-update-helper-script)
 
 ### Done
+- [SC-009 — PowerShell Lint Guard (skill + pre-commit hook)](#sc-009--completed---powershell-lint-guard-skill--pre-commit-hook)
 - [SC-004 — Consolidate documentation and make all docs reachable from README](#sc-004--completed---consolidate-documentation-and-make-all-docs-reachable-from-readme)
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](#feat-002--completed---set-up-podman-as-docker-alternative-in-wsl)
 - [REFACT-005 — Extract `Assert-WslDistroExists` guard (DRY)](#refact-005--completed---extract-assert-wsldistroexists-guard-to-replace-inline-distro-validation-dry)
@@ -381,6 +382,35 @@ Interactive helper script to update installed Scoop packages. Launched via Keypi
 ---
 
 ## DONE
+
+### [SC-009] [COMPLETED] — PowerShell Lint Guard (skill + pre-commit hook)
+
+**Status**: Done
+**Priority**: High
+**Component**: `.claude/skills/powershell-dev/SKILL.md`, `tools/githooks/pre-commit`, `tools/githooks/install-hooks.ps1`
+
+**Summary**:
+As a contributor, I want PSScriptAnalyzer errors (especially missing UTF-8 BOM) caught immediately — both during Claude-assisted editing and at commit time — so that lint failures never reach CI.
+
+**Workflow**:
+1. Update `powershell-dev` skill to instruct Claude to lint `.ps1` files immediately after editing
+2. Create a git pre-commit hook that checks BOM and runs PSScriptAnalyzer on staged `.ps1` files
+3. Register the hook in `install-hooks.ps1`
+
+**Acceptance Criteria**:
+- [x] `powershell-dev` skill has a "Post-Edit Lint Check" section with PSScriptAnalyzer + BOM fix instructions
+- [x] Pre-commit checklist in skill updated to emphasize lint is mandatory
+- [x] `tools/githooks/pre-commit` exists and checks BOM + PSScriptAnalyzer on staged `.ps1` files
+- [x] `tools/githooks/install-hooks.ps1` installs `pre-commit` alongside `commit-msg`
+- [x] Hook blocks commits when a staged `.ps1` file is missing BOM
+- [x] Hook blocks commits when PSScriptAnalyzer reports Warning/Error
+- [x] Hook passes cleanly when all staged `.ps1` files are lint-clean
+- [x] `testrunner.ps1 -LintOnly` runs only linter.Tests.ps1 (no test files)
+- [x] `-LintOnly` composes with `-Unit`, `-Integration`, and `-TestPath`
+- [x] Pre-commit hook uses `testrunner -LintOnly` instead of direct PSScriptAnalyzer
+- [x] `powershell-dev` skill uses `testrunner -LintOnly` for post-edit lint
+
+---
 
 ### [SC-004] ✅ COMPLETED - Consolidate documentation and make all docs reachable from README
 

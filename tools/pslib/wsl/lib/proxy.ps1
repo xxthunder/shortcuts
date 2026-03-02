@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL proxy configuration functions for setting up corporate proxy settings in distributions.
 #>

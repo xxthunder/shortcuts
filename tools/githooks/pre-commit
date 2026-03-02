@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# pre-commit hook — validates staged .ps1 files:
+#   1. UTF-8 BOM present (first 3 bytes are EF BB BF)
+#   2. PSScriptAnalyzer reports no Warning/Error violations
+
+STAGED_PS1=$(git diff --cached --name-only --diff-filter=ACM -- '*.ps1')
+
+if [ -z "$STAGED_PS1" ]; then
+    exit 0
+fi
+
+ERRORS=0
+
+for file in $STAGED_PS1; do
+    # --- BOM check ---
+    BOM=$(head -c 3 "$file" | xxd -p)
+    if [ "$BOM" != "efbbbf" ]; then
+        echo "" >&2
+        echo "❌ Missing UTF-8 BOM: $file" >&2
+        echo "   Fix: pwsh -Command \"\$p='$file'; \$c=[IO.File]::ReadAllText(\$p); [IO.File]::WriteAllText(\$p,\$c,[Text.UTF8Encoding]::new(\$true))\"" >&2
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    # --- PSScriptAnalyzer check (via testrunner) ---
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    LINT=$(pwsh -NoProfile -File "$REPO_ROOT/test/bin/testrunner.ps1" -LintOnly -TestPath "$file" -Verbosity Minimal 2>&1)
+    LINT_EXIT=$?
+    if [ $LINT_EXIT -ne 0 ]; then
+        echo "" >&2
+        echo "❌ PSScriptAnalyzer violations in: $file" >&2
+        echo "$LINT" >&2
+        ERRORS=$((ERRORS + 1))
+    fi
+done
+
+if [ $ERRORS -gt 0 ]; then
+    echo "" >&2
+    echo "Pre-commit: $ERRORS file(s) failed lint checks. Fix the issues above and re-stage." >&2
+    exit 1
+fi
+
+exit 0
