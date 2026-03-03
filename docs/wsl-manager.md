@@ -70,6 +70,8 @@ Update all packages to latest versions (apt-based distributions).
 
 Create a non-root user with sudo privileges and set as default user.
 
+> **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
+
 - **Menu**: `[S] Setup user account`
 - **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-user <distro>`
 
@@ -186,13 +188,15 @@ Ubuntu 24.04 LTS is recommended — long-term support, excellent WSL compatibili
 
 Create a non-root user with sudo privileges (required for both Docker and Podman):
 
+> **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
+
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-user Ubuntu-24.04
+.\tools\pslib\wsl\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
 ```
 
 #### Step 4: Configure Proxy (Corporate Networks)
 
-If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures `apt`, Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
+If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures that package management (APT), Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
 ```powershell
 .\tools\pslib\wsl\wsl-manager.ps1 setup-proxy Ubuntu-24.04
@@ -245,10 +249,10 @@ Get-Service ssh-agent
 
 ```powershell
 # Add your SSH key (adjust path if needed)
-ssh-add ~\.ssh\id_ed25519
+ssh-add $env:USERPROFILE\.ssh\id_ed25519
 
 # Or for RSA keys
-ssh-add ~\.ssh\id_rsa
+ssh-add $env:USERPROFILE\.ssh\id_rsa
 
 # Verify key is loaded
 ssh-add -l
@@ -395,11 +399,38 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 
 **Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
 
-#### Step 10: VS Code Settings
+#### Step 10: Required VS Code Extensions
 
-Open your VS Code `settings.json` (File > Preferences > Settings > Open Settings (JSON)) and add the settings for your chosen runtime.
+Before configuring settings, ensure the following extensions are installed in VS Code:
+
+- **Dev Containers** (`ms-vscode-remote.remote-containers`) — required for DevContainer support
+- **WSL** (`ms-vscode-remote.remote-wsl`) — required for opening WSL folders in VS Code
+- **Remote - SSH** (`ms-vscode-remote.remote-ssh`) — required for SSH agent forwarding
+
+You can install them from the Extensions view (`Ctrl+Shift+X`) or via the command line:
+
+```bash
+code --install-extension ms-vscode-remote.remote-containers
+code --install-extension ms-vscode-remote.remote-wsl
+code --install-extension ms-vscode-remote.remote-ssh
+```
+
+#### Step 11: VS Code Settings
+
+Open **File → Preferences → Settings** (or `Ctrl+,`) and configure the settings below using the search bar.
 
 ##### Common Settings (Both Runtimes)
+
+| Search for | Set value to |
+|------------|-------------|
+| `dev.containers.copyGitConfig` | `true` (checked) |
+| `remote.SSH.enableAgentForwarding` | `true` (checked) |
+
+- `dev.containers.copyGitConfig`: Copies your git configuration into DevContainers
+- `remote.SSH.enableAgentForwarding`: Enables SSH agent forwarding for remote connections
+
+<details>
+<summary>Equivalent JSON (<code>settings.json</code>)</summary>
 
 ```json
 {
@@ -408,12 +439,22 @@ Open your VS Code `settings.json` (File > Preferences > Settings > Open Settings
 }
 ```
 
-- `dev.containers.copyGitConfig`: Copies your git configuration into DevContainers
-- `remote.SSH.enableAgentForwarding`: Enables SSH agent forwarding for remote connections
+</details>
 
 ##### Podman-Specific Settings
 
-If you chose Podman, also add:
+If you chose Podman, also set:
+
+| Search for | Set value to |
+|------------|-------------|
+| `dev.containers.dockerPath` | `podman` |
+| `dev.containers.mountWaylandSocket` | `false` (unchecked) |
+
+- `dev.containers.dockerPath`: Tells VS Code to use `podman` instead of `docker`
+- `dev.containers.mountWaylandSocket`: Disables Wayland socket mount (avoids WSL2 socket error)
+
+<details>
+<summary>Equivalent JSON (<code>settings.json</code>)</summary>
 
 ```json
 {
@@ -422,8 +463,7 @@ If you chose Podman, also add:
 }
 ```
 
-- `dev.containers.dockerPath`: Tells VS Code to use `podman` instead of `docker`
-- `dev.containers.mountWaylandSocket`: Disables Wayland socket mount (avoids WSL2 socket error)
+</details>
 
 Additionally, for rootless Podman, add `--userns=keep-id` to your `devcontainer.json`:
 

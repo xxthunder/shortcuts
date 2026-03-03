@@ -18,8 +18,10 @@
 - [SC-003 — Stop action functions from reprinting distro table](todo/sc-003.md)
 - [SC-005 — Move argument validation into action functions](todo/sc-005.md)
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
+- [SC-011 — WSL Manager: mask credentials and auto-terminate after install](todo/sc-011.md)
 
 ### Done
+- [SC-010 — Review and enhance VS Code DevContainer Setup documentation](done/sc-010.md)
 - [SC-004 — Consolidate documentation and make all docs reachable from README](done/sc-004.md)
 - [SC-007 — Add `setup-proxy` action to wsl-manager](done/sc-007.md)
 - [SC-008 — Split backlog into index and per-item files](done/sc-008.md)
