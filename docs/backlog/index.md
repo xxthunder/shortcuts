@@ -20,8 +20,8 @@
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 
 ### Done
-- [SC-007 — Add `setup-proxy` action to wsl-manager](done/sc-007.md)
 - [SC-004 — Consolidate documentation and make all docs reachable from README](done/sc-004.md)
+- [SC-007 — Add `setup-proxy` action to wsl-manager](done/sc-007.md)
 - [SC-008 — Split backlog into index and per-item files](done/sc-008.md)
 - [SC-009 — PowerShell Lint Guard (skill + pre-commit hook)](done/sc-009.md)
 - [FEAT-002 — Set up Podman as Docker alternative in WSL](done/feat-002.md)

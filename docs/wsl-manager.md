@@ -149,26 +149,53 @@ Choose one container runtime per distribution. They cannot coexist in the same W
 
 ### Step-by-Step Walkthrough
 
-#### Step 1: Install WSL Distribution
+> **Tip:** Steps 2 onwards can be run via the interactive menu (`.\tools\pslib\wsl\wsl-manager.ps1`) or as the CLI commands shown below. Both are equivalent.
 
-```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 install Debian
+#### Step 1: Configure WSL Global Settings
+
+Add the following to `%USERPROFILE%\.wslconfig` on your Windows host (create the file if it does not exist):
+
+```ini
+[wsl2]
+kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
+networkingMode=mirrored
+dnsTunneling=true
+autoProxy=true
 ```
 
-#### Step 2: Setup User Account
+- `kernelCommandLine` — enables pure cgroups v2, required for rootless Podman and optimal systemd support
+- `networkingMode=mirrored` — mirrors Windows network interfaces into WSL, improving connectivity
+- `dnsTunneling` — routes DNS queries through Windows, avoiding split-DNS issues in corporate networks
+- `autoProxy` — automatically applies Windows proxy settings inside WSL
+
+Then restart WSL to apply:
+
+```powershell
+wsl --shutdown
+```
+
+#### Step 2: Install WSL Distribution
+
+Ubuntu 24.04 LTS is recommended — long-term support, excellent WSL compatibility, and well-tested Docker/Podman support.
+
+```powershell
+.\tools\pslib\wsl\wsl-manager.ps1 install Ubuntu-24.04
+```
+
+#### Step 3: Setup User Account
 
 Create a non-root user with sudo privileges (required for both Docker and Podman):
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-user Debian
+.\tools\pslib\wsl\wsl-manager.ps1 setup-user Ubuntu-24.04
 ```
 
-#### Step 3: Configure Proxy (Corporate Networks)
+#### Step 4: Configure Proxy (Corporate Networks)
 
 If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures `apt`, Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy Debian
+.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy Ubuntu-24.04
 ```
 
 The command auto-detects your proxy configuration:
@@ -189,15 +216,15 @@ No prerequisite steps are needed — proxy detection is fully self-contained.
 
 **Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). `NO_PROXY` defaults to `localhost,127.0.0.1`.
 
-#### Step 4: Update Distribution
+#### Step 5: Update Distribution
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 update Debian
+.\tools\pslib\wsl\wsl-manager.ps1 update Ubuntu-24.04
 ```
 
 This runs `apt-get update && apt-get upgrade -y` inside the distribution.
 
-#### Step 5: Windows SSH Agent Setup
+#### Step 6: Windows SSH Agent Setup
 
 **These steps must be performed on your Windows host (PowerShell as Administrator).**
 
@@ -227,13 +254,15 @@ ssh-add ~\.ssh\id_rsa
 ssh-add -l
 ```
 
-#### Step 6: Git Configuration
+#### Step 7: Git Configuration
 
 **These steps must be performed inside your WSL distribution.**
 
 ```bash
-wsl --distribution Debian
+wsl --distribution Ubuntu-24.04
 ```
+
+> **Tip:** You can also open the distribution directly from Keypirinha — search for `Ubuntu-24.04`.
 
 ##### Option A: Reuse Windows `.gitconfig` via Symlink (Recommended)
 
@@ -285,24 +314,24 @@ With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can 
 
 **Prerequisite:** WSL interop must be enabled (the automated Docker/Podman setup handles this).
 
-#### Step 7: Clone Distribution (Optional)
+#### Step 8: Clone Distribution (Optional)
 
-If you want to keep a clean base Debian and create a dedicated DevContainer distribution:
+If you want to keep a clean base Ubuntu-24.04 and create a dedicated DevContainer distribution:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 clone Debian debian-devcon
+.\tools\pslib\wsl\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon
 ```
 
 **Why clone?** Keep a pristine base for other projects, quickly create new environments, safely experiment without affecting your base.
 
-#### Step 8: Install Container Runtime
+#### Step 9: Install Container Runtime
 
 Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
 
 ##### Option A: Docker
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-docker debian-devcon
+.\tools\pslib\wsl\wsl-manager.ps1 setup-docker ubuntu-devcon
 ```
 
 **What this configures automatically:**
@@ -329,27 +358,12 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 
 ##### Option B: Rootless Podman
 
-###### Prerequisites: cgroups v2 (Recommended)
-
-Rootless Podman works best with cgroups v2. WSL2 may use a hybrid cgroups v1/v2 setup by default. To enable pure cgroups v2, add to `%USERPROFILE%\.wslconfig`:
-
-```ini
-[wsl2]
-kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
-```
-
-Then restart WSL:
-
-```powershell
-wsl --shutdown
-```
-
-**Note:** `setup-podman` will detect and warn if cgroups v2 is not enabled, but will not modify Windows-side files. Podman still works without pure cgroups v2, but some advanced features (resource limits) may be limited.
+> **Note:** Pure cgroups v2 is required for rootless Podman. This is already covered by the `kernelCommandLine` setting in Step 1.
 
 ###### Install Podman
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-podman debian-devcon
+.\tools\pslib\wsl\wsl-manager.ps1 setup-podman ubuntu-devcon
 ```
 
 **What this configures automatically:**
@@ -381,7 +395,7 @@ wsl --shutdown
 
 **Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
 
-#### Step 9: VS Code Settings
+#### Step 10: VS Code Settings
 
 Open your VS Code `settings.json` (File > Preferences > Settings > Open Settings (JSON)) and add the settings for your chosen runtime.
 
@@ -593,8 +607,8 @@ cat /proc/sys/fs/binfmt_misc/WSLInterop
 4. **Restart distribution:**
 
 ```bash
-wsl.exe --terminate Debian
-wsl --distribution Debian
+wsl.exe --terminate Ubuntu-24.04
+wsl --distribution Ubuntu-24.04
 ```
 
 #### VS Code Breaks Docker After Opening WSL Folder
@@ -609,7 +623,7 @@ wsl --distribution Debian
 **Solution:** Re-run the idempotent Docker setup to migrate to kernel-level binfmt.d configuration:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-docker Debian
+.\tools\pslib\wsl\wsl-manager.ps1 setup-docker Ubuntu-24.04
 ```
 
 This detects existing Docker (no reinstall), migrates from old rc.local to `/etc/binfmt.d/WSLInterop.conf` if needed, and verifies all components.
@@ -617,11 +631,11 @@ This detects existing Docker (no reinstall), migrates from old rc.local to `/etc
 **Verification:**
 
 ```bash
-wsl -d Debian cat /etc/binfmt.d/WSLInterop.conf
+wsl -d Ubuntu-24.04 cat /etc/binfmt.d/WSLInterop.conf
 # Expected: :WSLInterop:M::MZ::/init:PF
 
-wsl -d Debian docker ps
-wsl -d Debian notepad.exe
+wsl -d Ubuntu-24.04 docker ps
+wsl -d Ubuntu-24.04 notepad.exe
 ```
 
 #### DevContainer Fails to Start
@@ -701,14 +715,11 @@ source ~/.bashrc
 
 **Symptoms:** `podman info` shows `cgroupVersion: v1` or warnings about cgroup controllers
 
-**Solution:** Enable pure cgroups v2 in `%USERPROFILE%\.wslconfig`:
+**Solution:** Verify `%USERPROFILE%\.wslconfig` contains the `kernelCommandLine` from [Step 1](#step-1-configure-wsl-global-settings), then restart WSL:
 
-```ini
-[wsl2]
-kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
+```powershell
+wsl --shutdown
 ```
-
-Then restart WSL: `wsl --shutdown`
 
 #### Mount Propagation Warnings
 
