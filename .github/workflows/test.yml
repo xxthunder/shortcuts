@@ -26,7 +26,7 @@ jobs:
             shell_name: "Powershell 5.x"
             shell_label: PS5
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15 # remote install + Scoop is slower than a plain checkout
+    timeout-minutes: 30 # remote install + Scoop + coverage is slower than a plain checkout
     permissions:
       checks: write # publish test report as PR check
       pull-requests: write
