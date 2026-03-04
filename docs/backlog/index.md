@@ -21,6 +21,7 @@
 - [SC-011 — WSL Manager: mask credentials and auto-terminate after install](todo/sc-011.md)
 
 ### Done
+- [SC-012 — Stop-WslDistro: verify termination with retry](done/sc-012.md)
 - [SC-010 — Review and enhance VS Code DevContainer Setup documentation](done/sc-010.md)
 - [SC-004 — Consolidate documentation and make all docs reachable from README](done/sc-004.md)
 - [SC-007 — Add `setup-proxy` action to wsl-manager](done/sc-007.md)

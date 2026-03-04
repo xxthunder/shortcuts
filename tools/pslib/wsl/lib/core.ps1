@@ -592,6 +592,19 @@ function Stop-WslDistro {
     # Terminate the distribution
     if ($PSCmdlet.ShouldProcess($Name, "Terminate WSL distribution")) {
         Invoke-CommandLine -CommandLine "wsl.exe --terminate $Name" -StopAtError $true -PrintCommand $false
-        Write-Information "✓ Successfully terminated distribution '$Name'"
+
+        # Verify termination (wsl.exe --terminate can be asynchronous)
+        $maxRetries = 3
+        $baseDelay = 2  # base delay in seconds
+        for ($i = 1; $i -le $maxRetries; $i++) {
+            $delay = $baseDelay * $i
+            if (-not (Test-WslDistroRunning -DistroName $Name)) {
+                Write-Information "✓ Successfully terminated distribution '$Name'"
+                return
+            }
+            Write-Information "Distribution '$Name' still running, waiting ${delay}s... (attempt $i/$maxRetries)"
+            Start-Sleep -Seconds $delay
+        }
+        throw "Failed to terminate distribution '$Name' after $maxRetries attempts."
     }
 }

@@ -797,11 +797,16 @@ Describe "Stop-WslDistro" {
     }
 
     Context "When distribution is running" {
+        BeforeEach {
+            $script:testWslRunningCalls = 0
+        }
+
         It "Should call wsl.exe --terminate with distribution name" {
 
             Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
+            Mock Test-WslDistroRunning { $script:testWslRunningCalls++; return ($script:testWslRunningCalls -le 1) }
             Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
 
             Stop-WslDistro -Name "Debian" -Confirm:$false
 
@@ -813,9 +818,10 @@ Describe "Stop-WslDistro" {
         It "Should display success message after termination" {
 
             Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
+            Mock Test-WslDistroRunning { $script:testWslRunningCalls++; return ($script:testWslRunningCalls -le 1) }
             Mock Invoke-CommandLine { }
             Mock Write-Information { }
+            Mock Start-Sleep { }
 
             Stop-WslDistro -Name "Debian" -Confirm:$false
 
@@ -827,8 +833,9 @@ Describe "Stop-WslDistro" {
         It "Should trim whitespace from distribution name" {
 
             Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
+            Mock Test-WslDistroRunning { $script:testWslRunningCalls++; return ($script:testWslRunningCalls -le 1) }
             Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
 
             Stop-WslDistro -Name "  Debian  " -Confirm:$false
 
@@ -839,11 +846,16 @@ Describe "Stop-WslDistro" {
     }
 
     Context "ShouldProcess support" {
+        BeforeEach {
+            $script:testWslRunningCalls = 0
+        }
+
         It "Should skip termination when -WhatIf is specified" {
 
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
 
             Stop-WslDistro -Name "Debian" -WhatIf
 
@@ -853,8 +865,9 @@ Describe "Stop-WslDistro" {
         It "Should proceed when -Confirm:$false is specified" {
 
             Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
+            Mock Test-WslDistroRunning { $script:testWslRunningCalls++; return ($script:testWslRunningCalls -le 1) }
             Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
 
             Stop-WslDistro -Name "Debian" -Confirm:$false
 
@@ -866,8 +879,9 @@ Describe "Stop-WslDistro" {
         It "Should proceed in CI environment without prompting" {
 
             Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
+            Mock Test-WslDistroRunning { $script:testWslRunningCalls++; return ($script:testWslRunningCalls -le 1) }
             Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
             Mock Test-RunningInCIorTestEnvironment { $true }
 
             Stop-WslDistro -Name "Debian" -Confirm:$false
@@ -921,6 +935,67 @@ Describe "Stop-WslDistro" {
             Mock Assert-WslDistroExists { throw "Distribution '' does not exist. Installed distributions: Debian" }
 
             { Stop-WslDistro -Name "   " } | Should -Throw
+        }
+    }
+
+    Context "Termination verification" {
+        BeforeEach {
+            $script:testWslRunningCalls = 0
+        }
+
+        It "Should verify termination after terminate command" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Test-WslDistroRunning {
+                $script:testWslRunningCalls++
+                # First call: pre-check (running), second call: verification (stopped)
+                return ($script:testWslRunningCalls -le 1)
+            }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+            Mock Write-Information { }
+
+            Stop-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Start-Sleep -Times 0
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*Successfully terminated*"
+            }
+        }
+
+        It "Should retry when distro is still running after terminate" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Test-WslDistroRunning {
+                $script:testWslRunningCalls++
+                # First call: pre-check (running), calls 2-3: still running, call 4: stopped
+                return ($script:testWslRunningCalls -le 3)
+            }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+            Mock Write-Information { }
+
+            Stop-WslDistro -Name "Debian" -Confirm:$false
+
+            Should -Invoke Start-Sleep -Times 2
+            Should -Invoke Start-Sleep -ParameterFilter { $Seconds -eq 2 }
+            Should -Invoke Start-Sleep -ParameterFilter { $Seconds -eq 4 }
+        }
+
+        It "Should throw after max retries exhausted" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Test-WslDistroRunning { $true }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+            Mock Write-Information { }
+
+            { Stop-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw -ExpectedMessage "*Failed to terminate*"
+
+            Should -Invoke Start-Sleep -Times 3
+            Should -Invoke Start-Sleep -ParameterFilter { $Seconds -eq 2 }
+            Should -Invoke Start-Sleep -ParameterFilter { $Seconds -eq 4 }
+            Should -Invoke Start-Sleep -ParameterFilter { $Seconds -eq 6 }
         }
     }
 }
