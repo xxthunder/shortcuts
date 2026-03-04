@@ -314,7 +314,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
                 }
                 Write-Information ""
                 Write-Information "Terminating '$DistroName' to apply changes..."
-                Stop-WslDistro -Name $DistroName -Confirm:$false
+                Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
                 Write-Information ""
                 Write-Information "Next steps:"
                 Write-Information "  1. Start the distribution:"
