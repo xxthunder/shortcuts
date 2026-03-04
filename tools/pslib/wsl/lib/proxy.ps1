@@ -161,7 +161,7 @@ Then run setup-proxy again.
     }
     else {
         Write-Information "Configuring proxy in '$DistroName' ..."
-        Write-Information "  Proxy URL: $ProxyUrl"
+        Write-Information "  Proxy URL: $(Get-MaskedProxyUrl -ProxyUrl $ProxyUrl)"
         Write-Information "  No Proxy:  $NoProxy"
         Write-Information "  User:      $username"
     }

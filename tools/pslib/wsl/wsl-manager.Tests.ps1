@@ -937,15 +937,6 @@ Describe "Invoke-WslManager" {
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Docker*" }
         }
 
-        It "Should display restart instructions" {
-            Mock Write-Host {}
-            Mock Install-WslDockerEngine { $true }
-
-            Invoke-WslManager -Command "setup-docker" -Name "Ubuntu"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
-        }
-
         It "Should handle WSL1 distribution error" {
             Mock Install-WslDockerEngine { throw "Distribution 'OldDebian' is using WSL1.`nDocker requires WSL2. Upgrade with:`n  wsl.exe --set-version OldDebian 2" }
 
@@ -1080,15 +1071,6 @@ Describe "Invoke-WslManager" {
             Invoke-WslManager -Command "setup-podman" -Name "Ubuntu"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Podman*" }
-        }
-
-        It "Should display restart instructions" {
-            Mock Write-Host {}
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman" -Name "Ubuntu"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
         }
 
         It "Should handle WSL1 distribution error" {

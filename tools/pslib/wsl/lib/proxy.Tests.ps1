@@ -184,6 +184,24 @@ Describe "Install-WslProxy" {
         }
     }
 
+    Context "Credential masking in output" {
+        It "Should mask credentials in proxy URL output" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
+            Mock Write-Information { }
+            # First Read-Host: credentials question → Y
+            Mock Read-Host { "Y" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            # Verify masked URL is shown (***username:***@) instead of plaintext credentials
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*Proxy URL:*username*proxy.corp.com:8080*" -and $MessageData -notlike "*p%40ss*"
+            }
+        }
+    }
+
     Context "Prerequisite checks" {
         It "Should throw when distribution does not exist" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist." }

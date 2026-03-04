@@ -277,9 +277,11 @@ Then run setup-docker again.
                     Write-Information "Successfully installed Docker in '$DistroName'."
                 }
                 Write-Information ""
+                Write-Information "Terminating '$DistroName' to apply changes..."
+                Stop-WslDistro -Name $DistroName -Confirm:$false
+                Write-Information ""
                 Write-Information "Next steps:"
-                Write-Information "  1. Restart the distribution to apply group membership:"
-                Write-Information "       wsl.exe --terminate $DistroName"
+                Write-Information "  1. Start the distribution:"
                 Write-Information "       wsl.exe --distribution $DistroName"
                 Write-Information "  2. Test Docker (should work without sudo):"
                 Write-Information "       docker ps"

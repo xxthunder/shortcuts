@@ -313,8 +313,13 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
                     Write-Information "Successfully installed rootless Podman in '$DistroName'."
                 }
                 Write-Information ""
+                Write-Information "Terminating '$DistroName' to apply changes..."
+                Stop-WslDistro -Name $DistroName -Confirm:$false
+                Write-Information ""
                 Write-Information "Next steps:"
-                Write-Information "  1. Test Podman (should work without sudo):"
+                Write-Information "  1. Start the distribution:"
+                Write-Information "       wsl.exe --distribution $DistroName"
+                Write-Information "  2. Test Podman (should work without sudo):"
                 Write-Information "       podman ps"
                 Write-Information "       podman run hello-world"
                 return $true

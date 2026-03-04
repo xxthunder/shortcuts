@@ -426,6 +426,44 @@ Describe "Install-WslPodman" {
         }
     }
 
+    Context "Auto-terminate after successful install" {
+        BeforeEach {
+
+            Mock Assert-WslDistroExists { }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Test-WslPodmanInstalled { $false }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Test-Path { $true }
+            Mock Stop-WslDistro { }
+        }
+
+        It "Should call Stop-WslDistro after successful install" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+
+            Install-WslPodman -DistroName "TestDistro" -Confirm:$false
+
+            Should -Invoke Stop-WslDistro -Times 1 -ParameterFilter {
+                $Name -eq "TestDistro"
+            }
+        }
+
+        It "Should not call Stop-WslDistro when install fails" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
+
+            Install-WslPodman -DistroName "TestDistro" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+    }
+
     Context "Systemd, interop, and boot command configuration" {
         BeforeEach {
 

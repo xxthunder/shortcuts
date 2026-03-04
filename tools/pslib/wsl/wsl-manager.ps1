@@ -563,10 +563,6 @@ function Invoke-SetupDocker {
         if ($result) {
             Write-Host ""
             Write-Success "Successfully installed Docker in '$DistroName'."
-            Write-Host ""
-            Write-Host "To apply group membership changes, restart the distribution with:" -ForegroundColor Yellow
-            Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
-            Write-Host "  wsl.exe --distribution $DistroName" -ForegroundColor Yellow
         }
     }
     catch {
@@ -699,10 +695,6 @@ function Invoke-SetupPodman {
         if ($result) {
             Write-Host ""
             Write-Success "Successfully installed Podman in '$DistroName'."
-            Write-Host ""
-            Write-Host "To apply configuration changes, restart the distribution with:" -ForegroundColor Yellow
-            Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
-            Write-Host "  wsl.exe --distribution $DistroName" -ForegroundColor Yellow
         }
     }
     catch {
