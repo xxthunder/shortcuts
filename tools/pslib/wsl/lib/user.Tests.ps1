@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/user.ps1 - WSL user management and systemd configuration
 #>
@@ -7,8 +7,7 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\..\utils\utils.ps1"
-    . "$PSScriptRoot\..\wsl.ps1"
+    . "$PSScriptRoot\wsl.ps1"
 }
 
 Describe "New-WslUser" {

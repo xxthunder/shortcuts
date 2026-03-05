@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Integration tests for Podman setup in wsl-manager.ps1 that run against real WSL.
     These tests execute WSL commands and verify the complete Podman workflow.
@@ -43,9 +43,7 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         Write-Host "==> Preparing Podman test environment ..." -ForegroundColor Cyan
 
         # Load the library functions
-        . (Join-Path $PSScriptRoot "wsl.ps1")
-        . (Join-Path $PSScriptRoot "..\utils\utils.ps1")
-        . (Join-Path $PSScriptRoot "wsl-manager.ps1")
+        . (Join-Path $PSScriptRoot "lib\commands.ps1")
 
         # Check if base distro already exists
         $existingDistros = Get-WslDistroList

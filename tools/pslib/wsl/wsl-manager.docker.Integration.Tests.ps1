@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Integration tests for wsl-manager.ps1 that run against real WSL.
     These tests execute WSL commands and verify the complete workflow.
@@ -45,9 +45,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         Write-Host "==> Preparing test environment ..." -ForegroundColor Cyan
 
         # Load the library functions
-        . (Join-Path $PSScriptRoot "wsl.ps1")
-        . (Join-Path $PSScriptRoot "..\utils\utils.ps1")
-        . (Join-Path $PSScriptRoot "wsl-manager.ps1")
+        . (Join-Path $PSScriptRoot "lib\commands.ps1")
 
         # Check if base distro already exists
         $existingDistros = Get-WslDistroList

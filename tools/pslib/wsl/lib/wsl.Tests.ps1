@@ -1,10 +1,9 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for wsl.ps1 - Module structure and backward compatibility
 #>
 
 BeforeAll {
-    . "$PSScriptRoot\..\utils\utils.ps1"
     . "$PSScriptRoot\wsl.ps1"
 }
 

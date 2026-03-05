@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL command execution functions for running commands inside distributions.
 #>

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/podman.ps1 - WSL rootless Podman installation and detection
 #>
@@ -7,8 +7,7 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\..\utils\utils.ps1"
-    . "$PSScriptRoot\..\wsl.ps1"
+    . "$PSScriptRoot\wsl.ps1"
 }
 
 Describe "Test-WslPodmanInstalled" {

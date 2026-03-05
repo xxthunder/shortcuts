@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/install.ps1 - WSL distribution installation functions
 #>
@@ -7,8 +7,7 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\..\utils\utils.ps1"
-    . "$PSScriptRoot\..\wsl.ps1"
+    . "$PSScriptRoot\wsl.ps1"
 }
 
 Describe "Get-WslAvailableDistro" {

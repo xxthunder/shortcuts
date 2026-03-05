@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL distribution installation functions for discovering available distributions
     and creating new WSL instances.

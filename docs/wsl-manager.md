@@ -790,10 +790,12 @@ If missing, re-run `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <DistroName>`
 
 ```
 tools/pslib/wsl/
-├── wsl.ps1                    # Main library (dot-sources lib/*.ps1)
 ├── wsl-manager.ps1            # Entry point (params + bootstrapping)
 ├── wsl-manager.bat            # Batch wrapper for Keypirinha
+├── wsl-manager.docker.Integration.Tests.ps1
+├── wsl-manager.podman.Integration.Tests.ps1
 ├── lib/
+│   ├── wsl.ps1                # Main library (dot-sources all modules)
 │   ├── commands.ps1           # CLI dispatch, interactive menu & workflows
 │   ├── core.ps1               # List, get distro info, type detection
 │   ├── docker.ps1             # Docker installation & verification
@@ -803,15 +805,10 @@ tools/pslib/wsl/
 │   ├── podman.ps1             # Podman installation & verification
 │   ├── proxy.ps1              # Proxy configuration
 │   └── user.ps1               # User account creation & configuration
-├── scripts/
-│   ├── install-docker.sh      # Docker Engine installation script
-│   ├── install-podman.sh      # Rootless Podman installation script
-│   └── setup-proxy.sh         # Proxy configuration script
-└── tests/
-    ├── wsl.Tests.ps1
-    ├── wsl.Integration.Tests.ps1
-    ├── wsl-manager.docker.Integration.Tests.ps1
-    └── wsl-manager.podman.Integration.Tests.ps1
+└── scripts/
+    ├── install-docker.sh      # Docker Engine installation script
+    ├── install-podman.sh      # Rootless Podman installation script
+    └── setup-proxy.sh         # Proxy configuration script
 ```
 
 ### Library Usage

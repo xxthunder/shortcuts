@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/ops.ps1 - WSL distribution operations (remove, copy, update)
 #>
@@ -7,8 +7,7 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\..\utils\utils.ps1"
-    . "$PSScriptRoot\..\wsl.ps1"
+    . "$PSScriptRoot\wsl.ps1"
 }
 
 Describe "Remove-WslDistro" {

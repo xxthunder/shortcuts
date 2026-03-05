@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL distribution operations for updating, copying, and removing distributions.
 #>

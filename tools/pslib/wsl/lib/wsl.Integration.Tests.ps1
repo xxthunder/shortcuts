@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Integration tests for wsl.ps1 library functions.
     These tests execute against the actual WSL environment.

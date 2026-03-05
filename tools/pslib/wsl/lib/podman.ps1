@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL Podman management functions for installing and checking rootless Podman in distributions.
 #>

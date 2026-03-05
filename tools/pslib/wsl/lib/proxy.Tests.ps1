@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/proxy.ps1 - WSL proxy configuration with auto-detection
 #>
@@ -7,8 +7,7 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\..\utils\utils.ps1"
-    . "$PSScriptRoot\..\wsl.ps1"
+    . "$PSScriptRoot\wsl.ps1"
 
     # Source setProxy.ps1 in library mode so its functions exist for mocking
     $env:SETPROXY_LIBRARY_MODE = '1'

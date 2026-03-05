@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL user management functions for creating users, querying default users,
     and checking systemd configuration in wsl.conf.

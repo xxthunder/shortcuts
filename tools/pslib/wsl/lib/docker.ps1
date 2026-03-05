@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL Docker management functions for installing and checking Docker Engine in distributions.
 #>
