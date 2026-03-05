@@ -791,9 +791,10 @@ If missing, re-run `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <DistroName>`
 ```
 tools/pslib/wsl/
 ├── wsl.ps1                    # Main library (dot-sources lib/*.ps1)
-├── wsl-manager.ps1            # Interactive interface
+├── wsl-manager.ps1            # Entry point (params + bootstrapping)
 ├── wsl-manager.bat            # Batch wrapper for Keypirinha
 ├── lib/
+│   ├── commands.ps1           # CLI dispatch, interactive menu & workflows
 │   ├── core.ps1               # List, get distro info, type detection
 │   ├── docker.ps1             # Docker installation & verification
 │   ├── exec.ps1               # Script execution in WSL
@@ -809,7 +810,6 @@ tools/pslib/wsl/
 └── tests/
     ├── wsl.Tests.ps1
     ├── wsl.Integration.Tests.ps1
-    ├── wsl-manager.Tests.ps1
     ├── wsl-manager.docker.Integration.Tests.ps1
     └── wsl-manager.podman.Integration.Tests.ps1
 ```

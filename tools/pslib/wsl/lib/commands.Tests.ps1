@@ -1,14 +1,12 @@
 ﻿<#
 .DESCRIPTION
-    Pester tests for wsl-manager.ps1
+    Pester tests for commands.ps1
 #>
 
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\..\utils\utils.ps1"
-    . "$PSScriptRoot\wsl.ps1"
-    . "$PSScriptRoot\wsl-manager.ps1"
+    . "$PSScriptRoot\commands.ps1"
 }
 
 Describe "Show-WslDistroList" {
