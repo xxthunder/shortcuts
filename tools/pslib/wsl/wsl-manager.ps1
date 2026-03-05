@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -37,14 +37,28 @@
     .\wsl-manager.ps1 create Ubuntu-22.04
     Creates an Ubuntu 22.04 LTS distribution.
 
+.PARAMETER Username
+    The username to create (used with setup-user command).
+    If not provided, the user is prompted interactively.
+
+.PARAMETER Password
+    The password for the new user (used with setup-user command).
+    If not provided, the user is prompted interactively.
+
 .EXAMPLE
     .\wsl-manager.ps1 clone Debian MyProject
     Clones the Debian distribution to a new distribution named MyProject.
+
+.EXAMPLE
+    .\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
+    Creates a user named 'wsluser' in the Ubuntu-24.04 distribution without interactive prompts.
 
 #>
 
 # Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Interactive tool requires colored console output')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
@@ -55,7 +69,10 @@ param(
     [string]$Name = "",
 
     [Parameter(Position = 2)]
-    [string]$TargetName = ""
+    [string]$TargetName = "",
+
+    [string]$Username = "",
+    [string]$Password = ""
 )
 
 # Always set the $InformationPreference variable to "Continue" globally,
@@ -1064,7 +1081,7 @@ function Invoke-WslManager {
 #region  Main execution - only run if script is executed directly (not dot-sourced)
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName
+    Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password
 }
 
 #endregion

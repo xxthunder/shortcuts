@@ -19,12 +19,12 @@
 - [SC-005 — Move argument validation into action functions](todo/sc-005.md)
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 - [SC-013 — Fix and enhance documentation](todo/sc-013.md)
-- [SC-014 — setup-user CLI does not accept -Username and -Password parameters](todo/sc-014.md)
 - [SC-015 — Reorganize project structure: separate tools from libraries](todo/sc-015.md)
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 
 ### Done
+- [SC-014 — setup-user CLI does not accept -Username and -Password parameters](done/sc-014.md)
 - [SC-011 — WSL Manager: mask credentials and auto-terminate after install](done/sc-011.md)
 - [SC-012 — Stop-WslDistro: verify termination with retry](done/sc-012.md)
 - [SC-010 — Review and enhance VS Code DevContainer Setup documentation](done/sc-010.md)
