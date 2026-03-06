@@ -22,6 +22,7 @@
 - [SC-015 — Reorganize project structure: separate tools from libraries](todo/sc-015.md)
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
+- [SC-018 — Install Claude GitHub App and remove legacy workflows](todo/sc-018.md)
 
 ### Done
 - [SC-014 — setup-user CLI does not accept -Username and -Password parameters](done/sc-014.md)
