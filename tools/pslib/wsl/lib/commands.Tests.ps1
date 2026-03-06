@@ -141,6 +141,48 @@ Describe "Show-WslDistroList" {
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Installed*Distributions*" }
         }
     }
+
+    Context "When pre-fetched Distros are provided" {
+        It "Should use provided distros and not call Get-WslDistroList" {
+            Mock Get-WslDistroList {}
+            Mock Write-Host {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            Show-WslDistroList -Distros $distros
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+        }
+
+        It "Should display provided distros without re-fetching" {
+            Mock Get-WslDistroList {}
+            Mock Write-Host {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                [PSCustomObject]@{ Name = "Fedora"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Show-WslDistroList -Distros $distros
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Fedora*" }
+        }
+
+        It "Should display no-distributions message when provided empty list" {
+            Mock Get-WslDistroList {}
+            Mock Write-Host {}
+
+            Show-WslDistroList -Distros @()
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
+        }
+    }
 }
 
 Describe "Show-InteractiveMenu" {
@@ -236,6 +278,29 @@ Describe "Show-InteractiveMenu" {
             Show-InteractiveMenu
 
             Should -Invoke Invoke-SetupProxyInteractive -Times 1
+        }
+
+        It "Should fetch distro list once and pass it to action function" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            $mockDistros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+            Mock Get-WslDistroList { $mockDistros } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "T" }
+                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
+                else { "Q" }
+            }
+            Mock Invoke-TerminateDistro {}
+
+            Show-InteractiveMenu
+
+            Should -Invoke Get-WslDistroList -Times 2  # once per menu loop iteration
+            Should -Invoke Invoke-TerminateDistro -ParameterFilter { $null -ne $Distros } -Times 1
         }
     }
 }
@@ -1513,13 +1578,14 @@ Describe "Invoke-TerminateDistro" {
             Mock Stop-WslDistro {}
         }
 
-        It "Should list only running distributions" {
+        It "Should list all distributions (not just running)" {
             Mock Read-Host { "1" }
 
             Invoke-TerminateDistro
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
         }
 
         It "Should handle selection by number (1)" {
@@ -1573,6 +1639,84 @@ Describe "Invoke-TerminateDistro" {
 
             Should -Invoke Stop-WslDistro -Times 0
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*not in the list*" }
+        }
+
+        It "Should error when selecting stopped distro by number" {
+            Mock Read-Host { "3" }
+            Mock Write-Host {}
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not in the list of running*" }
+        }
+    }
+
+    Context "When called with pre-fetched Distros (interactive menu mode)" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Write-Host {}
+            Mock Stop-WslDistro {}
+        }
+
+        It "Should not call Get-WslDistroList when Distros are provided" {
+            Mock Get-WslDistroList {}
+            Mock Read-Host { "1" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-TerminateDistro -Distros $distros
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should use full list numbering consistent with menu" {
+            Mock Get-WslDistroList {}
+            Mock Read-Host { "3" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                [PSCustomObject]@{ Name = "Fedora"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-TerminateDistro -Distros $distros
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Fedora" }
+        }
+
+        It "Should error when stopped distro selected by number from full list" {
+            Mock Get-WslDistroList {}
+            Mock Read-Host { "1" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-TerminateDistro -Distros $distros
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not in the list of running*" }
+        }
+
+        It "Should not reprint the distro table when Distros are provided" {
+            Mock Get-WslDistroList {}
+            Mock Read-Host { "Ubuntu" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-TerminateDistro -Distros $distros
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Installed distributions*" } -Times 0
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
         }
     }
 }
