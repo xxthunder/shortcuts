@@ -33,6 +33,16 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Debug token
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "Secret is set (length: ${#TOKEN})"
+          else
+            echo "Secret is EMPTY or missing"
+          fi
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
