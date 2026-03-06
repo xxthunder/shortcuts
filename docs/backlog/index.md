@@ -12,7 +12,6 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
-- [SC-018 — Install Claude GitHub App and remove legacy workflows](in_progress/sc-018.md)
 
 ### TODO
 - [SC-002 — Add `shutdown` command to wsl-manager](todo/sc-002.md)
@@ -25,6 +24,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 
 ### Done
+- [SC-018 — Install Claude GitHub App and remove legacy workflows](done/sc-018.md)
 - [SC-014 — setup-user CLI does not accept -Username and -Password parameters](done/sc-014.md)
 - [SC-011 — WSL Manager: mask credentials and auto-terminate after install](done/sc-011.md)
 - [SC-012 — Stop-WslDistro: verify termination with retry](done/sc-012.md)
