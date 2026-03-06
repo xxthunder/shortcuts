@@ -9,7 +9,7 @@
     creating, and removing distributions.
 
 .PARAMETER Command
-    The command to execute: list, create, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate.
+    The command to execute: list, create, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate, shutdown.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -60,7 +60,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]

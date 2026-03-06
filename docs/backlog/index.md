@@ -14,7 +14,6 @@
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
 
 ### TODO
-- [SC-002 — Add `shutdown` command to wsl-manager](todo/sc-002.md)
 - [SC-003 — Stop action functions from reprinting distro table](todo/sc-003.md)
 - [SC-005 — Move argument validation into action functions](todo/sc-005.md)
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
@@ -24,6 +23,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 
 ### Done
+- [SC-002 — Add `shutdown` command to wsl-manager](done/sc-002.md)
 - [SC-018 — Install Claude GitHub App and remove legacy workflows](done/sc-018.md)
 - [SC-014 — setup-user CLI does not accept -Username and -Password parameters](done/sc-014.md)
 - [SC-011 — WSL Manager: mask credentials and auto-terminate after install](done/sc-011.md)

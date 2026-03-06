@@ -150,6 +150,52 @@ function Copy-WslDistro {
     }
 }
 
+function Stop-WslSubsystem {
+    <#
+    .SYNOPSIS
+        Shuts down the entire WSL subsystem including all running distributions.
+
+    .DESCRIPTION
+        Executes 'wsl.exe --shutdown' to stop the entire WSL 2 lightweight VM and all
+        running distributions. Unlike Stop-WslDistro (which terminates a single distro),
+        this stops WSL completely. Use this to apply changes to %USERPROFILE%\.wslconfig.
+
+    .EXAMPLE
+        Stop-WslSubsystem
+        Shuts down all of WSL after displaying a warning with running distributions.
+
+    .EXAMPLE
+        Stop-WslSubsystem -WhatIf
+        Shows what would happen without actually shutting down.
+
+    .NOTES
+        This operation is idempotent — safe to run when no distributions are running.
+    #>
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param()
+
+    # List running distributions to warn the user
+    $allDistros = @(Get-WslDistroList -Detailed)
+    $runningDistros = @($allDistros | Where-Object { $_.State -eq "Running" })
+
+    if ($runningDistros.Count -gt 0) {
+        $runningNames = ($runningDistros | ForEach-Object { $_.Name }) -join ", "
+        Write-Warning "The following running distributions will be stopped: $runningNames"
+    }
+    else {
+        Write-Output "No distributions are currently running."
+    }
+
+    if ($PSCmdlet.ShouldProcess("WSL subsystem", "Shutdown all distributions and the WSL2 VM")) {
+        Write-Output "Shutting down WSL subsystem ..."
+        Invoke-CommandLine -CommandLine "wsl.exe --shutdown"
+        Write-Output "WSL subsystem has been shut down."
+    }
+    else {
+        Write-Output "Shutdown cancelled."
+    }
+}
+
 function Update-WslDistro {
     <#
     .SYNOPSIS

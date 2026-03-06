@@ -19,6 +19,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup Podman](#setup-podman)
   - [Remove Distribution](#remove-distribution)
   - [Terminate Distribution](#terminate-distribution)
+  - [Shutdown WSL](#shutdown-wsl)
 - [VS Code DevContainer Setup](#vs-code-devcontainer-setup)
 - [Technical Reference](#technical-reference)
 - [Additional Resources](#additional-resources)
@@ -121,6 +122,18 @@ Gracefully shut down a running distribution.
 - **Menu**: `[T] Terminate distribution`
 - **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 terminate <distro>`
 
+### Shutdown WSL
+
+Shut down the entire WSL subsystem including all running distributions and the WSL2 VM. Use this to apply changes to `%USERPROFILE%\.wslconfig`.
+
+- **Menu**: `[H] Shutdown WSL`
+- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 shutdown`
+
+This command:
+- Lists any running distributions before shutting down (so you know what will be stopped)
+- Stops all running distributions and the WSL2 lightweight VM
+- Is idempotent — safe to run when no distributions are running
+
 ---
 
 ## VS Code DevContainer Setup
@@ -173,7 +186,7 @@ autoProxy=true
 Then restart WSL to apply:
 
 ```powershell
-wsl --shutdown
+.\tools\pslib\wsl\wsl-manager.ps1 shutdown
 ```
 
 #### Step 2: Install WSL Distribution
@@ -758,7 +771,7 @@ source ~/.bashrc
 **Solution:** Verify `%USERPROFILE%\.wslconfig` contains the `kernelCommandLine` from [Step 1](#step-1-configure-wsl-global-settings), then restart WSL:
 
 ```powershell
-wsl --shutdown
+.\tools\pslib\wsl\wsl-manager.ps1 shutdown
 ```
 
 #### Mount Propagation Warnings

@@ -541,3 +541,141 @@ Describe "Update-WslDistro" {
         }
     }
 }
+
+Describe "Stop-WslSubsystem" {
+    Context "When distributions are running" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Warning { }
+            Mock Write-Output { }
+        }
+
+        It "Should warn about running distributions" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Warning -ParameterFilter {
+                $Message -like "*Debian*"
+            }
+        }
+
+        It "Should execute wsl.exe --shutdown" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -eq "wsl.exe --shutdown"
+            }
+        }
+    }
+
+    Context "When no distributions are running" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Warning { }
+            Mock Write-Output { }
+        }
+
+        It "Should not warn about running distributions" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Warning -Times 0
+        }
+
+        It "Should still execute wsl.exe --shutdown" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -eq "wsl.exe --shutdown"
+            }
+        }
+
+        It "Should display idempotent message" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*No distributions are currently running*"
+            }
+        }
+    }
+
+    Context "When no distributions are installed" {
+        BeforeEach {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Warning { }
+            Mock Write-Output { }
+        }
+
+        It "Should not warn and still execute shutdown" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Warning -Times 0
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -eq "wsl.exe --shutdown"
+            }
+        }
+    }
+
+    Context "When ShouldProcess is used" {
+        BeforeEach {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Output { }
+        }
+
+        It "Should skip shutdown when user cancels with -WhatIf" {
+            Stop-WslSubsystem -WhatIf
+
+            Should -Invoke Invoke-CommandLine -Times 0
+        }
+    }
+
+    Context "When shutdown command fails" {
+        BeforeEach {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Output { }
+            Mock Invoke-CommandLine {
+                $global:LASTEXITCODE = 1
+                throw "Command line call `"wsl.exe --shutdown`" failed with exit code 1"
+            }
+        }
+
+        It "Should throw error when wsl command fails" {
+            { Stop-WslSubsystem -Confirm:$false } | Should -Throw "*failed with exit code 1*"
+        }
+    }
+
+    Context "When displaying output" {
+        BeforeEach {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Output { }
+        }
+
+        It "Should display shutdown progress message" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Shutting down WSL subsystem*"
+            }
+        }
+
+        It "Should display success message after shutdown" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*WSL subsystem has been shut down*"
+            }
+        }
+    }
+}

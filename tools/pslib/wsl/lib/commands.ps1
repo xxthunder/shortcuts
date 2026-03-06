@@ -776,6 +776,31 @@ function Invoke-CloneDistro {
     Copy-WslDistro -SourceName $SourceName -TargetName $TargetName -Confirm:$false
 }
 
+function Invoke-ShutdownWsl {
+    <#
+    .SYNOPSIS
+        Handles the WSL shutdown workflow.
+    .DESCRIPTION
+        Warns the user about running distributions and shuts down the entire WSL subsystem.
+    #>
+    [CmdletBinding()]
+    param()
+
+    # List running distributions as a warning
+    $allDistros = @(Get-WslDistroList -Detailed)
+    $runningDistros = @($allDistros | Where-Object { $_.State -eq "Running" })
+
+    if ($runningDistros.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Warning: The following distributions are currently running and will be stopped:" -ForegroundColor Yellow
+        foreach ($distro in $runningDistros) {
+            Write-Host "  - $($distro.Name)" -ForegroundColor Yellow
+        }
+    }
+
+    Stop-WslSubsystem -Confirm:$false
+}
+
 function Show-InteractiveMenu {
     <#
     .SYNOPSIS
@@ -816,6 +841,7 @@ function Show-InteractiveMenu {
         Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
+        Write-Host "  [H] Shutdown WSL" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
 
@@ -903,6 +929,15 @@ function Show-InteractiveMenu {
                 }
                 Read-Host -Prompt "Press Enter to continue ..."
             }
+            "H" {
+                try {
+                    Invoke-ShutdownWsl
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
+                Read-Host -Prompt "Press Enter to continue ..."
+            }
             "Q" {
                 $continue = $false
             }
@@ -926,7 +961,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -1001,6 +1036,9 @@ function Invoke-WslManager {
             else {
                 Invoke-TerminateDistro -Name $Name
             }
+        }
+        "shutdown" {
+            Invoke-ShutdownWsl
         }
         default {
             Show-InteractiveMenu

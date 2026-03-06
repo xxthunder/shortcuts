@@ -1577,3 +1577,72 @@ Describe "Invoke-TerminateDistro" {
     }
 }
 
+Describe "Invoke-ShutdownWsl" {
+    Context "When distributions are running" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Stop-WslSubsystem { }
+            Mock Write-Host { }
+        }
+
+        It "Should warn about running distributions" {
+            Invoke-ShutdownWsl
+
+            Should -Invoke Write-Host -ParameterFilter {
+                $Object -like "*Debian*" -and $ForegroundColor -eq "Yellow"
+            }
+        }
+
+        It "Should call Stop-WslSubsystem" {
+            Invoke-ShutdownWsl
+
+            Should -Invoke Stop-WslSubsystem -Times 1
+        }
+    }
+
+    Context "When no distributions are running" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Stop-WslSubsystem { }
+            Mock Write-Host { }
+        }
+
+        It "Should not display warning" {
+            Invoke-ShutdownWsl
+
+            Should -Invoke Write-Host -ParameterFilter {
+                $ForegroundColor -eq "Yellow" -and $Object -like "*will be stopped*"
+            } -Times 0
+        }
+
+        It "Should still call Stop-WslSubsystem" {
+            Invoke-ShutdownWsl
+
+            Should -Invoke Stop-WslSubsystem -Times 1
+        }
+    }
+
+    Context "When no distributions are installed" {
+        BeforeEach {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Stop-WslSubsystem { }
+            Mock Write-Host { }
+        }
+
+        It "Should call Stop-WslSubsystem" {
+            Invoke-ShutdownWsl
+
+            Should -Invoke Stop-WslSubsystem -Times 1
+        }
+    }
+}
+
