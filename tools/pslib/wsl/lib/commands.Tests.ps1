@@ -234,7 +234,7 @@ Describe "Show-InteractiveMenu" {
             $result | Should -Be $true
         }
 
-        It "Should dispatch to Invoke-SetupPodmanInteractive when P is selected" {
+        It "Should dispatch to Invoke-SetupPodman when P is selected" {
             Mock Test-RunningInCIorTestEnvironment { $false }
 
             Mock Get-WslDistroList {
@@ -250,14 +250,14 @@ Describe "Show-InteractiveMenu" {
                 elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
                 else { "Q" }
             }
-            Mock Invoke-SetupPodmanInteractive {}
+            Mock Invoke-SetupPodman {}
 
             Show-InteractiveMenu
 
-            Should -Invoke Invoke-SetupPodmanInteractive -Times 1
+            Should -Invoke Invoke-SetupPodman -Times 1
         }
 
-        It "Should dispatch to Invoke-SetupProxyInteractive when X is selected" {
+        It "Should dispatch to Invoke-SetupProxy when X is selected" {
             Mock Test-RunningInCIorTestEnvironment { $false }
 
             Mock Get-WslDistroList {
@@ -273,11 +273,11 @@ Describe "Show-InteractiveMenu" {
                 elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
                 else { "Q" }
             }
-            Mock Invoke-SetupProxyInteractive {}
+            Mock Invoke-SetupProxy {}
 
             Show-InteractiveMenu
 
-            Should -Invoke Invoke-SetupProxyInteractive -Times 1
+            Should -Invoke Invoke-SetupProxy -Times 1
         }
 
         It "Should fetch distro list once and pass it to action function" {
@@ -1347,6 +1347,105 @@ Describe "Invoke-WslManager" {
         }
     }
 
+    Context "When called with 'repair-interop' argument" {
+        It "Should prompt for distribution when Name is not provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should call repair when Name is provided" {
+            Mock Write-Host {}
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop" -Name "Debian"
+
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should skip when interop is already configured" {
+            Mock Write-Host {}
+            Mock Test-WslInteropConfigured { $true }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop" -Name "Debian"
+
+            Should -Invoke Test-WslInteropConfigured -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+
+        It "Should support selection by number" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop"
+
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should reject invalid number selection" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+
+        It "Should cancel when no selection provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-WslManager -Command "repair-interop"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+    }
+
     Context "When called with 'terminate' argument" {
         BeforeEach {
             Mock Test-RunningInCIorTestEnvironment { $false }
@@ -1717,6 +1816,124 @@ Describe "Invoke-TerminateDistro" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Installed distributions*" } -Times 0
             Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+    }
+}
+
+Describe "Invoke-RepairInterop" {
+    Context "When DistroName is provided" {
+        It "Should check interop configuration and repair if needed" {
+            Mock Write-Host {}
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop -DistroName "Debian"
+
+            Should -Invoke Test-WslInteropConfigured -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Set-WslConf -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Sections.interop.enabled -eq "true" -and
+                $Sections.interop.appendWindowsPath -eq "true"
+            }
+        }
+
+        It "Should skip repair when interop is already configured" {
+            Mock Write-Host {}
+            Mock Test-WslInteropConfigured { $true }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop -DistroName "Debian"
+
+            Should -Invoke Test-WslInteropConfigured -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Set-WslConf -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*already configured*" }
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should prompt for distribution selection" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should handle selection by number" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop
+
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should cancel when no selection provided" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Test-WslInteropConfigured {}
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+    }
+
+    Context "When called with pre-fetched Distros" {
+        It "Should not call Get-WslDistroList when Distros are provided" {
+            Mock Get-WslDistroList {}
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-RepairInterop -Distros $distros
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
         }
     }
 }

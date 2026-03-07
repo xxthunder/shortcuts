@@ -14,7 +14,6 @@
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
 
 ### TODO
-- [SC-005 — Move argument validation into action functions](todo/sc-005.md)
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 - [SC-013 — Fix and enhance documentation](todo/sc-013.md)
 - [SC-015 — Reorganize project structure: separate tools from libraries](todo/sc-015.md)
@@ -22,6 +21,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 
 ### Done
+- [SC-005 — Move argument validation into action functions](done/sc-005.md)
 - [SC-019 — Allow model selection via @claude trigger phrase](done/sc-019.md)
 - [SC-003 — Stop action functions from reprinting distro table](done/sc-003.md)
 - [SC-002 — Add `shutdown` command to wsl-manager](done/sc-002.md)
