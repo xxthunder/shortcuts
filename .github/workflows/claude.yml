@@ -33,31 +33,37 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Debug token
-        run: |
-          if [ -n "$TOKEN" ]; then
-            echo "Secret is set (length: ${#TOKEN})"
-          else
-            echo "Secret is EMPTY or missing"
-          fi
+      - name: Parse model alias from trigger comment
+        id: parse-model
         env:
-          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}
+        run: |
+          # Extract the first word after @claude (case-insensitive)
+          ALIAS=$(echo "$COMMENT_BODY" | grep -ioP '@claude\s+\K\S+' | head -1)
+          ALIAS_LOWER=$(echo "$ALIAS" | tr '[:upper:]' '[:lower:]')
+
+          case "$ALIAS_LOWER" in
+            opus|opus-4-6)
+              echo "model=claude-opus-4-6" >> "$GITHUB_OUTPUT"
+              echo "Resolved model alias '$ALIAS' -> claude-opus-4-6"
+              ;;
+            sonnet|sonnet-4-6)
+              echo "model=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
+              echo "Resolved model alias '$ALIAS' -> claude-sonnet-4-6"
+              ;;
+            *)
+              echo "model=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
+              echo "No known alias found (got '$ALIAS'), using default claude-sonnet-4-6"
+              ;;
+          esac
 
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model ${{ steps.parse-model.outputs.model }}'
 
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
-
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
 
