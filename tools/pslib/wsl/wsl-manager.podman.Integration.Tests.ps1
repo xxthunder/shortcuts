@@ -44,6 +44,7 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
 
         # Load the library functions
         . (Join-Path $PSScriptRoot "lib\commands.ps1")
+        . (Join-Path $PSScriptRoot "lib\manager.ps1")
 
         # Check if base distro already exists
         $existingDistros = Get-WslDistroList

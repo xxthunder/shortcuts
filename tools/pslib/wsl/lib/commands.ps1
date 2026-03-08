@@ -1,6 +1,6 @@
 ﻿<#
 .DESCRIPTION
-    WSL Manager functions — interactive menu, CLI dispatch, and action workflows.
+    WSL Manager action functions and command dispatcher.
     This file is dot-sourced by wsl-manager.ps1 (the entry-point script).
 #>
 
@@ -951,224 +951,78 @@ function Invoke-ShutdownWsl {
     Stop-WslSubsystem -Confirm:$false
 }
 
-function Show-InteractiveMenu {
+function Invoke-WslCommand {
     <#
     .SYNOPSIS
-        Displays the interactive menu and handles user input.
-    .OUTPUTS
-        Returns $true if the menu completed successfully, $false if skipped.
-    #>
-    if (Test-RunningInCIorTestEnvironment) {
-        Write-WarningMsg "Interactive mode is not available in CI environment."
-        Write-WarningMsg "Use command-line arguments instead: .\wsl-manager.ps1 list"
-        return $false
-    }
-
-    $continue = $true
-    while ($continue) {
-        Clear-Host
-        Write-Host "============================================" -ForegroundColor Cyan
-        Write-Host "  WSL Manager" -ForegroundColor Cyan
-        Write-Host "============================================" -ForegroundColor Cyan
-
-        # Fetch current distributions once per loop iteration and display the table.
-        # The fetched list is passed to action functions so they use consistent numbering
-        # and do not re-fetch or reprint the table.
-        $menuDistros = $null
-        try {
-            $menuDistros = @(Get-WslDistroList -Detailed)
-            Show-WslDistroList -Distros $menuDistros
-        }
-        catch {
-            Write-ErrorMsg "$_"
-            Write-Host ""
-        }
-
-        # Show menu
-        Write-Host "Commands:" -ForegroundColor Cyan
-        Write-Host "  [I] Install new distribution" -ForegroundColor White
-        Write-Host "  [C] Clone distribution" -ForegroundColor White
-        Write-Host "  [U] Update distribution" -ForegroundColor White
-        Write-Host "  [S] Setup user account" -ForegroundColor White
-        Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
-        Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
-        Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
-        Write-Host "  [R] Remove distribution" -ForegroundColor White
-        Write-Host "  [T] Terminate distribution" -ForegroundColor White
-        Write-Host "  [H] Shutdown WSL" -ForegroundColor White
-        Write-Host "  [Q] Quit" -ForegroundColor White
-        Write-Host ""
-
-        $choice = Read-Host "Select command"
-
-        switch ($choice.ToUpper()) {
-            "I" {
-                try {
-                    Invoke-CreateDistro
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "C" {
-                try {
-                    Invoke-CloneDistro -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "U" {
-                try {
-                    Invoke-UpdateDistro -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "S" {
-                try {
-                    Invoke-SetupUser -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "D" {
-                try {
-                    Invoke-SetupDocker -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "P" {
-                try {
-                    Invoke-SetupPodman -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "X" {
-                try {
-                    Invoke-SetupProxy -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "R" {
-                try {
-                    Invoke-RemoveDistro -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "T" {
-                try {
-                    Invoke-TerminateDistro -Distros $menuDistros
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "H" {
-                try {
-                    Invoke-ShutdownWsl
-                }
-                catch {
-                    Write-ErrorMsg "$_"
-                }
-                Read-Host -Prompt "Press Enter to continue ..."
-            }
-            "Q" {
-                $continue = $false
-            }
-            default {
-                Write-ErrorMsg "Invalid option. Please try again."
-                Start-Sleep -Seconds 1
-            }
-        }
-    }
-
-    return $true
-}
-
-function Invoke-WslManager {
-    <#
-    .SYNOPSIS
-        Main entry point for WSL Manager.
+        Central command dispatcher for WSL Manager actions.
+    .DESCRIPTION
+        Routes a command name to the corresponding action function. Called by
+        Invoke-WslManager (CLI) and Show-InteractiveMenu (TUI) to avoid
+        duplicating the dispatch logic.
+    .PARAMETER Command
+        The command to execute.
+    .PARAMETER Name
+        Distribution name or selection (passed as Name, SourceName, Selection, or DistroName depending on the command).
+    .PARAMETER TargetName
+        Target distribution name for clone operations.
+    .PARAMETER Username
+        Username for setup-user command.
+    .PARAMETER Password
+        Password for setup-user command.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions (used by the interactive menu to avoid re-fetching).
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
     [CmdletBinding()]
     param(
-        [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "")]
-        [string]$Command = "",
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown")]
+        [string]$Command,
 
-        [Parameter(Position = 1)]
         [string]$Name = "",
-
-        [Parameter(Position = 2)]
         [string]$TargetName = "",
-
         [string]$Username = "",
-        [string]$Password = ""
+        [string]$Password = "",
+        [PSCustomObject[]]$Distros = $null
     )
 
-    Assert-Wsl2Installed
-
-    switch ($Command.ToLower()) {
+    switch ($Command) {
         "list" {
-            Show-WslDistroList
+            Show-WslDistroList -Distros $Distros
         }
         "install" {
             Invoke-CreateDistro -Name $Name
         }
         "clone" {
-            Invoke-CloneDistro -SourceName $Name -TargetName $TargetName
+            Invoke-CloneDistro -SourceName $Name -TargetName $TargetName -Distros $Distros
         }
         "remove" {
-            Invoke-RemoveDistro -Selection $Name
+            Invoke-RemoveDistro -Selection $Name -Distros $Distros
         }
         "update" {
-            Invoke-UpdateDistro -Selection $Name
+            Invoke-UpdateDistro -Selection $Name -Distros $Distros
         }
         "setup-user" {
-            Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password
+            Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password -Distros $Distros
         }
         "setup-proxy" {
-            Invoke-SetupProxy -DistroName $Name
+            Invoke-SetupProxy -DistroName $Name -Distros $Distros
         }
         "setup-docker" {
-            Invoke-SetupDocker -DistroName $Name
+            Invoke-SetupDocker -DistroName $Name -Distros $Distros
         }
         "setup-podman" {
-            Invoke-SetupPodman -DistroName $Name
+            Invoke-SetupPodman -DistroName $Name -Distros $Distros
         }
         "repair-interop" {
-            Invoke-RepairInterop -DistroName $Name
+            Invoke-RepairInterop -DistroName $Name -Distros $Distros
         }
         "terminate" {
-            Invoke-TerminateDistro -Name $Name
+            Invoke-TerminateDistro -Name $Name -Distros $Distros
         }
         "shutdown" {
             Invoke-ShutdownWsl
-        }
-        default {
-            Show-InteractiveMenu
         }
     }
 }
