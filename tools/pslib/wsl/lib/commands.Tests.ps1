@@ -602,6 +602,24 @@ Describe "Invoke-RepairInterop" {
             Should -Invoke Set-WslConf -Times 0
         }
 
+        It "Should reject invalid number selection" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+
+            Invoke-RepairInterop
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Set-WslConf -Times 0
+        }
+
         It "Should warn when no distributions exist" {
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
             Mock Write-Host {}
@@ -633,6 +651,273 @@ Describe "Invoke-RepairInterop" {
 
             Should -Invoke Get-WslDistroList -Times 0
             Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
+        }
+    }
+}
+
+Describe "Invoke-SetupUser" {
+    Context "When DistroName is provided with credentials" {
+        It "Should call New-WslUser directly without prompting" {
+            Mock Write-Host {}
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -DistroName "Debian" -Username "testuser" -Password "pass"
+
+            Should -Invoke New-WslUser -ParameterFilter {
+                $DistroName -eq "Debian" -and $Username -eq "testuser" -and $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after user creation" {
+            Mock Write-Host {}
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -DistroName "Ubuntu" -Username "developer" -Password "pass"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully created user*" }
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should prompt for distribution selection by name" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -Username "testuser" -Password "pass"
+
+            Should -Invoke New-WslUser -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should prompt for distribution selection by number" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -Username "testuser" -Password "pass"
+
+            Should -Invoke New-WslUser -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should cancel when no selection provided" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -Username "testuser" -Password "pass"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke New-WslUser -Times 0
+        }
+
+        It "Should reject invalid number selection" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -Username "testuser" -Password "pass"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke New-WslUser -Times 0
+        }
+
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -Username "testuser" -Password "pass"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke New-WslUser -Times 0
+        }
+    }
+
+    Context "When called with pre-fetched Distros" {
+        It "Should not call Get-WslDistroList when Distros are provided" {
+            Mock Get-WslDistroList {}
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock New-WslUser {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
+            )
+
+            Invoke-SetupUser -Distros $distros -Username "testuser" -Password "pass"
+
+            Should -Invoke Get-WslDistroList -Times 0
+            Should -Invoke New-WslUser -ParameterFilter { $DistroName -eq "Debian" }
+        }
+    }
+
+    Context "When credentials are missing in CI environment" {
+        It "Should skip user setup in CI" {
+            Mock Write-Host {}
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock New-WslUser {}
+
+            Invoke-SetupUser -DistroName "Debian"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Skipping user setup in CI*" }
+            Should -Invoke New-WslUser -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupDocker" {
+    Context "When DistroName is provided" {
+        It "Should call Install-WslDockerEngine directly" {
+            Mock Write-Host {}
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-SetupDocker -DistroName "Debian"
+
+            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Mock Write-Host {}
+            Mock Install-WslDockerEngine { $true }
+
+            Invoke-SetupDocker -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Docker*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Write-Host {}
+            Mock Install-WslDockerEngine { throw "Docker install failed" }
+
+            { Invoke-SetupDocker -DistroName "Debian" } | Should -Throw "*Docker install failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Install-WslDockerEngine {}
+
+            Invoke-SetupDocker
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Install-WslDockerEngine -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupPodman" {
+    Context "When DistroName is provided" {
+        It "Should call Install-WslPodman directly" {
+            Mock Write-Host {}
+            Mock Install-WslPodman { $true }
+
+            Invoke-SetupPodman -DistroName "Debian"
+
+            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Mock Write-Host {}
+            Mock Install-WslPodman { $true }
+
+            Invoke-SetupPodman -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Podman*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Write-Host {}
+            Mock Install-WslPodman { throw "Podman install failed" }
+
+            { Invoke-SetupPodman -DistroName "Debian" } | Should -Throw "*Podman install failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Install-WslPodman {}
+
+            Invoke-SetupPodman
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Install-WslPodman -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupProxy" {
+    Context "When DistroName is provided" {
+        It "Should call Install-WslProxy directly" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { $true }
+
+            Invoke-SetupProxy -DistroName "Debian"
+
+            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { $true }
+
+            Invoke-SetupProxy -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully configured proxy*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Write-Host {}
+            Mock Install-WslProxy { throw "Proxy config failed" }
+
+            { Invoke-SetupProxy -DistroName "Debian" } | Should -Throw "*Proxy config failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Install-WslProxy {}
+
+            Invoke-SetupProxy
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Install-WslProxy -Times 0
         }
     }
 }

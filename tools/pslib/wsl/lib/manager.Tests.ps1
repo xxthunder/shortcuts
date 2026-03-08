@@ -127,6 +127,65 @@ Describe "Show-InteractiveMenu" {
             Should -Invoke Get-WslDistroList -Times 2  # once per menu loop iteration
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "terminate" -and $null -ne $Distros } -Times 1
         }
+
+        It "Should handle Get-WslDistroList errors gracefully" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { throw "WSL service not available" } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-ErrorMsg {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "Q" }
+                else { "Q" }
+            }
+
+            Show-InteractiveMenu
+
+            Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*WSL service not available*" }
+        }
+
+        It "Should handle Invoke-WslCommand errors gracefully" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-ErrorMsg {}
+            Mock Invoke-WslCommand { throw "Command failed" }
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "I" }
+                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
+                else { "Q" }
+            }
+
+            Show-InteractiveMenu
+
+            Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Command failed*" }
+        }
+
+        It "Should show error for invalid menu key" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-ErrorMsg {}
+            Mock Start-Sleep {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "Z" }
+                else { "Q" }
+            }
+
+            Show-InteractiveMenu
+
+            Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Invalid option*" }
+            Should -Invoke Start-Sleep -Times 1
+        }
     }
 }
 
