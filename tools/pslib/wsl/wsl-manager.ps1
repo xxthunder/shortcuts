@@ -5,8 +5,23 @@
     WSL Manager - Manage Windows Subsystem for Linux distributions.
 
 .DESCRIPTION
-    Interactive tool for managing WSL distributions. Supports listing,
-    creating, and removing distributions.
+    Interactive tool for managing WSL distributions.
+
+    Commands:
+      list             List installed distributions with state and version
+      install          Install a new distribution from the online catalog
+      clone            Clone (export/import) an existing distribution
+      remove           Unregister and delete a distribution
+      update           Update packages in a distribution
+      setup-user       Create a user account with sudo privileges
+      setup-proxy      Configure corporate proxy settings
+      setup-docker     Install Docker Engine (includes systemd and interop setup)
+      setup-podman     Install Podman rootless (includes systemd and interop setup)
+      repair-interop   Repair Windows interop configuration in wsl.conf
+      terminate        Stop a running distribution
+      shutdown         Shut down the entire WSL subsystem
+
+    When called without a command, enters an interactive menu.
 
 .PARAMETER Command
     The command to execute: list, create, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate, shutdown.

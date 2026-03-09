@@ -83,6 +83,68 @@ function Show-WslDistroList {
     Write-Host ""
 }
 
+function Select-WslDistro {
+    <#
+    .SYNOPSIS
+        Interactive distro selection helper. Shows a numbered list and resolves user input.
+
+    .PARAMETER Selection
+        Pre-provided selection (number or name). If provided, skips the prompt.
+
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If not provided, fetches from WSL and shows the table.
+        When provided (e.g. from the interactive menu), the table is assumed already visible.
+
+    .OUTPUTS
+        The selected distribution name, or $null on cancellation/error.
+    #>
+    param(
+        [string]$Selection = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $showTable = $null -eq $Distros
+    if ($showTable) {
+        $Distros = @(Get-WslDistroList -Detailed)
+    }
+
+    if ($Distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return $null
+    }
+
+    if ($showTable) {
+        Write-Host ""
+        Write-Host "Available distributions:" -ForegroundColor Cyan
+        $index = 1
+        foreach ($distro in $Distros) {
+            Format-DistroListEntry -Index $index -Distro $distro
+            $index++
+        }
+        Write-Host ""
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
+        $Selection = Read-Host "Enter number or name of the distribution"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
+        Write-WarningMsg "No selection provided. Cancelling."
+        return $null
+    }
+
+    if ($Selection -match '^\d+$') {
+        $selectionNum = [int]$Selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
+            return $Distros[$selectionNum - 1].Name
+        }
+        Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
+        return $null
+    }
+
+    return $Selection
+}
+
 function Invoke-CreateDistro {
     <#
     .SYNOPSIS
@@ -166,55 +228,9 @@ function Invoke-RemoveDistro {
         [PSCustomObject[]]$Distros = $null
     )
 
-    $showTable = $null -eq $Distros
-    if ($showTable) {
-        $Distros = @(Get-WslDistroList -Detailed)
-    }
+    $selectedName = Select-WslDistro -Selection $Selection -Distros $Distros
+    if ($null -eq $selectedName) { return }
 
-    if ($Distros.Count -eq 0) {
-        Write-WarningMsg "No WSL distributions found to remove."
-        return
-    }
-
-    # Show available distributions only when not pre-fetched by caller
-    if ($showTable) {
-        Write-Host ""
-        Write-Host "Available distributions:" -ForegroundColor Cyan
-        $index = 1
-        foreach ($distro in $Distros) {
-            Format-DistroListEntry -Index $index -Distro $distro
-            $index++
-        }
-        Write-Host ""
-    }
-
-    # Prompt for distribution selection (number or name) only when not already provided
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
-        $Selection = Read-Host "Enter number or name of the distribution to remove"
-    }
-
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
-        Write-WarningMsg "No selection provided. Cancelling."
-        return
-    }
-
-    # Check if selection is a number
-    $selectedName = $null
-    if ($Selection -match '^\d+$') {
-        $selectionNum = [int]$Selection
-        if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-            $selectedName = $Distros[$selectionNum - 1].Name
-        }
-        else {
-            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-            return
-        }
-    }
-    else {
-        $selectedName = $Selection
-    }
-
-    # Remove the distribution (skip confirmation since we're handling it interactively)
     Remove-WslDistro -Name $selectedName -Confirm:$false
 }
 
@@ -233,55 +249,9 @@ function Invoke-UpdateDistro {
         [PSCustomObject[]]$Distros = $null
     )
 
-    $showTable = $null -eq $Distros
-    if ($showTable) {
-        $Distros = @(Get-WslDistroList -Detailed)
-    }
+    $selectedName = Select-WslDistro -Selection $Selection -Distros $Distros
+    if ($null -eq $selectedName) { return }
 
-    if ($Distros.Count -eq 0) {
-        Write-WarningMsg "No WSL distributions found to update."
-        return
-    }
-
-    # Show available distributions only when not pre-fetched by caller
-    if ($showTable) {
-        Write-Host ""
-        Write-Host "Available distributions:" -ForegroundColor Cyan
-        $index = 1
-        foreach ($distro in $Distros) {
-            Format-DistroListEntry -Index $index -Distro $distro
-            $index++
-        }
-        Write-Host ""
-    }
-
-    # Prompt for distribution selection (number or name) only when not already provided
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
-        $Selection = Read-Host "Enter number or name of the distribution to update"
-    }
-
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
-        Write-WarningMsg "No selection provided. Cancelling."
-        return
-    }
-
-    # Check if selection is a number
-    $selectedName = $null
-    if ($Selection -match '^\d+$') {
-        $selectionNum = [int]$Selection
-        if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-            $selectedName = $Distros[$selectionNum - 1].Name
-        }
-        else {
-            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-            return
-        }
-    }
-    else {
-        $selectedName = $Selection
-    }
-
-    # Update the distribution (skip confirmation since we're handling it interactively)
     Update-WslDistro -Name $selectedName -Confirm:$false
 }
 
@@ -302,14 +272,12 @@ function Invoke-TerminateDistro {
         [PSCustomObject[]]$Distros = $null
     )
 
-    $showTable = $null -eq $Distros
-    if ($showTable) {
-        $Distros = @(Get-WslDistroList -Detailed)
-    }
+    # Fetch distros for running-state check; keep original param for Select-WslDistro table logic
+    $allDistros = if ($null -ne $Distros) { $Distros } else { @(Get-WslDistroList -Detailed) }
 
     # Check if any distributions are running
     $hasRunning = $false
-    foreach ($distro in $Distros) {
+    foreach ($distro in $allDistros) {
         if ($distro.State -eq "Running") {
             $hasRunning = $true
             break
@@ -332,45 +300,11 @@ function Invoke-TerminateDistro {
         throw "Cannot run interactive 'terminate' command in CI/Test environment. Please provide -Name parameter."
     }
 
-    # Show full distribution list only when not pre-fetched by caller
-    if ($showTable) {
-        Write-Host ""
-        Write-Host "Installed distributions:" -ForegroundColor Cyan
-        $index = 1
-        foreach ($distro in $Distros) {
-            Format-DistroListEntry -Index $index -Distro $distro
-            $index++
-        }
-        Write-Host ""
-    }
-
-    # Prompt for distribution selection (number or name)
-    $selection = Read-Host "Enter number or name of the distribution to terminate"
-
-    if ([string]::IsNullOrWhiteSpace($selection)) {
-        Write-WarningMsg "No selection provided. Cancelling."
-        return
-    }
-
-    # Check if selection is a number
-    $selectedName = $null
-    if ($selection -match '^\d+$') {
-        $selectionNum = [int]$selection
-        if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-            $selectedName = $Distros[$selectionNum - 1].Name
-        }
-        else {
-            Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-            return
-        }
-    }
-    else {
-        # Assume selection is a name
-        $selectedName = $selection
-    }
+    $selectedName = Select-WslDistro -Distros $Distros
+    if ($null -eq $selectedName) { return }
 
     # Validate that the selected distribution is running
-    $selectedDistro = $Distros | Where-Object { $_.Name -eq $selectedName }
+    $selectedDistro = $allDistros | Where-Object { $_.Name -eq $selectedName }
     if ($null -eq $selectedDistro) {
         Write-ErrorMsg "Distribution '$selectedName' is not in the list of distributions."
         return
@@ -409,53 +343,8 @@ function Invoke-SetupUser {
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $showTable = $null -eq $Distros
-        if ($showTable) {
-            $Distros = @(Get-WslDistroList -Detailed)
-        }
-
-        if ($Distros.Count -eq 0) {
-            Write-WarningMsg "No WSL distributions found."
-            return
-        }
-
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        # Prompt for distribution selection (number or name)
-        $selection = Read-Host "Enter number or name of the distribution to setup user in"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        $selectedName = $null
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $selectedName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $selectedName = $selection
-        }
-
-        $DistroName = $selectedName
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
     }
 
     if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
@@ -515,53 +404,8 @@ function Invoke-SetupProxy {
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $showTable = $null -eq $Distros
-        if ($showTable) {
-            $Distros = @(Get-WslDistroList -Detailed)
-        }
-
-        if ($Distros.Count -eq 0) {
-            Write-WarningMsg "No WSL distributions found."
-            return
-        }
-
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        # Prompt for distribution selection (number or name)
-        $selection = Read-Host "Enter number or name of the distribution to setup proxy in"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        $selectedName = $null
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $selectedName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $selectedName = $selection
-        }
-
-        $DistroName = $selectedName
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
     }
 
     Write-Host ""
@@ -597,53 +441,8 @@ function Invoke-SetupDocker {
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $showTable = $null -eq $Distros
-        if ($showTable) {
-            $Distros = @(Get-WslDistroList -Detailed)
-        }
-
-        if ($Distros.Count -eq 0) {
-            Write-WarningMsg "No WSL distributions found."
-            return
-        }
-
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        # Prompt for distribution selection (number or name)
-        $selection = Read-Host "Enter number or name of the distribution to setup Docker in"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        $selectedName = $null
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $selectedName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $selectedName = $selection
-        }
-
-        $DistroName = $selectedName
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
     }
 
     Write-Host ""
@@ -680,53 +479,8 @@ function Invoke-SetupPodman {
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $showTable = $null -eq $Distros
-        if ($showTable) {
-            $Distros = @(Get-WslDistroList -Detailed)
-        }
-
-        if ($Distros.Count -eq 0) {
-            Write-WarningMsg "No WSL distributions found."
-            return
-        }
-
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        # Prompt for distribution selection (number or name)
-        $selection = Read-Host "Enter number or name of the distribution to setup Podman in"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        $selectedName = $null
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $selectedName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $selectedName = $selection
-        }
-
-        $DistroName = $selectedName
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
     }
 
     Write-Host ""
@@ -763,53 +517,8 @@ function Invoke-RepairInterop {
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $showTable = $null -eq $Distros
-        if ($showTable) {
-            $Distros = @(Get-WslDistroList -Detailed)
-        }
-
-        if ($Distros.Count -eq 0) {
-            Write-WarningMsg "No WSL distributions found."
-            return
-        }
-
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        # Prompt for distribution selection (number or name)
-        $selection = Read-Host "Enter number or name of the distribution to repair interop in"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        $selectedName = $null
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $selectedName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $selectedName = $selection
-        }
-
-        $DistroName = $selectedName
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
     }
 
     Write-Host ""
@@ -860,53 +569,10 @@ function Invoke-CloneDistro {
         [PSCustomObject[]]$Distros = $null
     )
 
-    $showTable = $null -eq $Distros
-    if ($showTable) {
-        $Distros = @(Get-WslDistroList -Detailed)
-    }
-
-    if ($Distros.Count -eq 0) {
-        Write-WarningMsg "No WSL distributions found to clone."
-        return
-    }
-
     # If SourceName is not provided, prompt for it
     if ([string]::IsNullOrWhiteSpace($SourceName)) {
-        # Show available distributions only when not pre-fetched by caller
-        if ($showTable) {
-            Write-Host ""
-            Write-Host "Available distributions:" -ForegroundColor Cyan
-
-            # Show available distributions with numbers
-            $index = 1
-            foreach ($distro in $Distros) {
-                Format-DistroListEntry -Index $index -Distro $distro
-                $index++
-            }
-            Write-Host ""
-        }
-
-        $selection = Read-Host "Enter number or name of the source distribution to clone"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
-            return
-        }
-
-        # Check if selection is a number
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
-                $SourceName = $Distros[$selectionNum - 1].Name
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
-                return
-            }
-        }
-        else {
-            $SourceName = $selection
-        }
+        $SourceName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($SourceName)) { return }
     }
 
     # If TargetName is not provided, prompt for it
@@ -957,7 +623,7 @@ function Invoke-WslCommand {
         Central command dispatcher for WSL Manager actions.
     .DESCRIPTION
         Routes a command name to the corresponding action function. Called by
-        Invoke-WslManager (CLI) and Show-InteractiveMenu (TUI) to avoid
+        Invoke-WslManager (CLI) and Start-InteractiveMode (TUI) to avoid
         duplicating the dispatch logic.
     .PARAMETER Command
         The command to execute.

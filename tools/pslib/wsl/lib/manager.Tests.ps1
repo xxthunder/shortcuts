@@ -10,13 +10,13 @@ BeforeAll {
     . "$PSScriptRoot\manager.ps1"
 }
 
-Describe "Show-InteractiveMenu" {
+Describe "Start-InteractiveMode" {
     Context "When in CI environment" {
         It "Should display message and exit" {
             Mock Test-RunningInCIorTestEnvironment { $true }
             Mock Write-Host {}
 
-            $result = Show-InteractiveMenu
+            $result = Start-InteractiveMode
 
             $result | Should -Be $false
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Interactive mode*not available*" }
@@ -39,7 +39,7 @@ Describe "Show-InteractiveMenu" {
             Mock Write-Host {}
             Mock Read-Host { "Q" }
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Install*" }
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Remove*" }
@@ -54,7 +54,7 @@ Describe "Show-InteractiveMenu" {
             Mock Write-Host {}
             Mock Read-Host { "Q" }
 
-            $result = Show-InteractiveMenu
+            $result = Start-InteractiveMode
 
             $result | Should -Be $true
         }
@@ -77,7 +77,7 @@ Describe "Show-InteractiveMenu" {
             }
             Mock Invoke-WslCommand {}
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-podman" } -Times 1
         }
@@ -100,7 +100,7 @@ Describe "Show-InteractiveMenu" {
             }
             Mock Invoke-WslCommand {}
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-proxy" } -Times 1
         }
@@ -122,7 +122,7 @@ Describe "Show-InteractiveMenu" {
             }
             Mock Invoke-WslCommand {}
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Get-WslDistroList -Times 2  # once per menu loop iteration
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "terminate" -and $null -ne $Distros } -Times 1
@@ -140,7 +140,7 @@ Describe "Show-InteractiveMenu" {
                 else { "Q" }
             }
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*WSL service not available*" }
         }
@@ -163,7 +163,7 @@ Describe "Show-InteractiveMenu" {
                 else { "Q" }
             }
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Command failed*" }
         }
@@ -181,7 +181,7 @@ Describe "Show-InteractiveMenu" {
                 else { "Q" }
             }
 
-            Show-InteractiveMenu
+            Start-InteractiveMode
 
             Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Invalid option*" }
             Should -Invoke Start-Sleep -Times 1
@@ -413,12 +413,12 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called without arguments" {
-        It "Should call Show-InteractiveMenu" {
-            Mock Show-InteractiveMenu { $true }
+        It "Should call Start-InteractiveMode" {
+            Mock Start-InteractiveMode { $true }
 
             Invoke-WslManager
 
-            Should -Invoke Show-InteractiveMenu -Times 1
+            Should -Invoke Start-InteractiveMode -Times 1
         }
     }
 
@@ -449,12 +449,12 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone" -Name "" -TargetName "MyProject"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*source*" }
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
             Should -Invoke Copy-WslDistro -ParameterFilter {
                 $SourceName -eq "Debian" -and $TargetName -eq "MyProject"
             }
@@ -489,13 +489,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone" -Name "" -TargetName ""
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*source*" }
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
             Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*target*" }
         }
 
@@ -509,7 +509,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
@@ -530,7 +530,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "2" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "2" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
@@ -551,7 +551,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Alpine" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "Alpine" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
@@ -570,7 +570,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"
@@ -587,7 +587,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
@@ -606,7 +606,7 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "99" } -ParameterFilter { $Prompt -like "*source*" }
+            Mock Read-Host { "99" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"

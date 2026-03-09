@@ -10,13 +10,16 @@
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-WslCommand for non-interactive WSL user creation.')]
 param()
 
-function Show-InteractiveMenu {
+function Start-InteractiveMode {
     <#
     .SYNOPSIS
         Displays the interactive menu and handles user input.
     .OUTPUTS
         Returns $true if the menu completed successfully, $false if skipped.
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
     if (Test-RunningInCIorTestEnvironment) {
         Write-WarningMsg "Interactive mode is not available in CI environment."
         Write-WarningMsg "Use command-line arguments instead: .\wsl-manager.ps1 list"
@@ -79,11 +82,14 @@ function Show-InteractiveMenu {
             $continue = $false
         }
         elseif ($menuKeyMap.ContainsKey($key)) {
-            try {
-                Invoke-WslCommand -Command $menuKeyMap[$key] -Distros $menuDistros
-            }
-            catch {
-                Write-ErrorMsg "$_"
+            $command = $menuKeyMap[$key]
+            if ($PSCmdlet.ShouldProcess($command, "Execute WSL command")) {
+                try {
+                    Invoke-WslCommand -Command $command -Distros $menuDistros
+                }
+                catch {
+                    Write-ErrorMsg "$_"
+                }
             }
             Read-Host -Prompt "Press Enter to continue ..."
         }
@@ -122,7 +128,7 @@ function Invoke-WslManager {
     Assert-Wsl2Installed
 
     if ([string]::IsNullOrWhiteSpace($Command)) {
-        Show-InteractiveMenu
+        Start-InteractiveMode
         return
     }
 

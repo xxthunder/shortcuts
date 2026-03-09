@@ -185,6 +185,164 @@ Describe "Show-WslDistroList" {
     }
 }
 
+Describe "Select-WslDistro" {
+    Context "When selecting by number" {
+        It "Should return the distro name for a valid number" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+
+            $result = Select-WslDistro
+
+            $result | Should -Be "Ubuntu"
+        }
+
+        It "Should return null for an out-of-range number" {
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            $result = Select-WslDistro -Distros $distros
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When selecting by name" {
+        It "Should return the name as-is" {
+            Mock Write-Host {}
+            Mock Read-Host { "Ubuntu" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+            )
+
+            $result = Select-WslDistro -Distros $distros
+
+            $result | Should -Be "Ubuntu"
+        }
+    }
+
+    Context "When selection is pre-provided" {
+        It "Should resolve a pre-provided number without prompting" {
+            Mock Read-Host {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+            )
+
+            $result = Select-WslDistro -Selection "1" -Distros $distros
+
+            $result | Should -Be "Debian"
+            Should -Invoke Read-Host -Times 0
+        }
+
+        It "Should return a pre-provided name without prompting" {
+            Mock Read-Host {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            $result = Select-WslDistro -Selection "Debian" -Distros $distros
+
+            $result | Should -Be "Debian"
+            Should -Invoke Read-Host -Times 0
+        }
+    }
+
+    Context "When cancelled" {
+        It "Should return null on empty input" {
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Write-WarningMsg {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            $result = Select-WslDistro -Distros $distros
+
+            $result | Should -BeNullOrEmpty
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*Cancelling*" }
+        }
+    }
+
+    Context "When no distributions exist" {
+        It "Should return null and warn" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-WarningMsg {}
+
+            $result = Select-WslDistro
+
+            $result | Should -BeNullOrEmpty
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+        }
+
+        It "Should return null when pre-fetched list is empty" {
+            Mock Write-WarningMsg {}
+
+            $result = Select-WslDistro -Distros @()
+
+            $result | Should -BeNullOrEmpty
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+        }
+    }
+
+    Context "Table display logic" {
+        It "Should show the table when Distros are not pre-fetched" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+
+            Select-WslDistro
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Available distributions*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+        }
+
+        It "Should not show the table when Distros are pre-fetched" {
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            Select-WslDistro -Distros $distros
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Available distributions*" } -Times 0
+        }
+
+        It "Should not call Get-WslDistroList when Distros are pre-fetched" {
+            Mock Get-WslDistroList {}
+            Mock Read-Host { "1" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            Select-WslDistro -Distros $distros
+
+            Should -Invoke Get-WslDistroList -Times 0
+        }
+    }
+}
+
 Describe "Invoke-WslCommand" {
     Context "When dispatching commands" {
         It "Should dispatch 'list' to Show-WslDistroList" {
@@ -513,7 +671,7 @@ Describe "Invoke-TerminateDistro" {
 
             Invoke-TerminateDistro -Distros $distros
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Installed distributions*" } -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Available distributions*" } -Times 0
             Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
         }
     }
