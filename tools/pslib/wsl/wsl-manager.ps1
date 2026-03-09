@@ -24,12 +24,12 @@
     When called without a command, enters an interactive menu.
 
 .PARAMETER Command
-    The command to execute: list, create, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate, shutdown.
+    The command to execute: list, install, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate, shutdown.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
-    The name of the distribution (used with create and clone commands).
-    For create: supports any distribution available from 'wsl.exe --list --online'.
+    The name of the distribution (used with install and clone commands).
+    For install: supports any distribution available from 'wsl.exe --list --online'.
     For clone: the source distribution name to clone from.
     Examples: Debian, Ubuntu, Ubuntu-22.04, Ubuntu-24.04, kali-linux.
 
@@ -45,12 +45,12 @@
     Lists all installed WSL distributions.
 
 .EXAMPLE
-    .\wsl-manager.ps1 create Debian
-    Creates a new Debian WSL distribution.
+    .\wsl-manager.ps1 install Debian
+    Installs a new Debian WSL distribution.
 
 .EXAMPLE
-    .\wsl-manager.ps1 create Ubuntu-22.04
-    Creates an Ubuntu 22.04 LTS distribution.
+    .\wsl-manager.ps1 install Ubuntu-22.04
+    Installs an Ubuntu 22.04 LTS distribution.
 
 .PARAMETER Username
     The username to create (used with setup-user command).
@@ -88,7 +88,6 @@ param(
     [string]$Password = ""
 )
 
-. "$PSScriptRoot\lib\commands.ps1"
 . "$PSScriptRoot\lib\manager.ps1"
 
 Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password

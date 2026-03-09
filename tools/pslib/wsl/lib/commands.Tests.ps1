@@ -230,6 +230,20 @@ Describe "Select-WslDistro" {
 
             $result | Should -Be "Ubuntu"
         }
+
+        It "Should return null for a name not in the list" {
+            Mock Write-Host {}
+            Mock Read-Host { "NonExistent" }
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            $result = Select-WslDistro -Distros $distros
+
+            $result | Should -BeNullOrEmpty
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not found*" }
+        }
     }
 
     Context "When selection is pre-provided" {
@@ -374,7 +388,7 @@ Describe "Invoke-WslCommand" {
 
             Invoke-WslCommand -Command "remove" -Name "Debian"
 
-            Should -Invoke Invoke-RemoveDistro -ParameterFilter { $Selection -eq "Debian" }
+            Should -Invoke Invoke-RemoveDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should dispatch 'update' with Selection" {
@@ -382,7 +396,7 @@ Describe "Invoke-WslCommand" {
 
             Invoke-WslCommand -Command "update" -Name "Debian"
 
-            Should -Invoke Invoke-UpdateDistro -ParameterFilter { $Selection -eq "Debian" }
+            Should -Invoke Invoke-UpdateDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should dispatch 'setup-user' with DistroName, Username, and Password" {
@@ -1076,6 +1090,152 @@ Describe "Invoke-SetupProxy" {
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
             Should -Invoke Install-WslProxy -Times 0
+        }
+    }
+}
+
+Describe "Invoke-CreateDistro" {
+    Context "When Name is provided" {
+        It "Should install the named distribution" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "kali-linux") }
+            Mock Write-Host {}
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro -Name "Debian"
+
+            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should reject an unavailable distribution name" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro -Name "NonExistent"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" }
+            Should -Invoke New-WslDistro -Times 0
+        }
+    }
+
+    Context "When Name is not provided" {
+        It "Should prompt and install the selected distribution by number" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro
+
+            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should prompt and install the selected distribution by name" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "Ubuntu" }
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro
+
+            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Ubuntu" -and $Confirm -eq $false }
+        }
+
+        It "Should cancel on empty input" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Write-WarningMsg {}
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro
+
+            Should -Invoke New-WslDistro -Times 0
+        }
+
+        It "Should reject an invalid number" {
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Write-Host {}
+            Mock Read-Host { "99" }
+            Mock New-WslDistro {}
+
+            Invoke-CreateDistro
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke New-WslDistro -Times 0
+        }
+    }
+}
+
+Describe "Invoke-CloneDistro" {
+    Context "When SourceName and TargetName are provided" {
+        It "Should clone the distribution directly" {
+            Mock Copy-WslDistro {}
+
+            Invoke-CloneDistro -SourceName "Debian" -TargetName "Debian-Clone"
+
+            Should -Invoke Copy-WslDistro -ParameterFilter { $SourceName -eq "Debian" -and $TargetName -eq "Debian-Clone" -and $Confirm -eq $false }
+        }
+    }
+
+    Context "When SourceName is not provided" {
+        It "Should prompt for source distribution" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "1" }
+            Mock Copy-WslDistro {}
+
+            Invoke-CloneDistro -TargetName "MyClone"
+
+            Should -Invoke Copy-WslDistro -ParameterFilter { $SourceName -eq "Debian" -and $TargetName -eq "MyClone" }
+        }
+
+        It "Should cancel when no source selection provided" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Copy-WslDistro {}
+
+            Invoke-CloneDistro -TargetName "MyClone"
+
+            Should -Invoke Copy-WslDistro -Times 0
+        }
+    }
+
+    Context "When TargetName is not provided" {
+        It "Should prompt for target name" {
+            Mock Write-Host {}
+            Mock Read-Host { "MyClone" }
+            Mock Copy-WslDistro {}
+
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+
+            Invoke-CloneDistro -SourceName "Debian" -Distros $distros
+
+            Should -Invoke Copy-WslDistro -ParameterFilter { $SourceName -eq "Debian" -and $TargetName -eq "MyClone" }
+        }
+
+        It "Should cancel when no target name provided" {
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Write-WarningMsg {}
+            Mock Copy-WslDistro {}
+
+            Invoke-CloneDistro -SourceName "Debian"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No target name*" }
+            Should -Invoke Copy-WslDistro -Times 0
         }
     }
 }

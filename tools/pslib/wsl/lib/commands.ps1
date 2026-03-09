@@ -1,7 +1,7 @@
 ﻿<#
 .DESCRIPTION
     WSL Manager action functions and command dispatcher.
-    This file is dot-sourced by wsl-manager.ps1 (the entry-point script).
+    This file is dot-sourced by manager.ps1 (the orchestration layer).
 #>
 
 # Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
@@ -142,6 +142,13 @@ function Select-WslDistro {
         return $null
     }
 
+    # Validate name against known distributions
+    $matched = $Distros | Where-Object { $_.Name -eq $Selection }
+    if ($null -eq $matched) {
+        Write-ErrorMsg "Distribution '$Selection' not found."
+        return $null
+    }
+
     return $Selection
 }
 
@@ -217,18 +224,18 @@ function Invoke-RemoveDistro {
     <#
     .SYNOPSIS
         Handles the remove distribution workflow.
-    .PARAMETER Selection
+    .PARAMETER Name
         The name or number of the distribution to remove. If not provided, user is prompted.
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
     #>
     [CmdletBinding()]
     param(
-        [string]$Selection = "",
+        [string]$Name = "",
         [PSCustomObject[]]$Distros = $null
     )
 
-    $selectedName = Select-WslDistro -Selection $Selection -Distros $Distros
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
     if ($null -eq $selectedName) { return }
 
     Remove-WslDistro -Name $selectedName -Confirm:$false
@@ -238,18 +245,18 @@ function Invoke-UpdateDistro {
     <#
     .SYNOPSIS
         Handles the update distribution workflow.
-    .PARAMETER Selection
+    .PARAMETER Name
         The name or number of the distribution to update. If not provided, user is prompted.
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
     #>
     [CmdletBinding()]
     param(
-        [string]$Selection = "",
+        [string]$Name = "",
         [PSCustomObject[]]$Distros = $null
     )
 
-    $selectedName = Select-WslDistro -Selection $Selection -Distros $Distros
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
     if ($null -eq $selectedName) { return }
 
     Update-WslDistro -Name $selectedName -Confirm:$false
@@ -412,16 +419,11 @@ function Invoke-SetupProxy {
     Write-Host "Setting up proxy in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
-    try {
-        $result = Install-WslProxy -DistroName $DistroName -Confirm:$false
+    $result = Install-WslProxy -DistroName $DistroName -Confirm:$false
 
-        if ($result) {
-            Write-Host ""
-            Write-Success "Successfully configured proxy in '$DistroName'."
-        }
-    }
-    catch {
-        throw $_
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully configured proxy in '$DistroName'."
     }
 }
 
@@ -449,17 +451,12 @@ function Invoke-SetupDocker {
     Write-Host "Setting up Docker in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
-    try {
-        # Install Docker Engine (skip confirmation since we're handling it interactively)
-        $result = Install-WslDockerEngine -DistroName $DistroName -Confirm:$false
+    # Install Docker Engine (skip confirmation since we're handling it interactively)
+    $result = Install-WslDockerEngine -DistroName $DistroName -Confirm:$false
 
-        if ($result) {
-            Write-Host ""
-            Write-Success "Successfully installed Docker in '$DistroName'."
-        }
-    }
-    catch {
-        throw $_
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed Docker in '$DistroName'."
     }
 }
 
@@ -487,17 +484,12 @@ function Invoke-SetupPodman {
     Write-Host "Setting up Podman in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
-    try {
-        # Install Podman (skip confirmation since we're handling it interactively)
-        $result = Install-WslPodman -DistroName $DistroName -Confirm:$false
+    # Install Podman (skip confirmation since we're handling it interactively)
+    $result = Install-WslPodman -DistroName $DistroName -Confirm:$false
 
-        if ($result) {
-            Write-Host ""
-            Write-Success "Successfully installed Podman in '$DistroName'."
-        }
-    }
-    catch {
-        throw $_
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed Podman in '$DistroName'."
     }
 }
 
@@ -628,7 +620,7 @@ function Invoke-WslCommand {
     .PARAMETER Command
         The command to execute.
     .PARAMETER Name
-        Distribution name or selection (passed as Name, SourceName, Selection, or DistroName depending on the command).
+        Distribution name or selection (passed as Name, SourceName, or DistroName depending on the command).
     .PARAMETER TargetName
         Target distribution name for clone operations.
     .PARAMETER Username
@@ -664,10 +656,10 @@ function Invoke-WslCommand {
             Invoke-CloneDistro -SourceName $Name -TargetName $TargetName -Distros $Distros
         }
         "remove" {
-            Invoke-RemoveDistro -Selection $Name -Distros $Distros
+            Invoke-RemoveDistro -Name $Name -Distros $Distros
         }
         "update" {
-            Invoke-UpdateDistro -Selection $Name -Distros $Distros
+            Invoke-UpdateDistro -Name $Name -Distros $Distros
         }
         "setup-user" {
             Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password -Distros $Distros

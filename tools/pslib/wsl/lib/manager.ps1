@@ -1,14 +1,15 @@
 ﻿<#
 .DESCRIPTION
     WSL Manager orchestration — CLI entry point and interactive menu.
-    This file is dot-sourced by wsl-manager.ps1 after commands.ps1.
+    This file is dot-sourced by wsl-manager.ps1 and sources commands.ps1 for action functions.
 #>
 
 # Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Interactive tool requires colored console output')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-WslCommand for non-interactive WSL user creation.')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-WslCommand for non-interactive WSL user creation.')]
 param()
+
+# Source dependencies
+. "$PSScriptRoot\commands.ps1"
 
 function Start-InteractiveMode {
     <#
