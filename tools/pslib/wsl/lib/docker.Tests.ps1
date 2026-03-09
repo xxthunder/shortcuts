@@ -225,6 +225,7 @@ Describe "Install-WslDockerEngine" {
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
+            Mock Stop-WslDistro { }
         }
 
         It "Should not throw when Docker is already installed" {
@@ -265,6 +266,7 @@ Describe "Install-WslDockerEngine" {
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
+            Mock Stop-WslDistro { }
         }
 
         It "Should support -WhatIf parameter" {
@@ -297,6 +299,7 @@ Describe "Install-WslDockerEngine" {
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
+            Mock Stop-WslDistro { }
         }
 
         It "Should call Invoke-WslDistroScript with install-docker.sh" {
@@ -399,7 +402,7 @@ Describe "Install-WslDockerEngine" {
         It "Should not call Stop-WslDistro when install fails" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
 
-            Install-WslDockerEngine -DistroName "TestDistro" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            try { Install-WslDockerEngine -DistroName "TestDistro" -Confirm:$false } catch { $_ | Out-Null }
 
             Should -Invoke Stop-WslDistro -Times 0
         }
@@ -416,6 +419,7 @@ Describe "Install-WslDockerEngine" {
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
+            Mock Stop-WslDistro { }
         }
 
         It "Should configure systemd if not already configured" {

@@ -306,7 +306,6 @@ Then run setup-docker again.
         }
     }
     catch {
-        Write-Error "Docker installation failed: $_"
-        return $false
+        throw "Docker installation failed: $_"
     }
 }
