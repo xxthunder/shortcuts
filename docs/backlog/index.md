@@ -19,6 +19,7 @@
 - [SC-015 — Reorganize project structure: separate tools from libraries](todo/sc-015.md)
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
+- [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
 
 ### Done
 - [SC-005 — Refactor WSL Manager command dispatch (DRY)](done/sc-005.md)
