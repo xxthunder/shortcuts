@@ -196,6 +196,193 @@ function Stop-WslSubsystem {
     }
 }
 
+function Merge-WslConfig {
+    <#
+    .SYNOPSIS
+        Merges default key-value pairs into the [wsl2] section of a .wslconfig file.
+
+    .DESCRIPTION
+        Processes lines of a .wslconfig INI file and ensures each default key is present
+        in the [wsl2] section. Existing user values are never overwritten. For the
+        special 'kernelCommandLine' key, missing parameters are appended to the existing
+        value rather than replacing it. If the [wsl2] section is absent, it is appended.
+
+    .PARAMETER Lines
+        The current content of the .wslconfig file as an array of strings.
+
+    .PARAMETER Defaults
+        An ordered dictionary of key/value pairs that must be present in [wsl2].
+
+    .OUTPUTS
+        A hashtable with:
+          Lines   - The updated content as a string array.
+          Changed - $true if any modification was made, $false if already up to date.
+
+    .EXAMPLE
+        $result = Merge-WslConfig -Lines @('[wsl2]', 'networkingMode=mirrored') -Defaults $defaults
+        $result.Changed  # $false (key already there with the expected value)
+    #>
+    param(
+        [string[]]$Lines,
+        [System.Collections.Specialized.OrderedDictionary]$Defaults
+    )
+
+    $result = [System.Collections.Generic.List[string]]::new()
+    $inWsl2 = $false
+    $wsl2Found = $false
+    $wsl2KeysFound = @{}
+    $changed = $false
+
+    foreach ($line in $Lines) {
+        # Detect section headers
+        if ($line -match '^\s*\[(\w+)\]\s*$') {
+            $sectionName = $Matches[1]
+
+            if ($inWsl2 -and $sectionName -ne 'wsl2') {
+                # Leaving [wsl2] section — insert any missing defaults before the next section
+                foreach ($key in $Defaults.Keys) {
+                    if (-not $wsl2KeysFound.ContainsKey($key)) {
+                        $result.Add("$key = $($Defaults[$key])")
+                        $changed = $true
+                    }
+                }
+                $inWsl2 = $false
+            }
+
+            if ($sectionName -eq 'wsl2') {
+                $inWsl2 = $true
+                $wsl2Found = $true
+            }
+
+            $result.Add($line)
+            continue
+        }
+
+        # Inside [wsl2]: intercept key=value pairs
+        if ($inWsl2 -and $line -match '^\s*(\w+)\s*=\s*(.*)\s*$') {
+            $key = $Matches[1].Trim()
+            $value = $Matches[2].Trim()
+            $wsl2KeysFound[$key] = $value
+
+            # kernelCommandLine: append any missing parameters instead of skipping the key
+            if ($key -eq 'kernelCommandLine' -and $Defaults.Contains('kernelCommandLine')) {
+                $defaultParams = @($Defaults['kernelCommandLine'] -split '\s+' | Where-Object { $_ })
+                $existingParams = @($value -split '\s+' | Where-Object { $_ })
+                $missingParams = @($defaultParams | Where-Object { $existingParams -notcontains $_ })
+
+                if ($missingParams.Count -gt 0) {
+                    $newValue = (($existingParams + $missingParams) -join ' ')
+                    $result.Add("$key = $newValue")
+                    $changed = $true
+                    continue
+                }
+            }
+        }
+
+        $result.Add($line)
+    }
+
+    # End of file while still inside [wsl2] — append missing keys
+    if ($inWsl2) {
+        foreach ($key in $Defaults.Keys) {
+            if (-not $wsl2KeysFound.ContainsKey($key)) {
+                $result.Add("$key = $($Defaults[$key])")
+                $changed = $true
+            }
+        }
+    }
+
+    # [wsl2] section was never found — append the whole section
+    if (-not $wsl2Found) {
+        if ($result.Count -gt 0 -and $result[$result.Count - 1] -ne '') {
+            $result.Add('')
+        }
+        $result.Add('[wsl2]')
+        foreach ($key in $Defaults.Keys) {
+            $result.Add("$key = $($Defaults[$key])")
+        }
+        $changed = $true
+    }
+
+    return @{
+        Lines   = $result.ToArray()
+        Changed = $changed
+    }
+}
+
+function Invoke-ConfigureWsl {
+    <#
+    .SYNOPSIS
+        Applies default WSL global settings to %USERPROFILE%\.wslconfig (idempotent).
+
+    .DESCRIPTION
+        Ensures the following keys are present in the [wsl2] section of .wslconfig.
+        Existing values are never overwritten.
+
+        kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
+        networkingMode    = mirrored
+        dnsTunneling      = true
+        autoProxy         = true
+
+        For 'kernelCommandLine', missing parameters are appended to any existing value.
+        A timestamped backup is created before any modification.
+        After applying changes, the user is reminded to restart WSL for them to take effect.
+
+    .EXAMPLE
+        Invoke-ConfigureWsl
+        Applies default .wslconfig settings idempotently.
+
+    .EXAMPLE
+        Invoke-ConfigureWsl -WhatIf
+        Shows what would change without writing the file.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    $wslConfigPath = Join-Path $env:USERPROFILE ".wslconfig"
+
+    $defaults = [ordered]@{
+        kernelCommandLine = "cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1"
+        networkingMode    = "mirrored"
+        dnsTunneling      = "true"
+        autoProxy         = "true"
+    }
+
+    # Read existing content
+    $existingLines = @()
+    if (Test-Path $wslConfigPath) {
+        $existingLines = @(Get-Content -Path $wslConfigPath -Encoding UTF8)
+    }
+
+    # Merge defaults
+    $mergeResult = Merge-WslConfig -Lines $existingLines -Defaults $defaults
+
+    if (-not $mergeResult.Changed) {
+        Write-Output ".wslconfig already has all required defaults. No changes needed."
+        return
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($wslConfigPath, "Apply default WSL global settings")) {
+        return
+    }
+
+    # Create timestamped backup
+    if (Test-Path $wslConfigPath) {
+        $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+        $backupPath = "$wslConfigPath.bak.$timestamp"
+        Copy-Item -Path $wslConfigPath -Destination $backupPath
+        Write-Output "Backup created: $backupPath"
+    }
+
+    # Write updated content
+    $mergeResult.Lines | Set-Content -Path $wslConfigPath -Encoding UTF8
+
+    Write-Output "Applied default settings to $wslConfigPath"
+    Write-Output ""
+    Write-Output "To apply the changes, restart WSL with:"
+    Write-Output "  wsl-manager shutdown"
+}
+
 function Update-WslDistro {
     <#
     .SYNOPSIS

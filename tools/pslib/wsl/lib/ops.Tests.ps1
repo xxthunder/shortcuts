@@ -679,3 +679,255 @@ Describe "Stop-WslSubsystem" {
         }
     }
 }
+
+Describe "Merge-WslConfig" {
+    Context "When .wslconfig is empty" {
+        It "Should create [wsl2] section with all defaults" {
+            $defaults = [ordered]@{
+                networkingMode = "mirrored"
+                dnsTunneling   = "true"
+            }
+
+            $result = Merge-WslConfig -Lines @() -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            $result.Lines | Should -Contain "[wsl2]"
+            $result.Lines | Should -Contain "networkingMode = mirrored"
+            $result.Lines | Should -Contain "dnsTunneling = true"
+        }
+    }
+
+    Context "When [wsl2] section is missing from existing content" {
+        It "Should append [wsl2] section after existing content" {
+            $lines = @("[other]", "key=value")
+            $defaults = [ordered]@{ networkingMode = "mirrored" }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            $result.Lines | Should -Contain "[wsl2]"
+            $result.Lines | Should -Contain "networkingMode = mirrored"
+        }
+    }
+
+    Context "When [wsl2] section exists with all defaults already set" {
+        It "Should report no changes needed" {
+            $lines = @("[wsl2]", "networkingMode = mirrored", "dnsTunneling = true")
+            $defaults = [ordered]@{
+                networkingMode = "mirrored"
+                dnsTunneling   = "true"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $false
+        }
+    }
+
+    Context "When [wsl2] section exists with a key missing" {
+        It "Should add missing key without altering existing ones" {
+            $lines = @("[wsl2]", "networkingMode = mirrored")
+            $defaults = [ordered]@{
+                networkingMode = "mirrored"
+                dnsTunneling   = "true"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            $result.Lines | Should -Contain "networkingMode = mirrored"
+            $result.Lines | Should -Contain "dnsTunneling = true"
+        }
+    }
+
+    Context "When user has a different (custom) value for a key" {
+        It "Should leave the user value untouched" {
+            $lines = @("[wsl2]", "networkingMode = nat")
+            $defaults = [ordered]@{ networkingMode = "mirrored" }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $false
+            $result.Lines | Should -Contain "networkingMode = nat"
+        }
+    }
+
+    Context "kernelCommandLine special handling" {
+        It "Should append missing parameters to existing kernelCommandLine" {
+            $lines = @("[wsl2]", "kernelCommandLine = cgroup_no_v1=all")
+            $defaults = [ordered]@{
+                kernelCommandLine = "cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            ($result.Lines | Where-Object { $_ -like "kernelCommandLine*" }) | Should -Match "systemd.unified_cgroup_hierarchy=1"
+            ($result.Lines | Where-Object { $_ -like "kernelCommandLine*" }) | Should -Match "cgroup_no_v1=all"
+        }
+
+        It "Should not change kernelCommandLine when all default params are already present" {
+            $lines = @("[wsl2]", "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1")
+            $defaults = [ordered]@{
+                kernelCommandLine = "cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $false
+        }
+
+        It "Should preserve extra user params in kernelCommandLine when appending" {
+            $lines = @("[wsl2]", "kernelCommandLine = myCustomParam cgroup_no_v1=all")
+            $defaults = [ordered]@{
+                kernelCommandLine = "cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            ($result.Lines | Where-Object { $_ -like "kernelCommandLine*" }) | Should -Match "myCustomParam"
+            ($result.Lines | Where-Object { $_ -like "kernelCommandLine*" }) | Should -Match "systemd.unified_cgroup_hierarchy=1"
+        }
+    }
+
+    Context "When [wsl2] is followed by another section" {
+        It "Should insert missing keys before the next section" {
+            $lines = @("[wsl2]", "networkingMode = mirrored", "", "[experimental]", "autoMemoryReclaim=gradual")
+            $defaults = [ordered]@{
+                networkingMode = "mirrored"
+                dnsTunneling   = "true"
+            }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults
+
+            $result.Changed | Should -Be $true
+            # dnsTunneling should appear before [experimental]
+            $wsl2Idx = [Array]::IndexOf($result.Lines, "[wsl2]")
+            $expIdx = [Array]::IndexOf($result.Lines, "[experimental]")
+            $dnsTunnelingIdx = [Array]::IndexOf($result.Lines, "dnsTunneling = true")
+            $dnsTunnelingIdx | Should -BeGreaterThan $wsl2Idx
+            $dnsTunnelingIdx | Should -BeLessThan $expIdx
+        }
+    }
+}
+
+Describe "Invoke-ConfigureWsl" {
+    BeforeAll {
+        # USERPROFILE is not set on Linux CI; provide a temporary directory so
+        # Join-Path doesn't fail before mocks are applied.
+        if ([string]::IsNullOrEmpty($env:USERPROFILE)) {
+            $env:USERPROFILE = $TestDrive
+        }
+    }
+
+    BeforeEach {
+        $script:wslConfigPath = Join-Path $env:USERPROFILE ".wslconfig"
+        Mock Write-Output { }
+        Mock Test-Path { $false } -ParameterFilter { $Path -eq $script:wslConfigPath }
+        Mock Get-Content { @() }
+        Mock Set-Content { }
+        Mock Copy-Item { }
+        Mock Get-Date { "20260309120000" }
+    }
+
+    Context "When .wslconfig does not exist" {
+        It "Should create the file with defaults" {
+            Mock Test-Path { $false } -ParameterFilter { $Path -eq $script:wslConfigPath }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Set-Content -Times 1
+        }
+
+        It "Should not create a backup when file does not exist" {
+            Mock Test-Path { $false } -ParameterFilter { $Path -eq $script:wslConfigPath }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Copy-Item -Times 0
+        }
+    }
+
+    Context "When .wslconfig exists and already has all defaults" {
+        It "Should not write the file" {
+            $existingContent = @(
+                "[wsl2]",
+                "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
+                "networkingMode = mirrored",
+                "dnsTunneling = true",
+                "autoProxy = true"
+            )
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
+            Mock Get-Content { $existingContent }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Set-Content -Times 0
+        }
+
+        It "Should report that no changes are needed" {
+            $existingContent = @(
+                "[wsl2]",
+                "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
+                "networkingMode = mirrored",
+                "dnsTunneling = true",
+                "autoProxy = true"
+            )
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
+            Mock Get-Content { $existingContent }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*already has all required defaults*"
+            }
+        }
+    }
+
+    Context "When .wslconfig exists but is missing some defaults" {
+        BeforeEach {
+            $existingContent = @("[wsl2]", "networkingMode = mirrored")
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
+            Mock Get-Content { $existingContent }
+        }
+
+        It "Should write updated content" {
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Set-Content -Times 1
+        }
+
+        It "Should create a timestamped backup" {
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Copy-Item -Times 1
+        }
+
+        It "Should inform the user a backup was created" {
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*Backup created*"
+            }
+        }
+
+        It "Should hint to restart WSL" {
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*wsl-manager shutdown*"
+            }
+        }
+    }
+
+    Context "When -WhatIf is used" {
+        It "Should not write the file" {
+            Mock Test-Path { $false } -ParameterFilter { $Path -eq $script:wslConfigPath }
+
+            Invoke-ConfigureWsl -WhatIf
+
+            Should -Invoke Set-Content -Times 0
+        }
+    }
+}

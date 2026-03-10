@@ -1309,3 +1309,38 @@ Describe "Invoke-ShutdownWsl" {
     }
 }
 
+Describe "Invoke-ConfigureWslDefault" {
+    BeforeEach {
+        Mock Write-Host { }
+        Mock Invoke-ConfigureWsl { }
+    }
+
+    It "Should call Invoke-ConfigureWsl" {
+        Invoke-ConfigureWslDefault
+
+        Should -Invoke Invoke-ConfigureWsl -Times 1
+    }
+
+    It "Should pass -Confirm:false to Invoke-ConfigureWsl" {
+        Invoke-ConfigureWslDefault
+
+        Should -Invoke Invoke-ConfigureWsl -ParameterFilter { $Confirm -eq $false }
+    }
+
+    It "Should display a status message before calling Invoke-ConfigureWsl" {
+        Invoke-ConfigureWslDefault
+
+        Should -Invoke Write-Host -ParameterFilter {
+            $Object -like "*Applying default WSL global settings*"
+        }
+    }
+
+    It "Should call Write-Success when done" {
+        Invoke-ConfigureWslDefault
+
+        Should -Invoke Write-Host -ParameterFilter {
+            $Object -like "*Done*" -and $ForegroundColor -eq "Green"
+        }
+    }
+}
+

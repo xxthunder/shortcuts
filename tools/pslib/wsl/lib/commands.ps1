@@ -584,6 +584,27 @@ function Invoke-CloneDistro {
     Copy-WslDistro -SourceName $SourceName -TargetName $TargetName -Confirm:$false
 }
 
+function Invoke-ConfigureWslDefault {
+    <#
+    .SYNOPSIS
+        Handles the configure-wsl workflow (idempotent .wslconfig defaults).
+    .DESCRIPTION
+        Applies default WSL global settings to %USERPROFILE%\.wslconfig.
+        Existing user values are never overwritten.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-Host ""
+    Write-Host "Applying default WSL global settings to .wslconfig ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    Invoke-ConfigureWsl -Confirm:$false
+
+    Write-Host ""
+    Write-Success "Done."
+}
+
 function Invoke-ShutdownWsl {
     <#
     .SYNOPSIS
@@ -635,7 +656,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl")]
         [string]$Command,
 
         [string]$Name = "",
@@ -681,6 +702,9 @@ function Invoke-WslCommand {
         }
         "shutdown" {
             Invoke-ShutdownWsl
+        }
+        "configure-wsl" {
+            Invoke-ConfigureWslDefault
         }
     }
 }

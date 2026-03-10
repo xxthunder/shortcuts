@@ -20,6 +20,7 @@
       repair-interop   Repair Windows interop configuration in wsl.conf
       terminate        Stop a running distribution
       shutdown         Shut down the entire WSL subsystem
+      configure-wsl    Apply default global WSL settings to %USERPROFILE%\.wslconfig (idempotent)
 
     When called without a command, enters an interactive menu.
 
@@ -68,6 +69,10 @@
     .\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
     Creates a user named 'wsluser' in the Ubuntu-24.04 distribution without interactive prompts.
 
+.EXAMPLE
+    .\wsl-manager.ps1 configure-wsl
+    Applies default WSL global settings to %USERPROFILE%\.wslconfig (idempotent).
+
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
@@ -75,7 +80,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "")]
+    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]

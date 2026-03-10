@@ -20,9 +20,9 @@
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
-- [SC-021 — Apply default WSL global settings (.wslconfig) via wsl-manager](todo/sc-021.md)
 
 ### Done
+- [SC-021 — Apply default WSL global settings (.wslconfig) via wsl-manager](done/sc-021.md)
 - [SC-005 — Refactor WSL Manager command dispatch (DRY)](done/sc-005.md)
 - [SC-019 — Allow model selection via @claude trigger phrase](done/sc-019.md)
 - [SC-003 — Stop action functions from reprinting distro table](done/sc-003.md)

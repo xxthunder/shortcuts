@@ -39,6 +39,7 @@ function Start-InteractiveMode {
         "R" = "remove"
         "T" = "terminate"
         "H" = "shutdown"
+        "W" = "configure-wsl"
     }
 
     $continue = $true
@@ -73,6 +74,7 @@ function Start-InteractiveMode {
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [H] Shutdown WSL" -ForegroundColor White
+        Write-Host "  [W] Configure .wslconfig defaults (idempotent)" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
 
@@ -113,7 +115,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
