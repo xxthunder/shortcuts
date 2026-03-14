@@ -56,23 +56,14 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
             Write-Host "    $script:baseDistroName not found, will create it during tests" -ForegroundColor Yellow
         }
 
-        # Terminate base distro if it's running (required for clone operations)
-        if ($script:baseDistroName -in $existingDistros) {
-            $baseState = Get-WslDistroState -DistroName $script:baseDistroName
-            if ($baseState -eq "Running") {
-                Write-Host "    Stopping $script:baseDistroName before tests ..." -ForegroundColor Yellow
-                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-            }
-        }
+        # Shutdown entire WSL subsystem to prevent systemd auto-restart race (SC-002)
+        Write-Host "    Shutting down WSL subsystem before tests ..." -ForegroundColor Yellow
+        Stop-WslSubsystem -Confirm:$false
+        Start-Sleep -Seconds 3
 
         # Always remove test distro before tests (clean slate)
         if ($script:podmanTestDistroName -in $existingDistros) {
             Write-Host "    Removing existing $script:podmanTestDistroName for fresh test run ..." -ForegroundColor Yellow
-            # Stop it first if running
-            $testState = Get-WslDistroState -DistroName $script:podmanTestDistroName
-            if ($testState -eq "Running") {
-                Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
-            }
             Remove-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
         }
 
@@ -80,37 +71,15 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
     }
 
     AfterAll {
-        # Ensure test distributions are stopped after tests to prevent failures on next run
+        # Shutdown entire WSL subsystem after tests to prevent failures on next run (SC-002)
         Write-Host "`n==> Cleaning up test environment ..." -ForegroundColor Cyan
 
-        $existingDistros = Get-WslDistroList
-
-        # Stop test distro if it's running
-        if ($script:podmanTestDistroName -in $existingDistros) {
-            try {
-                $state = Get-WslDistroState -DistroName $script:podmanTestDistroName
-                if ($state -eq "Running") {
-                    Write-Host "    Stopping $script:podmanTestDistroName ..." -ForegroundColor Yellow
-                    Stop-WslDistro -Name $script:podmanTestDistroName -Confirm:$false
-                }
-            }
-            catch {
-                Write-Host "    Warning: Could not stop $script:podmanTestDistroName : $_" -ForegroundColor Yellow
-            }
+        try {
+            Write-Host "    Shutting down WSL subsystem ..." -ForegroundColor Yellow
+            Stop-WslSubsystem -Confirm:$false
         }
-
-        # Stop base distro if it's running
-        if ($script:baseDistroName -in $existingDistros) {
-            try {
-                $state = Get-WslDistroState -DistroName $script:baseDistroName
-                if ($state -eq "Running") {
-                    Write-Host "    Stopping $script:baseDistroName ..." -ForegroundColor Yellow
-                    Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-                }
-            }
-            catch {
-                Write-Host "    Warning: Could not stop $script:baseDistroName : $_" -ForegroundColor Yellow
-            }
+        catch {
+            Write-Host "    Warning: Could not shut down WSL subsystem: $_" -ForegroundColor Yellow
         }
 
         Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
@@ -150,11 +119,10 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         It "Should clone Ubuntu to test distro" {
             Write-Host "`n==> TEST: Cloning $script:baseDistroName to $script:podmanTestDistroName ..." -ForegroundColor Magenta
 
-            # Ensure base distribution is stopped before cloning
-            if (Test-WslDistroRunning -DistroName $script:baseDistroName) {
-                Write-Host "    Stopping '$script:baseDistroName' before cloning..." -ForegroundColor Yellow
-                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-            }
+            # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
+            Write-Host "    Shutting down WSL subsystem before cloning..." -ForegroundColor Yellow
+            Stop-WslSubsystem -Confirm:$false
+            Start-Sleep -Seconds 3
 
             $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:podmanTestDistroName *>&1 | Out-String
 

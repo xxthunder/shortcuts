@@ -58,23 +58,14 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    $script:baseDistroName not found, will create it during tests" -ForegroundColor Yellow
         }
 
-        # Terminate base distro if it's running (required for update/clone operations)
-        if ($script:baseDistroName -in $existingDistros) {
-            $baseState = Get-WslDistroState -DistroName $script:baseDistroName
-            if ($baseState -eq "Running") {
-                Write-Host "    Stopping $script:baseDistroName before tests ..." -ForegroundColor Yellow
-                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-            }
-        }
+        # Shutdown entire WSL subsystem to prevent systemd auto-restart race (SC-002)
+        Write-Host "    Shutting down WSL subsystem before tests ..." -ForegroundColor Yellow
+        Stop-WslSubsystem -Confirm:$false
+        Start-Sleep -Seconds 3
 
         # Always remove custom distro before tests (clean slate)
         if ($script:customDistroName -in $existingDistros) {
             Write-Host "    Removing existing $script:customDistroName for fresh test run ..." -ForegroundColor Yellow
-            # Stop it first if running
-            $customState = Get-WslDistroState -DistroName $script:customDistroName
-            if ($customState -eq "Running") {
-                Stop-WslDistro -Name $script:customDistroName -Confirm:$false
-            }
             Remove-WslDistro -Name $script:customDistroName -Confirm:$false
         }
 
@@ -82,37 +73,15 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
     }
 
     AfterAll {
-        # Ensure test distributions are stopped after tests to prevent failures on next run
+        # Shutdown entire WSL subsystem after tests to prevent failures on next run (SC-002)
         Write-Host "`n==> Cleaning up test environment ..." -ForegroundColor Cyan
 
-        $existingDistros = Get-WslDistroList
-
-        # Stop custom distro if it's running
-        if ($script:customDistroName -in $existingDistros) {
-            try {
-                $state = Get-WslDistroState -DistroName $script:customDistroName
-                if ($state -eq "Running") {
-                    Write-Host "    Stopping $script:customDistroName ..." -ForegroundColor Yellow
-                    Stop-WslDistro -Name $script:customDistroName -Confirm:$false
-                }
-            }
-            catch {
-                Write-Host "    Warning: Could not stop $script:customDistroName : $_" -ForegroundColor Yellow
-            }
+        try {
+            Write-Host "    Shutting down WSL subsystem ..." -ForegroundColor Yellow
+            Stop-WslSubsystem -Confirm:$false
         }
-
-        # Stop base distro if it's running
-        if ($script:baseDistroName -in $existingDistros) {
-            try {
-                $state = Get-WslDistroState -DistroName $script:baseDistroName
-                if ($state -eq "Running") {
-                    Write-Host "    Stopping $script:baseDistroName ..." -ForegroundColor Yellow
-                    Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-                }
-            }
-            catch {
-                Write-Host "    Warning: Could not stop $script:baseDistroName : $_" -ForegroundColor Yellow
-            }
+        catch {
+            Write-Host "    Warning: Could not shut down WSL subsystem: $_" -ForegroundColor Yellow
         }
 
         Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
@@ -156,11 +125,10 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:baseDistroName
 
-            # Ensure base distribution is stopped before updating (Update-WslDistro requirement)
-            if (Test-WslDistroRunning -DistroName $script:baseDistroName) {
-                Write-Host "Stopping '$script:baseDistroName' before updating..." -ForegroundColor Yellow
-                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-            }
+            # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
+            Write-Host "Shutting down WSL subsystem before updating..." -ForegroundColor Yellow
+            Stop-WslSubsystem -Confirm:$false
+            Start-Sleep -Seconds 3
 
             # Capture output from Update-WslDistro
             $output = Invoke-WslManager -Command "update" -Name $script:baseDistroName *>&1 | Out-String
@@ -184,11 +152,10 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $existingDistros = Get-WslDistroList
             $existingDistros | Should -Contain $script:baseDistroName
 
-            # Ensure base distribution is stopped before cloning (Copy-WslDistro requirement)
-            if (Test-WslDistroRunning -DistroName $script:baseDistroName) {
-                Write-Host "Stopping '$script:baseDistroName' before cloning..." -ForegroundColor Yellow
-                Stop-WslDistro -Name $script:baseDistroName -Confirm:$false
-            }
+            # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
+            Write-Host "Shutting down WSL subsystem before cloning..." -ForegroundColor Yellow
+            Stop-WslSubsystem -Confirm:$false
+            Start-Sleep -Seconds 3
 
             # Capture output from Copy-WslDistro
             $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:customDistroName *>&1 | Out-String
