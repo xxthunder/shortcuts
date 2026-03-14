@@ -70,7 +70,7 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
 
 6. **Commit test + implementation together**
    ```bash
-   git add tools/pslib/utils.ps1 tools/pslib/utils.Tests.ps1
+   git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
    git commit -m "feat: add New-FeatureName function"
    ```
 
@@ -116,7 +116,7 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
 
 6. **Commit test + implementation together**
    ```bash
-   git add tools/pslib/utils.ps1 tools/pslib/utils.Tests.ps1
+   git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
    git commit -m "feat: add NewParameter to Existing-Function"
    ```
 
@@ -177,7 +177,7 @@ pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage
 ### Run Specific Test File
 
 ```bash
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils.Tests.ps1"
+pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 ```
 
 ## TDD Best Practices

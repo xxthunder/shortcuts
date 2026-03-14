@@ -74,8 +74,8 @@ Describe 'ConvertTo-RelativeJUnitXml' {
         $xml = @'
 <?xml version="1.0" encoding="utf-8"?>
 <testsuites>
-  <testsuite name="C:\Users\karst\shortcuts\tools\pslib\wsl\lib\core.Tests.ps1" package="C:\Users\karst\shortcuts\tools\pslib\wsl\lib\core.Tests.ps1">
-    <testcase classname="C:\Users\karst\shortcuts\tools\pslib\wsl\lib\core.Tests.ps1" name="some test" />
+  <testsuite name="C:\Users\karst\shortcuts\lib\wsl\core.Tests.ps1" package="C:\Users\karst\shortcuts\lib\wsl\core.Tests.ps1">
+    <testcase classname="C:\Users\karst\shortcuts\lib\wsl\core.Tests.ps1" name="some test" />
   </testsuite>
 </testsuites>
 '@
@@ -85,9 +85,9 @@ Describe 'ConvertTo-RelativeJUnitXml' {
 
         [xml]$result = Get-Content $script:tempFile -Raw
         $suite = $result.testsuites.testsuite
-        $suite.name | Should -Be 'tools/pslib/wsl/lib/core.Tests.ps1'
-        $suite.package | Should -Be 'tools/pslib/wsl/lib/core.Tests.ps1'
-        $suite.testcase.classname | Should -Be 'tools/pslib/wsl/lib/core.Tests.ps1'
+        $suite.name | Should -Be 'lib/wsl/core.Tests.ps1'
+        $suite.package | Should -Be 'lib/wsl/core.Tests.ps1'
+        $suite.testcase.classname | Should -Be 'lib/wsl/core.Tests.ps1'
     }
 
     It 'Preserves non-path content in name attributes' {
@@ -150,8 +150,8 @@ Describe 'ConvertTo-RelativeJUnitXml' {
     <testcase classname="C:\Users\karst\shortcuts\test\bin\linter.Tests.ps1" name="test1" />
     <testcase classname="C:\Users\karst\shortcuts\test\bin\linter.Tests.ps1" name="test2" />
   </testsuite>
-  <testsuite name="C:\Users\karst\shortcuts\tools\pslib\utils\utils.Tests.ps1" package="C:\Users\karst\shortcuts\tools\pslib\utils\utils.Tests.ps1">
-    <testcase classname="C:\Users\karst\shortcuts\tools\pslib\utils\utils.Tests.ps1" name="test3" />
+  <testsuite name="C:\Users\karst\shortcuts\lib\utils\utils.Tests.ps1" package="C:\Users\karst\shortcuts\lib\utils\utils.Tests.ps1">
+    <testcase classname="C:\Users\karst\shortcuts\lib\utils\utils.Tests.ps1" name="test3" />
   </testsuite>
 </testsuites>
 '@
@@ -163,10 +163,10 @@ Describe 'ConvertTo-RelativeJUnitXml' {
         $suites = @($result.testsuites.testsuite)
         $suites[0].name | Should -Be 'test/bin/linter.Tests.ps1'
         $suites[0].package | Should -Be 'test/bin/linter.Tests.ps1'
-        $suites[1].name | Should -Be 'tools/pslib/utils/utils.Tests.ps1'
-        $suites[1].package | Should -Be 'tools/pslib/utils/utils.Tests.ps1'
+        $suites[1].name | Should -Be 'lib/utils/utils.Tests.ps1'
+        $suites[1].package | Should -Be 'lib/utils/utils.Tests.ps1'
         @($suites[0].testcase)[0].classname | Should -Be 'test/bin/linter.Tests.ps1'
-        $suites[1].testcase.classname | Should -Be 'tools/pslib/utils/utils.Tests.ps1'
+        $suites[1].testcase.classname | Should -Be 'lib/utils/utils.Tests.ps1'
     }
 }
 
@@ -220,8 +220,8 @@ Describe 'ConvertTo-RelativeJaCoCoXml' {
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.1//EN" "report.dtd"[]>
 <report name="Pester">
-  <package name="shortcuts/tools/pslib/utils">
-    <sourcefile name="tools/pslib/utils/utils.ps1">
+  <package name="shortcuts/lib/utils">
+    <sourcefile name="lib/utils/utils.ps1">
       <counter type="LINE" missed="10" covered="5" />
     </sourcefile>
   </package>
@@ -268,17 +268,17 @@ Describe 'ConvertTo-RelativeJaCoCoXml' {
       <counter type="LINE" missed="10" covered="5" />
     </sourcefile>
   </package>
-  <package name="shortcuts/tools/pslib/wsl/lib">
-    <class name="shortcuts/tools/pslib/wsl/lib/core" sourcefilename="tools/pslib/wsl/lib/core.ps1">
+  <package name="shortcuts/lib/wsl">
+    <class name="shortcuts/lib/wsl/core" sourcefilename="lib/wsl/core.ps1">
       <counter type="LINE" missed="20" covered="10" />
     </class>
-    <class name="shortcuts/tools/pslib/wsl/lib/docker" sourcefilename="tools/pslib/wsl/lib/docker.ps1">
+    <class name="shortcuts/lib/wsl/docker" sourcefilename="lib/wsl/docker.ps1">
       <counter type="LINE" missed="30" covered="15" />
     </class>
-    <sourcefile name="tools/pslib/wsl/lib/core.ps1">
+    <sourcefile name="lib/wsl/core.ps1">
       <counter type="LINE" missed="20" covered="10" />
     </sourcefile>
-    <sourcefile name="tools/pslib/wsl/lib/docker.ps1">
+    <sourcefile name="lib/wsl/docker.ps1">
       <counter type="LINE" missed="30" covered="15" />
     </sourcefile>
   </package>
@@ -294,11 +294,11 @@ Describe 'ConvertTo-RelativeJaCoCoXml' {
         $pkgs[0].class.name | Should -Be 'bin/install'
         $pkgs[0].class.sourcefilename | Should -Be 'install.ps1'
         $pkgs[0].sourcefile.name | Should -Be 'install.ps1'
-        $pkgs[1].name | Should -Be 'tools/pslib/wsl/lib'
+        $pkgs[1].name | Should -Be 'lib/wsl'
         $classes = @($pkgs[1].class)
-        $classes[0].name | Should -Be 'tools/pslib/wsl/lib/core'
+        $classes[0].name | Should -Be 'lib/wsl/core'
         $classes[0].sourcefilename | Should -Be 'core.ps1'
-        $classes[1].name | Should -Be 'tools/pslib/wsl/lib/docker'
+        $classes[1].name | Should -Be 'lib/wsl/docker'
         $classes[1].sourcefilename | Should -Be 'docker.ps1'
         $srcs = @($pkgs[1].sourcefile)
         $srcs[0].name | Should -Be 'core.ps1'

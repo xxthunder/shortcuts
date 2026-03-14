@@ -12,11 +12,11 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
+- [SC-015 — Reorganize project structure: separate tools from libraries](in_progress/sc-015.md)
 
 ### TODO
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 - [SC-013 — Fix and enhance documentation](todo/sc-013.md)
-- [SC-015 — Reorganize project structure: separate tools from libraries](todo/sc-015.md)
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)

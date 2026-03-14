@@ -10,7 +10,7 @@ Add a function to validate WSL distribution names.
 ### Step 1: Write the Test (RED)
 
 ```powershell
-# In tools/pslib/utils.Tests.ps1
+# In lib/utils/utils.Tests.ps1
 
 Describe "Test-ValidDistroName" {
     Context "When given valid distribution name" {
@@ -54,7 +54,7 @@ Output:
 ### Step 3: Implement Minimal Code (GREEN)
 
 ```powershell
-# In tools/pslib/utils.ps1
+# In lib/utils/utils.ps1
 
 function Test-ValidDistroName {
     param([string]$Name)
@@ -119,7 +119,7 @@ All tests still pass.
 ### Step 7: Commit
 
 ```bash
-git add tools/pslib/utils.ps1 tools/pslib/utils.Tests.ps1
+git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
 git commit -m "feat: add Test-ValidDistroName function
 
 - Validates WSL distribution names
@@ -134,7 +134,7 @@ Modify `Invoke-CommandLine` to support silent mode.
 
 ### Step 1: Read Existing Tests
 
-Review current tests in `tools/pslib/utils.Tests.ps1`:
+Review current tests in `lib/utils/utils.Tests.ps1`:
 ```powershell
 Describe "Invoke-CommandLine" {
     It "Should execute command" {
@@ -209,7 +209,7 @@ All tests pass, including new test.
 ### Step 6: Commit
 
 ```bash
-git add tools/pslib/utils.ps1 tools/pslib/utils.Tests.ps1
+git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
 git commit -m "feat: add Silent parameter to Invoke-CommandLine
 
 - Suppresses console output when -Silent is used
@@ -264,7 +264,7 @@ Bug is fixed, all tests pass.
 ### Step 5: Commit
 
 ```bash
-git add tools/pslib/wsl/wsl.ps1 tools/pslib/wsl.Tests.ps1
+git add lib/wsl/wsl.ps1 lib/wsl/wsl.Tests.ps1
 git commit -m "fix: handle WSL distribution names with spaces
 
 - Properly quote distribution name in wsl command
@@ -295,8 +295,8 @@ feat: add distribution validation
 ```
 
 Files changed:
-- tools/pslib/utils.ps1 (implementation)
-- tools/pslib/utils.Tests.ps1 (tests)
+- lib/utils/utils.ps1 (implementation)
+- lib/utils/utils.Tests.ps1 (tests)
 
 ### Bad Commit (Don't Do This)
 ```
@@ -304,7 +304,7 @@ feat: add distribution validation
 ```
 
 Files changed:
-- tools/pslib/utils.ps1 (implementation only, no tests)
+- lib/utils/utils.ps1 (implementation only, no tests)
 
 ## Tips for Success
 

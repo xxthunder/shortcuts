@@ -460,10 +460,10 @@ pwsh -File .\test\bin\testrunner.ps1 -Integration -Coverage
 
 ```powershell
 # Run all tests in a directory
-pwsh -File .\test\bin\testrunner.ps1 -TestPath "tools\pslib" -Verbosity "Detailed"
+pwsh -File .\test\bin\testrunner.ps1 -TestPath "lib" -Verbosity "Detailed"
 
 # Run a specific test file
-pwsh -File .\test\bin\testrunner.ps1 -TestPath "tools\pslib\utils\utils.Tests.ps1"
+pwsh -File .\test\bin\testrunner.ps1 -TestPath "lib\utils\utils.Tests.ps1"
 ```
 
 **Important Notes:**
@@ -498,10 +498,10 @@ All PowerShell code must:
 
 - Pass PSScriptAnalyzer checks (Error/Warning severity)
 - Include Pester unit tests
-- Follow project guidelines in `AGENTS.md` and `tools/pslib/AGENTS.md`
+- Follow project guidelines in `AGENTS.md` and `lib/AGENTS.md`
 - Use TDD, DRY, and SOLID principles
 
 For detailed development guidelines, see:
 
 - `AGENTS.md` - Project-wide coding guidelines
-- `tools/pslib/AGENTS.md` - PowerShell library development guide
+- `lib/AGENTS.md` - PowerShell library development guide

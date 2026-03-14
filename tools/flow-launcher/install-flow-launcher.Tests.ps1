@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 BeforeAll {
     Set-StrictMode -Version Latest
@@ -21,7 +21,7 @@ Describe "install-flow-launcher.ps1" {
 
         It "Should source utils.ps1 from correct relative path" {
             $scriptContent = Get-Content $script:scriptPath -Raw
-            $scriptContent | Should -Match '\.\s+"\$PSScriptRoot\\\.\.\\pslib\\utils\\utils\.ps1"'
+            $scriptContent | Should -Match '\.\s+"\$PSScriptRoot\\\.\.\\\.\.\\lib\\utils\\utils\.ps1"'
         }
 
         It "Should check for CI environment" {

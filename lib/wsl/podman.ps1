@@ -4,7 +4,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 function Test-WslPodmanInstalled {
     <#
@@ -290,7 +290,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
 
         # Execute bash installation script
         Write-Information "Executing Podman installation script..."
-        $scriptPath = Join-Path $PSScriptRoot "..\scripts\install-podman.sh"
+        $scriptPath = Join-Path $PSScriptRoot "scripts\install-podman.sh"
 
         $scriptArgs = @(
             "--distro-id=$distroId",

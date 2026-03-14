@@ -24,7 +24,7 @@ if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
 ### Install Package
 
 ```powershell
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 # Install a package
 Invoke-CommandLine -Command "scoop install nodejs" -StopAtError
@@ -142,7 +142,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $InformationPreference = 'Continue'
 
-. "$PSScriptRoot\..\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\..\..\lib\utils\utils.ps1"
 
 try {
     # Check if Scoop is installed

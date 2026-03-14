@@ -9,7 +9,7 @@ param()
 
 Describe "WSL Library Integration Tests" -Tag "Integration" {
     BeforeAll {
-        $wslScript = Join-Path $PSScriptRoot "wsl.ps1"
+        $wslScript = Join-Path $PSScriptRoot ".\wsl.ps1"
         if (Test-Path $wslScript) {
             . $wslScript
         } else {

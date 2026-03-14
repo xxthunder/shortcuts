@@ -10,14 +10,14 @@
     Executes Pester tests with support for filtering by type (Unit/Integration),
     custom paths, and code coverage.
 
-    - Default search paths: 'tools' and 'test' directories.
+    - Default search paths: 'tools', 'test', 'bin', and 'lib' directories.
     - Use -Unit to run only unit tests (excludes *.Integration.Tests.ps1).
     - Use -Integration to run only integration tests (*.Integration.Tests.ps1).
     - Use -TestPath to specify custom search directories or files.
     - Use -LintOnly to run only PSScriptAnalyzer (no tests).
 
 .PARAMETER TestPath
-    One or more paths to search for tests. Defaults to 'tools' and 'test' if not provided.
+    One or more paths to search for tests. Defaults to 'tools', 'test', 'bin', and 'lib' if not provided.
 
 .PARAMETER Unit
     Run unit tests only (excludes integration tests).
@@ -56,9 +56,9 @@
     Runs integration tests in default paths.
 
 .EXAMPLE
-    pwsh -File test/bin/testrunner.ps1 -TestPath "tools/pslib"
+    pwsh -File test/bin/testrunner.ps1 -TestPath "lib"
 
-    Runs all tests in tools/pslib.
+    Runs all tests in lib.
 
 .EXAMPLE
     pwsh -File test/bin/testrunner.ps1 -LintOnly
@@ -66,9 +66,9 @@
     Lints all .ps1 files in default paths (no tests run).
 
 .EXAMPLE
-    pwsh -File test/bin/testrunner.ps1 -LintOnly -TestPath "tools/pslib"
+    pwsh -File test/bin/testrunner.ps1 -LintOnly -TestPath "lib"
 
-    Lints only .ps1 files under tools/pslib.
+    Lints only .ps1 files under lib.
 
 .EXAMPLE
     pwsh -File test/bin/testrunner.ps1 -LintOnly -Unit

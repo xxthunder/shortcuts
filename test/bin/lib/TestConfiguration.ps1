@@ -1,4 +1,4 @@
-function Get-TestConfiguration {
+﻿function Get-TestConfiguration {
     [CmdletBinding()]
     param(
         [Parameter(Position=0)]
@@ -18,8 +18,10 @@ function Get-TestConfiguration {
     )
 
     # 1. Default Paths
+    $isDefaultPaths = $false
     if (-not $TestPath -or $TestPath.Count -eq 0) {
-        $TestPath = @('tools', 'test', 'bin')
+        $TestPath = @('tools', 'test', 'bin', 'lib')
+        $isDefaultPaths = $true
     }
 
     # 2. Resolve Paths
@@ -34,7 +36,8 @@ function Get-TestConfiguration {
         }
     }
 
-    if ($invalidPaths.Count -gt 0) {
+    # Only throw for missing user-provided paths; silently skip missing default paths
+    if (-not $isDefaultPaths -and $invalidPaths.Count -gt 0) {
         Throw "The following test paths do not exist: $($invalidPaths -join ', ')"
     }
 

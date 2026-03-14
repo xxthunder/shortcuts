@@ -10,7 +10,7 @@ pwsh -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
 powershell -Command "Invoke-Pester -Path '.\path\to\script.Tests.ps1'"
 
 # Via testrunner with path
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
+pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 ```
 
 ## Pester Test Structure
@@ -87,7 +87,7 @@ AfterEach {
 
 ## Testing CI vs Interactive Behavior
 
-Use `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils/utils.ps1`:
+Use `Test-RunningInCIorTestEnvironment` from `lib/utils/utils.ps1`:
 
 ```powershell
 # Test CI path

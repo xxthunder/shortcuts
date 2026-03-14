@@ -11,7 +11,7 @@
         Bootstraps Scoop and git inline, clones the repo, then delegates to local mode.
 
     Local mode (.\install.ps1 -InPlace):
-        Sources pslib utilities, installs Scoop dependencies, mandatory and optional
+        Sources lib utilities, installs Scoop dependencies, mandatory and optional
         tools, and configures Keypirinha.
 
     Can be dot-sourced (. .\install.ps1) to expose functions without running main logic.
@@ -187,8 +187,8 @@ if (-not $InPlace) {
     # Resolve repo root from script location
     $script:repoRoot = Split-Path $PSScriptRoot -Parent
 
-    # Source pslib utilities
-    . "$script:repoRoot\tools\pslib\utils\utils.ps1"
+    # Source lib utilities
+    . "$script:repoRoot\lib\utils\utils.ps1"
 
     #region Exposed Functions
 

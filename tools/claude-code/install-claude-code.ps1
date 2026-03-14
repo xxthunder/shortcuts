@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -30,7 +30,7 @@ $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 # Source utils library
-. "$PSScriptRoot\..\pslib\utils\utils.ps1"
+. "$PSScriptRoot\..\..\lib\utils\utils.ps1"
 
 #region Main Logic
 

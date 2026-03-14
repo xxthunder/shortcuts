@@ -5,7 +5,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 function New-WslUser {
     <#

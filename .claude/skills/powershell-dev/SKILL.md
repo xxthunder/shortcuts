@@ -11,8 +11,8 @@ Streamline PowerShell development following Shortcuts project conventions includ
 
 Before writing any PowerShell code:
 
-1. **Check pslib for existing utilities** - Search `tools/pslib/` for similar functionality
-   - Read library files in `tools/pslib/utils/` and `tools/pslib/wsl/`
+1. **Check lib for existing utilities** - Search `lib/` for similar functionality
+   - Read library files in `lib/utils/` and `lib/wsl/`
    - Check function documentation (synopsis and examples)
    - Look at test files (`*.Tests.ps1`) for usage patterns
    - See [pslib-quick-reference.md](references/pslib-quick-reference.md) for available functions
@@ -28,8 +28,8 @@ Before writing any PowerShell code:
 Create the test file before implementation:
 
 ```powershell
-# For new function in tools/pslib/utils/utils.ps1
-# Create: tools/pslib/utils.Tests.ps1 (or edit existing)
+# For new function in lib/utils/utils.ps1
+# Create: lib/utils/utils.Tests.ps1 (or edit existing)
 
 Describe "New-FunctionName" {
     Context "When given valid input" {
@@ -83,7 +83,7 @@ $ErrorActionPreference = 'Stop'
 $InformationPreference = 'Continue'
 
 # Source dependencies if needed
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 # Helper functions (private to script)
 function Private-Helper {
@@ -145,7 +145,7 @@ This step is **not optional** — the pre-commit hook will block commits with li
 - Wrap main logic in try/catch
 
 **External Commands:**
-- Always use `Invoke-CommandLine` from pslib
+- Always use `Invoke-CommandLine` from lib
 - Never use direct command execution
 
 ```powershell
@@ -209,11 +209,11 @@ Avoid PowerShell 6.0+ features:
 
 ## Common Tasks
 
-### Creating a New Function in pslib
+### Creating a New Function in lib
 
 1. Check if similar function exists
 2. Write tests in appropriate `*.Tests.ps1` file
-3. Implement function in `tools/pslib/utils/utils.ps1` or `tools/pslib/wsl/wsl.ps1`
+3. Implement function in `lib/utils/utils.ps1` or `lib/wsl/wsl.ps1`
 4. Run unit tests
 5. Commit test and implementation together
 

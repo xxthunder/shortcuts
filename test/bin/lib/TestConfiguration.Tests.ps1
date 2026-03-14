@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.7.1'}
 
 Describe "Test Configuration Logic" {
@@ -36,17 +36,19 @@ Describe "Test Configuration Logic" {
 
     Context "Get-TestConfiguration Path Resolution" {
 
-        It "Should use default paths 'tools', 'test', and 'bin' when TestPath is empty" {
+        It "Should use default paths 'tools', 'test', 'bin', and 'lib' when TestPath is empty" {
             Write-Output "RepoRoot: $script:TestRepoRoot"
-            # We need to ensure tools/test/bin exist in our dummy root for this to pass validation
+            # We need to ensure tools/test/bin/lib exist in our dummy root for this to pass validation
             New-Item -ItemType Directory -Path "$script:TestRepoRoot\test" -Force | Out-Null
             New-Item -ItemType Directory -Path "$script:TestRepoRoot\bin" -Force | Out-Null
+            New-Item -ItemType Directory -Path "$script:TestRepoRoot\lib" -Force | Out-Null
 
             $config = Get-TestConfiguration -TestPath @() -RepoRoot $script:TestRepoRoot
 
             $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\tools"
             $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\test"
             $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\bin"
+            $config.OriginalPaths | Should -Contain "$script:TestRepoRoot\lib"
         }
 
         It "Should resolve relative paths against RepoRoot" {

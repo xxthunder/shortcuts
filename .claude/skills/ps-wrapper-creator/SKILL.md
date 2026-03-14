@@ -46,7 +46,7 @@ pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
 ### Example Structure
 
 ```
-tools/pslib/wsl/
+tools/wsl-manager/
 ├── wsl-manager.ps1      # PowerShell script
 └── wsl-manager.bat      # Wrapper
 ```
@@ -161,7 +161,7 @@ function New-BatWrappersForDirectory {
 }
 
 # Usage
-New-BatWrappersForDirectory -Directory ".\tools\pslib\wsl"
+New-BatWrappersForDirectory -Directory ".\tools\wsl-manager"
 ```
 
 ## When to Create Wrappers

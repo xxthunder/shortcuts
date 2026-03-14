@@ -93,6 +93,6 @@ param(
     [string]$Password = ""
 )
 
-. "$PSScriptRoot\lib\manager.ps1"
+. "$PSScriptRoot\..\..\lib\wsl\manager.ps1"
 
 Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password

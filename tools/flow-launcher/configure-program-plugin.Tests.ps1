@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -8,7 +8,7 @@
 BeforeAll {
     # Source the script under test
     . "$PSScriptRoot\configure-program-plugin.ps1"
-    . "$PSScriptRoot\..\pslib\utils\utils.ps1"
+    . "$PSScriptRoot\..\..\lib\utils\utils.ps1"
 }
 
 Describe "Get-ProgramPluginSettingsPath" {

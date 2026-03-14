@@ -44,7 +44,7 @@ $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
 # Source utils library
-. "$PSScriptRoot\..\pslib\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 #region Main Logic
 

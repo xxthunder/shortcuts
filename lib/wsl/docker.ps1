@@ -4,7 +4,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 function Test-WslDockerInstalled {
     <#
@@ -254,7 +254,7 @@ Then run setup-docker again.
 
         # Execute bash installation script
         Write-Information "Executing Docker installation script..."
-        $scriptPath = Join-Path $PSScriptRoot "..\scripts\install-docker.sh"
+        $scriptPath = Join-Path $PSScriptRoot "scripts\install-docker.sh"
 
         $scriptArgs = @(
             "--distro-id=$distroId",

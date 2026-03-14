@@ -11,7 +11,7 @@ BeforeAll {
 
     # Source setProxy.ps1 in library mode so its functions exist for mocking
     $env:SETPROXY_LIBRARY_MODE = '1'
-    . "$PSScriptRoot\..\..\..\proxy\setProxy.ps1"
+    . "$PSScriptRoot\..\..\tools\proxy\setProxy.ps1"
 }
 
 AfterAll {

@@ -28,10 +28,10 @@ This document defines the core principles for developing the Shortcuts project. 
 
 ### II. Library-First Architecture
 
-**All reusable functionality MUST be implemented as library functions in `tools/pslib/`.**
+**All reusable functionality MUST be implemented as library functions in `lib/`.**
 
 - Library functions MUST be self-contained and independently testable
-- Before writing new code, MUST check existing library functions in `tools/pslib/utils/` and `tools/pslib/wsl/`
+- Before writing new code, MUST check existing library functions in `lib/utils/` and `lib/wsl/`
 - Executable scripts MUST have `.bat` wrapper for command-line accessibility
 - External command execution MUST use `Invoke-CommandLine` from pslib
 
@@ -78,7 +78,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **Don't Repeat Yourself - reuse existing code and patterns.**
 
-- MUST check `tools/pslib/` for existing functionality before implementing
+- MUST check `lib/` for existing functionality before implementing
 - MUST extract common patterns into library functions
 - MUST follow SOLID principles in code design
 - MUST avoid duplicating functionality across scripts
@@ -105,7 +105,7 @@ This document defines the core principles for developing the Shortcuts project. 
 **All code changes MUST follow this workflow:**
 
 1. **Update Backlog (Start)**: Move the backlog item to IN PROGRESS and check off any acceptance criteria that are already met
-2. **Research**: Check if functionality exists in `tools/pslib/` or other scripts
+2. **Research**: Check if functionality exists in `lib/` or other scripts
 3. **Design**: Plan the script structure and identify reusable components
 4. **Test First**: Write Pester tests before implementation (Red phase)
 5. **Implement**: Write the PowerShell script following guidelines (Green phase)
@@ -163,7 +163,7 @@ powershell -File ".\test\bin\testrunner.ps1"
 
 For detailed technical implementation guidance:
 - `AGENTS.md` - Project-wide development guidelines
-- `tools/pslib/AGENTS.md` - PowerShell library-specific guidance
+- `lib/AGENTS.md` - PowerShell library-specific guidance
 - `README.md` - User-facing installation and usage documentation
 
 ---

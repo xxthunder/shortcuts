@@ -17,7 +17,7 @@ pwsh -File ".\test\bin\testrunner.ps1" -Coverage
 powershell -File ".\test\bin\testrunner.ps1"
 
 # Running specific test files
-pwsh -Command "Invoke-Pester -Path '.\tools\pslib\utils.Tests.ps1'"
+pwsh -Command "Invoke-Pester -Path '.\lib\utils\utils.Tests.ps1'"
 ```
 
 ### Incorrect Usage (Will Fail)
@@ -90,10 +90,10 @@ pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage
 pwsh -File ".\test\bin\testrunner.ps1" -Integration -Coverage
 
 # Specific test file (PowerShell 7.x)
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
+pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 
 # Specific test file (PowerShell 5.1)
-powershell -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
+powershell -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 
 # Run linter checks
 pwsh -File ".\test\bin\linter.Tests.ps1"

@@ -20,10 +20,12 @@ This document provides technical guidelines for AI agents working on the Shortcu
 
 - `bin/`: Installation and update scripts
 - `config/`: Configuration files
-- `tools/`: Tool-specific utilities and installers
-- `tools/pslib/`: Shared PowerShell library (reusable functions)
+- `lib/`: Shared PowerShell library (reusable functions)
   - `utils/`: Utility functions (`utils.ps1`)
-  - `wsl/`: WSL-specific functions and tools (`wsl.ps1`, `wsl-manager.ps1`, etc.)
+  - `wsl/`: WSL-specific functions (`wsl.ps1`, etc.)
+  - `install/`: Installation utilities
+- `tools/`: Tool-specific utilities and installers
+  - `wsl-manager/`: WSL Manager entry point and integration tests
 - `links/`: Keypirinha link definitions (.url files)
 - `test/`: Test files and test utilities
 - `.bootstrap/`: Bootstrap system for initial setup
@@ -37,7 +39,7 @@ This allows scripts to be executed directly from the command line or Keypirinha 
 **Example:**
 
 ```text
-tools/pslib/wsl/
+tools/wsl-manager/
 ├── wsl-manager.ps1      # The actual PowerShell script
 └── wsl-manager.bat      # Wrapper that calls: pwsh -ExecutionPolicy Bypass -File %~dp0wsl-manager.ps1 %*
 ```
@@ -84,11 +86,11 @@ When working with PowerShell code in this project, follow these guidelines:
 
 #### 1. Use Existing Library Functions
 
-**Before writing any new code, ALWAYS check `tools/pslib/` for existing utilities.**
+**Before writing any new code, ALWAYS check `lib/` for existing utilities.**
 
 To discover available functions:
 
-1. **Read the library files** in `tools/pslib/utils/` and `tools/pslib/wsl/` (e.g., `utils.ps1`, `wsl.ps1`, `wsl-manager.ps1`)
+1. **Read the library files** in `lib/utils/` and `lib/wsl/` (e.g., `utils.ps1`, `wsl.ps1`)
 2. **Check function documentation** - Each function has synopsis and examples
 3. **Look at test files** (`*.Tests.ps1`) to see usage patterns
 4. **Use Get-Help** after sourcing the library: `Get-Help Invoke-CommandLine -Full`
@@ -104,14 +106,14 @@ To discover available functions:
 
 ```powershell
 # Source the library
-. "$PSScriptRoot\tools\pslib\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 # Use library functions
 Invoke-CommandLine -Command "scoop install nodejs" -StopAtError
 New-Directory -Path "C:\Tools\MyApp"
 ```
 
-> **Important:** If you need functionality that seems common (file operations, command execution, user prompts), it likely already exists in pslib. Check first!
+> **Important:** If you need functionality that seems common (file operations, command execution, user prompts), it likely already exists in lib/. Check first!
 
 #### 2. Error Handling
 
@@ -134,7 +136,7 @@ This applies only to `.ps1` files. Other file types (`.sh`, `.yml`, `.json`, `.m
 
 #### 4. Environment Awareness
 
-Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `tools/pslib/utils/utils.ps1`:
+Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `lib/utils/utils.ps1`:
 
 ```powershell
 if (Test-RunningInCIorTestEnvironment) {
@@ -196,11 +198,11 @@ Write-Success "Installation complete"
 
 #### 7. External Commands
 
-**Always use `Invoke-CommandLine` from pslib for executing external commands.** This ensures consistent error handling and proper output capture.
+**Always use `Invoke-CommandLine` from lib for executing external commands.** This ensures consistent error handling and proper output capture.
 
 ```powershell
 # Source the library first
-. "$PSScriptRoot\tools\pslib\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 # Check if command exists
 if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
@@ -293,7 +295,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Source dependencies
-. "$PSScriptRoot\tools\pslib\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 # Helper functions
 function Private-Helper {
@@ -383,7 +385,7 @@ This function exists solely to prevent interactive prompts (`Read-Host`) in CI/t
 environments. Mocking it to `$false` defeats its purpose. Tests that need to exercise
 non-interactive code paths must provide explicit parameters that bypass the guard.
 
-See `tools/pslib/AGENTS.md` for additional testing guidelines
+See `lib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations
 
@@ -391,8 +393,8 @@ See `tools/pslib/AGENTS.md` for additional testing guidelines
 
 - `bin/`: Installation and update scripts
 - `config/`: Configuration files
+- `lib/`: Shared PowerShell library
 - `tools/`: Tool-specific utilities and installers
-- `tools/pslib/`: Shared PowerShell library
 - `links/`: Keypirinha link definitions
 - `test/`: Test files and test utilities
 
@@ -513,7 +515,7 @@ Agent: *uses EnterPlanMode to explore architecture, understand relationships,
 
 #### When Implementing New Functionality
 
-1. **Research**: Check if similar functionality exists in `tools/pslib/` or other scripts
+1. **Research**: Check if similar functionality exists in `lib/` or other scripts
 2. **Design**: Plan the script structure and identify reusable components
 3. **Test First**: Write Pester tests before implementation (TDD)
 4. **Implement**: Write the PowerShell script following guidelines
@@ -538,19 +540,19 @@ Agent: *uses EnterPlanMode to explore architecture, understand relationships,
 
 ```bash
 # 1. Modify the test to expect new behavior
-Edit tools/pslib/wsl.Tests.ps1  # Update parameter filter
+Edit lib/wsl/wsl.Tests.ps1  # Update parameter filter
 
 # 2. Run tests - should FAIL
 pwsh -File ".\test\bin\testrunner.ps1" -Unit  # Expected: 1 failure
 
 # 3. Update implementation
-Edit tools/pslib/wsl/wsl.ps1  # Change the command
+Edit lib/wsl/wsl.ps1  # Change the command
 
 # 4. Run tests - should PASS
 pwsh -File ".\test\bin\testrunner.ps1" -Unit  # Expected: all pass
 
 # 5. Commit both together
-git add tools/pslib/wsl/wsl.ps1 tools/pslib/wsl.Tests.ps1
+git add lib/wsl/wsl.ps1 lib/wsl/wsl.Tests.ps1
 git commit -m "refactor: update Get-WslDistroType command"
 ```
 
@@ -592,8 +594,7 @@ For core development principles and quality gates:
 
 For detailed PowerShell library guidelines:
 
-- `tools/pslib/AGENTS.md`: In-depth PowerShell development guide
-- `tools/pslib/CLAUDE.md`: Library-specific Claude instructions
+- `lib/AGENTS.md`: In-depth PowerShell development guide
 
 For project documentation:
 

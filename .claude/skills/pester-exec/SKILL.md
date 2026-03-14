@@ -27,7 +27,7 @@ pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage
 pwsh -File ".\test\bin\testrunner.ps1" -Integration -Coverage
 
 # Specific test path
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "tools\pslib\utils\utils.Tests.ps1"
+pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 
 # PowerShell 5.1 compatibility
 powershell -File ".\test\bin\testrunner.ps1" -Unit

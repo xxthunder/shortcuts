@@ -210,7 +210,7 @@ See `assets/shortcut-template.url` for a template file.
 ```powershell
 #Requires -Version 5.1
 
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

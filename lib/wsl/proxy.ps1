@@ -4,7 +4,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 function Install-WslProxy {
     <#
@@ -51,7 +51,7 @@ function Install-WslProxy {
     $originalErrorActionPreference = $ErrorActionPreference
     try {
         $env:SETPROXY_LIBRARY_MODE = '1'
-        . "$PSScriptRoot\..\..\..\proxy\setProxy.ps1"
+        . "$PSScriptRoot\..\..\tools\proxy\setProxy.ps1"
     }
     finally {
         $ErrorActionPreference = $originalErrorActionPreference
@@ -168,7 +168,7 @@ Then run setup-proxy again.
     Write-Information ""
 
     try {
-        $scriptPath = Join-Path $PSScriptRoot "..\scripts\setup-proxy.sh"
+        $scriptPath = Join-Path $PSScriptRoot "scripts\setup-proxy.sh"
 
         if ($isDirect) {
             $scriptArgs = @(

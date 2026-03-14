@@ -4,7 +4,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 function Remove-WslDistro {
     <#

@@ -6,7 +6,7 @@ Guide for writing scripts that work correctly in both CI and interactive environ
 
 ### Test-RunningInCIorTestEnvironment
 
-Located in: `tools/pslib/utils/utils.ps1`
+Located in: `lib/utils/utils.ps1`
 
 Automatically detects:
 - CI environment variables (CI, GITHUB_ACTIONS, TF_BUILD, etc.)
@@ -14,7 +14,7 @@ Automatically detects:
 
 Usage:
 ```powershell
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 if (Test-RunningInCIorTestEnvironment) {
     # Non-interactive path
@@ -142,7 +142,7 @@ pwsh -File script.ps1
 ### Installation Script
 
 ```powershell
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -176,7 +176,7 @@ try {
 ### Configuration Script
 
 ```powershell
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 if (Test-RunningInCIorTestEnvironment) {
     $config = @{

@@ -7,7 +7,7 @@
 #>
 
 # Source dependencies
-. "$PSScriptRoot\..\..\utils\utils.ps1"
+. "$PSScriptRoot\..\utils\utils.ps1"
 
 # Source all WSL modules
 . "$PSScriptRoot\core.ps1"

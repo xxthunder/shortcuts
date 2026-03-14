@@ -1,6 +1,6 @@
-# pslib Quick Reference
+# lib Quick Reference
 
-Quick reference for commonly used functions in the PowerShell library (`tools/pslib/`).
+Quick reference for commonly used functions in the PowerShell library (`lib/`).
 
 ## Command Execution
 
@@ -8,7 +8,7 @@ Quick reference for commonly used functions in the PowerShell library (`tools/ps
 
 Execute external commands with proper error handling and output capture.
 
-**Location:** `tools/pslib/utils/utils.ps1`
+**Location:** `lib/utils/utils.ps1`
 
 **Usage:**
 ```powershell
@@ -39,7 +39,7 @@ Invoke-CommandLine -Command "npm install" -PrintCommand
 
 Detect if running in CI or test environment.
 
-**Location:** `tools/pslib/utils/utils.ps1`
+**Location:** `lib/utils/utils.ps1`
 
 **Usage:**
 ```powershell
@@ -62,7 +62,7 @@ if (Test-RunningInCIorTestEnvironment) {
 
 Get user confirmation in interactive mode, auto-confirm in CI/test mode.
 
-**Location:** `tools/pslib/utils/utils.ps1`
+**Location:** `lib/utils/utils.ps1`
 
 **Usage:**
 ```powershell
@@ -87,7 +87,7 @@ $proceed = Get-UserConfirmation `
 
 Create directory if it doesn't exist.
 
-**Location:** `tools/pslib/utils/utils.ps1`
+**Location:** `lib/utils/utils.ps1`
 
 **Usage:**
 ```powershell
@@ -101,7 +101,7 @@ New-Directory -Path (Join-Path $PSScriptRoot "output")
 
 Get the type of a WSL distribution.
 
-**Location:** `tools/pslib/wsl/wsl.ps1`
+**Location:** `lib/wsl/wsl.ps1`
 
 **Usage:**
 ```powershell
@@ -113,7 +113,7 @@ $type = Get-WslDistroType -DistroName "Ubuntu"
 
 Check if a WSL distribution exists.
 
-**Location:** `tools/pslib/wsl/wsl.ps1`
+**Location:** `lib/wsl/wsl.ps1`
 
 **Usage:**
 ```powershell
@@ -126,7 +126,7 @@ if (Test-WslDistroExists -DistroName "Ubuntu") {
 
 Get IP address of a running WSL distribution.
 
-**Location:** `tools/pslib/wsl/wsl.ps1`
+**Location:** `lib/wsl/wsl.ps1`
 
 **Usage:**
 ```powershell
@@ -142,13 +142,13 @@ Always source the library before using its functions:
 
 ```powershell
 # From repository root
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
-# From subdirectory
-. "$PSScriptRoot\..\tools\pslib\utils\utils.ps1"
+# From subdirectory (one level deep)
+. "$PSScriptRoot\..\lib\utils\utils.ps1"
 
 # WSL functions
-. "$PSScriptRoot\tools\pslib\wsl\wsl.ps1"
+. "$PSScriptRoot\lib\wsl\wsl.ps1"
 ```
 
 ### Error Handling Pattern
@@ -157,7 +157,7 @@ Always source the library before using its functions:
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 try {
     Invoke-CommandLine -Command "dangerous-operation" -StopAtError
@@ -170,7 +170,7 @@ try {
 ### CI-Aware Script Pattern
 
 ```powershell
-. "$PSScriptRoot\tools\pslib\utils\utils.ps1"
+. "$PSScriptRoot\lib\utils\utils.ps1"
 
 if (Test-RunningInCIorTestEnvironment) {
     # Automated path
@@ -193,15 +193,15 @@ if ($confirm) {
 To find more functions:
 
 1. **Read the source files:**
-   - `tools/pslib/utils/utils.ps1`
-   - `tools/pslib/wsl/wsl.ps1`
+   - `lib/utils/utils.ps1`
+   - `lib/wsl/wsl.ps1`
 
 2. **Check test files for usage examples:**
-   - `tools/pslib/utils.Tests.ps1`
-   - `tools/pslib/wsl.Tests.ps1`
+   - `lib/utils/utils.Tests.ps1`
+   - `lib/wsl/wsl.Tests.ps1`
 
 3. **Use Get-Help:**
    ```powershell
-   . .\tools\pslib\utils\utils.ps1
+   . .\lib\utils\utils.ps1
    Get-Help Invoke-CommandLine -Full
    ```

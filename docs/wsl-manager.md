@@ -33,13 +33,13 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 **Interactive menu** — launch and follow the on-screen prompts:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1
+.\tools\wsl-manager\wsl-manager.ps1
 ```
 
 **CLI mode** — run commands directly:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 <command> <distro>
+.\tools\wsl-manager\wsl-manager.ps1 <command> <distro>
 ```
 
 ---
@@ -51,21 +51,21 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 Install a new WSL distribution from Microsoft Store or the web.
 
 - **Menu**: `[I] Install new distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 install <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install <distro>`
 
 ### Clone Distribution
 
 Export and re-import a distribution under a new name. The source must be stopped.
 
 - **Menu**: `[C] Clone distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 clone <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 clone <distro>`
 
 ### Update Distribution
 
 Update all packages to latest versions (apt-based distributions).
 
 - **Menu**: `[U] Update distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 update <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 update <distro>`
 
 ### Setup User Account
 
@@ -74,7 +74,7 @@ Create a non-root user with sudo privileges and set as default user.
 > **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
 
 - **Menu**: `[S] Setup user account`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-user <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-user <distro>`
 
 This command:
 - Creates the user with a home directory
@@ -86,7 +86,7 @@ This command:
 Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
 
 - **Menu**: `[X] Setup proxy`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
 
@@ -95,7 +95,7 @@ See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkt
 Install Docker Engine with automatic prerequisite configuration.
 
 - **Menu**: `[D] Setup Docker`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-docker <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-docker <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
 
@@ -104,7 +104,7 @@ See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkt
 Install rootless Podman as a Docker alternative.
 
 - **Menu**: `[P] Setup Podman`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
 
@@ -113,21 +113,21 @@ See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkt
 Unregister a distribution (with confirmation prompt in interactive mode).
 
 - **Menu**: `[R] Remove distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 remove <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
 
 ### Terminate Distribution
 
 Gracefully shut down a running distribution.
 
 - **Menu**: `[T] Terminate distribution`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 terminate <distro>`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 terminate <distro>`
 
 ### Shutdown WSL
 
 Shut down the entire WSL subsystem including all running distributions and the WSL2 VM. Use this to apply changes to `%USERPROFILE%\.wslconfig`.
 
 - **Menu**: `[H] Shutdown WSL`
-- **CLI**: `.\tools\pslib\wsl\wsl-manager.ps1 shutdown`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
 
 This command:
 - Lists any running distributions before shutting down (so you know what will be stopped)
@@ -164,7 +164,7 @@ Choose one container runtime per distribution. They cannot coexist in the same W
 
 ### Step-by-Step Walkthrough
 
-> **Tip:** Steps 2 onwards can be run via the interactive menu (`.\tools\pslib\wsl\wsl-manager.ps1`) or as the CLI commands shown below. Both are equivalent.
+> **Tip:** Steps 2 onwards can be run via the interactive menu (`.\tools\wsl-manager\wsl-manager.ps1`) or as the CLI commands shown below. Both are equivalent.
 
 #### Step 1: Configure WSL Global Settings
 
@@ -186,7 +186,7 @@ autoProxy=true
 Then restart WSL to apply:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 shutdown
+.\tools\wsl-manager\wsl-manager.ps1 shutdown
 ```
 
 #### Step 2: Install WSL Distribution
@@ -194,7 +194,7 @@ Then restart WSL to apply:
 Ubuntu 24.04 LTS is recommended — long-term support, excellent WSL compatibility, and well-tested Docker/Podman support.
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 install Ubuntu-24.04
+.\tools\wsl-manager\wsl-manager.ps1 install Ubuntu-24.04
 ```
 
 #### Step 3: Setup User Account
@@ -204,7 +204,7 @@ Create a non-root user with sudo privileges (required for both Docker and Podman
 > **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
+.\tools\wsl-manager\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
 ```
 
 #### Step 4: Configure Proxy (Corporate Networks)
@@ -212,7 +212,7 @@ Create a non-root user with sudo privileges (required for both Docker and Podman
 If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures that package management (APT), Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-proxy Ubuntu-24.04
+.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04
 ```
 
 The command auto-detects your proxy configuration:
@@ -236,7 +236,7 @@ No prerequisite steps are needed — proxy detection is fully self-contained.
 #### Step 5: Update Distribution
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 update Ubuntu-24.04
+.\tools\wsl-manager\wsl-manager.ps1 update Ubuntu-24.04
 ```
 
 This runs `apt-get update && apt-get upgrade -y` inside the distribution.
@@ -336,7 +336,7 @@ With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can 
 If you want to keep a clean base Ubuntu-24.04 and create a dedicated DevContainer distribution:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon
+.\tools\wsl-manager\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon
 ```
 
 **Why clone?** Keep a pristine base for other projects, quickly create new environments, safely experiment without affecting your base.
@@ -348,7 +348,7 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 ##### Option A: Docker
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-docker ubuntu-devcon
+.\tools\wsl-manager\wsl-manager.ps1 setup-docker ubuntu-devcon
 ```
 
 **What this configures automatically:**
@@ -380,7 +380,7 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 ###### Install Podman
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-podman ubuntu-devcon
+.\tools\wsl-manager\wsl-manager.ps1 setup-podman ubuntu-devcon
 ```
 
 **What this configures automatically:**
@@ -676,7 +676,7 @@ wsl --distribution Ubuntu-24.04
 **Solution:** Re-run the idempotent Docker setup to migrate to kernel-level binfmt.d configuration:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 setup-docker Ubuntu-24.04
+.\tools\wsl-manager\wsl-manager.ps1 setup-docker Ubuntu-24.04
 ```
 
 This detects existing Docker (no reinstall), migrates from old rc.local to `/etc/binfmt.d/WSLInterop.conf` if needed, and verifies all components.
@@ -771,7 +771,7 @@ source ~/.bashrc
 **Solution:** Verify `%USERPROFILE%\.wslconfig` contains the `kernelCommandLine` from [Step 1](#step-1-configure-wsl-global-settings), then restart WSL:
 
 ```powershell
-.\tools\pslib\wsl\wsl-manager.ps1 shutdown
+.\tools\wsl-manager\wsl-manager.ps1 shutdown
 ```
 
 #### Mount Propagation Warnings
@@ -785,7 +785,7 @@ grep "mount --make-rshared" /etc/wsl.conf
 # Expected: command=mount --make-rshared /
 ```
 
-If missing, re-run `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <DistroName>` to repair.
+If missing, re-run `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <DistroName>` to repair.
 
 #### Docker Already Installed (Mutual Exclusion)
 
@@ -802,22 +802,24 @@ If missing, re-run `.\tools\pslib\wsl\wsl-manager.ps1 setup-podman <DistroName>`
 ### Module Structure
 
 ```
-tools/pslib/wsl/
+tools/wsl-manager/
 ├── wsl-manager.ps1            # Entry point (params + bootstrapping)
 ├── wsl-manager.bat            # Batch wrapper for Keypirinha
-├── wsl-manager.docker.Integration.Tests.ps1
-├── wsl-manager.podman.Integration.Tests.ps1
-├── lib/
-│   ├── wsl.ps1                # Main library (dot-sources all modules)
-│   ├── commands.ps1           # CLI dispatch, interactive menu & workflows
-│   ├── core.ps1               # List, get distro info, type detection
-│   ├── docker.ps1             # Docker installation & verification
-│   ├── exec.ps1               # Script execution in WSL
-│   ├── install.ps1            # Clone, remove operations
-│   ├── ops.ps1                # Update, state, terminate operations
-│   ├── podman.ps1             # Podman installation & verification
-│   ├── proxy.ps1              # Proxy configuration
-│   └── user.ps1               # User account creation & configuration
+├── wsl.Integration.Tests.ps1
+├── manager.docker.Integration.Tests.ps1
+└── manager.podman.Integration.Tests.ps1
+
+lib/wsl/
+├── wsl.ps1                    # Main library (dot-sources all modules)
+├── commands.ps1               # CLI dispatch, interactive menu & workflows
+├── core.ps1                   # List, get distro info, type detection
+├── docker.ps1                 # Docker installation & verification
+├── exec.ps1                   # Script execution in WSL
+├── install.ps1                # Clone, remove operations
+├── ops.ps1                    # Update, state, terminate operations
+├── podman.ps1                 # Podman installation & verification
+├── proxy.ps1                  # Proxy configuration
+├── user.ps1                   # User account creation & configuration
 └── scripts/
     ├── install-docker.sh      # Docker Engine installation script
     ├── install-podman.sh      # Rootless Podman installation script
@@ -827,7 +829,7 @@ tools/pslib/wsl/
 ### Library Usage
 
 All WSL Manager functionality is also available as PowerShell functions for scripting.
-See `tools/pslib/wsl/wsl.ps1` for the full library API.
+See `lib/wsl/wsl.ps1` for the full library API.
 
 ### Configuration Files
 
