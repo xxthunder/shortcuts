@@ -18,10 +18,17 @@ Guide for creating conventional commits with mandatory pre-commit checks.
    - All tests must pass
    - If any fail, fix them before committing
 
-2. **Run integration tests** (if you modified integration points)
+2. **Run integration tests** when ANY of the following apply:
+   - Moved, renamed, or changed import/source paths in `*.Integration.Tests.ps1` files
+   - Modified library files that integration tests dot-source (e.g., `commands.ps1`, `wsl.ps1`, `ops.ps1`)
+   - Changed the dot-source chain that loads functions used by integration tests
+   - Refactored directory structure affecting test file locations or relative paths
+   - Fixed a bug that was caught or verified by integration tests
+   - Investigating whether a refactor broke an existing fix — always run integration tests to verify
    ```bash
    pwsh -File ".\test\bin\testrunner.ps1" -Integration
    ```
+   **Rule of thumb:** If the change touches anything in the dependency chain of an integration test — run them. When in doubt, run them.
 
 3. **Verify linting** (runs automatically with tests)
    - PSScriptAnalyzer checks run with test suite
@@ -210,7 +217,7 @@ git show HEAD --stat
 pwsh -File ".\test\bin\testrunner.ps1" -Unit
 
 # 4. Stage changes
-git add tools/pslib/utils.ps1 tools/pslib/utils.Tests.ps1
+git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
 
 # 5. Commit
 git commit -m "$(cat <<'EOF'
