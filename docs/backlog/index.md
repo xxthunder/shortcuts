@@ -12,7 +12,6 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
-- [SC-015 — Reorganize project structure: separate tools from libraries](in_progress/sc-015.md)
 
 ### TODO
 - [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
@@ -20,8 +19,10 @@
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
+- [SC-022 — Make generic skills reusable across repositories](todo/sc-022.md)
 
 ### Done
+- [SC-015 — Reorganize project structure: separate tools from libraries](done/sc-015.md)
 - [SC-021 — Apply default WSL global settings (.wslconfig) via wsl-manager](done/sc-021.md)
 - [SC-005 — Refactor WSL Manager command dispatch (DRY)](done/sc-005.md)
 - [SC-019 — Allow model selection via @claude trigger phrase](done/sc-019.md)
