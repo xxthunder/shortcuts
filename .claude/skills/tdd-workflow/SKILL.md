@@ -1,11 +1,11 @@
 ---
 name: tdd-workflow
-description: Guide test-driven development workflow for PowerShell code in this project. Use when: (1) Implementing new features or functions, (2) Modifying existing functions, (3) Fixing bugs, (4) Refactoring code. This skill provides the Red-Green-Refactor cycle workflow and ensures tests and implementation are always committed together.
+description: Guide test-driven development workflow. Use when: (1) Implementing new features or functions, (2) Modifying existing functions, (3) Fixing bugs, (4) Refactoring code. This skill provides the Red-Green-Refactor cycle workflow and ensures tests and implementation are always committed together.
 ---
 
 # TDD Workflow
 
-Step-by-step test-driven development workflow for PowerShell code following Red-Green-Refactor principles.
+Step-by-step test-driven development workflow following Red-Green-Refactor principles.
 
 ## The Red-Green-Refactor Cycle
 
@@ -33,34 +33,18 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
 ### For New Features
 
 1. **Write the test** (RED phase)
-   ```powershell
-   Describe "New-FeatureName" {
-       It "Should handle basic case" {
-           $result = New-FeatureName -Input "test"
-           $result | Should -Be "expected"
-       }
-   }
-   ```
+   - Create a test that describes the desired behavior
+   - Use the project's testing framework conventions
 
-2. **Run tests - confirm failure**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
-   Expected output: Test fails because function doesn't exist
+2. **Run tests - confirm failure** using the project's test execution skill (unit tests)
+   - Expected: Test fails because the function/method doesn't exist yet
 
 3. **Implement minimal code** (GREEN phase)
-   ```powershell
-   function New-FeatureName {
-       param([string]$Input)
-       return "expected"
-   }
-   ```
+   - Write the minimum code needed to make the test pass
+   - Don't optimize or add extras yet
 
-4. **Run tests - confirm pass**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
-   Expected output: Test passes
+4. **Run tests - confirm pass** using the project's test execution skill (unit tests)
+   - Expected: Test passes
 
 5. **Refactor if needed** (REFACTOR phase)
    - Improve implementation
@@ -70,8 +54,8 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
 
 6. **Commit test + implementation together**
    ```bash
-   git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
-   git commit -m "feat: add New-FeatureName function"
+   git add src/module.ext test/module.test.ext
+   git commit -m "feat: add new-feature function"
    ```
 
 ### For Modifying Existing Functions
@@ -83,52 +67,27 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
    - Identify gaps in test coverage
 
 2. **Update tests for new behavior** (RED phase)
-   ```powershell
-   It "Should handle new case" {
-       $result = Existing-Function -NewParameter "value"
-       $result | Should -Be "expected-new-behavior"
-   }
-   ```
+   - Add a test case for the new behavior or parameter
 
-3. **Run tests - confirm failure**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
-   Expected: New test fails, existing tests pass
+3. **Run tests - confirm failure** using the project's test execution skill (unit tests)
+   - Expected: New test fails, existing tests pass
 
 4. **Update implementation** (GREEN phase)
-   ```powershell
-   function Existing-Function {
-       param(
-           [string]$OldParameter,
-           [string]$NewParameter  # New parameter
-       )
-       
-       # Updated logic
-   }
-   ```
+   - Modify the function to satisfy the new test
 
-5. **Run tests - confirm all pass**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
-   Expected: All tests pass
+5. **Run tests - confirm all pass** using the project's test execution skill (unit tests)
+   - Expected: All tests pass (old and new)
 
 6. **Commit test + implementation together**
    ```bash
-   git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
-   git commit -m "feat: add NewParameter to Existing-Function"
+   git add src/module.ext test/module.test.ext
+   git commit -m "feat: add new-parameter to existing-function"
    ```
 
 ### For Bug Fixes
 
 1. **Write test that reproduces the bug** (RED phase)
-   ```powershell
-   It "Should handle edge case that was failing" {
-       $result = Function-With-Bug -EdgeCase "value"
-       $result | Should -Be "correct-behavior"
-   }
-   ```
+   - Create a test that exercises the failing edge case
 
 2. **Run test - confirm it fails**
    - Test should fail, demonstrating the bug
@@ -137,48 +96,17 @@ Step-by-step test-driven development workflow for PowerShell code following Red-
    - Modify implementation to pass the new test
    - Ensure existing tests still pass
 
-4. **Run all tests**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
+4. **Run all tests** using the project's test execution skill (unit tests)
 
 5. **Commit test + fix together**
    ```bash
-   git add file.ps1 file.Tests.ps1
-   git commit -m "fix: handle edge case in Function-With-Bug"
+   git add src/module.ext test/module.test.ext
+   git commit -m "fix: handle edge case in function-with-bug"
    ```
 
-## Quick Reference Commands
+## Running Tests
 
-### Run Unit Tests (Fast Feedback Loop)
-
-```bash
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
-```
-
-### Run Integration Tests
-
-```bash
-pwsh -File ".\test\bin\testrunner.ps1" -Integration
-```
-
-### Run All Tests
-
-```bash
-pwsh -File ".\test\bin\testrunner.ps1"
-```
-
-### Run Tests with Coverage
-
-```bash
-pwsh -File ".\test\bin\testrunner.ps1" -Unit -Coverage
-```
-
-### Run Specific Test File
-
-```bash
-pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
-```
+Use the project's test execution skill for all test execution — unit tests, integration tests, coverage, and specific test files. The test execution skill knows the project-specific commands and options.
 
 ## TDD Best Practices
 
@@ -201,14 +129,10 @@ pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 6. **Writing too much code** - Implement only what's needed to pass tests
 7. **Ignoring failing tests** - All tests must pass before proceeding
 
-## Example Workflow
+## Integration with Test Execution Skill
 
-See [tdd-examples.md](references/tdd-examples.md) for complete step-by-step examples from the codebase.
-
-## Integration with pester-exec Skill
-
-For detailed testing execution guidance, use the `pester-exec` skill:
-- Running tests on different PowerShell versions
-- CI/CD integration patterns  
+For detailed testing execution guidance, use the project's test execution skill:
+- Available test commands and options
+- CI/CD integration patterns
 - Troubleshooting test failures
-- Advanced Pester features
+- Advanced testing features

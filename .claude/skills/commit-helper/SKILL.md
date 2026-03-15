@@ -1,6 +1,6 @@
 ---
 name: commit-helper
-description: Guide conventional commit creation with mandatory pre-commit checks for the Shortcuts project. Use when: (1) Creating commits, (2) Running pre-commit checks, (3) Following conventional commit format, (4) Ensuring tests pass before commit, (5) Co-authoring with AI (Claude Code).
+description: Guide conventional commit creation with mandatory pre-commit checks. Use when: (1) Creating commits, (2) Running pre-commit checks, (3) Following conventional commit format, (4) Ensuring tests pass before commit, (5) Co-authoring with AI (Claude Code).
 ---
 
 # Commit Helper
@@ -11,27 +11,19 @@ Guide for creating conventional commits with mandatory pre-commit checks.
 
 **Before every commit, you MUST:**
 
-1. **Run unit tests**
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Unit
-   ```
+1. **Run unit tests** using the project's test execution skill
    - All tests must pass
    - If any fail, fix them before committing
 
-2. **Run integration tests** when ANY of the following apply:
-   - Moved, renamed, or changed import/source paths in `*.Integration.Tests.ps1` files
-   - Modified library files that integration tests dot-source (e.g., `commands.ps1`, `wsl.ps1`, `ops.ps1`)
-   - Changed the dot-source chain that loads functions used by integration tests
+2. **Run integration tests** (using the project's test execution skill) when ANY of the following apply:
+   - Moved, renamed, or changed import paths in integration test files (detected by case-insensitive match of "integration" in the file path relative to the project root)
+   - Modified source files that integration tests depend on
    - Refactored directory structure affecting test file locations or relative paths
    - Fixed a bug that was caught or verified by integration tests
    - Investigating whether a refactor broke an existing fix — always run integration tests to verify
-   ```bash
-   pwsh -File ".\test\bin\testrunner.ps1" -Integration
-   ```
    **Rule of thumb:** If the change touches anything in the dependency chain of an integration test — run them. When in doubt, run them.
 
-3. **Verify linting** (runs automatically with tests)
-   - PSScriptAnalyzer checks run with test suite
+3. **Verify linting** (runs automatically via the project's test execution skill)
    - Fix any Error/Warning severity issues
 
 **Never commit if:**
@@ -66,12 +58,7 @@ Must be one of:
 
 ### Scope (Optional)
 
-Component affected:
-- `pslib` - PowerShell library
-- `wsl` - WSL-related changes
-- `install` - Installation scripts
-- `test` - Test infrastructure
-- etc.
+Component affected (project-specific, e.g., `api`, `auth`, `cli`, `test`).
 
 ### Subject
 
@@ -97,10 +84,10 @@ Component affected:
 ### Simple Feature
 
 ```
-feat: add distribution validation function
+feat: add input validation function
 
-Add Test-ValidDistroName to validate WSL distribution names.
-Returns false for null or empty names.
+Add validateInput() to check user-supplied values.
+Returns false for null or empty strings.
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
@@ -108,10 +95,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ### Bug Fix
 
 ```
-fix: handle WSL distribution names with spaces
+fix: handle names with spaces in lookup
 
-Properly quote distribution name in wsl command to support
-distributions like "Ubuntu 22.04 LTS".
+Properly quote name parameter to support values containing spaces.
 
 Closes #42
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
@@ -131,9 +117,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ### Multiple Changes
 
 ```
-feat(pslib): add Silent parameter to Invoke-CommandLine
+feat(api): add silent mode to command executor
 
-- Suppresses console output when -Silent is used
+- Suppresses console output when silent flag is used
 - Useful for background operations
 - Tests updated to verify behavior
 
@@ -162,20 +148,14 @@ Co-Authored-By: GitHub Copilot <noreply@github.com>
 ### 1. Stage Changes
 
 ```bash
-git add file1.ps1 file1.Tests.ps1
+git add src/module.ext test/module.test.ext
 ```
 
 **Important:** Stage tests and implementation together!
 
 ### 2. Run Pre-Commit Checks
 
-```bash
-# Unit tests
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
-
-# Integration tests (if needed)
-pwsh -File ".\test\bin\testrunner.ps1" -Integration
-```
+Run unit tests (and integration tests if needed) using the project's test execution skill.
 
 ### 3. Create Commit
 
@@ -213,17 +193,16 @@ git show HEAD --stat
 ```bash
 # 1. Write tests
 # 2. Implement feature
-# 3. Run tests
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
+# 3. Run tests using the project's test execution skill
 
-# 4. Stage changes
-git add lib/utils/utils.ps1 lib/utils/utils.Tests.ps1
+# 4. Stage changes (tests + implementation together)
+git add src/validation.ext test/validation.test.ext
 
 # 5. Commit
 git commit -m "$(cat <<'EOF'
-feat(pslib): add input validation helper
+feat: add input validation helper
 
-Add Test-ValidInput function for common input validation patterns.
+Add validateInput function for common input validation patterns.
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 EOF
@@ -235,15 +214,14 @@ EOF
 ```bash
 # 1. Write test reproducing bug
 # 2. Fix bug
-# 3. Run tests
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
+# 3. Run tests using the project's test execution skill
 
 # 4. Stage and commit
-git add file.ps1 file.Tests.ps1
+git add src/validation.ext test/validation.test.ext
 git commit -m "$(cat <<'EOF'
 fix: handle null input in validation
 
-Add null check before string operations to prevent NullReferenceException.
+Add null check before string operations to prevent null reference error.
 
 Closes #123
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
@@ -261,7 +239,7 @@ git commit -m "docs: update installation instructions"
 ### Test Updates
 
 ```bash
-git add file.Tests.ps1
+git add test/validation.test.ext
 git commit -m "test: add coverage for edge cases"
 ```
 
@@ -286,16 +264,7 @@ See [commit-templates.md](references/commit-templates.md) for more examples.
 
 ### Tests Failing Before Commit
 
-```bash
-# Run tests to see failures
-pwsh -File ".\test\bin\testrunner.ps1" -Unit -Verbosity Detailed
-
-# Fix failing tests
-# Run tests again
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
-
-# Commit once all tests pass
-```
+Run tests using the project's test execution skill with detailed verbosity to see failures. Fix failing tests, run tests again, and commit once all tests pass.
 
 ### Forgot to Stage Tests
 
@@ -304,7 +273,7 @@ pwsh -File ".\test\bin\testrunner.ps1" -Unit
 git status
 
 # Stage missing test files
-git add *.Tests.ps1
+git add test/
 
 # Amend previous commit (if not pushed)
 git commit --amend
@@ -321,10 +290,4 @@ git commit --amend
 
 ### Need to Run Integration Tests
 
-```bash
-# Run integration tests
-pwsh -File ".\test\bin\testrunner.ps1" -Integration
-
-# If they pass, commit
-git commit -m "message"
-```
+Run integration tests using the project's test execution skill. If they pass, commit.
