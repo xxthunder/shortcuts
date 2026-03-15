@@ -122,19 +122,26 @@ Bash(pwsh -File ".\test\bin\testrunner.ps1")
 
 ## Handling Test Output
 
-### Reading Test Results
+**Prefer structured JUnit XML over console output parsing** — it avoids ANSI code issues and provides reliable, machine-readable results.
 
-```bash
-# Read JUnit XML results
-cat test/out/junit.xml
+### Recommended: JUnit XML Analysis
 
-# Read coverage report
-cat test/out/coverage.xml
+After running tests via the testrunner, read `test/out/junit.xml` with the Read tool for structured failure analysis:
+
+```text
+# Step 1: Run tests
+Bash(pwsh -File ".\test\bin\testrunner.ps1" -Unit)
+
+# Step 2: Read JUnit XML for structured results
+Read(test/out/junit.xml)
+
+# Step 3: Quick failure check — grep for <failure elements
+Grep(pattern: "<failure", path: "test/out/junit.xml")
 ```
 
-### Parsing Test Output
+### Secondary: Console Output Filtering
 
-Use bash tools (not PowerShell cmdlets) for filtering output:
+For quick checks, use bash tools (not PowerShell cmdlets) to filter console output:
 
 ```bash
 # Filter for errors using grep (bash)
@@ -142,4 +149,11 @@ pwsh -File ".\test\bin\testrunner.ps1" 2>&1 | grep -i "error"
 
 # Filter for failed tests
 pwsh -File ".\test\bin\testrunner.ps1" 2>&1 | grep -i "failed"
+```
+
+### Reading Coverage Reports
+
+```bash
+# Read coverage report
+cat test/out/coverage.xml
 ```
