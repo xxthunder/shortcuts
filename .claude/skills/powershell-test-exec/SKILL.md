@@ -1,11 +1,11 @@
 ---
-name: pester-exec
-description: Execute Pester tests for PowerShell code in this project. Use this skill when: (1) Running unit tests, (2) Running integration tests, (3) Running tests with code coverage, (4) Running tests on specific files or paths, (5) Running tests on both PowerShell 5.1 and 7.x, (6) Executing pre-commit test checks, (7) Troubleshooting test failures, or any Pester-related testing task.
+name: powershell-test-exec
+description: "This project's test execution skill. Execute Pester tests for PowerShell code. Use this skill when: (1) Running unit tests, (2) Running integration tests, (3) Running tests with code coverage, (4) Running tests on specific files or paths, (5) Running tests on both PowerShell 5.1 and 7.x, (6) Executing pre-commit test checks, (7) Troubleshooting test failures, or any testing task. Generic workflow skills (commit-helper, tdd-workflow) delegate test execution to this skill."
 ---
 
-# Pester Test Execution
+# Test Execution (Pester)
 
-Execute Pester tests for PowerShell code in this project.
+This project's test execution skill. Runs Pester tests for PowerShell code.
 
 ## Quick Reference
 

@@ -22,6 +22,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
 
 ### Done
+- [SC-022 — Make generic skills reusable across repositories](done/sc-022.md)
 - [SC-021 — Apply default WSL global settings (.wslconfig) via wsl-manager](done/sc-021.md)
 - [SC-005 — Refactor WSL Manager command dispatch (DRY)](done/sc-005.md)
 - [SC-019 — Allow model selection via @claude trigger phrase](done/sc-019.md)

@@ -183,24 +183,11 @@ Save as `script-name.bat` in the same directory.
 
 ### 6. Run Tests
 
-```bash
-# Unit tests (fast feedback)
-pwsh -File ".\test\bin\testrunner.ps1" -Unit
-
-# Integration tests (if you modified integration points)
-pwsh -File ".\test\bin\testrunner.ps1" -Integration
-
-# All tests
-pwsh -File ".\test\bin\testrunner.ps1"
-```
+Run unit tests, integration tests (if you modified integration points), and all tests using the project's `powershell-test-exec` skill.
 
 ### 7. Verify PowerShell 5.1 Compatibility
 
-Test on PowerShell 5.1:
-
-```bash
-powershell -File ".\test\bin\testrunner.ps1"
-```
+Use the project's `powershell-test-exec` skill to run tests on PowerShell 5.1.
 
 Avoid PowerShell 6.0+ features:
 - `ErrorMessage` in `ValidateScript`
@@ -241,8 +228,8 @@ Avoid PowerShell 6.0+ features:
 Before every commit:
 
 - [ ] **PSScriptAnalyzer clean on every edited `.ps1` file** (step 3 above — not optional, the pre-commit hook enforces this)
-- [ ] All unit tests pass: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
-- [ ] Integration tests pass (if modified): `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
+- [ ] All unit tests pass (use `powershell-test-exec` skill)
+- [ ] Integration tests pass if modified (use `powershell-test-exec` skill)
 - [ ] Tests and implementation committed together
 - [ ] PowerShell 5.1 compatible (no 6.0+ features)
 
