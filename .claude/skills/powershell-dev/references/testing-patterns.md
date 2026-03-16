@@ -6,8 +6,13 @@ Common testing patterns for PowerShell code in this project.
 
 ```powershell
 BeforeAll {
-    # Source the module being tested
-    . "$PSScriptRoot/utils.ps1"
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
+    . "$PSScriptRoot\utils.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe "FunctionName" {
@@ -15,15 +20,15 @@ Describe "FunctionName" {
         It "Should do behavior X" {
             # Arrange
             $input = "test"
-            
+
             # Act
             $result = FunctionName -Parameter $input
-            
+
             # Assert
             $result | Should -Be "expected"
         }
     }
-    
+
     Context "When condition B" {
         It "Should do behavior Y" {
             # Test implementation
@@ -228,17 +233,52 @@ Describe "Integration Test" {
         # Setup: Create test files, start services, etc.
         New-Item -Path "TestDrive:\test.txt" -ItemType File
     }
-    
+
     AfterAll {
         # Cleanup: Remove test files, stop services, etc.
         Remove-Item -Path "TestDrive:\test.txt" -Force
     }
-    
+
     It "Should use test file" {
         # Test implementation
     }
 }
 ```
+
+## Cross-File Test Isolation (MANDATORY)
+
+Pester runs all test files in the same PowerShell process. Functions loaded via dot-sourcing
+persist across files and cause flaky, order-dependent failures.
+
+**Every test file that dot-sources a library MUST use `Start-SutIsolation`/`Stop-SutIsolation`
+from `test/bin/lib/TestIsolation.ps1`:**
+
+```powershell
+BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
+    . "$PSScriptRoot\module.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
+}
+```
+
+`Start-SutIsolation` snapshots existing functions before dot-sourcing. `Stop-SutIsolation` removes
+any functions that were added, preventing leakage into subsequent test files.
+
+Multiple scripts can be dot-sourced after a single `Start-SutIsolation` call:
+```powershell
+Start-SutIsolation
+. "$PSScriptRoot\commands.ps1"
+. "$PSScriptRoot\manager.ps1"
+```
+
+**Why this matters:** Without cleanup, functions from file A leak into file B's test run.
+If file B mocks `Invoke-CommandLine` but doesn't mock a transitive dependency like
+`Stop-WslDistro` (which calls `Test-WslDistroRunning` → `Invoke-CommandLine`), the leaked
+real function may bypass the mock and hit the actual system.
 
 ## BeforeEach/AfterEach Pattern
 

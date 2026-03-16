@@ -3,11 +3,13 @@
 
 Describe "Test Configuration Logic" {
     BeforeAll {
+        . "$PSScriptRoot\TestIsolation.ps1"
         $libPath = Join-Path $PSScriptRoot "TestConfiguration.ps1"
         if (-not (Test-Path $libPath)) {
             Throw "Script not found at $libPath"
         }
-        . "$libPath"
+        Start-SutIsolation
+        . $libPath
 
         # Setup temporary test directory structure
         $TestDrive = Join-Path $PSScriptRoot "temp_test_structure"
@@ -32,6 +34,7 @@ Describe "Test Configuration Logic" {
         if ($script:TestRepoRoot -and (Test-Path $script:TestRepoRoot)) {
             Remove-Item $script:TestRepoRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
+        Stop-SutIsolation
     }
 
     Context "Get-TestConfiguration Path Resolution" {

@@ -31,6 +31,9 @@ param()
 
 Describe "WSL Manager Integration Tests" -Tag "Integration" {
     BeforeAll {
+        . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+        Start-SutIsolation
+
         $script:baseDistroName = "Debian"
         $script:customDistroName = "debian-custom-test"
         $script:outputCapture = @()
@@ -85,6 +88,8 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
 
         Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
+
+        Stop-SutIsolation
     }
 
     Context "Create Distribution" {

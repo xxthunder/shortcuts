@@ -7,15 +7,17 @@
 param()
 
 BeforeAll {
-    . "$PSScriptRoot\wsl.ps1"
-
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
     # Source setProxy.ps1 in library mode so its functions exist for mocking
     $env:SETPROXY_LIBRARY_MODE = '1'
+    Start-SutIsolation
+    . "$PSScriptRoot\wsl.ps1"
     . "$PSScriptRoot\..\..\tools\proxy\setProxy.ps1"
 }
 
 AfterAll {
     Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
+    Stop-SutIsolation
 }
 
 Describe "Install-WslProxy" {

@@ -396,6 +396,23 @@ This function exists solely to prevent interactive prompts (`Read-Host`) in CI/t
 environments. Mocking it to `$false` defeats its purpose. Tests that need to exercise
 non-interactive code paths must provide explicit parameters that bypass the guard.
 
+**Cross-file test isolation (MANDATORY):**
+Pester runs all test files in the same PowerShell process. Functions loaded via dot-sourcing
+persist across files and cause flaky, order-dependent failures. Every test file that
+dot-sources a library **must** use `Start-SutIsolation`/`Stop-SutIsolation` from `test/bin/lib/TestIsolation.ps1`:
+
+```powershell
+BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
+    . "$PSScriptRoot\module.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
+}
+```
+
 See `lib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations

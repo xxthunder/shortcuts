@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -28,6 +28,8 @@ BeforeDiscovery {
 }
 
 BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     # Source the utilities module
     $script:utilsPath = Join-Path $PSScriptRoot "utils.ps1"
     . $script:utilsPath
@@ -72,6 +74,10 @@ BeforeAll {
     if (Get-Command npm -ErrorAction SilentlyContinue) {
         $null = Uninstall-NpmPackage -PackageName $script:testPackageName
     }
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe "Install-NpmPackage" -Tag "Integration" -Skip:$script:skipTests {

@@ -30,6 +30,9 @@ param()
 
 Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
     BeforeAll {
+        . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+        Start-SutIsolation
+
         $script:baseDistroName = "Ubuntu"
         $script:podmanTestDistroName = "ubuntu-podman-test"
 
@@ -83,6 +86,8 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         }
 
         Write-Host "    Cleanup complete. Distributions preserved for exploratory testing." -ForegroundColor Green
+
+        Stop-SutIsolation
     }
 
     Context "Create Base Distribution" {

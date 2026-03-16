@@ -6,7 +6,13 @@
 #>
 
 BeforeAll {
+    . "$PSScriptRoot\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     $script:installScript = Join-Path $PSScriptRoot 'install.ps1'
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe 'Install-Scoop' {

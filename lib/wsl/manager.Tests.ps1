@@ -6,8 +6,14 @@
 param()
 
 BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe "Start-InteractiveMode" {

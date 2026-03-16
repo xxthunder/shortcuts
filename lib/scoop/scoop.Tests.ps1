@@ -1,7 +1,13 @@
 ﻿#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0' }
 
 BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\scoop.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe 'Get-ScoopUpdatableApp' {

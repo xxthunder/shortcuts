@@ -9,6 +9,8 @@ param()
 
 Describe "WSL Library Integration Tests" -Tag "Integration" {
     BeforeAll {
+        . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+        Start-SutIsolation
         $wslScript = Join-Path $PSScriptRoot ".\wsl.ps1"
         if (Test-Path $wslScript) {
             . $wslScript
@@ -72,5 +74,9 @@ Describe "WSL Library Integration Tests" -Tag "Integration" {
                  $isWsl2 | Should -Be $expected
              }
         }
+    }
+
+    AfterAll {
+        Stop-SutIsolation
     }
 }

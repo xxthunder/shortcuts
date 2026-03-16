@@ -6,9 +6,14 @@
 #>
 
 BeforeAll {
-    # Source the script under test
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\configure-program-plugin.ps1"
     . "$PSScriptRoot\..\..\lib\utils\utils.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe "Get-ProgramPluginSettingsPath" {

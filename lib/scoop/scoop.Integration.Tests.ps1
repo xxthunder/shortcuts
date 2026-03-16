@@ -26,6 +26,8 @@ BeforeDiscovery {
 }
 
 BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\scoop.ps1"
 
     # Mock console output to keep test output clean
@@ -34,6 +36,10 @@ BeforeAll {
     Mock Write-Success {}
     Mock Write-WarningMsg {}
     Mock Write-ErrorMsg {}
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe 'Get-ScoopUpdatableApp - real scoop status' -Tag "Integration" -Skip:$script:skipTests {
