@@ -25,13 +25,12 @@ Describe 'Get-ScoopUpdatableApp' {
     }
 
     It 'parses scoop status output with updatable apps' {
-        $statusOutput = @(
+        Mock Invoke-CommandLine { return @(
             "Name      Installed Version  Latest Version  Missing Dependencies  Info"
             "----      -----------------  --------------  --------------------  ----"
             "7zip      24.08              24.09"
             "git       2.46.0             2.47.0"
-        )
-        Mock Invoke-CommandLine { return $statusOutput }
+        ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -45,11 +44,10 @@ Describe 'Get-ScoopUpdatableApp' {
     }
 
     It 'returns empty array when no apps need updating' {
-        $statusOutput = @(
+        Mock Invoke-CommandLine { return @(
             "Name      Installed Version  Latest Version  Missing Dependencies  Info"
             "----      -----------------  --------------  --------------------  ----"
-        )
-        Mock Invoke-CommandLine { return $statusOutput }
+        ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -57,11 +55,10 @@ Describe 'Get-ScoopUpdatableApp' {
     }
 
     It 'parses structured PSCustomObject output from modern scoop' {
-        $statusOutput = @(
+        Mock Invoke-CommandLine { return @(
             [PSCustomObject]@{ Name = 'gimp'; 'Installed Version' = '3.0.8-2'; 'Latest Version' = '3.2.0'; 'Missing Dependencies' = ''; Info = '' }
             [PSCustomObject]@{ Name = 'pwsh'; 'Installed Version' = '7.5.4'; 'Latest Version' = '7.5.5'; 'Missing Dependencies' = ''; Info = '' }
-        )
-        Mock Invoke-CommandLine { return $statusOutput }
+        ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -73,7 +70,7 @@ Describe 'Get-ScoopUpdatableApp' {
     }
 
     It 'skips blank lines and malformed rows in legacy output' {
-        $statusOutput = @(
+        Mock Invoke-CommandLine { return @(
             "Name      Installed Version  Latest Version  Missing Dependencies  Info"
             "----      -----------------  --------------  --------------------  ----"
             ""
@@ -81,8 +78,7 @@ Describe 'Get-ScoopUpdatableApp' {
             "   "
             "malformed-line"
             "git       2.46.0             2.47.0"
-        )
-        Mock Invoke-CommandLine { return $statusOutput }
+        ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -92,12 +88,11 @@ Describe 'Get-ScoopUpdatableApp' {
     }
 
     It 'handles single updatable app' {
-        $statusOutput = @(
+        Mock Invoke-CommandLine { return @(
             "Name      Installed Version  Latest Version  Missing Dependencies  Info"
             "----      -----------------  --------------  --------------------  ----"
             "nodejs    20.11.0            22.0.0"
-        )
-        Mock Invoke-CommandLine { return $statusOutput }
+        ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -224,7 +219,6 @@ Describe 'Update-ScoopApp' {
     }
 
     It 'updates a single app successfully' {
-        $global:LASTEXITCODE = 0
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 0 }
 
         Update-ScoopApp -AppNames @('7zip')
@@ -234,7 +228,6 @@ Describe 'Update-ScoopApp' {
     }
 
     It 'updates multiple apps' {
-        $global:LASTEXITCODE = 0
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 0 }
 
         Update-ScoopApp -AppNames @('7zip', 'git')

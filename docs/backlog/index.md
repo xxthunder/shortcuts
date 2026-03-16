@@ -19,6 +19,7 @@
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
+- [SC-023 — Per-file code coverage in testrunner.ps1](todo/sc-023.md)
 
 ### Done
 - [SC-022 — Make generic skills reusable across repositories](done/sc-022.md)

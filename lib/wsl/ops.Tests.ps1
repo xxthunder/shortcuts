@@ -21,32 +21,28 @@ Describe "Remove-WslDistro" {
         It "Should throw an error" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
-            { Remove-WslDistro -Name "Debian" } | Should -Throw "*does not exist*"
+            $act = { Remove-WslDistro -Name "Debian" }
+
+            $act | Should -Throw "*does not exist*"
         }
     }
 
     Context "When distribution is running" {
-        It "Should throw error with terminate instruction" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
+        }
 
-            { Remove-WslDistro -Name "TestProject" -Confirm:$false } | Should -Throw "*is running*Stop it first with*wsl --terminate TestProject*"
+        It "Should throw error with terminate instruction" {
+            $act = { Remove-WslDistro -Name "TestProject" -Confirm:$false }
+
+            $act | Should -Throw "*is running*Stop it first with*wsl --terminate TestProject*"
         }
 
         It "Should not call unregister when distribution is running" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
-            Mock Invoke-CommandLine { }
-
-            try {
-                Remove-WslDistro -Name "TestProject" -Confirm:$false
-            }
-            catch {
-                $null = $_
-            }
+            try { Remove-WslDistro -Name "TestProject" -Confirm:$false }
+            catch { $null = $_ }
 
             Should -Invoke Invoke-CommandLine -Times 0 -ParameterFilter {
                 $CommandLine -like "*wsl.exe --unregister*"
@@ -55,12 +51,13 @@ Describe "Remove-WslDistro" {
     }
 
     Context "When user cancels confirmation" {
-        It "Should not remove distribution" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
             Mock Invoke-CommandLine {}
+        }
 
+        It "Should not remove distribution" {
             Remove-WslDistro -Name "Debian" -WhatIf
 
             Should -Invoke Invoke-CommandLine -Times 0
@@ -68,40 +65,34 @@ Describe "Remove-WslDistro" {
     }
 
     Context "When user confirms removal" {
-        It "Should remove distribution using wsl.exe --unregister" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
             Mock Invoke-CommandLine {}
+        }
 
+        It "Should remove distribution using wsl.exe --unregister" {
             Remove-WslDistro -Name "Debian" -Confirm:$false
 
             Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
     }
 
-    Context "When Force parameter is used" {
-        It "Should skip confirmation and remove distribution" {
-
+    Context "When unregister command fails" {
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
-            Mock Invoke-CommandLine {}
-
-            Remove-WslDistro -Name "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq "wsl.exe --unregister Debian" }
         }
 
         It "Should throw error when wsl command fails" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Invoke-CommandLine {
                 $global:LASTEXITCODE = 1
                 throw "Command line call `"wsl.exe --unregister Debian`" failed with exit code 1"
             }
 
-            { Remove-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*failed with exit code 1*"
+            $act = { Remove-WslDistro -Name "Debian" -Confirm:$false }
+
+            $act | Should -Throw "*failed with exit code 1*"
         }
     }
 }
@@ -111,44 +102,40 @@ Describe "Copy-WslDistro" {
         It "Should throw an error" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
-            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" } | Should -Throw "*does not exist*"
+            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" }
+
+            $act | Should -Throw "*does not exist*"
         }
     }
 
     Context "When target distribution already exists" {
         It "Should throw an error" {
-
             Mock Assert-WslDistroExists { }
             Mock Assert-WslDistroNotExists { throw "Distribution '$($DistroName.Trim())' already exists." }
 
-            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" } | Should -Throw "*already exists*"
+            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" }
+
+            $act | Should -Throw "*already exists*"
         }
     }
 
     Context "When source distribution is running" {
-        It "Should throw error with terminate instruction" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Assert-WslDistroNotExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Invoke-CommandLine { }
+        }
 
-            { Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false } | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
+        It "Should throw error with terminate instruction" {
+            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false }
+
+            $act | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
         }
 
         It "Should not call export when source distribution is running" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Assert-WslDistroNotExists { }
-            Mock Test-WslDistroRunning { $true }
-            Mock Invoke-CommandLine { }
-
-            try {
-                Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false
-            }
-            catch {
-                $null = $_
-            }
+            try { Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false }
+            catch { $null = $_ }
 
             Should -Invoke Invoke-CommandLine -Times 0 -ParameterFilter {
                 $CommandLine -like "*wsl.exe --export*"
@@ -218,16 +205,6 @@ Describe "Copy-WslDistro" {
         }
 
         It "Should display how to start the cloned distribution" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Assert-WslDistroNotExists { }
-            Mock Test-WslDistroRunning { $false }
-            Mock Invoke-CommandLine {}
-            Mock Test-Path { $false } -ParameterFilter { $Path -notlike "*temp*.tar" }
-            Mock Test-Path { $true } -ParameterFilter { $Path -like "*temp*.tar" }
-            Mock New-Item {}
-            Mock Remove-Item {}
-
             $output = Copy-WslDistro -SourceName "Ubuntu" -TargetName "MyUbuntu" -Confirm:$false 6>&1
 
             $output -join ' ' | Should -Match "To start: wsl.exe --distribution MyUbuntu"
@@ -252,42 +229,39 @@ Describe "Copy-WslDistro" {
     }
 
     Context "When export fails" {
-        It "Should not attempt import and should clean up" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Assert-WslDistroNotExists { }
             Mock Test-WslDistroRunning { $false }
-            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Test-Path { $true }
             Mock Remove-Item {}
+        }
 
-            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
+        It "Should not attempt import and should clean up" {
+            Mock Invoke-CommandLine { throw "Export failed" } -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
 
+            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false }
+
+            $act | Should -Throw
             Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -like "wsl.exe --import *" } -Times 0
             Should -Invoke Remove-Item
         }
 
         It "Should clean up temp file when import fails" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Assert-WslDistroNotExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Invoke-CommandLine {} -ParameterFilter { $CommandLine -like "wsl.exe --export *" }
             Mock Invoke-CommandLine {
                 $global:LASTEXITCODE = 1
                 throw "Command line call failed with exit code 1"
             } -ParameterFilter { $CommandLine -like "wsl.exe --import *" }
-            Mock Test-Path { $true }
-            Mock Remove-Item {}
 
-            { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false } | Should -Throw
+            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyDebian" -Confirm:$false }
 
-            # Verify temp file cleanup still happens
+            $act | Should -Throw
             Should -Invoke Remove-Item
         }
     }
 
-    Context "When testing boundary conditions" {
+    Context "When names contain special characters or whitespace" {
         BeforeEach {
 
             Mock Assert-WslDistroExists { }
@@ -358,75 +332,75 @@ Describe "Update-WslDistro" {
         It "Should throw an error" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
 
-            { Update-WslDistro -Name "Debian" } | Should -Throw "*does not exist*"
+            $act = { Update-WslDistro -Name "Debian" }
+
+            $act | Should -Throw "*does not exist*"
         }
     }
 
     Context "When distribution is running" {
-        It "Should throw error with terminate instruction" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Invoke-WslDistroCommand { }
+        }
 
-            { Update-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
+        It "Should throw error with terminate instruction" {
+            $act = { Update-WslDistro -Name "Debian" -Confirm:$false }
+
+            $act | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
         }
 
         It "Should not call apt update when distribution is running" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $true }
-            Mock Get-WslDistroType { "debian" }
-            Mock Invoke-WslDistroCommand { }
-
-            try {
-                Update-WslDistro -Name "Debian" -Confirm:$false
-            }
-            catch {
-                $null = $_
-            }
+            try { Update-WslDistro -Name "Debian" -Confirm:$false }
+            catch { $null = $_ }
 
             Should -Invoke Invoke-WslDistroCommand -Times 0
         }
     }
 
     Context "When distribution is not Debian/Ubuntu" {
-        It "Should throw error for Arch distribution" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
+        }
+
+        It "Should throw error for Arch distribution" {
             Mock Get-WslDistroType { "arch" }
 
-            { Update-WslDistro -Name "Arch" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+            $act = { Update-WslDistro -Name "Arch" -Confirm:$false }
+
+            $act | Should -Throw "*not a Debian/Ubuntu distribution*"
         }
 
         It "Should throw error for RHEL family" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "rhel" }
 
-            { Update-WslDistro -Name "Fedora" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+            $act = { Update-WslDistro -Name "Fedora" -Confirm:$false }
+
+            $act | Should -Throw "*not a Debian/Ubuntu distribution*"
         }
 
         It "Should throw error for unknown distribution" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "unknown" }
 
-            { Update-WslDistro -Name "CustomLinux" -Confirm:$false } | Should -Throw "*not a Debian/Ubuntu distribution*"
+            $act = { Update-WslDistro -Name "CustomLinux" -Confirm:$false }
+
+            $act | Should -Throw "*not a Debian/Ubuntu distribution*"
         }
     }
 
     Context "When updating Debian/Ubuntu distributions" {
-        It "Should update Debian distribution successfully" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
-            Mock Get-WslDistroType { "debian" }
             Mock Invoke-WslDistroCommand { }
+            Mock Write-Output { }
+        }
+
+        It "Should update Debian distribution successfully" {
+            Mock Get-WslDistroType { "debian" }
 
             Update-WslDistro -Name "Debian" -Confirm:$false
 
@@ -436,11 +410,7 @@ Describe "Update-WslDistro" {
         }
 
         It "Should update Ubuntu distribution successfully" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "ubuntu" }
-            Mock Invoke-WslDistroCommand { }
 
             Update-WslDistro -Name "Ubuntu" -Confirm:$false
 
@@ -450,12 +420,7 @@ Describe "Update-WslDistro" {
         }
 
         It "Should display progress message" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "debian" }
-            Mock Invoke-WslDistroCommand { }
-            Mock Write-Output { }
 
             Update-WslDistro -Name "Debian" -Confirm:$false
 
@@ -465,12 +430,7 @@ Describe "Update-WslDistro" {
         }
 
         It "Should display success message" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "debian" }
-            Mock Invoke-WslDistroCommand { }
-            Mock Write-Output { }
 
             Update-WslDistro -Name "Debian" -Confirm:$false
 
@@ -480,11 +440,7 @@ Describe "Update-WslDistro" {
         }
 
         It "Should trim whitespace from distribution name" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "debian" }
-            Mock Invoke-WslDistroCommand { }
 
             Update-WslDistro -Name "  Debian  " -Confirm:$false
 
@@ -494,9 +450,8 @@ Describe "Update-WslDistro" {
         }
     }
 
-    Context "When ShouldProcess is used" {
-        It "Should skip update when user cancels confirmation" {
-
+    Context "When user cancels with -WhatIf" {
+        It "Should skip update" {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "debian" }
@@ -509,31 +464,23 @@ Describe "Update-WslDistro" {
     }
 
     Context "When update command fails" {
-        It "Should throw error when apt command fails" {
-
-            Mock Assert-WslDistroExists { }
-            Mock Test-WslDistroRunning { $false }
-            Mock Get-WslDistroType { "debian" }
-            Mock Invoke-WslDistroCommand { throw "apt upgrade failed" }
-
-            { Update-WslDistro -Name "Debian" -Confirm:$false } | Should -Throw "*apt upgrade failed*"
-        }
-
-        It "Should not display success message when update fails" {
-
+        BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $false }
             Mock Get-WslDistroType { "debian" }
             Mock Invoke-WslDistroCommand { throw "apt upgrade failed" }
             Mock Write-Output { }
+        }
 
-            try {
-                Update-WslDistro -Name "Debian" -Confirm:$false
-            }
-            catch {
-                # Expected to throw - suppressing error for test verification
-                $null = $_
-            }
+        It "Should throw error when apt command fails" {
+            $act = { Update-WslDistro -Name "Debian" -Confirm:$false }
+
+            $act | Should -Throw "*apt upgrade failed*"
+        }
+
+        It "Should not display success message when update fails" {
+            try { Update-WslDistro -Name "Debian" -Confirm:$false }
+            catch { $null = $_ }
 
             Should -Invoke Write-Output -ParameterFilter {
                 $InputObject -like "*Successfully*"
@@ -541,9 +488,11 @@ Describe "Update-WslDistro" {
         }
     }
 
-    Context "Parameter validation" {
+    Context "When given invalid input" {
         It "Should throw when Name is empty" {
-            { Update-WslDistro -Name "" } | Should -Throw
+            $act = { Update-WslDistro -Name "" }
+
+            $act | Should -Throw
         }
     }
 }
@@ -655,11 +604,14 @@ Describe "Stop-WslSubsystem" {
         }
 
         It "Should throw timeout error when distros stay running" {
-            { Stop-WslSubsystem -Confirm:$false } | Should -Throw "*timed out*Still running*Debian*"
+            $act = { Stop-WslSubsystem -Confirm:$false }
+
+            $act | Should -Throw "*timed out*Still running*Debian*"
         }
 
         It "Should poll for 30 seconds before timing out" {
-            try { Stop-WslSubsystem -Confirm:$false } catch { $null = $_ }
+            try { Stop-WslSubsystem -Confirm:$false }
+            catch { $null = $_ }
 
             Should -Invoke Start-Sleep -Times 30
         }
@@ -728,7 +680,9 @@ Describe "Stop-WslSubsystem" {
         }
 
         It "Should throw error when wsl command fails" {
-            { Stop-WslSubsystem -Confirm:$false } | Should -Throw "*failed with exit code 1*"
+            $act = { Stop-WslSubsystem -Confirm:$false }
+
+            $act | Should -Throw "*failed with exit code 1*"
         }
     }
 
