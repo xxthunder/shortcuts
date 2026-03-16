@@ -128,9 +128,20 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
 
 ## Troubleshooting Test Failures
 
-### When Tests Fail on a Feature Branch
+### CRITICAL: There Are No Pre-Existing Failures
 
-**Remember**: The `develop` branch is always green (CI enforces this).
+**The `develop` branch is always green. CI enforces this. Therefore, any test failure on a feature branch was caused by that branch — no exceptions.**
+
+**You MUST NOT:**
+- Dismiss failures as "pre-existing" or "unrelated to my changes"
+- Skip failing tests or proceed to commit with uninvestigated failures
+- Assume that tests in files you didn't directly modify can't be affected by your changes
+
+**You MUST:**
+- Investigate every failure
+- If uncertain whether your changes caused it, flag it to the user — never silently skip
+
+### When Tests Fail on a Feature Branch
 
 **If tests fail on your feature branch**:
 
