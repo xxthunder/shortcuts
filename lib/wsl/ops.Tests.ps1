@@ -641,6 +641,68 @@ Describe "Stop-WslSubsystem" {
         }
     }
 
+    Context "When shutdown polling times out" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Warning { }
+            Mock Write-Output { }
+            Mock Start-Sleep { }
+        }
+
+        It "Should throw timeout error when distros stay running" {
+            { Stop-WslSubsystem -Confirm:$false } | Should -Throw "*timed out*Still running*Debian*"
+        }
+
+        It "Should poll for 30 seconds before timing out" {
+            try { Stop-WslSubsystem -Confirm:$false } catch { $null = $_ }
+
+            Should -Invoke Start-Sleep -Times 30
+        }
+    }
+
+    Context "When shutdown requires multiple poll cycles" {
+        BeforeEach {
+            $script:pollCount = 0
+            Mock Get-WslDistroList {
+                $script:pollCount++
+                if ($script:pollCount -le 1) {
+                    @(
+                        [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                    )
+                } elseif ($script:pollCount -le 4) {
+                    @(
+                        [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                    )
+                } else {
+                    @(
+                        [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true }
+                    )
+                }
+            } -ParameterFilter { $Detailed }
+            Mock Invoke-CommandLine { }
+            Mock Write-Warning { }
+            Mock Write-Output { }
+            Mock Start-Sleep { }
+        }
+
+        It "Should succeed after distros eventually stop" {
+            { Stop-WslSubsystem -Confirm:$false } | Should -Not -Throw
+        }
+
+        It "Should display success message after polling completes" {
+            Stop-WslSubsystem -Confirm:$false
+
+            Should -Invoke Write-Output -ParameterFilter {
+                $InputObject -like "*WSL subsystem has been shut down*"
+            }
+        }
+    }
+
     Context "When ShouldProcess is used" {
         BeforeEach {
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }

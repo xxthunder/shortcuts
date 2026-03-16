@@ -391,10 +391,10 @@ powershell -File ".\test\bin\testrunner.ps1"
 - Test both success and failure paths
 - Ensure tests pass on both PowerShell 5.1 and 7.x
 
-**Never mock `Test-RunningInCIorTestEnvironment`.**
-This function exists solely to prevent interactive prompts (`Read-Host`) in CI/test
-environments. Mocking it to `$false` defeats its purpose. Tests that need to exercise
-non-interactive code paths must provide explicit parameters that bypass the guard.
+**Never mock `Test-RunningInCIorTestEnvironment` in integration tests.**
+This function exists to prevent interactive prompts (`Read-Host`) in CI/test environments.
+Mocking it to `$false` in integration tests would trigger real `Read-Host` calls that hang CI.
+In **unit tests**, mocking it is allowed and encouraged to cover both CI and interactive code paths.
 
 **Cross-file test isolation (MANDATORY):**
 Pester runs all test files in the same PowerShell process. Functions loaded via dot-sourcing

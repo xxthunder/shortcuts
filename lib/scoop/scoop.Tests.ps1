@@ -72,6 +72,25 @@ Describe 'Get-ScoopUpdatableApp' {
         $result[1].Name | Should -Be 'pwsh'
     }
 
+    It 'skips blank lines and malformed rows in legacy output' {
+        $statusOutput = @(
+            "Name      Installed Version  Latest Version  Missing Dependencies  Info"
+            "----      -----------------  --------------  --------------------  ----"
+            ""
+            "7zip      24.08              24.09"
+            "   "
+            "malformed-line"
+            "git       2.46.0             2.47.0"
+        )
+        Mock Invoke-CommandLine { return $statusOutput }
+
+        $result = @(Get-ScoopUpdatableApp)
+
+        $result.Count | Should -Be 2
+        $result[0].Name | Should -Be '7zip'
+        $result[1].Name | Should -Be 'git'
+    }
+
     It 'handles single updatable app' {
         $statusOutput = @(
             "Name      Installed Version  Latest Version  Missing Dependencies  Info"
@@ -105,18 +124,94 @@ Describe 'Show-ScoopUpdatableApp' {
 }
 
 Describe 'Select-ScoopApp' {
-    It 'returns all app names in CI environment' {
-        $apps = @(
+    BeforeEach {
+        $script:testApps = @(
             [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
             [PSCustomObject]@{ Name = 'git'; InstalledVersion = '2.46.0'; LatestVersion = '2.47.0' }
+            [PSCustomObject]@{ Name = 'pwsh'; InstalledVersion = '7.5.4'; LatestVersion = '7.5.5' }
         )
+    }
 
-        # Running in CI (GitHub Actions), so should return all
-        $result = @(Select-ScoopApp -Apps $apps)
+    Context 'In CI environment' {
+        It 'returns all app names' {
+            Mock Test-RunningInCIorTestEnvironment { return $true }
 
-        $result.Count | Should -Be 2
-        $result | Should -Contain '7zip'
-        $result | Should -Contain 'git'
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 3
+            $result | Should -Contain '7zip'
+            $result | Should -Contain 'git'
+            $result | Should -Contain 'pwsh'
+        }
+    }
+
+    Context 'In interactive environment' {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { return $false }
+            Mock Write-WarningMsg {}
+        }
+
+        It 'returns all apps when user enters A' {
+            Mock Read-Host { return 'A' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 3
+        }
+
+        It 'returns all apps when user enters lowercase a' {
+            Mock Read-Host { return 'a' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 3
+        }
+
+        It 'returns selected apps by comma-separated numbers' {
+            Mock Read-Host { return '1,3' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 2
+            $result | Should -Contain '7zip'
+            $result | Should -Contain 'pwsh'
+        }
+
+        It 'warns on out-of-range number' {
+            Mock Read-Host { return '5' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 0
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid number*' }
+        }
+
+        It 'warns on non-numeric input' {
+            Mock Read-Host { return 'xyz' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 0
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid input*' }
+        }
+
+        It 'handles mixed valid and invalid input' {
+            Mock Read-Host { return '1,abc,99' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 1
+            $result | Should -Contain '7zip'
+            Should -Invoke Write-WarningMsg -Times 2
+        }
+
+        It 'returns empty array on empty input' {
+            Mock Read-Host { return '' }
+
+            $result = @(Select-ScoopApp -Apps $script:testApps)
+
+            $result.Count | Should -Be 0
+        }
     }
 }
 
@@ -147,6 +242,12 @@ Describe 'Update-ScoopApp' {
         Should -Invoke Invoke-CommandLine -Times 2
     }
 
+    It 'skips update when -WhatIf is used' {
+        Update-ScoopApp -AppNames @('7zip', 'git') -WhatIf
+
+        Should -Invoke Invoke-CommandLine -Times 0
+    }
+
     It 'reports error when update fails' {
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 1 }
 
@@ -173,6 +274,14 @@ Describe 'Invoke-ScoopUpdate' {
         Invoke-ScoopUpdate
 
         Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like '*Scoop is not installed*' } -Times 1
+    }
+
+    It 'refreshes scoop before checking for updates' {
+        Mock Get-ScoopUpdatableApp { return @() }
+
+        Invoke-ScoopUpdate
+
+        Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq 'scoop update' } -Times 1
     }
 
     It 'shows up-to-date message when no updates available' {
