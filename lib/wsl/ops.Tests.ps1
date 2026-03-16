@@ -551,11 +551,20 @@ Describe "Update-WslDistro" {
 Describe "Stop-WslSubsystem" {
     Context "When distributions are running" {
         BeforeEach {
+            $script:shutdownCallCount = 0
             Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
+                $script:shutdownCallCount++
+                if ($script:shutdownCallCount -le 1) {
+                    @(
+                        [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                        [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                    )
+                } else {
+                    @(
+                        [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true },
+                        [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                    )
+                }
             } -ParameterFilter { $Detailed }
             Mock Invoke-CommandLine { }
             Mock Write-Warning { }

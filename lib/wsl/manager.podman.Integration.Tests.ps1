@@ -62,7 +62,6 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
         # Shutdown entire WSL subsystem to prevent systemd auto-restart race (SC-002)
         Write-Host "    Shutting down WSL subsystem before tests ..." -ForegroundColor Yellow
         Stop-WslSubsystem -Confirm:$false
-        Start-Sleep -Seconds 3
 
         # Always remove test distro before tests (clean slate)
         if ($script:podmanTestDistroName -in $existingDistros) {
@@ -127,7 +126,6 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
             # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
             Write-Host "    Shutting down WSL subsystem before cloning..." -ForegroundColor Yellow
             Stop-WslSubsystem -Confirm:$false
-            Start-Sleep -Seconds 3
 
             $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:podmanTestDistroName *>&1 | Out-String
 
