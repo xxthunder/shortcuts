@@ -1,6 +1,6 @@
 # [CHORE-001] ✅ COMPLETED - Move reusable skills to global ~/.claude/skills
 
-**Status**: **Completed** (2026-02-22) | **Branch**: `refinement`
+**Status**: Completed (2026-02-22)
 **Priority**: Low
 **Component**: `.claude/skills/`
 

@@ -1,6 +1,6 @@
 # [REFACT-004] ✅ COMPLETED - Remove redundant `Test-WslInstalled` guard checks (DRY)
 
-**Status**: **Completed** (2026-02-24) | **Branch**: `feature/feat-002-podman-wsl`
+**Status**: Completed (2026-02-24)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/` (8 source files, 8 test files)
 

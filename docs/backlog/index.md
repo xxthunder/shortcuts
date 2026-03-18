@@ -22,6 +22,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](todo/sc-023.md)
 
 ### Done
+- [SC-024 — Maintain PowerShell 5.1 compatibility and fix batch wrapper violations](done/sc-024.md)
 - [SC-022 — Make generic skills reusable across repositories](done/sc-022.md)
 - [SC-015 — Reorganize project structure: separate tools from libraries](done/sc-015.md)
 - [SC-021 — Apply default WSL global settings (.wslconfig) via wsl-manager](done/sc-021.md)
@@ -69,7 +70,7 @@
 
 1. **Verify acceptance criteria** — all `[ ]` must be `[x]`. Do NOT close with unchecked items.
 2. **Update the heading** — add `✅ COMPLETED` (e.g., `# [SC-004] ✅ COMPLETED - …`)
-3. **Update the Status field** — change to `**Completed** (YYYY-MM-DD)`
+3. **Update the Status field** — change to `**Status**: Completed (YYYY-MM-DD)`
 4. **Update this index** — move the entry from its current section to **Done**, change path from `in_progress/` (or `todo/`) to `done/`
 5. **Move the file** — `git mv docs/backlog/in_progress/sc-004.md docs/backlog/done/sc-004.md`
 
