@@ -14,7 +14,6 @@
 - [SC-001 — Backlog refinement](in_progress/sc-001.md)
 
 ### TODO
-- [SC-006 — Scoop Update Helper Script](todo/sc-006.md)
 - [SC-013 — Fix and enhance documentation](todo/sc-013.md)
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](todo/sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
@@ -22,6 +21,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](todo/sc-023.md)
 
 ### Done
+- [SC-006 — Scoop Update Helper Script](done/sc-006.md)
 - [SC-024 — Maintain PowerShell 5.1 compatibility and fix batch wrapper violations](done/sc-024.md)
 - [SC-022 — Make generic skills reusable across repositories](done/sc-022.md)
 - [SC-015 — Reorganize project structure: separate tools from libraries](done/sc-015.md)
