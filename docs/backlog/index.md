@@ -20,6 +20,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
 - [SC-022 — Make generic skills reusable across repositories](todo/sc-022.md)
+- [SC-023 — Per-file code coverage in testrunner.ps1](todo/sc-023.md)
 
 ### Done
 - [SC-024 — Maintain PowerShell 5.1 compatibility and fix batch wrapper violations](done/sc-024.md)
