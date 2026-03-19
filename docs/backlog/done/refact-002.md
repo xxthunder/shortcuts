@@ -1,6 +1,6 @@
 # [REFACT-002] ✅ COMPLETED - Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
 
-**Status**: **Completed** (2026-02-20) | **Branch**: `feature/feat-002-podman-wsl`
+**Status**: Completed (2026-02-20)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.ps1`
 **Blocks**: REFACT-003

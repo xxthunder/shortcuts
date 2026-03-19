@@ -1,6 +1,6 @@
 # [FEAT-004] ✅ COMPLETED - Replace Bootstrap with Self-Contained install.ps1
 
-**Status**: **Completed** (2026-02-11) | **Branch**: `feature/feat-004-self-contained-install`
+**Status**: Completed (2026-02-11)
 **Priority**: Medium
 **Component**: `bin/install.ps1`, `scoop_mandatory.json`, `scoop_optional.json`
 **Type**: Feature / Refactoring

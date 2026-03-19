@@ -13,7 +13,7 @@ Executable PowerShell scripts should have a .bat wrapper in the same directory.
 
 ### Benefits
 
-- Users can run `script-name` instead of `pwsh -File path/to/script-name.ps1`
+- Users can run `script-name` instead of `powershell -File path/to/script-name.ps1`
 - Batch wrapper handles PowerShell execution policy automatically
 - Arguments are passed through automatically via `%*`
 - Consistent user experience across all executable scripts
@@ -23,13 +23,13 @@ Executable PowerShell scripts should have a .bat wrapper in the same directory.
 
 ```batch
 @echo off
-pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
+powershell -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
 ```
 
 ### Template Breakdown
 
 - `@echo off` - Suppress command echoing
-- `pwsh` - Use PowerShell 7.x (use `powershell` for 5.1 only)
+- `powershell` - Use Windows PowerShell 5.1 (inbox on all Windows 10+, ensures bootstrapping works)
 - `-ExecutionPolicy Bypass` - Run without policy restrictions
 - `-File` - Execute script file
 - `"%~dp0script-name.ps1"` - Path to PS1 file in same directory
@@ -54,37 +54,18 @@ tools/wsl-manager/
 Wrapper content:
 ```batch
 @echo off
-pwsh -ExecutionPolicy Bypass -File "%~dp0wsl-manager.ps1" %*
+powershell -ExecutionPolicy Bypass -File "%~dp0wsl-manager.ps1" %*
 ```
 
-## PowerShell 5.1 vs 7.x
+## Why `powershell` instead of `pwsh`?
 
-### For PowerShell 7.x Scripts
+All batch wrappers **must** use `powershell` (Windows PowerShell 5.1), not `pwsh` (PowerShell 7):
 
-```batch
-@echo off
-pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
-```
-
-### For PowerShell 5.1 Only Scripts
-
-```batch
-@echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
-```
-
-### For Compatible Scripts (Recommended)
-
-Use `pwsh` by default (most users have it via Scoop), with fallback documentation:
-
-```batch
-@echo off
-pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
-```
-
-If pwsh is not available, user can:
-1. Install PowerShell 7: `scoop install pwsh`
-2. Or modify wrapper to use `powershell` instead
+- This project targets **PowerShell 5.1+** (see `development-principles.md`)
+- PowerShell 5.1 is inbox on all Windows 10+ machines — no install required
+- PowerShell 7 (`pwsh`) is installed via Scoop, which is itself bootstrapped by these scripts
+- Using `pwsh` in wrappers creates a chicken-and-egg problem on fresh machines
+- All scripts must use only 5.1-compatible syntax, so they work under both versions
 
 ## Automated Wrapper Creation
 
@@ -98,8 +79,8 @@ function New-BatWrapper {
         [string]$ScriptPath,
         
         [Parameter(Mandatory = $false)]
-        [ValidateSet("pwsh", "powershell")]
-        [string]$PowerShellVersion = "pwsh"
+        [ValidateSet("powershell", "pwsh")]
+        [string]$PowerShellVersion = "powershell"
     )
     
     # Validate script exists
@@ -191,7 +172,7 @@ New-BatWrappersForDirectory -Directory ".\tools\wsl-manager"
 script-name arg1 arg2
 
 # Should be equivalent to:
-pwsh -File script-name.ps1 arg1 arg2
+powershell -File script-name.ps1 arg1 arg2
 ```
 
 ### Test from Keypirinha
@@ -210,7 +191,7 @@ See `assets/wrapper-template.bat` for a template file.
 
 1. **Same directory** - Wrapper must be in same directory as .ps1 file
 2. **Same name** - Wrapper must have same name as .ps1 file (except extension)
-3. **Use pwsh** - Prefer PowerShell 7.x for new scripts
+3. **Use powershell** - Use Windows PowerShell 5.1 for compatibility (see development-principles.md)
 4. **Pass arguments** - Always include `%*` to pass arguments
 5. **Bypass execution policy** - Use `-ExecutionPolicy Bypass`
 6. **Test** - Verify wrapper works before committing

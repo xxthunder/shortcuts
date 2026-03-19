@@ -1,2 +1,2 @@
 @echo off
-pwsh -ExecutionPolicy Bypass -File %~dp0configure-program-plugin.ps1 %*
+powershell -ExecutionPolicy Bypass -File %~dp0configure-program-plugin.ps1 %*

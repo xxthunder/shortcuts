@@ -1,6 +1,6 @@
 # [FEAT-003] ✅ COMPLETED - Add Flow Launcher as Standalone Optional Tool
 
-**Status**: **Completed** (2026-02-10) | **Branch**: `feature/feat-003-flow-launcher`
+**Status**: Completed (2026-02-10)
 **Priority**: Medium
 **Component**: `tools/flow-launcher/`
 

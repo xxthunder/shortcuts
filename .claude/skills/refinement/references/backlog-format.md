@@ -146,7 +146,7 @@ File: `done/prefix-001.md`
 ```markdown
 # [HSH-001] ✅ COMPLETED - Brief descriptive title
 
-**Status**: **Completed** (YYYY-MM-DD) | **Branch**: `branch-name`
+**Status**: Completed (YYYY-MM-DD)
 **Priority**: Medium
 **Component**: `path/to/affected/file.ext`
 
@@ -192,4 +192,4 @@ When moving items:
 1. Move the item file between folders: `git mv todo/prefix-015.md in_progress/prefix-015.md`
 2. Update the `**Status**` field inside the file
 3. Update the Table of Contents links in `index.md` (move the link to the correct section, update the relative path)
-4. For completed items: add date, branch name, and `✅ COMPLETED -` prefix to heading
+4. For completed items: add date and `✅ COMPLETED -` prefix to heading
