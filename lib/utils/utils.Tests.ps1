@@ -1,11 +1,16 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for utils.ps1 utility functions
 #>
 
 BeforeAll {
-    # Source the utils.ps1 file
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\utils.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe "Invoke-CommandLine" {

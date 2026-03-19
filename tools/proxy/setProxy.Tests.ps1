@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.2.0'}
 
 <#
@@ -14,6 +14,7 @@
 param()
 
 BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
     # Set library mode to prevent auto-execution when dot-sourcing
     $env:SETPROXY_LIBRARY_MODE = '1'
 
@@ -23,7 +24,7 @@ BeforeAll {
     $script:OriginalNoProxy = $Env:NO_PROXY
     $script:OriginalDefaultWebProxy = [System.Net.WebRequest]::DefaultWebProxy
 
-    # Source the script to get access to functions
+    Start-SutIsolation
     . "$PSScriptRoot\setProxy.ps1"
 }
 
@@ -52,6 +53,8 @@ AfterAll {
 
     # Restore DefaultWebProxy
     [System.Net.WebRequest]::DefaultWebProxy = $script:OriginalDefaultWebProxy
+
+    Stop-SutIsolation
 }
 
 Describe "Get-InternetSettingsFromRegistry" {

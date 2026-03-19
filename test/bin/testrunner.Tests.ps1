@@ -10,7 +10,13 @@
 #>
 
 BeforeAll {
+    . "$PSScriptRoot\lib\TestIsolation.ps1"
+    Start-SutIsolation
     . "$PSScriptRoot\..\..\test\bin\testrunner.ps1"
+}
+
+AfterAll {
+    Stop-SutIsolation
 }
 
 Describe 'ConvertTo-RelativeJUnitXml' {
