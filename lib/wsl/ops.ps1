@@ -189,6 +189,24 @@ function Stop-WslSubsystem {
     if ($PSCmdlet.ShouldProcess("WSL subsystem", "Shutdown all distributions and the WSL2 VM")) {
         Write-Output "Shutting down WSL subsystem ..."
         Invoke-CommandLine -CommandLine "wsl.exe --shutdown"
+
+        # Poll until all distributions are actually stopped.
+        # wsl.exe --shutdown returns before the VM has fully terminated,
+        # causing race conditions if callers proceed immediately.
+        $maxWaitSeconds = 30
+        $elapsed = 0
+        while ($elapsed -lt $maxWaitSeconds) {
+            $still = @(Get-WslDistroList -Detailed | Where-Object { $_.State -eq 'Running' })
+            if ($still.Count -eq 0) { break }
+            Start-Sleep -Seconds 1
+            $elapsed++
+        }
+
+        if ($elapsed -ge $maxWaitSeconds) {
+            $names = ($still | ForEach-Object { $_.Name }) -join ', '
+            throw "WSL shutdown timed out after ${maxWaitSeconds}s. Still running: $names"
+        }
+
         Write-Output "WSL subsystem has been shut down."
     }
     else {

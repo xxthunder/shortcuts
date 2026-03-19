@@ -64,7 +64,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         # Shutdown entire WSL subsystem to prevent systemd auto-restart race (SC-002)
         Write-Host "    Shutting down WSL subsystem before tests ..." -ForegroundColor Yellow
         Stop-WslSubsystem -Confirm:$false
-        Start-Sleep -Seconds 3
 
         # Always remove custom distro before tests (clean slate)
         if ($script:customDistroName -in $existingDistros) {
@@ -133,7 +132,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
             Write-Host "Shutting down WSL subsystem before updating..." -ForegroundColor Yellow
             Stop-WslSubsystem -Confirm:$false
-            Start-Sleep -Seconds 3
 
             # Capture output from Update-WslDistro
             $output = Invoke-WslManager -Command "update" -Name $script:baseDistroName *>&1 | Out-String
@@ -160,7 +158,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Shutdown WSL subsystem to prevent systemd auto-restart race (SC-002)
             Write-Host "Shutting down WSL subsystem before cloning..." -ForegroundColor Yellow
             Stop-WslSubsystem -Confirm:$false
-            Start-Sleep -Seconds 3
 
             # Capture output from Copy-WslDistro
             $output = Invoke-WslManager -Command "clone" -Name $script:baseDistroName -TargetName $script:customDistroName *>&1 | Out-String
