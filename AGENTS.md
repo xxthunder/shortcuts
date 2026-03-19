@@ -51,6 +51,11 @@ tools/wsl-manager/
 - Arguments are passed through automatically via `%*`
 - Consistent user experience across all executable scripts
 
+## Documentation Hierarchy
+
+- Each tool gets one doc (e.g., `wsl-manager.md`). Supported workflows like DevContainer setup belong as a section within the tool's doc, not as standalone guides.
+- **Don't let a feature outgrow its tool** — DevContainer support is a feature of WSL Manager, not a separate product.
+
 ## Coding Guidelines
 
 - TDD
@@ -63,6 +68,12 @@ tools/wsl-manager/
 - test fixtures
 - mocking external dependencies
 - conventional commits
+
+### Linting Suppression Policy
+
+**Never suppress these rules — fix the code instead:**
+- `PSReviewUnusedParameter` — make the parameter actually used, or remove it.
+- `PSUseSingularNouns` — rename the function to use a singular noun (PowerShell convention: `Verb-SingularNoun`).
 
 ### No Speculative Alternatives
 
@@ -429,19 +440,22 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 
 **Context**: This project uses GitHub Actions CI. The `develop` branch is always green.
 
-**Guideline**: When working on a feature branch, ANY test failures are caused by changes on that branch.
+**CRITICAL: There are no pre-existing test failures. Ever.** CI ensures `develop` is always green. Feature branches are created from `develop`. Therefore, any failure on a feature branch was introduced by that branch — no exceptions.
 
-**Reasoning**:
-- CI ensures `develop` is always green
-- Feature branches are created from `develop`
-- Therefore, failures = something introduced on the feature branch
+**You MUST NOT:**
+- Dismiss failures as "pre-existing" or "unrelated to my changes"
+- Skip failing tests or proceed to commit with uninvestigated failures
+- Assume that tests in files you didn't directly modify can't be affected by your changes
 
-**Workflow when encountering test failures**:
-1. **NEVER assume failures are pre-existing**
-2. Check `git diff develop..HEAD` to see all changes on the branch
-3. Analyze if ANY change (even cosmetic ones like string formatting) could affect tests
-4. If uncertain, use `git bisect` to identify the breaking commit
-5. Fix the issue before proceeding
+**You MUST:**
+- Investigate every failure — even in files you didn't touch
+- If uncertain whether your changes caused it, flag it to the user — never silently skip
+- Fix the issue before proceeding
+
+**Investigation steps**:
+1. `git diff develop..HEAD` — review ALL changes on the branch
+2. Analyze if ANY change (even cosmetic ones like string formatting) could affect tests
+3. If uncertain, use `git bisect` to identify the breaking commit
 
 **Anti-pattern**:
 ```bash
@@ -481,6 +495,20 @@ Using `shell: ${{ matrix.shell }}` will fail. Instead, use `shell: cmd` and invo
 ```
 
 **For multi-line PowerShell** (e.g., the remote install step), use a hardcoded shell (`shell: powershell` or `shell: pwsh`) since multi-line code cannot be wrapped in a single `-Command` string through cmd.
+
+#### Backlog Conventions
+
+- **No commit hashes in backlog entries** — the backlog file is part of the commit itself, so hashes are circular and go stale after squash/rebase.
+- **No unrelated files in feature commits** — keep commits scoped to the feature; unrelated additions get their own commit.
+- **Always update backlog with every commit** — move item to IN PROGRESS at start, check off acceptance criteria as they're completed, move to DONE when finished. Backlog updates go in the same commit as the code.
+
+#### Communication
+
+- **Problem statements are not build directives** — when the user describes a problem or goal, ask what approach they want before implementing. Especially for changes to shared infrastructure (hooks, CI, config) that affect all contributors.
+
+#### Windows/Git Bash Pitfalls
+
+- **NUL vs /dev/null**: On Windows under Git Bash/MSYS2, redirecting to `NUL` creates a literal file named `nul`. Always use `/dev/null` in Bash contexts.
 
 #### When to Use EnterPlanMode (MANDATORY)
 
