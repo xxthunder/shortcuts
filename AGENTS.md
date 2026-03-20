@@ -354,7 +354,7 @@ function Public-Function {
 
 All PowerShell code must include **Pester tests**.
 
-**For comprehensive Pester test execution guidance, use the `pester-exec` skill** (`.claude/skills/pester-exec/`).
+**For comprehensive Pester test execution guidance, use the `powershell-test-exec` skill** (`.claude/skills/powershell-test-exec/`).
 
 The skill covers:
 
