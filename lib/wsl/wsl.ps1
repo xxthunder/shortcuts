@@ -13,6 +13,7 @@
 . "$PSScriptRoot\core.ps1"
 . "$PSScriptRoot\install.ps1"
 . "$PSScriptRoot\ops.ps1"
+. "$PSScriptRoot\wsl-conf.ps1"
 . "$PSScriptRoot\user.ps1"
 . "$PSScriptRoot\exec.ps1"
 . "$PSScriptRoot\docker.ps1"

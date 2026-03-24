@@ -19,10 +19,10 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](todo/sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](todo/sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](todo/sc-023.md)
-- [SC-025 — Apply automount metadata and umask defaults in per-distro wsl.conf](todo/sc-025.md)
 - [SC-026 — Add setup-devpod action to wsl-manager](todo/sc-026.md)
 
 ### Done
+- [SC-025 — Apply automount metadata and umask defaults in per-distro wsl.conf](done/sc-025.md)
 - [SC-006 — Scoop Update Helper Script](done/sc-006.md)
 - [SC-024 — Maintain PowerShell 5.1 compatibility and fix batch wrapper violations](done/sc-024.md)
 - [SC-022 — Make generic skills reusable across repositories](done/sc-022.md)

@@ -134,6 +134,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -154,6 +155,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "ubuntu" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -196,6 +198,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
             Mock Test-WslDockerInstalled { $false }
@@ -216,6 +219,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "autodetected" }
             Mock Test-WslDockerInstalled { $false }
@@ -263,6 +267,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -308,6 +313,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -345,6 +351,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -441,6 +448,7 @@ Describe "Install-WslPodman" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -472,7 +480,7 @@ Describe "Install-WslPodman" {
         }
     }
 
-    Context "Systemd, interop, and boot command configuration" {
+    Context "Systemd, interop, automount, and boot command configuration" {
         BeforeEach {
 
             Mock Assert-WslDistroExists { }
@@ -481,6 +489,7 @@ Describe "Install-WslPodman" {
             Mock Test-WslDockerInstalled { $false }
             Mock Test-WslPodmanInstalled { $false }
             Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslAutomountConfigured { $false }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
@@ -549,9 +558,10 @@ Describe "Install-WslPodman" {
             }
         }
 
-        It "Should still configure boot command when systemd and interop already configured" {
+        It "Should still configure boot command when systemd, interop, and automount already configured" {
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDefaultUser { "developer" }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
@@ -576,6 +586,54 @@ Describe "Install-WslPodman" {
 
             Should -Invoke Set-WslConf -ParameterFilter {
                 $Sections.boot.command -eq "mount --make-rshared /"
+            }
+        }
+
+        It "Should configure automount defaults when not already configured" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Test-WslAutomountConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslPodman -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.automount.options -eq 'metadata,umask=022'
+            }
+        }
+
+        It "Should not include automount section when already configured" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Test-WslAutomountConfigured { $true }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslPodman -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                -not $Sections.ContainsKey('automount')
+            }
+        }
+
+        It "Should configure automount even if systemd and interop are already configured" {
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslPodman -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.automount.options -eq 'metadata,umask=022'
             }
         }
 

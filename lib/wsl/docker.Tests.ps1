@@ -135,6 +135,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -151,6 +152,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "ubuntu" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -189,6 +191,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { $null }
             Mock Test-WslDockerInstalled { $false }
@@ -205,6 +208,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "autodetected" }
             Mock Test-WslDockerInstalled { $false }
@@ -225,6 +229,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $true }  # Docker already installed
@@ -266,6 +271,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -299,6 +305,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -387,6 +394,7 @@ Describe "Install-WslDockerEngine" {
             Mock Test-Wsl2Version { $true }
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDistroType { "debian" }
             Mock Get-WslDefaultUser { "developer" }
             Mock Test-WslDockerInstalled { $false }
@@ -414,7 +422,7 @@ Describe "Install-WslDockerEngine" {
         }
     }
 
-    Context "Systemd and interop prerequisite configuration" {
+    Context "Systemd, interop, and automount prerequisite configuration" {
         BeforeEach {
 
             Mock Assert-WslDistroExists { }
@@ -422,6 +430,7 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDistroType { "debian" }
             Mock Test-WslDockerInstalled { $false }
             Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslAutomountConfigured { $false }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
             Mock Test-Path { $true }
@@ -492,9 +501,60 @@ Describe "Install-WslDockerEngine" {
             }
         }
 
-        It "Should skip wsl.conf configuration if both systemd and interop are configured" {
+        It "Should configure automount defaults when not already configured" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Test-WslAutomountConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.automount.options -eq 'metadata,umask=022'
+            }
+        }
+
+        It "Should not include automount section when already configured" {
+            Mock Test-WslSystemdConfigured { $false }
+            Mock Test-WslInteropConfigured { $false }
+            Mock Test-WslAutomountConfigured { $true }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                -not $Sections.ContainsKey('automount')
+            }
+        }
+
+        It "Should configure automount even if systemd and interop are already configured" {
             Mock Test-WslSystemdConfigured { $true }
             Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $false }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Start-Sleep { }
+
+            Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Set-WslConf -Times 1 -ParameterFilter {
+                $Sections.automount.options -eq 'metadata,umask=022' -and
+                -not $Sections.ContainsKey('boot') -and
+                -not $Sections.ContainsKey('interop')
+            }
+        }
+
+        It "Should skip wsl.conf configuration if systemd, interop, and automount are all configured" {
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
             Mock Get-WslDefaultUser { "developer" }
             Mock Set-WslConf { }
 

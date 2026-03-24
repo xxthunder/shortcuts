@@ -170,17 +170,21 @@ Then run setup-docker again.
         Write-Information "Docker is already installed in '$DistroName'. Verifying configuration..."
     }
 
-    # Configure systemd and interop if not already configured
+    # Configure systemd, interop, and automount if not already configured
     $systemdConfigured = Test-WslSystemdConfigured -DistroName $DistroName
     $interopConfigured = Test-WslInteropConfigured -DistroName $DistroName
+    $automountConfigured = Test-WslAutomountConfigured -DistroName $DistroName
 
-    if (-not $systemdConfigured -or -not $interopConfigured) {
+    if (-not $systemdConfigured -or -not $interopConfigured -or -not $automountConfigured) {
         $configItems = @()
         if (-not $systemdConfigured) {
             $configItems += "systemd"
         }
         if (-not $interopConfigured) {
             $configItems += "Windows interop"
+        }
+        if (-not $automountConfigured) {
+            $configItems += "automount defaults"
         }
         Write-Information "Configuring $($configItems -join ' and ') (Docker prerequisites)..."
 
@@ -201,6 +205,11 @@ Then run setup-docker again.
                 enabled           = "true"
                 appendWindowsPath = "true"
             }
+        }
+
+        # Add automount section if not configured
+        if (-not $automountConfigured) {
+            $sections.automount = @{options = 'metadata,umask=022'}
         }
 
         # Preserve existing default user
