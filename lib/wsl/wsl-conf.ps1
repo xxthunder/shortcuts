@@ -145,6 +145,13 @@ function Set-WslConf {
             }
 
             foreach ($key in $Sections[$sectionName].Keys) {
+                # Handle _comment keys: add as section comments (only for new sections without existing comments)
+                if ($key -eq '_comment') {
+                    if (-not $sectionComments.ContainsKey($sectionNameLower) -or $sectionComments[$sectionNameLower].Count -eq 0) {
+                        $sectionComments[$sectionNameLower] = @("# $($Sections[$sectionName][$key])")
+                    }
+                    continue
+                }
                 $existingSections[$sectionNameLower][$key] = $Sections[$sectionName][$key]
             }
         }

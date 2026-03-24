@@ -622,6 +622,40 @@ generateHosts=false
             }
         }
 
+        It "Should write _comment key as comment above section" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{
+                automount = @{_comment = 'wsl-manager: sensible DrvFs permissions'; options = 'metadata,umask=022' }
+            } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*# wsl-manager: sensible DrvFs permissions*" -and
+                $Command -like "*options=metadata,umask=022*" -and
+                $Command -notlike "*_comment*"
+            }
+        }
+
+        It "Should not overwrite existing comments with _comment key" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "# User-written comment`n[automount]`noptions=metadata"
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{
+                automount = @{_comment = 'This should not appear'; options = 'metadata,umask=022' }
+            } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -notlike "*This should not appear*"
+            }
+        }
+
         It "Should preserve comments in existing wsl.conf" {
 
             Mock Assert-WslDistroExists { }

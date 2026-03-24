@@ -223,7 +223,10 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
 
         # Add automount section if not configured
         if (-not $automountConfigured) {
-            $sections.automount = @{options = 'metadata,umask=022'}
+            $sections.automount = @{
+                _comment = 'wsl-manager: sensible DrvFs permissions (chmod/chown support, default umask)'
+                options  = 'metadata,umask=022'
+            }
         }
 
         # Preserve existing default user

@@ -209,7 +209,10 @@ Then run setup-docker again.
 
         # Add automount section if not configured
         if (-not $automountConfigured) {
-            $sections.automount = @{options = 'metadata,umask=022'}
+            $sections.automount = @{
+                _comment = 'wsl-manager: sensible DrvFs permissions (chmod/chown support, default umask)'
+                options  = 'metadata,umask=022'
+            }
         }
 
         # Preserve existing default user
