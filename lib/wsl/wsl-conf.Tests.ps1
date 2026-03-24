@@ -526,6 +526,25 @@ Describe "Set-WslConf" {
     }
 
     Context "When wsl.conf does not exist" {
+        It "Should create new wsl.conf when cat throws (file not found)" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{boot = @{systemd = "true" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo tee /etc/wsl.conf*" -and
+                $Command -like "*[boot]*" -and
+                $Command -like "*systemd=true*"
+            }
+            # Should not create backup when file didn't exist
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*sudo cp /etc/wsl.conf*"
+            } -Times 0
+        }
+
         It "Should create new wsl.conf with specified sections" {
 
             Mock Assert-WslDistroExists { }
@@ -674,6 +693,30 @@ default=myuser
             Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
                 $Command -like "*# WSL Configuration*" -and
                 $Command -like "*# Default user*"
+            }
+        }
+
+        It "Should preserve comments between sections" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                @"
+[boot]
+systemd=true
+
+# Network settings below
+[network]
+generateHosts=false
+"@
+            } -ParameterFilter { $Command -like "*cat /etc/wsl.conf*" }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Set-WslConf -DistroName "Debian" -Sections @{user = @{default = "dev" } } -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*# Network settings below*" -and
+                $Command -like "*[network]*" -and
+                $Command -like "*generateHosts=false*"
             }
         }
     }

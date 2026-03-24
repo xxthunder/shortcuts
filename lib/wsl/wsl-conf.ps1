@@ -59,11 +59,6 @@ function Set-WslConf {
     # Validate distribution exists
     Assert-WslDistroExists -DistroName $DistroName
 
-    # Validate at least one section provided
-    if ($Sections.Count -eq 0) {
-        throw "At least one section must be provided."
-    }
-
     if ($PSCmdlet.ShouldProcess("/etc/wsl.conf in $DistroName", "Merge configuration sections")) {
         # Read existing wsl.conf
         $existingContent = ""
