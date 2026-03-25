@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File "%~dp0wsl-manager.ps1" %*
 All batch wrappers **must** use `powershell` (Windows PowerShell 5.1), not `pwsh` (PowerShell 7):
 
 - This project targets **PowerShell 5.1+** (see `development-principles.md`)
-- PowerShell 5.1 is inbox on all Windows 10+ machines — no install required
+- PowerShell 5.1 is inbox on all Windows 10+ machines - no install required
 - PowerShell 7 (`pwsh`) is installed via Scoop, which is itself bootstrapped by these scripts
 - Using `pwsh` in wrappers creates a chicken-and-egg problem on fresh machines
 - All scripts must use only 5.1-compatible syntax, so they work under both versions

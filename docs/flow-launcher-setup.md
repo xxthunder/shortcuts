@@ -68,8 +68,8 @@ The Shortcuts project stores shortcuts as `.url`, `.bat`, and `.cmd` files acros
 Flow Launcher's built-in **Program plugin** is configured to scan these directories and index shortcut files directly. No intermediate conversion or community plugins are needed.
 
 The installation script automatically configures the Program plugin to scan:
-- `shortcuts/` — the main project folder (checked into git)
-- `shortcuts_private/` — private shortcuts (not in git)
+- `shortcuts/` - the main project folder (checked into git)
+- `shortcuts_private/` - private shortcuts (not in git)
 
 ### Adding New Shortcuts
 

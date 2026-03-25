@@ -1,6 +1,6 @@
 ﻿<#
 .DESCRIPTION
-    WSL Manager orchestration — CLI entry point and interactive menu.
+    WSL Manager orchestration — CLI entry point and TUI.
     This file is dot-sourced by wsl-manager.ps1 and sources commands.ps1 for action functions.
 #>
 
@@ -14,7 +14,7 @@ param()
 function Start-InteractiveMode {
     <#
     .SYNOPSIS
-        Displays the interactive menu and handles user input.
+        Displays the TUI and handles user input.
     .OUTPUTS
         Returns $true if the menu completed successfully, $false if skipped.
     #>
@@ -69,14 +69,14 @@ function Start-InteractiveMode {
         Write-Host "  [C] Clone distribution" -ForegroundColor White
         Write-Host "  [U] Update distribution" -ForegroundColor White
         Write-Host "  [S] Setup user account" -ForegroundColor White
-        Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
-        Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
-        Write-Host "  [V] Setup DevPod (installs CLI, configures container provider)" -ForegroundColor White
+        Write-Host "  [D] Setup Docker" -ForegroundColor White
+        Write-Host "  [P] Setup Podman" -ForegroundColor White
+        Write-Host "  [V] Setup DevPod" -ForegroundColor White
         Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
         Write-Host "  [H] Shutdown WSL" -ForegroundColor White
-        Write-Host "  [W] Configure .wslconfig defaults (idempotent)" -ForegroundColor White
+        Write-Host "  [W] Configure .wslconfig defaults" -ForegroundColor White
         Write-Host "  [Q] Quit" -ForegroundColor White
         Write-Host ""
 

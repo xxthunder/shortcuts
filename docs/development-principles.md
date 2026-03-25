@@ -117,7 +117,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **Critical checkpoint**: NEVER modify implementation without updating tests first.
 
-**Critical checkpoint**: NEVER commit without updating `docs/backlog/` — acceptance criteria MUST reflect the current state of the work.
+**Critical checkpoint**: NEVER commit without updating `docs/backlog/` - acceptance criteria MUST reflect the current state of the work.
 
 ---
 

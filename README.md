@@ -197,12 +197,12 @@ scoop install vscode      # Visual Studio Code
 ## WSL Manager
 
 WSL Manager is a PowerShell tool for managing WSL distributions from the Windows side.
-It provides both an interactive menu and CLI commands to:
+It provides both a TUI (menu-driven interface) and CLI commands to:
 
-- **Manage WSL distributions** — list, clone, update, remove, and terminate
-- **Set up container engines** — one-command Docker or Podman installation
-- **Configure DevContainers** — complete VS Code DevContainer setup (SSH agent, git, etc.)
-- **Manage users and proxy** — create users with sudo, configure corporate proxy settings
+- **Manage WSL distributions**: list, clone, update, remove, and terminate
+- **Set up container engines**: one-command Docker or Podman installation
+- **Configure DevContainers**: complete DevContainer setup with DevPods or VS Code (SSH agent, git, etc.)
+- **Manage users and proxy**: create users with sudo, configure corporate proxy settings
 
 **[📖 WSL Manager Documentation](docs/wsl-manager.md)**
 
@@ -210,7 +210,7 @@ It provides both an interactive menu and CLI commands to:
 
 ## More Features
 
-- **[Flow Launcher](docs/flow-launcher-setup.md)** — A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
+- **[Flow Launcher](docs/flow-launcher-setup.md)**: A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
 
 ---
 
@@ -373,9 +373,9 @@ Manually delete these folders if desired:
 
 ### Documentation
 
-- **[Development Principles](docs/development-principles.md)** — Coding standards, TDD approach, and project conventions
-- **[Roadmap](docs/roadmap.md)** — Project vision and future direction
-- **[Backlog](docs/backlog/index.md)** — Current work items, priorities, and completed features
+- **[Development Principles](docs/development-principles.md)**: Coding standards, TDD approach, and project conventions
+- **[Roadmap](docs/roadmap.md)**: Project vision and future direction
+- **[Backlog](docs/backlog/index.md)**: Current work items, priorities, and completed features
 
 ### Getting Started
 

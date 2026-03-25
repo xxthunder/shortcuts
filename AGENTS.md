@@ -54,7 +54,11 @@ tools/wsl-manager/
 ## Documentation Hierarchy
 
 - Each tool gets one doc (e.g., `wsl-manager.md`). Supported workflows like DevContainer setup belong as a section within the tool's doc, not as standalone guides.
-- **Don't let a feature outgrow its tool** — DevContainer support is a feature of WSL Manager, not a separate product.
+- **Don't let a feature outgrow its tool** - DevContainer support is a feature of WSL Manager, not a separate product.
+
+### Writing Style
+
+- **No em-dashes** (`—`) in any `.md` file. Use a colon (`:`) to introduce explanations, a semicolon (`;`) to join independent clauses, or a normal dash (`-`) for asides and parenthetical remarks.
 
 ## Coding Guidelines
 
@@ -71,9 +75,9 @@ tools/wsl-manager/
 
 ### Linting Suppression Policy
 
-**Never suppress these rules — fix the code instead:**
-- `PSReviewUnusedParameter` — make the parameter actually used, or remove it.
-- `PSUseSingularNouns` — rename the function to use a singular noun (PowerShell convention: `Verb-SingularNoun`).
+**Never suppress these rules; fix the code instead:**
+- `PSReviewUnusedParameter`: make the parameter actually used, or remove it.
+- `PSUseSingularNouns`: rename the function to use a singular noun (PowerShell convention: `Verb-SingularNoun`).
 
 ### No Speculative Alternatives
 
@@ -141,7 +145,7 @@ See "Script Structure" section below for the complete template.
 
 **All `.ps1` files must be saved as UTF-8 with BOM** (Byte Order Mark).
 
-PSScriptAnalyzer enforces `PSUseBOMForUnicodeEncodedFile` — any `.ps1` file containing non-ASCII characters (e.g., em dashes, accented letters, Unicode symbols) without a UTF-8 BOM will fail linting. To avoid issues, **always save `.ps1` files with BOM**, regardless of whether they currently contain non-ASCII characters.
+PSScriptAnalyzer enforces `PSUseBOMForUnicodeEncodedFile`; any `.ps1` file containing non-ASCII characters (e.g., em dashes, accented letters, Unicode symbols) without a UTF-8 BOM will fail linting. To avoid issues, **always save `.ps1` files with BOM**, regardless of whether they currently contain non-ASCII characters.
 
 This applies only to `.ps1` files. Other file types (`.sh`, `.yml`, `.json`, `.md`, `.bat`) should remain UTF-8 without BOM, as BOM can cause problems in those formats.
 
@@ -457,7 +461,7 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 
 **Context**: This project uses GitHub Actions CI. The `develop` branch is always green.
 
-**CRITICAL: There are no pre-existing test failures. Ever.** CI ensures `develop` is always green. Feature branches are created from `develop`. Therefore, any failure on a feature branch was introduced by that branch — no exceptions.
+**CRITICAL: There are no pre-existing test failures. Ever.** CI ensures `develop` is always green. Feature branches are created from `develop`. Therefore, any failure on a feature branch was introduced by that branch; no exceptions.
 
 **You MUST NOT:**
 - Dismiss failures as "pre-existing" or "unrelated to my changes"
@@ -465,12 +469,12 @@ The project uses a `.bootstrap` system (see `.bootstrap/` directory):
 - Assume that tests in files you didn't directly modify can't be affected by your changes
 
 **You MUST:**
-- Investigate every failure — even in files you didn't touch
-- If uncertain whether your changes caused it, flag it to the user — never silently skip
+- Investigate every failure - even in files you didn't touch
+- If uncertain whether your changes caused it, flag it to the user - never silently skip
 - Fix the issue before proceeding
 
 **Investigation steps**:
-1. `git diff develop..HEAD` — review ALL changes on the branch
+1. `git diff develop..HEAD`: review ALL changes on the branch
 2. Analyze if ANY change (even cosmetic ones like string formatting) could affect tests
 3. If uncertain, use `git bisect` to identify the breaking commit
 
@@ -515,13 +519,13 @@ Using `shell: ${{ matrix.shell }}` will fail. Instead, use `shell: cmd` and invo
 
 #### Backlog Conventions
 
-- **No commit hashes in backlog entries** — the backlog file is part of the commit itself, so hashes are circular and go stale after squash/rebase.
-- **No unrelated files in feature commits** — keep commits scoped to the feature; unrelated additions get their own commit.
-- **Always update backlog with every commit** — move item to IN PROGRESS at start, check off acceptance criteria as they're completed, move to DONE when finished. Backlog updates go in the same commit as the code.
+- **No commit hashes in backlog entries**: the backlog file is part of the commit itself, so hashes are circular and go stale after squash/rebase.
+- **No unrelated files in feature commits**: keep commits scoped to the feature; unrelated additions get their own commit.
+- **Always update backlog with every commit**: move item to IN PROGRESS at start, check off acceptance criteria as they're completed, move to DONE when finished. Backlog updates go in the same commit as the code.
 
 #### Communication
 
-- **Problem statements are not build directives** — when the user describes a problem or goal, ask what approach they want before implementing. Especially for changes to shared infrastructure (hooks, CI, config) that affect all contributors.
+- **Problem statements are not build directives**: when the user describes a problem or goal, ask what approach they want before implementing. Especially for changes to shared infrastructure (hooks, CI, config) that affect all contributors.
 
 #### Windows/Git Bash Pitfalls
 
@@ -568,7 +572,7 @@ Agent: *uses EnterPlanMode to explore architecture, understand relationships,
 6. **Document**: Add comments and help documentation
 7. **Integration**: Ensure Keypirinha can discover new shortcuts if applicable
 
-> **Backlog tracking is mandatory** — see Development Workflow in `docs/development-principles.md` for the full start/finish protocol.
+> **Backlog tracking is mandatory**: see Development Workflow in `docs/development-principles.md` for the full start/finish protocol.
 
 #### When Modifying Existing Functions
 

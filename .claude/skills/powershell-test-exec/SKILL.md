@@ -130,7 +130,7 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
 
 ### CRITICAL: There Are No Pre-Existing Failures
 
-**The `develop` branch is always green. CI enforces this. Therefore, any test failure on a feature branch was caused by that branch — no exceptions.**
+**The `develop` branch is always green. CI enforces this. Therefore, any test failure on a feature branch was caused by that branch - no exceptions.**
 
 **You MUST NOT:**
 - Dismiss failures as "pre-existing" or "unrelated to my changes"
@@ -139,7 +139,7 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
 
 **You MUST:**
 - Investigate every failure
-- If uncertain whether your changes caused it, flag it to the user — never silently skip
+- If uncertain whether your changes caused it, flag it to the user - never silently skip
 
 ### When Tests Fail on a Feature Branch
 

@@ -122,7 +122,7 @@ Bash(pwsh -File ".\test\bin\testrunner.ps1")
 
 ## Handling Test Output
 
-**Prefer structured JUnit XML over console output parsing** — it avoids ANSI code issues and provides reliable, machine-readable results.
+**Prefer structured JUnit XML over console output parsing**: it avoids ANSI code issues and provides reliable, machine-readable results.
 
 ### Recommended: JUnit XML Analysis
 
@@ -135,7 +135,7 @@ Bash(pwsh -File ".\test\bin\testrunner.ps1" -Unit)
 # Step 2: Read JUnit XML for structured results
 Read(test/out/junit.xml)
 
-# Step 3: Quick failure check — grep for <failure elements
+# Step 3: Quick failure check: grep for <failure elements
 Grep(pattern: "<failure", path: "test/out/junit.xml")
 ```
 

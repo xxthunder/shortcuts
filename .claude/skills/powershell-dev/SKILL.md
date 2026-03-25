@@ -123,7 +123,7 @@ pwsh -File "test/bin/testrunner.ps1" -LintOnly -TestPath '<file>'
 
 If any violations are found (especially `PSUseBOMForUnicodeEncodedFile`), fix them before proceeding.
 
-**BOM fix** — if a `.ps1` file is missing the UTF-8 BOM (common after Write/Edit tool use), prepend it:
+**BOM fix:** if a `.ps1` file is missing the UTF-8 BOM (common after Write/Edit tool use), prepend it:
 
 ```bash
 pwsh -Command "
@@ -134,7 +134,7 @@ pwsh -Command "
 "
 ```
 
-This step is **not optional** — the pre-commit hook will block commits with lint errors.
+This step is **not optional**: the pre-commit hook will block commits with lint errors.
 
 ### 4. Key Patterns
 
@@ -227,7 +227,7 @@ Avoid PowerShell 6.0+ features:
 
 Before every commit:
 
-- [ ] **PSScriptAnalyzer clean on every edited `.ps1` file** (step 3 above — not optional, the pre-commit hook enforces this)
+- [ ] **PSScriptAnalyzer clean on every edited `.ps1` file** (step 3 above: not optional, the pre-commit hook enforces this)
 - [ ] All unit tests pass (use `powershell-test-exec` skill)
 - [ ] Integration tests pass if modified (use `powershell-test-exec` skill)
 - [ ] Tests and implementation committed together

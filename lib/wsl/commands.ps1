@@ -93,7 +93,7 @@ function Select-WslDistro {
 
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If not provided, fetches from WSL and shows the table.
-        When provided (e.g. from the interactive menu), the table is assumed already visible.
+        When provided (e.g. from the TUI), the table is assumed already visible.
 
     .OUTPUTS
         The selected distribution name, or $null on cancellation/error.
@@ -270,7 +270,7 @@ function Invoke-TerminateDistro {
         The name of the distribution to terminate. If not provided, user is prompted.
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
-        Numbers entered by the user correspond to the full list (consistent with the interactive menu).
+        Numbers entered by the user correspond to the full list (consistent with the TUI).
     #>
     [CmdletBinding()]
     param(
@@ -681,7 +681,7 @@ function Invoke-WslCommand {
     .PARAMETER Password
         Password for setup-user command.
     .PARAMETER Distros
-        Optional pre-fetched list of distributions (used by the interactive menu to avoid re-fetching).
+        Optional pre-fetched list of distributions (used by the TUI to avoid re-fetching).
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-SetupUser for non-interactive WSL user creation.')]

@@ -4,7 +4,7 @@
 
 ## Overview
 
-WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) distributions. It provides both an interactive menu and CLI commands for creating, cloning, configuring, and managing WSL distributions — including one-command Docker and Podman setup for VS Code DevContainer development.
+WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) distributions. It provides both a **TUI** (Terminal User Interface - a menu-driven interface launched by running the script without arguments) and **CLI** commands for creating, cloning, configuring, and managing WSL distributions - including one-command Docker and Podman setup for DevContainer development.
 
 **Contents:**
 
@@ -18,10 +18,11 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup Docker](#setup-docker)
   - [Setup Podman](#setup-podman)
   - [Setup DevPod](#setup-devpod)
+  - [Configure .wslconfig Defaults](#configure-wslconfig-defaults)
   - [Remove Distribution](#remove-distribution)
   - [Terminate Distribution](#terminate-distribution)
   - [Shutdown WSL](#shutdown-wsl)
-- [VS Code DevContainer Setup](#vs-code-devcontainer-setup)
+- [DevContainer Setup](#devcontainer-setup)
 - [Technical Reference](#technical-reference)
 - [Additional Resources](#additional-resources)
 
@@ -29,15 +30,15 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 
 ## Quick Start
 
-**Via Keypirinha or Flow Launcher** — search for `wsl-manager`.
+**Via Keypirinha or Flow Launcher**: search for `wsl-manager`.
 
-**Interactive menu** — launch and follow the on-screen prompts:
+**TUI**: launch and follow the on-screen prompts:
 
 ```powershell
 .\tools\wsl-manager\wsl-manager.ps1
 ```
 
-**CLI mode** — run commands directly:
+**CLI**: run commands directly:
 
 ```powershell
 .\tools\wsl-manager\wsl-manager.ps1 <command> <distro>
@@ -51,22 +52,39 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 
 Install a new WSL distribution from Microsoft Store or the web.
 
-- **Menu**: `[I] Install new distribution`
+- **TUI**: `[I] Install new distribution`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install <distro>`
+
+This command:
+- Fetches available distributions from `wsl.exe --list --online`
+- Prompts to select a distribution by number or name (TUI) or uses the provided name (CLI)
+- Validates the distribution does not already exist locally
+- Installs the distribution via `wsl.exe --install --distribution <name> --no-launch`
 
 ### Clone Distribution
 
 Export and re-import a distribution under a new name. The source must be stopped.
 
-- **Menu**: `[C] Clone distribution`
+- **TUI**: `[C] Clone distribution`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 clone <distro>`
+
+This command:
+- Exports the source distribution to a temporary tar file via `wsl.exe --export`
+- Imports the tar file as a new distribution via `wsl.exe --import` into `%USERPROFILE%\wsl\<target>\`
+- Cleans up the temporary tar file
+- Prompts for the target name (TUI) or accepts it as a second argument (CLI)
 
 ### Update Distribution
 
 Update all packages to latest versions (apt-based distributions).
 
-- **Menu**: `[U] Update distribution`
+- **TUI**: `[U] Update distribution`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 update <distro>`
+
+This command:
+- Validates the distribution is Debian or Ubuntu based
+- Runs `apt-get update && apt-get upgrade -y` inside the distribution
+- Runs `apt-get autoremove -y && apt-get autoclean` to free disk space
 
 ### Setup User Account
 
@@ -74,7 +92,7 @@ Create a non-root user with sudo privileges and set as default user.
 
 > **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
 
-- **Menu**: `[S] Setup user account`
+- **TUI**: `[S] Setup user account`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-user <distro>`
 
 This command:
@@ -86,81 +104,141 @@ This command:
 
 Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
 
-- **Menu**: `[X] Setup proxy`
+- **TUI**: `[X] Setup proxy (corporate)`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
 
-See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+This command:
+- Auto-detects proxy configuration from Windows PAC/registry settings
+- Prompts for proxy credentials (username/password) if needed
+- Falls back to manual `host:port` entry or DIRECT mode if no PAC is configured
+- Configures `~/.bashrc` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
+- Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
+- Configures `~/.docker/config.json` proxy settings
+- Configures `~/.config/containers/containers.conf` for Podman
+- DIRECT mode removes all managed proxy configurations
+- Is idempotent - safe to run multiple times (overwrites configuration)
 
 ### Setup Docker
 
 Install Docker Engine with automatic prerequisite configuration.
 
-- **Menu**: `[D] Setup Docker`
+- **TUI**: `[D] Setup Docker`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-docker <distro>`
 
-See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+This command:
+- Validates the distribution is Debian or Ubuntu based and running WSL2
+- Configures `/etc/wsl.conf` with `[boot] systemd=true`, `[interop] enabled=true`, `[automount] options=metadata`
+- Creates `/etc/binfmt.d/WSLInterop.conf` for kernel-level Windows executable interop
+- Installs Docker CE, Docker CLI, containerd, Docker Compose, and Docker Buildx
+- Adds the default user to the `docker` group for rootless access
+- Restarts the distribution to apply changes
+- Is idempotent - safe to run multiple times to verify or repair
 
 ### Setup Podman
 
 Install rootless Podman as a Docker alternative.
 
-- **Menu**: `[P] Setup Podman`
+- **TUI**: `[P] Setup Podman`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <distro>`
 
-See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+This command:
+- Validates the distribution is Debian or Ubuntu based and running WSL2
+- Configures `/etc/wsl.conf` with `[boot] systemd=true`, `command=mount --make-rshared /`, `[interop] enabled=true`
+- Installs `podman`, `slirp4netns` (rootless networking), and `uidmap` (user namespace mapping)
+- Enables the rootless Podman socket via `systemctl --user enable --now podman.socket`
+- Enables user session persistence via `loginctl enable-linger`
+- Sets environment variables in `~/.bashrc` (`XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`, `DOCKER_HOST`)
+- Restarts the distribution to apply changes
+- Is idempotent - safe to run multiple times to verify or repair
 
 ### Setup DevPod
 
 Install the DevPod CLI and configure it to use the detected container engine (Docker or Podman).
 
-- **Menu**: `[V] Setup DevPod`
+- **TUI**: `[V] Setup DevPod`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod <distro>`
 
 Prerequisites: Docker (`setup-docker`) or Podman (`setup-podman`) must be installed first.
 
 This command:
-- Downloads and installs the DevPod CLI binary
+- Downloads and installs the DevPod CLI binary to `/usr/local/bin/devpod`
 - Auto-detects Docker (preferred) or Podman as the container engine
-- Configures the detected engine as the DevPod provider
-- Is idempotent — safe to re-run
+- Configures the detected engine as the DevPod provider via `devpod provider use`
+- Creates user configuration in `~/.config/devpod/`
+- Restarts the distribution to apply changes
+- Is idempotent - safe to re-run
+
+### Configure .wslconfig Defaults
+
+Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig`.
+
+- **TUI**: `[W] Configure .wslconfig defaults`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 configure-wsl`
+
+This command:
+- Reads existing `%USERPROFILE%\.wslconfig` (if present)
+- Merges in recommended defaults without overwriting existing user values:
+  - `[wsl2] kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` (pure cgroups v2)
+  - `[wsl2] networkingMode = mirrored` (mirrors Windows network interfaces)
+  - `[wsl2] dnsTunneling = true` (routes DNS through Windows)
+  - `[wsl2] autoProxy = true` (applies Windows proxy settings)
+- For `kernelCommandLine`, appends missing parameters rather than replacing the whole value
+- Creates a timestamped backup of the existing file before writing
+- Is idempotent - safe to run multiple times
 
 ### Remove Distribution
 
-Unregister a distribution (with confirmation prompt in interactive mode).
+Unregister a distribution (with confirmation prompt in TUI mode).
 
-- **Menu**: `[R] Remove distribution`
+- **TUI**: `[R] Remove distribution`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
+
+This command:
+- Validates the distribution exists and is not running
+- Prompts for confirmation before proceeding (TUI shows a Y/N prompt)
+- Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
+- This operation cannot be undone
 
 ### Terminate Distribution
 
 Gracefully shut down a running distribution.
 
-- **Menu**: `[T] Terminate distribution`
+- **TUI**: `[T] Terminate distribution`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 terminate <distro>`
+
+This command:
+- Shows only running distributions for selection (TUI) or validates the named distribution is running (CLI)
+- Executes `wsl.exe --terminate <name>` to stop the distribution
+- Polls `wsl.exe --list --verbose` with retries to verify termination
+- Warns if no distributions are currently running
 
 ### Shutdown WSL
 
 Shut down the entire WSL subsystem including all running distributions and the WSL2 VM. Use this to apply changes to `%USERPROFILE%\.wslconfig`.
 
-- **Menu**: `[H] Shutdown WSL`
+- **TUI**: `[H] Shutdown WSL`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
 
 This command:
 - Lists any running distributions before shutting down (so you know what will be stopped)
-- Stops all running distributions and the WSL2 lightweight VM
-- Is idempotent — safe to run when no distributions are running
+- Prompts for confirmation before proceeding
+- Executes `wsl.exe --shutdown` to stop all distributions and the WSL2 lightweight VM
+- Polls to verify all distributions have stopped
+- Is idempotent - safe to run when no distributions are running
 
 ---
 
-## VS Code DevContainer Setup
+## DevContainer Setup
 
-This section walks you from a fresh Windows machine to running VS Code DevContainers in WSL, with proper SSH agent forwarding and git configuration. It covers both Docker and Podman as container runtimes.
+This section walks you from a fresh Windows machine to running DevContainers in WSL, with proper SSH agent forwarding and git configuration. It covers both Docker and Podman as container runtimes, and both DevPods and the VS Code DevContainer extension as DevContainer clients.
+
+> **Recommended setup:** **Podman** + **DevPods**. Podman is rootless and daemonless (more secure, lighter footprint). DevPods are IDE-independent; you can use them with VS Code, JetBrains IDEs, or any editor, without being locked into a specific IDE extension.
 
 ### Docker vs Podman
 
 Choose one container runtime per distribution. They cannot coexist in the same WSL distribution due to `DOCKER_HOST` conflicts.
 
-| Feature | Docker | Podman |
+| Feature | Docker | Podman (recommended) |
 |---------|--------|--------|
 | Architecture | Daemon-based (`dockerd`) | Daemonless |
 | Root required | Docker daemon runs as root | Fully rootless |
@@ -169,22 +247,45 @@ Choose one container runtime per distribution. They cannot coexist in the same W
 | DevContainer support | Native | Via `DOCKER_HOST` + socket |
 | OCI compliant | Yes | Yes |
 
-**When to use Docker:**
-- Existing Docker Compose workflows with daemon-dependent features
-- Third-party tools that require the Docker daemon socket
-
-**When to use Podman:**
+**When to use Podman (recommended):**
 - Security-conscious environments (no root daemon)
 - Minimal resource footprint (no background daemon)
 - Rootless container workflows
 
+**When to use Docker:**
+- Existing Docker Compose workflows with daemon-dependent features
+- Third-party tools that require the Docker daemon socket
+
+### DevPods vs VS Code DevContainer Extension
+
+| Feature | DevPods (recommended) | VS Code DevContainer Extension |
+|---------|----------|-------------------------------|
+| IDE support | Any IDE (VS Code, JetBrains, etc.) | VS Code only |
+| Installation | CLI binary in WSL | VS Code extension |
+| Configuration | `devpod provider use` | VS Code settings |
+| IDE independence | Yes - not tied to any editor | No - requires VS Code |
+
+**When to use DevPods (recommended):**
+- You want IDE independence; switch between VS Code and JetBrains freely
+- You prefer CLI-driven workflows
+- You want a single tool that works across all editors
+
+**When to use VS Code DevContainer extension:**
+- You exclusively use VS Code and want deep IDE integration
+- You rely on VS Code-specific DevContainer features (e.g., settings sync, extension recommendations)
+
 ### Step-by-Step Walkthrough
 
-> **Tip:** Steps 2 onwards can be run via the interactive menu (`.\tools\wsl-manager\wsl-manager.ps1`) or as the CLI commands shown below. Both are equivalent.
+Each step below shows both TUI and CLI instructions. They are equivalent; choose whichever you prefer.
 
 #### Step 1: Configure WSL Global Settings
 
-Add the following to `%USERPROFILE%\.wslconfig` on your Windows host (create the file if it does not exist):
+Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig`.
+
+- **TUI**: `[W] Configure .wslconfig defaults`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 configure-wsl`
+
+This applies the following defaults (without overwriting existing user values):
 
 ```ini
 [wsl2]
@@ -194,66 +295,61 @@ dnsTunneling=true
 autoProxy=true
 ```
 
-- `kernelCommandLine` — enables pure cgroups v2, required for rootless Podman and optimal systemd support
-- `networkingMode=mirrored` — mirrors Windows network interfaces into WSL, improving connectivity
-- `dnsTunneling` — routes DNS queries through Windows, avoiding split-DNS issues in corporate networks
-- `autoProxy` — automatically applies Windows proxy settings inside WSL
+- `kernelCommandLine`: enables pure cgroups v2, required for rootless Podman and optimal systemd support
+- `networkingMode=mirrored`: mirrors Windows network interfaces into WSL, improving connectivity
+- `dnsTunneling`: routes DNS queries through Windows, avoiding split-DNS issues in corporate networks
+- `autoProxy`: automatically applies Windows proxy settings inside WSL
 
 Then restart WSL to apply:
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 shutdown
-```
+- **TUI**: `[H] Shutdown WSL`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
 
 #### Step 2: Install WSL Distribution
 
-Ubuntu 24.04 LTS is recommended — long-term support, excellent WSL compatibility, and well-tested Docker/Podman support.
+Ubuntu 24.04 LTS is recommended; long-term support, excellent WSL compatibility, and well-tested Docker/Podman support.
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 install Ubuntu-24.04
-```
+- **TUI**: `[I] Install new distribution` → select `Ubuntu-24.04` from the list
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install Ubuntu-24.04`
 
 #### Step 3: Setup User Account
 
-Create a non-root user with sudo privileges (required for both Docker and Podman):
+Create a non-root user with sudo privileges (required for both Docker and Podman).
 
 > **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
-```
+- **TUI**: `[S] Setup user account` → select `Ubuntu-24.04`, enter username and password when prompted
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser`
 
 #### Step 4: Configure Proxy (Corporate Networks)
 
 If you're behind a corporate proxy, configure proxy settings before updating or installing packages. This ensures that package management (APT), Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04
-```
+- **TUI**: `[X] Setup proxy (corporate)` → select `Ubuntu-24.04`, follow proxy detection prompts
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04`
 
 The command auto-detects your proxy configuration:
 
-1. **PAC/registry detection** — reads `AutoConfigURL` from Windows Internet Settings and resolves the proxy URL automatically via `setProxy.ps1` functions
-2. **Credentials** — asks whether you want to provide proxy credentials (username/password embedded in URL)
-3. **Manual fallback** — if no PAC is configured, prompts you to enter `host:port` manually or choose DIRECT (no proxy)
-4. **DIRECT mode** — when no proxy is needed, removes all managed proxy configurations from the distro
+1. **PAC/registry detection**: reads `AutoConfigURL` from Windows Internet Settings and resolves the proxy URL automatically via `setProxy.ps1` functions
+2. **Credentials**: asks whether you want to provide proxy credentials (username/password embedded in URL)
+3. **Manual fallback**: if no PAC is configured, prompts you to enter `host:port` manually or choose DIRECT (no proxy)
+4. **DIRECT mode**: when no proxy is needed, removes all managed proxy configurations from the distro
 
-No prerequisite steps are needed — proxy detection is fully self-contained.
+No prerequisite steps are needed; proxy detection is fully self-contained.
 
 **What this configures automatically:**
 
-1. **`~/.bashrc` managed block** — exports `http_proxy`, `https_proxy`, `HTTP_PROXY`, `HTTPS_PROXY`, `no_proxy`, `NO_PROXY`
-2. **`/etc/apt/apt.conf.d/99proxy`** — `Acquire::http::Proxy` and `Acquire::https::Proxy`
-3. **`~/.docker/config.json`** — `proxies.default` with `httpProxy`, `httpsProxy`, `noProxy`
-4. **`~/.config/containers/containers.conf`** — `[engine] env` with proxy variables
+1. **`~/.bashrc` managed block**: exports `http_proxy`, `https_proxy`, `HTTP_PROXY`, `HTTPS_PROXY`, `no_proxy`, `NO_PROXY`
+2. **`/etc/apt/apt.conf.d/99proxy`**: `Acquire::http::Proxy` and `Acquire::https::Proxy`
+3. **`~/.docker/config.json`**: `proxies.default` with `httpProxy`, `httpsProxy`, `noProxy`
+4. **`~/.config/containers/containers.conf`**: `[engine] env` with proxy variables
 
-**Note:** This setup is idempotent — safe to run multiple times (overwrites configuration). `NO_PROXY` defaults to `localhost,127.0.0.1`.
+**Note:** This setup is idempotent - safe to run multiple times (overwrites configuration). `NO_PROXY` defaults to `localhost,127.0.0.1`.
 
 #### Step 5: Update Distribution
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 update Ubuntu-24.04
-```
+- **TUI**: `[U] Update distribution` → select `Ubuntu-24.04`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 update Ubuntu-24.04`
 
 This runs `apt-get update && apt-get upgrade -y` inside the distribution.
 
@@ -295,7 +391,7 @@ ssh-add -l
 wsl --distribution Ubuntu-24.04
 ```
 
-> **Tip:** You can also open the distribution directly from Keypirinha — search for `Ubuntu-24.04`.
+> **Tip:** You can also open the distribution directly from Keypirinha: search for `Ubuntu-24.04`.
 
 ##### Option A: Reuse Windows `.gitconfig` via Symlink (Recommended)
 
@@ -341,7 +437,7 @@ git config --global core.autocrlf input
 
 With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can execute Windows binaries directly. Setting `core.sshCommand` to `ssh.exe` tells git to use the **Windows OpenSSH client** instead of the Linux one. This means:
 
-- **SSH keys** stored in `%USERPROFILE%\.ssh\` are reused automatically — no need to copy or manage keys inside each WSL distribution.
+- **SSH keys** stored in `%USERPROFILE%\.ssh\` are reused automatically - no need to copy or manage keys inside each WSL distribution.
 - **SSH config** (`%USERPROFILE%\.ssh\config`) with host aliases, proxy settings, etc. is reused as well.
 - The **Windows SSH Agent** handles key authentication, so keys loaded via `ssh-add` on Windows are available to git inside WSL.
 
@@ -351,9 +447,8 @@ With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can 
 
 If you want to keep a clean base Ubuntu-24.04 and create a dedicated DevContainer distribution:
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon
-```
+- **TUI**: `[C] Clone distribution` → select `Ubuntu-24.04`, enter target name `ubuntu-devcon`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon`
 
 **Why clone?** Keep a pristine base for other projects, quickly create new environments, safely experiment without affecting your base.
 
@@ -361,11 +456,46 @@ If you want to keep a clean base Ubuntu-24.04 and create a dedicated DevContaine
 
 Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
 
-##### Option A: Docker
+##### Option A: Rootless Podman (Recommended)
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 setup-docker ubuntu-devcon
-```
+> **Note:** Pure cgroups v2 is required for rootless Podman. This is already covered by the `kernelCommandLine` setting in Step 1.
+
+- **TUI**: `[P] Setup Podman` → select `ubuntu-devcon`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman ubuntu-devcon`
+
+**What this configures automatically:**
+
+1. **wsl.conf settings:**
+   - `[boot] systemd=true`: enables systemd (required for socket activation)
+   - `[boot] command=mount --make-rshared /`: prevents rootless container mount propagation warnings
+   - `[interop] enabled=true, appendWindowsPath=true`: Windows executable access
+
+2. **Podman packages:**
+   - `podman`: container runtime
+   - `slirp4netns`: rootless networking (user-space network stack)
+   - `uidmap`: user namespace mapping for rootless containers
+
+3. **Rootless Podman socket:**
+   - `systemctl --user enable --now podman.socket`: socket activation as the default user
+   - Socket path: `/run/user/$UID/podman/podman.sock`
+
+4. **User session persistence:**
+   - `loginctl enable-linger $USER`: keeps systemd user services alive across sessions
+
+5. **Environment variables in `~/.bashrc`:**
+   - `XDG_RUNTIME_DIR=/run/user/$(id -u)`: systemd user runtime directory
+   - `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus`: D-Bus session bus
+   - `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock`: routes Docker CLI commands to Podman
+
+6. **Distribution restart:**
+   - Automatically restarts the distribution to apply wsl.conf changes
+
+**Note**: This setup is idempotent - safe to run multiple times to verify or repair your installation.
+
+##### Option B: Docker
+
+- **TUI**: `[D] Setup Docker` → select `ubuntu-devcon`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-docker ubuntu-devcon`
 
 **What this configures automatically:**
 
@@ -374,10 +504,9 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
    - `[interop]` section: `enabled=true`, `appendWindowsPath=true` (Windows executable access)
    - Preserves existing `[user]` section if configured
 
-2. **Kernel-level interop via binfmt.d (VS Code compatible):**
+2. **Kernel-level interop via binfmt.d:**
    - Creates `/etc/binfmt.d/WSLInterop.conf` with Windows executable registration
    - Managed by `systemd-binfmt.service` (core system service)
-   - VS Code respects kernel configuration, preventing interference
 
 3. **Docker Engine packages:**
    - Docker CE, Docker CLI, containerd
@@ -387,54 +516,39 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 4. **Distribution restart:**
    - Automatically restarts the distribution to apply wsl.conf changes
 
-**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation. After installation, you must restart your terminal for docker group membership to take effect.
+**Note**: This setup is idempotent - safe to run multiple times to verify or repair your installation. After installation, you must restart your terminal for docker group membership to take effect.
 
-##### Option B: Rootless Podman
+#### Step 10: Install DevContainer Client
 
-> **Note:** Pure cgroups v2 is required for rootless Podman. This is already covered by the `kernelCommandLine` setting in Step 1.
+Choose **one** of the two options below.
 
-###### Install Podman
+##### Option A: DevPods (Recommended)
 
-```powershell
-.\tools\wsl-manager\wsl-manager.ps1 setup-podman ubuntu-devcon
+DevPods are IDE-independent; they work with VS Code, JetBrains IDEs, or any editor. No IDE extension required.
+
+- **TUI**: `[V] Setup DevPod` → select `ubuntu-devcon`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod ubuntu-devcon`
+
+This installs the DevPod CLI and automatically configures it to use the detected container engine (Docker or Podman). After installation, you can open any project as a DevContainer:
+
+```bash
+wsl --distribution ubuntu-devcon
+
+# Open a project as a DevContainer
+devpod up <repository-url>
+
+# Open with a specific IDE
+devpod up <repository-url> --ide vscode
+devpod up <repository-url> --ide intellij
 ```
 
-**What this configures automatically:**
+##### Option B: VS Code DevContainer Extension
 
-1. **wsl.conf settings:**
-   - `[boot] systemd=true` — enables systemd (required for socket activation)
-   - `[boot] command=mount --make-rshared /` — prevents rootless container mount propagation warnings
-   - `[interop] enabled=true, appendWindowsPath=true` — Windows executable access
+If you prefer tight VS Code integration, install the following extensions:
 
-2. **Podman packages:**
-   - `podman` — container runtime
-   - `slirp4netns` — rootless networking (user-space network stack)
-   - `uidmap` — user namespace mapping for rootless containers
-
-3. **Rootless Podman socket:**
-   - `systemctl --user enable --now podman.socket` — socket activation as the default user
-   - Socket path: `/run/user/$UID/podman/podman.sock`
-
-4. **User session persistence:**
-   - `loginctl enable-linger $USER` — keeps systemd user services alive across sessions
-
-5. **Environment variables in `~/.bashrc`:**
-   - `XDG_RUNTIME_DIR=/run/user/$(id -u)` — systemd user runtime directory
-   - `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus` — D-Bus session bus
-   - `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` — routes Docker CLI commands to Podman
-
-6. **Distribution restart:**
-   - Automatically restarts the distribution to apply wsl.conf changes
-
-**Note**: This setup is idempotent — safe to run multiple times to verify or repair your installation.
-
-#### Step 10: Required VS Code Extensions
-
-Before configuring settings, ensure the following extensions are installed in VS Code:
-
-- **Dev Containers** (`ms-vscode-remote.remote-containers`) — required for DevContainer support
-- **WSL** (`ms-vscode-remote.remote-wsl`) — required for opening WSL folders in VS Code
-- **Remote - SSH** (`ms-vscode-remote.remote-ssh`) — required for SSH agent forwarding
+- **Dev Containers** (`ms-vscode-remote.remote-containers`): required for DevContainer support
+- **WSL** (`ms-vscode-remote.remote-wsl`): required for opening WSL folders in VS Code
+- **Remote - SSH** (`ms-vscode-remote.remote-ssh`): required for SSH agent forwarding
 
 You can install them from the Extensions view (`Ctrl+Shift+X`) or via the command line:
 
@@ -444,11 +558,9 @@ code --install-extension ms-vscode-remote.remote-wsl
 code --install-extension ms-vscode-remote.remote-ssh
 ```
 
-#### Step 11: VS Code Settings
+**VS Code Settings:**
 
-Open **File → Preferences → Settings** (or `Ctrl+,`) and configure the settings below using the search bar.
-
-##### Common Settings (Both Runtimes)
+Open **File → Preferences → Settings** (or `Ctrl+,`) and configure:
 
 | Search for | Set value to |
 |------------|-------------|
@@ -470,9 +582,9 @@ Open **File → Preferences → Settings** (or `Ctrl+,`) and configure the setti
 
 </details>
 
-##### Podman-Specific Settings
+**Podman-Specific VS Code Settings:**
 
-If you chose Podman, also set:
+If you chose Podman as your runtime, also set:
 
 | Search for | Set value to |
 |------------|-------------|
@@ -572,10 +684,10 @@ loginctl show-user $(whoami) -p Linger
 File operations on `/mnt/c/` (the Windows filesystem) are significantly slower due to the 9P protocol bridge. For best container build and runtime performance, clone your repositories inside the WSL home directory:
 
 ```bash
-# Good — fast
+# Good - fast
 cd ~ && git clone git@github.com:user/project.git
 
-# Slow — avoid
+# Slow - avoid
 cd /mnt/c/Users/username/projects && git clone ...
 ```
 
@@ -680,7 +792,7 @@ wsl.exe --terminate Ubuntu-24.04
 wsl --distribution Ubuntu-24.04
 ```
 
-#### VS Code Breaks Docker After Opening WSL Folder
+#### Docker/Interop Breaks After Opening WSL Folder in VS Code
 
 **Symptoms:**
 - Docker commands fail after opening WSL folder in VS Code: `docker: command not found`
@@ -827,7 +939,7 @@ tools/wsl-manager/
 
 lib/wsl/
 ├── wsl.ps1                    # Main library (dot-sources all modules)
-├── commands.ps1               # CLI dispatch, interactive menu & workflows
+├── commands.ps1               # CLI dispatch, TUI menu & workflows
 ├── core.ps1                   # List, get distro info, type detection
 ├── docker.ps1                 # Docker installation & verification
 ├── exec.ps1                   # Script execution in WSL
@@ -878,7 +990,7 @@ enabled=true
 default=<your-username>
 ```
 
-**`/etc/binfmt.d/WSLInterop.conf` (Docker — managed by automation):**
+**`/etc/binfmt.d/WSLInterop.conf` (Docker - managed by automation):**
 
 ```
 :WSLInterop:M::MZ::/init:PF
@@ -905,6 +1017,7 @@ export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 ## Additional Resources
 
 - [WSL Configuration Documentation](https://docs.microsoft.com/en-us/windows/wsl/wsl-config)
+- [DevPods Documentation](https://devpod.sh/docs)
 - [VS Code DevContainers Documentation](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Git Credential Manager Documentation](https://github.com/GitCredentialManager/git-credential-manager)
 - [SSH Agent Forwarding](https://developer.github.com/v3/guides/using-ssh-agent-forwarding/)
