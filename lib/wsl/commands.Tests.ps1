@@ -467,6 +467,14 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-SetupPodman -ParameterFilter { $DistroName -eq "Debian" }
         }
 
+        It "Should dispatch 'setup-devpod' with DistroName" {
+            Mock Invoke-SetupDevPod {}
+
+            Invoke-WslCommand -Command "setup-devpod" -Name "Debian"
+
+            Should -Invoke Invoke-SetupDevPod -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
         It "Should dispatch 'repair-interop' with DistroName" {
             Mock Invoke-RepairInterop {}
 
@@ -1071,6 +1079,49 @@ Describe "Invoke-SetupPodman" {
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
             Should -Invoke Install-WslPodman -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupDevPod" {
+    Context "When DistroName is provided" {
+        BeforeEach {
+            Mock Write-Host {}
+            Mock Install-WslDevPod { $true }
+        }
+
+        It "Should call Install-WslDevPod directly" {
+            Invoke-SetupDevPod -DistroName "Debian"
+
+            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Invoke-SetupDevPod -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed DevPod*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Install-WslDevPod { throw "DevPod install failed" }
+
+            $act = { Invoke-SetupDevPod -DistroName "Debian" }
+
+            $act | Should -Throw "*DevPod install failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Install-WslDevPod {}
+
+            Invoke-SetupDevPod
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Install-WslDevPod -Times 0
         }
     }
 }

@@ -15,9 +15,11 @@
     9. Verify DOCKER_HOST is set in .bashrc
     10. Verify XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .bashrc
     11. Verify loginctl enable-linger is set for testuser
+    12. Install DevPod with auto-detected Podman provider
+    13. Verify DevPod idempotency
 
     RESULT: After running this test, ubuntu-podman-test is a FULLY PREPARED distribution with:
-    [OK] User account, [OK] Systemd, [OK] Windows interop, [OK] Rootless Podman
+    [OK] User account, [OK] Systemd, [OK] Windows interop, [OK] Rootless Podman, [OK] DevPod
 
     NOTE: Test distributions are PRESERVED after tests complete for exploratory testing.
     Test distribution: ubuntu-podman-test (fully prepared, kept after tests)
@@ -291,6 +293,48 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
             $lingerStatus.Trim() | Should -Be "Linger=yes"
 
             Write-Host "    loginctl enable-linger verification complete" -ForegroundColor Green
+        }
+    }
+
+    Context "DevPod Setup with Podman Provider" {
+        It "Should install DevPod and auto-detect Podman as provider" {
+            Write-Host "`n==> TEST: Setting up DevPod with Podman provider ..." -ForegroundColor Magenta
+
+            Write-Host "    Installing DevPod..." -ForegroundColor Cyan
+            $result = Install-WslDevPod -DistroName $script:podmanTestDistroName -Confirm:$false
+            $result | Should -Be $true
+
+            # Verify DevPod installed
+            $devpodInstalled = Test-WslDevPodInstalled -DistroName $script:podmanTestDistroName
+            $devpodInstalled | Should -Be $true
+
+            # Verify DevPod version
+            $devpodVersion = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "devpod version" -PrintCommand $false -PassThru
+            Write-Host "    DevPod version: $devpodVersion" -ForegroundColor Cyan
+            $devpodVersion | Should -Not -BeNullOrEmpty
+
+            Write-Host "    DevPod installation complete" -ForegroundColor Green
+        }
+
+        It "Should verify docker provider is configured with Podman path for testuser" {
+            Write-Host "`n==> TEST: Verifying docker provider (backed by Podman) is configured ..." -ForegroundColor Magenta
+
+            $providerList = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "sudo -u testuser devpod provider list" -PrintCommand $false -PassThru -StopAtError $false
+            Write-Host "    Provider list: $providerList" -ForegroundColor Cyan
+            $providerList | Should -Match "docker"
+
+            Write-Host "    Docker provider (Podman-backed) verification complete" -ForegroundColor Green
+        }
+
+        It "Should demonstrate DevPod idempotency" {
+            Write-Host "`n==> TEST: Demonstrating DevPod idempotency ..." -ForegroundColor Magenta
+
+            $result = Install-WslDevPod -DistroName $script:podmanTestDistroName -Confirm:$false
+            $result | Should -Be $true
+
+            Write-Host "    Idempotent DevPod setup verified" -ForegroundColor Green
         }
     }
 }

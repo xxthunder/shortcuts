@@ -17,6 +17,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup Proxy](#setup-proxy)
   - [Setup Docker](#setup-docker)
   - [Setup Podman](#setup-podman)
+  - [Setup DevPod](#setup-devpod)
   - [Remove Distribution](#remove-distribution)
   - [Terminate Distribution](#terminate-distribution)
   - [Shutdown WSL](#shutdown-wsl)
@@ -107,6 +108,21 @@ Install rootless Podman as a Docker alternative.
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <distro>`
 
 See [VS Code DevContainer Setup](#vs-code-devcontainer-setup) for the full walkthrough.
+
+### Setup DevPod
+
+Install the DevPod CLI and configure it to use the detected container engine (Docker or Podman).
+
+- **Menu**: `[V] Setup DevPod`
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod <distro>`
+
+Prerequisites: Docker (`setup-docker`) or Podman (`setup-podman`) must be installed first.
+
+This command:
+- Downloads and installs the DevPod CLI binary
+- Auto-detects Docker (preferred) or Podman as the container engine
+- Configures the detected engine as the DevPod provider
+- Is idempotent — safe to re-run
 
 ### Remove Distribution
 

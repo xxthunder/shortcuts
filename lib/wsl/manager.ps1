@@ -35,6 +35,7 @@ function Start-InteractiveMode {
         "S" = "setup-user"
         "D" = "setup-docker"
         "P" = "setup-podman"
+        "V" = "setup-devpod"
         "X" = "setup-proxy"
         "R" = "remove"
         "T" = "terminate"
@@ -70,6 +71,7 @@ function Start-InteractiveMode {
         Write-Host "  [S] Setup user account" -ForegroundColor White
         Write-Host "  [D] Setup/Repair Docker (idempotent, includes systemd/interop)" -ForegroundColor White
         Write-Host "  [P] Setup Podman (rootless, includes systemd/interop)" -ForegroundColor White
+        Write-Host "  [V] Setup DevPod (installs CLI, configures container provider)" -ForegroundColor White
         Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
         Write-Host "  [R] Remove distribution" -ForegroundColor White
         Write-Host "  [T] Terminate distribution" -ForegroundColor White
@@ -115,7 +117,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]

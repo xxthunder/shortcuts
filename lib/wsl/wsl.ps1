@@ -18,4 +18,5 @@
 . "$PSScriptRoot\exec.ps1"
 . "$PSScriptRoot\docker.ps1"
 . "$PSScriptRoot\podman.ps1"
+. "$PSScriptRoot\devpod.ps1"
 . "$PSScriptRoot\proxy.ps1"

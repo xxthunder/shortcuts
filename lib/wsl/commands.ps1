@@ -493,6 +493,38 @@ function Invoke-SetupPodman {
     }
 }
 
+function Invoke-SetupDevPod {
+    <#
+    .SYNOPSIS
+        Handles the DevPod setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install DevPod in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Setting up DevPod in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $result = Install-WslDevPod -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed DevPod in '$DistroName'."
+    }
+}
+
 function Invoke-RepairInterop {
     <#
     .SYNOPSIS
@@ -656,7 +688,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "repair-interop", "terminate", "shutdown", "configure-wsl")]
         [string]$Command,
 
         [string]$Name = "",
@@ -693,6 +725,9 @@ function Invoke-WslCommand {
         }
         "setup-podman" {
             Invoke-SetupPodman -DistroName $Name -Distros $Distros
+        }
+        "setup-devpod" {
+            Invoke-SetupDevPod -DistroName $Name -Distros $Distros
         }
         "repair-interop" {
             Invoke-RepairInterop -DistroName $Name -Distros $Distros

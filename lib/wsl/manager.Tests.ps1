@@ -88,6 +88,29 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-podman" } -Times 1
         }
 
+        It "Should dispatch to Invoke-WslCommand with 'setup-devpod' when V is selected" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "V" }
+                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
+                else { "Q" }
+            }
+            Mock Invoke-WslCommand {}
+
+            Start-InteractiveMode
+
+            Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-devpod" } -Times 1
+        }
+
         It "Should dispatch to Invoke-WslCommand with 'setup-proxy' when X is selected" {
             Mock Test-RunningInCIorTestEnvironment { $false }
 
@@ -1114,6 +1137,112 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Install-WslPodman -Times 0
+        }
+    }
+
+    Context "When called with 'setup-devpod' argument" {
+        It "Should prompt for distribution when Name is not provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should call Install-WslDevPod when Name is provided" {
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod" -Name "Debian"
+
+            Should -Invoke Install-WslDevPod -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after DevPod installation" {
+            Mock Write-Host {}
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed DevPod*" }
+        }
+
+        It "Should handle no container engine error" {
+            Mock Install-WslDevPod { throw "Neither Docker nor Podman is installed in 'Debian'." }
+
+            { Invoke-WslManager -Command "setup-devpod" -Name "Debian" } | Should -Throw "*Neither Docker nor Podman*"
+        }
+
+        It "Should handle no default user error" {
+            Mock Install-WslDevPod { throw "No default user configured in 'Debian'." }
+
+            { Invoke-WslManager -Command "setup-devpod" -Name "Debian" } | Should -Throw "*default user*"
+        }
+
+        It "Should support selection by number" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "2" }
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod"
+
+            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Ubuntu" }
+        }
+
+        It "Should support selection by name" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Alpine" }
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod"
+
+            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Alpine" }
+        }
+
+        It "Should cancel when no selection provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Install-WslDevPod { $true }
+
+            Invoke-WslManager -Command "setup-devpod"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Install-WslDevPod -Times 0
         }
     }
 

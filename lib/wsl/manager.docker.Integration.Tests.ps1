@@ -14,11 +14,13 @@
     8. Verify rc.local fix is applied
     9. Verify user configuration is preserved
     10. Test complete Docker functionality (Compose, Buildx, hello-world)
-    11. List both distributions
-    12. Validate state management (running/stopped checks)
+    11. Install DevPod with auto-detected Docker provider
+    12. Verify DevPod idempotency
+    13. List both distributions
+    14. Validate state management (running/stopped checks)
 
     RESULT: After running this test, debian-custom-test is a FULLY PREPARED distribution with:
-    [OK] Latest packages, [OK] User account, [OK] Systemd, [OK] Windows interop, [OK] RC.local fix, [OK] Docker
+    [OK] Latest packages, [OK] User account, [OK] Systemd, [OK] Windows interop, [OK] RC.local fix, [OK] Docker, [OK] DevPod
 
     NOTE: Test distributions are PRESERVED after tests complete for exploratory testing.
     Test distribution: debian-custom-test (fully prepared, kept after tests)
@@ -618,6 +620,48 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
+    Context "DevPod Setup with Docker Provider" {
+        It "Should install DevPod and auto-detect Docker as provider" {
+            Write-Host "`n==> TEST: Setting up DevPod with Docker provider ..." -ForegroundColor Magenta
+
+            Write-Host "    Installing DevPod..." -ForegroundColor Cyan
+            $result = Install-WslDevPod -DistroName $script:customDistroName -Confirm:$false
+            $result | Should -Be $true
+
+            # Verify DevPod installed
+            $devpodInstalled = Test-WslDevPodInstalled -DistroName $script:customDistroName
+            $devpodInstalled | Should -Be $true
+
+            # Verify DevPod version
+            $devpodVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                -Command "devpod version" -PrintCommand $false -PassThru
+            Write-Host "    DevPod version: $devpodVersion" -ForegroundColor Cyan
+            $devpodVersion | Should -Not -BeNullOrEmpty
+
+            Write-Host "    DevPod installation complete" -ForegroundColor Green
+        }
+
+        It "Should verify Docker provider is configured for testuser" {
+            Write-Host "`n==> TEST: Verifying Docker provider is configured ..." -ForegroundColor Magenta
+
+            $providerList = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                -Command "sudo -u testuser devpod provider list" -PrintCommand $false -PassThru -StopAtError $false
+            Write-Host "    Provider list: $providerList" -ForegroundColor Cyan
+            $providerList | Should -Match "docker"
+
+            Write-Host "    Docker provider verification complete" -ForegroundColor Green
+        }
+
+        It "Should demonstrate DevPod idempotency" {
+            Write-Host "`n==> TEST: Demonstrating DevPod idempotency ..." -ForegroundColor Magenta
+
+            $result = Install-WslDevPod -DistroName $script:customDistroName -Confirm:$false
+            $result | Should -Be $true
+
+            Write-Host "    Idempotent DevPod setup verified" -ForegroundColor Green
+        }
+    }
+
     Context "Final Validation - Fully Prepared Distribution" {
         It "Should have all features working in the final distribution" {
             Write-Host "`n==> TEST: Final validation of $script:customDistroName ..." -ForegroundColor Magenta
@@ -630,6 +674,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    [OK] Docker Engine installed" -ForegroundColor Green
             Write-Host "    [OK] Docker Compose available" -ForegroundColor Green
             Write-Host "    [OK] Docker Buildx available" -ForegroundColor Green
+            Write-Host "    [OK] DevPod CLI installed (Docker provider)" -ForegroundColor Green
 
             # Summary verification
             Write-Host "`n    Running summary verification..." -ForegroundColor Cyan
