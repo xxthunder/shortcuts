@@ -19,6 +19,7 @@
 - [SC-020 - Import and export WSL distributions to/from files](todo/sc-020.md)
 - [SC-023 - Per-file code coverage in testrunner.ps1](todo/sc-023.md)
 - [SC-027 - Make shared skills available to Claude GitHub App via plugin](todo/sc-027.md)
+- [SC-028 - Improve WSL manager console output handling](todo/sc-028.md)
 
 ### Done
 - [SC-013 - Fix and enhance documentation](done/sc-013.md)
