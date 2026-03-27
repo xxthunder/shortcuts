@@ -322,12 +322,5 @@ Describe "Install-WslProxy" {
             }
         }
 
-        It "Should execute script with AsRoot=true" {
-            Install-WslProxy -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $AsRoot -eq $true
-            }
-        }
     }
 }

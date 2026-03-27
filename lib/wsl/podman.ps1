@@ -311,7 +311,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
             "--username=$Username"
         )
 
-        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -AsRoot $true
+        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
 
         # Parse exit code and provide user-friendly errors
         switch ($exitCode) {

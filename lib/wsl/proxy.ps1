@@ -19,7 +19,7 @@ function Install-WslProxy {
         This function is idempotent - safe to run multiple times (overwrites config).
 
         Configured targets:
-        - ~/.bashrc (managed block with http_proxy, https_proxy, no_proxy)
+        - ~/.profile (managed block with http_proxy, https_proxy, no_proxy)
         - /etc/apt/apt.conf.d/99proxy
         - ~/.docker/config.json (proxies.default)
         - ~/.config/containers/containers.conf ([engine] env)
@@ -144,11 +144,11 @@ Then run setup-proxy again.
     # 7. SupportsShouldProcess
     if ($isDirect) {
         $action = "Remove proxy settings from '$DistroName'"
-        $description = "Remove proxy configurations (.bashrc, apt, Docker, Podman)"
+        $description = "Remove proxy configurations (.profile, apt, Docker, Podman)"
     }
     else {
         $action = "Proxy configuration in '$DistroName'"
-        $description = "Configure proxy settings (.bashrc, apt, Docker, Podman)"
+        $description = "Configure proxy settings (.profile, apt, Docker, Podman)"
     }
 
     if (-not $PSCmdlet.ShouldProcess($action, $description, "Confirm Proxy Setup")) {
@@ -184,7 +184,7 @@ Then run setup-proxy again.
             )
         }
 
-        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -AsRoot $true
+        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
 
         switch ($exitCode) {
             0 {
@@ -197,7 +197,7 @@ Then run setup-proxy again.
                 }
                 Write-Information ""
                 Write-Information "Affected targets:"
-                Write-Information "  - ~/.bashrc (environment variables)"
+                Write-Information "  - ~/.profile (environment variables)"
                 Write-Information "  - /etc/apt/apt.conf.d/99proxy"
                 Write-Information "  - ~/.docker/config.json"
                 Write-Information "  - ~/.config/containers/containers.conf"

@@ -2,7 +2,7 @@
 
 # setup-proxy.sh
 # Configures or removes proxy settings inside a WSL distribution
-# Targets: .bashrc, apt, Docker client, Podman (containers.conf)
+# Targets: .profile, apt, Docker client, Podman (containers.conf)
 # This script is idempotent - safe to run multiple times (overwrites config)
 # Exit Codes:
 # 0: Success
@@ -14,11 +14,7 @@
 USAGE="Usage: $0 --proxy-url=<url> --no-proxy=<hosts> --username=<user>
        $0 --remove --username=<user>"
 
-# 1. Validation
-if [ "$EUID" -ne 0 ]; then
-  echo "Error: This script must be run as root." >&2
-  exit 1
-fi
+# 1. Validation (script runs as normal user; sudo is used for privileged commands)
 
 PROXY_URL=""
 NO_PROXY=""
@@ -67,6 +63,7 @@ log_error() {
 }
 
 TARGET_HOME=$(eval echo "~$TARGET_USER")
+PROFILE="$TARGET_HOME/.profile"
 BASHRC="$TARGET_HOME/.bashrc"
 
 MARKER_BEGIN="# BEGIN wsl-manager proxy"
@@ -76,17 +73,23 @@ MARKER_END="# END wsl-manager proxy"
 remove_proxy_configs() {
     log_info "Removing proxy configurations for user '$TARGET_USER'..."
 
-    # Remove managed block from .bashrc
+    # Remove managed block from .profile
+    if grep -q "$MARKER_BEGIN" "$PROFILE" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$PROFILE"
+        log_info "Removed proxy block from $PROFILE"
+    else
+        log_info "No proxy block found in $PROFILE (already clean)"
+    fi
+
+    # Migration: also remove from .bashrc (old location)
     if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
         sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
-        log_info "Removed proxy block from $BASHRC"
-    else
-        log_info "No proxy block found in $BASHRC (already clean)"
+        log_info "Removed legacy proxy block from $BASHRC"
     fi
 
     # Remove apt proxy config
     if [ -f /etc/apt/apt.conf.d/99proxy ]; then
-        rm -f /etc/apt/apt.conf.d/99proxy
+        sudo rm -f /etc/apt/apt.conf.d/99proxy
         log_info "Removed /etc/apt/apt.conf.d/99proxy"
     else
         log_info "No apt proxy config found (already clean)"
@@ -120,18 +123,28 @@ fi
 
 # --- Configure mode ---
 
-# 2. Configure .bashrc managed block
-log_info "Configuring proxy environment variables in $BASHRC..."
+# 2. Configure .profile managed block
+# Environment variables go in .profile so they are available in login shells
+# (both interactive and non-interactive, e.g. wsl.exe --exec bash -l script.sh).
+# .bashrc is only sourced for interactive shells and is skipped by the
+# non-interactive guard (case $- in *i*) ;; *) return ;; esac).
+log_info "Configuring proxy environment variables in $PROFILE..."
 
-configure_bashrc() {
+configure_profile() {
     # Remove existing managed block if present
-    if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
-        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
-        log_info "Removed existing proxy block from $BASHRC"
+    if grep -q "$MARKER_BEGIN" "$PROFILE" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$PROFILE"
+        log_info "Removed existing proxy block from $PROFILE"
     fi
 
-    # Append new managed block
-    cat >> "$BASHRC" <<EOF
+    # Migration: also remove from .bashrc (old location)
+    if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
+        log_info "Removed legacy proxy block from $BASHRC"
+    fi
+
+    # Append new managed block to .profile
+    cat >> "$PROFILE" <<EOF
 $MARKER_BEGIN
 export http_proxy="$PROXY_URL"
 export https_proxy="$PROXY_URL"
@@ -142,16 +155,15 @@ export NO_PROXY="$NO_PROXY"
 $MARKER_END
 EOF
 
-    chown "$TARGET_USER:$TARGET_USER" "$BASHRC"
-    log_info "Proxy environment variables configured in $BASHRC"
+    log_info "Proxy environment variables configured in $PROFILE"
 }
-configure_bashrc || { log_error "Failed to configure .bashrc"; exit 2; }
+configure_profile || { log_error "Failed to configure .profile"; exit 2; }
 
 # 3. Configure apt proxy
 log_info "Configuring apt proxy..."
 
 configure_apt() {
-    cat > /etc/apt/apt.conf.d/99proxy <<EOF
+    sudo tee /etc/apt/apt.conf.d/99proxy > /dev/null <<EOF
 Acquire::http::Proxy "$PROXY_URL";
 Acquire::https::Proxy "$PROXY_URL";
 EOF
@@ -164,7 +176,7 @@ log_info "Configuring Docker client proxy..."
 
 configure_docker() {
     local docker_dir="$TARGET_HOME/.docker"
-    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$docker_dir"
+    mkdir -p "$docker_dir"
 
     cat > "$docker_dir/config.json" <<EOF
 {
@@ -177,8 +189,6 @@ configure_docker() {
   }
 }
 EOF
-
-    chown "$TARGET_USER:$TARGET_USER" "$docker_dir/config.json"
     log_info "Docker client proxy configured in $docker_dir/config.json"
 }
 configure_docker || { log_error "Failed to configure Docker proxy"; exit 2; }
@@ -189,15 +199,12 @@ log_info "Configuring Podman proxy..."
 configure_podman() {
     local config_dir="$TARGET_HOME/.config"
     local containers_dir="$config_dir/containers"
-    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$config_dir"
-    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$containers_dir"
+    mkdir -p "$containers_dir"
 
     cat > "$containers_dir/containers.conf" <<EOF
 [engine]
 env = ["http_proxy=$PROXY_URL", "https_proxy=$PROXY_URL", "no_proxy=$NO_PROXY"]
 EOF
-
-    chown "$TARGET_USER:$TARGET_USER" "$containers_dir/containers.conf"
     log_info "Podman proxy configured in $containers_dir/containers.conf"
 }
 configure_podman || { log_error "Failed to configure Podman proxy"; exit 2; }
@@ -207,8 +214,8 @@ log_info "Verifying proxy configuration..."
 
 verify_ok=true
 
-if ! grep -q "$MARKER_BEGIN" "$BASHRC"; then
-    log_error ".bashrc proxy block not found"
+if ! grep -q "$MARKER_BEGIN" "$PROFILE"; then
+    log_error ".profile proxy block not found"
     verify_ok=false
 fi
 

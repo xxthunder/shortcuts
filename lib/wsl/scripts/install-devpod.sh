@@ -16,11 +16,7 @@
 
 USAGE="Usage: $0 --engine=<docker|podman> --username=<user>"
 
-# 1. Validation
-if [ "$EUID" -ne 0 ]; then
-  echo "Error: This script must be run as root." >&2
-  exit 1
-fi
+# 1. Validation (script runs as normal user; sudo is used for privileged commands)
 
 ENGINE=""
 TARGET_USER=""
@@ -87,7 +83,7 @@ else
 
     install_devpod() {
         curl -L -o /tmp/devpod "https://github.com/loft-sh/devpod/releases/latest/download/devpod-linux-$ARCH" && \
-        install -c -m 0755 /tmp/devpod /usr/local/bin/devpod && \
+        sudo install -c -m 0755 /tmp/devpod /usr/local/bin/devpod && \
         rm -f /tmp/devpod
     }
     install_devpod || { log_error "Failed to download or install DevPod binary"; exit 2; }
@@ -101,12 +97,12 @@ log_info "Configuring docker provider for user $TARGET_USER (engine: $ENGINE)...
 configure_provider() {
     if [ "$ENGINE" = "podman" ]; then
         PODMAN_PATH=$(command -v podman)
-        su - "$TARGET_USER" -c "devpod provider add docker --option DOCKER_PATH=$PODMAN_PATH 2>/dev/null || true"
+        devpod provider add docker --option DOCKER_PATH="$PODMAN_PATH" 2>/dev/null || true
     else
-        su - "$TARGET_USER" -c "devpod provider add docker 2>/dev/null || true"
+        devpod provider add docker 2>/dev/null || true
     fi
     # Set as active provider
-    su - "$TARGET_USER" -c "devpod provider use docker"
+    devpod provider use docker
 }
 configure_provider || { log_error "Failed to configure docker provider"; exit 2; }
 
@@ -120,7 +116,7 @@ if ! devpod version >/dev/null 2>&1; then
 fi
 
 # Check provider is configured
-if ! su - "$TARGET_USER" -c "devpod provider list 2>/dev/null" | grep -q "docker"; then
+if ! devpod provider list 2>/dev/null | grep -q "docker"; then
     log_error "Provider 'docker' not found in devpod provider list"
     exit 3
 fi

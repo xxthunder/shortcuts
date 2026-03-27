@@ -12,8 +12,8 @@
     6. Verify systemd is configured and running
     7. Verify mount --make-rshared boot command
     8. Verify Docker is NOT installed (mutual exclusion)
-    9. Verify DOCKER_HOST is set in .bashrc
-    10. Verify XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .bashrc
+    9. Verify DOCKER_HOST is set in .profile
+    10. Verify XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .profile
     11. Verify loginctl enable-linger is set for testuser
     12. Install DevPod with auto-detected Podman provider
     13. Verify DevPod idempotency
@@ -261,27 +261,27 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
             Write-Host "    Docker is NOT installed (correct for Podman-only distro)" -ForegroundColor Green
         }
 
-        It "Should verify DOCKER_HOST is set in .bashrc" {
-            Write-Host "`n==> TEST: Verifying DOCKER_HOST in .bashrc ..." -ForegroundColor Magenta
+        It "Should verify DOCKER_HOST is set in .profile" {
+            Write-Host "`n==> TEST: Verifying DOCKER_HOST in .profile ..." -ForegroundColor Magenta
 
-            $bashrcContent = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
-                -Command "cat ~testuser/.bashrc" -PrintCommand $false -PassThru
+            $profileContent = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "cat ~testuser/.profile" -PrintCommand $false -PassThru
 
-            $bashrcContent | Should -Match 'DOCKER_HOST=unix:///run/user/\$\(id -u\)/podman/podman\.sock'
+            $profileContent | Should -Match 'DOCKER_HOST=unix:///run/user/\$\(id -u\)/podman/podman\.sock'
 
-            Write-Host "    DOCKER_HOST is set in .bashrc" -ForegroundColor Green
+            Write-Host "    DOCKER_HOST is set in .profile" -ForegroundColor Green
         }
 
-        It "Should verify XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .bashrc" {
-            Write-Host "`n==> TEST: Verifying XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .bashrc ..." -ForegroundColor Magenta
+        It "Should verify XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .profile" {
+            Write-Host "`n==> TEST: Verifying XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS in .profile ..." -ForegroundColor Magenta
 
-            $bashrcContent = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
-                -Command "cat ~testuser/.bashrc" -PrintCommand $false -PassThru
+            $profileContent = Invoke-WslDistroCommand -DistroName $script:podmanTestDistroName `
+                -Command "cat ~testuser/.profile" -PrintCommand $false -PassThru
 
-            $bashrcContent | Should -Match 'XDG_RUNTIME_DIR'
-            $bashrcContent | Should -Match 'DBUS_SESSION_BUS_ADDRESS'
+            $profileContent | Should -Match 'XDG_RUNTIME_DIR'
+            $profileContent | Should -Match 'DBUS_SESSION_BUS_ADDRESS'
 
-            Write-Host "    XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS are set in .bashrc" -ForegroundColor Green
+            Write-Host "    XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS are set in .profile" -ForegroundColor Green
         }
 
         It "Should verify loginctl enable-linger is set for testuser" {

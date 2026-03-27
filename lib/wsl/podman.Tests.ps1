@@ -392,14 +392,6 @@ Describe "Install-WslPodman" {
             }
         }
 
-        It "Should execute script with AsRoot=true (requires sudo for Podman installation)" {
-            Install-WslPodman -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $AsRoot -eq $true
-            }
-        }
-
         It "Should return false and write error when bash script returns exit code 1 (prerequisite failure)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 1; return 1 }
 

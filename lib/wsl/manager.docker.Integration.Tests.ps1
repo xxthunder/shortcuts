@@ -405,45 +405,29 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             }
         }
 
-        It "Should execute bash script with sudo when AsRoot is true" {
-            Write-Host "`n==> TEST: Executing bash script with sudo in $script:customDistroName ..." -ForegroundColor Magenta
+        It "Should execute bash script as non-root user (scripts handle sudo internally)" {
+            Write-Host "`n==> TEST: Executing bash script as non-root in $script:customDistroName ..." -ForegroundColor Magenta
 
-            # Create a test script that checks if running as root with Unix line endings
-            $testScriptContent = "#!/bin/bash`nif [ `"`$(id -u)`" -eq 0 ]; then`n    echo `"Running as root`"`n    exit 0`nelse`n    echo `"Not running as root`"`n    exit 1`nfi"
-            $testScriptPath = Join-Path $env:TEMP "wsl-test-root-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
+            # Create a test script that checks if running as non-root with Unix line endings
+            $testScriptContent = "#!/bin/bash`nif [ `"`$(id -u)`" -ne 0 ]; then`n    echo `"Running as non-root user`"`n    exit 0`nelse`n    echo `"Running as root (unexpected)`"`n    exit 1`nfi"
+            $testScriptPath = Join-Path $env:TEMP "wsl-test-nonroot-$([guid]::NewGuid().ToString().Substring(0,8)).sh"
             # Write with LF line endings only (Unix format, no BOM)
             $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
             [System.IO.File]::WriteAllText($testScriptPath, $testScriptContent, $utf8NoBom)
 
             try {
-                # Execute with AsRoot=true
-                Write-Host "    Executing script with AsRoot=true" -ForegroundColor Cyan
+                Write-Host "    Executing script (should run as non-root)" -ForegroundColor Cyan
                 $exitCode = Invoke-WslDistroScript -ScriptPath $testScriptPath `
                     -DistroName $script:customDistroName `
-                    -AsRoot $true `
                     -StopAtError $false `
                     -PrintCommand $false
 
                 Write-Host "    Exit code: $exitCode" -ForegroundColor Cyan
 
-                # Should exit 0 (running as root)
+                # Should exit 0 (running as non-root)
                 $exitCode | Should -Be 0
 
-                # Execute with AsRoot=false (should fail if test user doesn't have sudo without password)
-                # NOTE: Our test user HAS NOPASSWD sudo, so this will actually work but not run as root
-                Write-Host "    Executing script with AsRoot=false" -ForegroundColor Cyan
-                $exitCodeNoRoot = Invoke-WslDistroScript -ScriptPath $testScriptPath `
-                    -DistroName $script:customDistroName `
-                    -AsRoot $false `
-                    -StopAtError $false `
-                    -PrintCommand $false
-
-                Write-Host "    Exit code (AsRoot=false): $exitCodeNoRoot" -ForegroundColor Cyan
-
-                # Should exit 1 (not running as root)
-                $exitCodeNoRoot | Should -Be 1
-
-                Write-Host "    AsRoot parameter test passed" -ForegroundColor Green
+                Write-Host "    Non-root execution test passed" -ForegroundColor Green
             }
             finally {
                 # Cleanup

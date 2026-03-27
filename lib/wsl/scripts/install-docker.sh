@@ -16,11 +16,7 @@
 
 USAGE="Usage: $0 --distro-id=<id> --codename=<name> --arch=<arch> --username=<user>"
 
-# 1. Validation
-if [ "$EUID" -ne 0 ]; then
-  echo "Error: This script must be run as root." >&2
-  exit 1
-fi
+# 1. Validation (script runs as normal user; sudo is used for privileged commands)
 
 DISTRO_ID=""
 CODENAME=""
@@ -63,24 +59,24 @@ log_error() {
 # 2. Clean State
 log_info "Removing conflicting packages..."
 for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
-    apt-get remove -y $pkg 2>/dev/null || true
+    sudo apt-get remove -y $pkg 2>/dev/null || true
 done
 
 # 3. Prerequisites
 log_info "Installing prerequisites..."
 install_prereqs() {
-    apt-get update -y
-    apt-get install -y ca-certificates curl gnupg wget htop
+    sudo apt-get update -y
+    sudo apt-get install -y ca-certificates curl gnupg wget htop
 }
 install_prereqs || { log_error "Failed to install prerequisites"; exit 2; }
 
 # 4. GPG Key setup
 log_info "Setting up Docker GPG key..."
 setup_gpg() {
-    install -m 0755 -d /etc/apt/keyrings
-    rm -f /etc/apt/keyrings/docker.gpg
-    curl -fsSL "https://download.docker.com/linux/$DISTRO_ID/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo rm -f /etc/apt/keyrings/docker.gpg
+    curl -fsSL "https://download.docker.com/linux/$DISTRO_ID/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
 }
 setup_gpg || { log_error "Failed to setup GPG key"; exit 2; }
 
@@ -88,7 +84,7 @@ setup_gpg || { log_error "Failed to setup GPG key"; exit 2; }
 log_info "Setting up Docker repository..."
 echo \
   "deb [arch=$ARCH signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$DISTRO_ID \
-  $CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  $CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # 6. Installation (idempotent - checks if already installed)
 log_info "Checking Docker installation status..."
@@ -99,8 +95,8 @@ if command -v docker >/dev/null 2>&1; then
 else
     log_info "Docker not found, proceeding with installation..."
     install_docker() {
-        apt-get update -y
-        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        sudo apt-get update -y
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     }
     install_docker || { log_error "Failed to install Docker packages"; exit 2; }
 fi
@@ -111,7 +107,7 @@ configure_user() {
     # Ensure docker group exists
     if ! getent group docker > /dev/null; then
         log_info "Creating docker group..."
-        groupadd docker
+        sudo groupadd docker
     fi
 
     # Check if user is already in docker group
@@ -119,7 +115,7 @@ configure_user() {
         log_info "User $TARGET_USER is already in docker group"
     else
         log_info "Adding user $TARGET_USER to docker group..."
-        usermod -aG docker "$TARGET_USER"
+        sudo usermod -aG docker "$TARGET_USER"
     fi
 }
 configure_user || { log_error "Failed to configure user"; exit 2; }
@@ -130,23 +126,23 @@ start_service() {
     # Check for systemd
     if pidof systemd > /dev/null; then
         # Enable services if not already enabled
-        systemctl enable docker.service 2>/dev/null || true
-        systemctl enable containerd.service 2>/dev/null || true
+        sudo systemctl enable docker.service 2>/dev/null || true
+        sudo systemctl enable containerd.service 2>/dev/null || true
 
         # Start docker if not already running
-        if systemctl is-active --quiet docker; then
+        if sudo systemctl is-active --quiet docker; then
             log_info "Docker service is already running"
         else
             log_info "Starting Docker service..."
-            systemctl start docker.service
+            sudo systemctl start docker.service
         fi
     else
         # Non-systemd systems
-        if service docker status >/dev/null 2>&1; then
+        if sudo service docker status >/dev/null 2>&1; then
             log_info "Docker service is already running"
         else
             log_info "Starting Docker service..."
-            service docker start
+            sudo service docker start
         fi
     fi
 }
@@ -160,15 +156,15 @@ migrate_from_rc_local() {
     # Remove /etc/rc.local if it exists
     if [ -f /etc/rc.local ]; then
         log_info "Removing old /etc/rc.local configuration..."
-        rm -f /etc/rc.local
+        sudo rm -f /etc/rc.local
         migrated=true
     fi
 
     # Remove rc-local.service override if it exists
     if [ -f /etc/systemd/system/rc-local.service.d/override.conf ]; then
         log_info "Removing rc-local.service override..."
-        rm -f /etc/systemd/system/rc-local.service.d/override.conf
-        rmdir --ignore-fail-on-non-empty /etc/systemd/system/rc-local.service.d 2>/dev/null || true
+        sudo rm -f /etc/systemd/system/rc-local.service.d/override.conf
+        sudo rmdir --ignore-fail-on-non-empty /etc/systemd/system/rc-local.service.d 2>/dev/null || true
         migrated=true
     fi
 
@@ -176,7 +172,7 @@ migrate_from_rc_local() {
     if pidof systemd > /dev/null; then
         if systemctl is-enabled rc-local >/dev/null 2>&1; then
             log_info "Disabling rc-local service..."
-            systemctl disable rc-local 2>/dev/null || true
+            sudo systemctl disable rc-local 2>/dev/null || true
             migrated=true
         fi
     fi
@@ -193,7 +189,7 @@ migrate_from_rc_local || { log_error "Failed to migrate from rc.local"; exit 3; 
 log_info "Configuring WSL interop via binfmt.d..."
 setup_binfmt_interop() {
     # Create binfmt.d directory if it doesn't exist
-    mkdir -p /etc/binfmt.d
+    sudo mkdir -p /etc/binfmt.d
 
     # Check if WSLInterop.conf already exists
     if [ -f /etc/binfmt.d/WSLInterop.conf ]; then
@@ -204,16 +200,16 @@ setup_binfmt_interop() {
             log_info "WSLInterop.conf is already correctly configured"
         else
             log_info "WSLInterop.conf exists but has different content, updating..."
-            echo ":WSLInterop:M::MZ::/init:PF" > /etc/binfmt.d/WSLInterop.conf
+            echo ":WSLInterop:M::MZ::/init:PF" | sudo tee /etc/binfmt.d/WSLInterop.conf > /dev/null
         fi
     else
         log_info "Creating WSLInterop.conf..."
-        echo ":WSLInterop:M::MZ::/init:PF" > /etc/binfmt.d/WSLInterop.conf
+        echo ":WSLInterop:M::MZ::/init:PF" | sudo tee /etc/binfmt.d/WSLInterop.conf > /dev/null
     fi
 
     # Restart systemd-binfmt to apply changes
     if pidof systemd > /dev/null; then
-        systemctl restart systemd-binfmt
+        sudo systemctl restart systemd-binfmt
     fi
 }
 setup_binfmt_interop || { log_error "Failed to configure WSL interop via binfmt.d"; exit 3; }

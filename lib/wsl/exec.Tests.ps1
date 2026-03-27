@@ -367,22 +367,7 @@ Describe "Invoke-WslDistroScript" {
             }
         }
 
-        It "Should execute with sudo when AsRoot is true" {
-            Mock Test-Path { $true }
-
-            Mock Assert-WslDistroExists { }
-            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" } -ParameterFilter {
-                $CommandLine -like "*sudo bash*"
-            }
-
-            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -AsRoot $true
-
-            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
-                $CommandLine -like "*--exec sudo bash*"
-            }
-        }
-
-        It "Should execute without sudo when AsRoot is false" {
+        It "Should always execute without sudo (scripts handle sudo internally)" {
             Mock Test-Path { $true }
 
             Mock Assert-WslDistroExists { }
@@ -390,7 +375,7 @@ Describe "Invoke-WslDistroScript" {
                 $CommandLine -like "*--exec bash*" -and $CommandLine -notlike "*sudo*"
             }
 
-            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -AsRoot $false
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian"
 
             Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
                 $CommandLine -like "*--exec bash*" -and $CommandLine -notlike "*sudo*"
