@@ -15,11 +15,14 @@
 - [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 
 ### TODO
-- [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](sc-016.md)
+- [SC-029 — Drop PowerShell 5.1 requirement and adopt PowerShell 7.6+](sc-029.md)
+- [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-028 — Improve WSL manager console output handling](sc-028.md)
+- [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
+- [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
-- [SC-028 — Improve WSL manager console output handling](sc-028.md)
 
 ### Done
 - [SC-013 — Fix and enhance documentation](sc-013.md)

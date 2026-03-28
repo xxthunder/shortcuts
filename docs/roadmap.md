@@ -21,6 +21,7 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 - Enhanced WSL distribution lifecycle management
 - Improved error handling for edge cases
 - Better user experience in interactive and CI modes
+- TUI modernization with PwshSpectreConsole (arrow-key navigation, rich tables, progress indicators, grouped menus)
 
 ### Developer Productivity
 
@@ -28,11 +29,15 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 - Improved Scoop integration
 - Enhanced tool installation workflows
 
+### PowerShell Modernization
+
+- Adopt PowerShell 7.6+ as minimum version (drop PS 5.1 for non-bootstrap code)
+- Leverage .NET 10 ecosystem (PwshSpectreConsole, Spectre.Console)
+
 ### Testing & Quality
 
 - Expanded test coverage
 - Improved CI/CD pipelines
-- Better cross-version PowerShell compatibility
 
 ---
 
