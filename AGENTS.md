@@ -519,7 +519,8 @@ Using `shell: ${{ matrix.shell }}` will fail. Instead, use `shell: cmd` and invo
 
 #### Backlog Conventions
 
-- **No commit hashes in backlog entries**: the backlog file is part of the commit itself, so hashes are circular and go stale after squash/rebase.
+Backlog structure and format are defined by the `refinement` skill (from the `xxthunder-dev-skills` plugin). See `docs/backlog/README.md` for the TOC and notes.
+
 - **No unrelated files in feature commits**: keep commits scoped to the feature; unrelated additions get their own commit.
 - **Always update backlog with every commit**: move item to IN PROGRESS at start, check off acceptance criteria as they're completed, move to DONE when finished. Backlog updates go in the same commit as the code.
 
