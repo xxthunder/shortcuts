@@ -63,6 +63,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--model ${{ steps.parse-model.outputs.model }}'
+          plugin_marketplaces: |
+            https://github.com/xxthunder/xxthunder-dev-skills.git
+          plugins: |
+            xxthunder-dev-skills@xxthunder-skills
 
           additional_permissions: |
             actions: read

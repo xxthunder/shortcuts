@@ -635,6 +635,13 @@ When reviewing code, verify adherence to:
 
 Provide specific feedback with `file:line` references.
 
+### Shared Skills Plugin
+
+This project uses the [xxthunder/xxthunder-dev-skills](https://github.com/xxthunder/xxthunder-dev-skills) plugin for shared skills (refinement, commit-helper, tdd-workflow, retrospective). The plugin is loaded automatically:
+
+- **Locally**: installed to `~/.claude/plugins/` via `claude plugins add`
+- **GitHub Actions**: configured via the `plugins` input in `.github/workflows/claude.yml`
+
 ### Reference Documentation
 
 For core development principles and quality gates:
