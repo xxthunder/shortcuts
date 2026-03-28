@@ -8,7 +8,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 > **Note**: This document covers *how* we develop code. For *what* we plan to build, see:
 > - `docs/roadmap.md` - High-level vision and planned features
-> - `docs/backlog/index.md` - Detailed backlog of tasks and improvements
+> - `docs/backlog/README.md` - Detailed backlog of tasks and improvements
 
 ---
 

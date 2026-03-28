@@ -12,13 +12,13 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](sc-001.md)
+- [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 
 ### TODO
 - [SC-016 — Improve interactive menu UX: instant key input and Esc-to-menu](sc-016.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
-- [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 
 ### Done

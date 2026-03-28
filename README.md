@@ -375,7 +375,7 @@ Manually delete these folders if desired:
 
 - **[Development Principles](docs/development-principles.md)**: Coding standards, TDD approach, and project conventions
 - **[Roadmap](docs/roadmap.md)**: Project vision and future direction
-- **[Backlog](docs/backlog/index.md)**: Current work items, priorities, and completed features
+- **[Backlog](docs/backlog/README.md)**: Current work items, priorities, and completed features
 
 ### Getting Started
 
