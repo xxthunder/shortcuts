@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [REFACT-003] ✅ COMPLETED - Refactor wsl-manager integration tests to call wsl-manager functions
 
 **Status**: Completed (2026-02-21)
@@ -15,3 +17,5 @@ Refactored integration tests to dot-source `wsl-manager.ps1` and call `Invoke-Ws
 - [x] BeforeAll/AfterAll retain pslib calls for setup/teardown
 - [x] Output assertions updated to match in-process output (no null-char stripping or stream merging workarounds)
 - [x] All integration tests pass end-to-end
+
+[← Back to Backlog](README.md)

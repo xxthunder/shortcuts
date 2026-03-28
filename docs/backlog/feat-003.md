@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [FEAT-003] ✅ COMPLETED - Add Flow Launcher as Standalone Optional Tool
 
 **Status**: Completed (2026-02-10)
@@ -14,3 +16,5 @@ Flow Launcher offered as a standalone optional tool alongside the default Keypir
 - ✅ `configure-program-plugin.ps1` + tests - configures Program plugin
 - ✅ Program plugin scans `shortcuts/` (root) and `shortcuts_private/`
 - ✅ Updated `docs/flow-launcher-setup.md` for standalone usage
+
+[← Back to Backlog](README.md)

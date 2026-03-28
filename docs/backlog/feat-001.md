@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [FEAT-001] ✅ COMPLETED - DevContainer Prep → Docker Prerequisites
 
 **Status**: Completed (2026-02-02)
@@ -70,3 +72,5 @@ Completed with comprehensive end-to-end documentation.
 - [x] Unit tests updated
 - [x] Old DevContainer prep code removed (cleaner codebase)
 - [x] Users just run `wsl-manager setup-docker` and get everything
+
+[← Back to Backlog](README.md)

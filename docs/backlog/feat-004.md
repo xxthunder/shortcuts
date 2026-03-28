@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [FEAT-004] ✅ COMPLETED - Replace Bootstrap with Self-Contained install.ps1
 
 **Status**: Completed (2026-02-11)
@@ -17,3 +19,5 @@ Replaced external `avengineers/bootstrap` dependency with a self-contained `inst
 - Exposed functions: `Install-Scoop`, `Install-ScoopDependency`, `Install-Git`, `Install-MandatoryToolset`, `Install-OptionalToolset`
 - Unit tests covering all functions, dot-source support, JSON validation
 - Removed `.bootstrap` from `.gitignore`
+
+[← Back to Backlog](README.md)

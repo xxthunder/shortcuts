@@ -44,7 +44,7 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 
 ---
 
-*For detailed tasks and bug fixes, see `docs/backlog/README.md`*
+*For detailed tasks and bug fixes, see the [Backlog](backlog/README.md)*
 
 ---
 

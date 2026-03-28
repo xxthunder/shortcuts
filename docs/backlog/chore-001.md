@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [CHORE-001] ✅ COMPLETED - Move reusable skills to global ~/.claude/skills
 
 **Status**: Completed (2026-02-22)
@@ -12,3 +14,5 @@ Moved refinement, retrospective, and skill-creator skills to a dedicated git rep
 - [x] Generalized refinement and retrospective skills (removed project-specific references)
 - [x] skill-creator copied as-is (already generic)
 - [x] Project-level copies removed
+
+[← Back to Backlog](README.md)

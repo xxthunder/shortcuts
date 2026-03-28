@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [REFACT-001] ✅ COMPLETED - Add `-Selection` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
 
 **Status**: Completed (2026-02-20)
@@ -16,3 +18,5 @@
 - [x] When `-Selection` is omitted, interactive behaviour (Read-Host prompt) is unchanged
 - [x] Unit tests cover both non-interactive (selection provided) and interactive paths
 - [x] All existing tests continue to pass
+
+[← Back to Backlog](README.md)

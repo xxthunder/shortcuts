@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [REFACT-005] ✅ COMPLETED - Extract `Assert-WslDistroExists` guard to replace inline distro validation (DRY)
 
 **Status**: Completed (2026-02-24)
@@ -18,3 +20,5 @@ Extracted throwing `Assert-WslDistroExists` and `Assert-WslDistroNotExists` guar
 - [x] Error message always includes installed distros list: `"Distribution '<name>' does not exist. Installed distributions: <list>"`
 - [x] All tests pass (mock updates only, no behavior change)
 - [x] No change in user-facing behavior
+
+[← Back to Backlog](README.md)

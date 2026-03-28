@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [REFACT-002] ✅ COMPLETED - Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
 
 **Status**: Completed (2026-02-20)
@@ -15,3 +17,5 @@ Added optional `-Username` and `-Password` parameters to `Invoke-SetupUser`. Mov
 - [x] CI guard fires when prompting is needed but is bypassed when both params are provided
 - [x] Unit tests cover both non-interactive and interactive paths
 - [x] All existing tests continue to pass
+
+[← Back to Backlog](README.md)

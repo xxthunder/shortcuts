@@ -1,3 +1,5 @@
+[← Back to Backlog](README.md)
+
 # [REFACT-004] ✅ COMPLETED - Remove redundant `Test-WslInstalled` guard checks (DRY)
 
 **Status**: Completed (2026-02-24)
@@ -17,3 +19,5 @@ Removed 32 redundant `Test-WslInstalled` guard blocks from 8 source files and ~2
 - [x] `Test-WslInstalled` (the boolean check) remains available for non-throwing use cases
 - [x] All tests pass (27 redundant guard tests removed)
 - [x] No change in user-facing behavior
+
+[← Back to Backlog](README.md)
