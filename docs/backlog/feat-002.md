@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [FEAT-002] ✅ COMPLETED - Set up Podman as Docker alternative in WSL
+# [FEAT-002] ✅ DONE - Set up Podman as Docker alternative in WSL
 
-**Status**: Completed (2026-02-24)
+**Status**: Done (2026-02-24)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/lib/podman.ps1` (new), `tools/pslib/wsl/scripts/install-podman.sh` (new), `tools/pslib/wsl/wsl-manager.ps1`
 **Related**: FEAT-001, Dev Container workflow

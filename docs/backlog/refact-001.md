@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [REFACT-001] ✅ COMPLETED - Add `-Selection` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
+# [REFACT-001] ✅ DONE - Add `-Selection` parameter to `Invoke-UpdateDistro` and `Invoke-RemoveDistro`
 
-**Status**: Completed (2026-02-20)
+**Status**: Done (2026-02-20)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.ps1`
 **Blocks**: REFACT-003

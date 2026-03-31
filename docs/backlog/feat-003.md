@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [FEAT-003] ✅ COMPLETED - Add Flow Launcher as Standalone Optional Tool
+# [FEAT-003] ✅ DONE - Add Flow Launcher as Standalone Optional Tool
 
-**Status**: Completed (2026-02-10)
+**Status**: Done (2026-02-10)
 **Priority**: Medium
 **Component**: `tools/flow-launcher/`
 

@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [CHORE-001] ✅ COMPLETED - Move reusable skills to global ~/.claude/skills
+# [CHORE-001] ✅ DONE - Move reusable skills to global ~/.claude/skills
 
-**Status**: Completed (2026-02-22)
+**Status**: Done (2026-02-22)
 **Priority**: Low
 **Component**: `.claude/skills/`
 

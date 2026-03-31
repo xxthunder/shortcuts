@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [REFACT-004] ✅ COMPLETED - Remove redundant `Test-WslInstalled` guard checks (DRY)
+# [REFACT-004] ✅ DONE - Remove redundant `Test-WslInstalled` guard checks (DRY)
 
-**Status**: Completed (2026-02-24)
+**Status**: Done (2026-02-24)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/` (8 source files, 8 test files)
 

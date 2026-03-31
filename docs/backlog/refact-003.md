@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [REFACT-003] ✅ COMPLETED - Refactor wsl-manager integration tests to call wsl-manager functions
+# [REFACT-003] ✅ DONE - Refactor wsl-manager integration tests to call wsl-manager functions
 
-**Status**: Completed (2026-02-21)
+**Status**: Done (2026-02-21)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.docker.Integration.Tests.ps1`
 

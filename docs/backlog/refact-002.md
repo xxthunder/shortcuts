@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [REFACT-002] ✅ COMPLETED - Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
+# [REFACT-002] ✅ DONE - Fix `Invoke-SetupUser` CI guard scope and add explicit parameters
 
-**Status**: Completed (2026-02-20)
+**Status**: Done (2026-02-20)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/wsl-manager.ps1`
 **Blocks**: REFACT-003

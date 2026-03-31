@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [FEAT-001] ✅ COMPLETED - DevContainer Prep → Docker Prerequisites
+# [FEAT-001] ✅ DONE - DevContainer Prep → Docker Prerequisites
 
-**Status**: Completed (2026-02-02)
+**Status**: Done (2026-02-02)
 **Original**: Completed (2026-01-30) | **Refactored**: (2026-01-31) | **Documentation**: (2026-02-02)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/lib/docker.ps1`, `tools/pslib/wsl/scripts/install-docker.sh`

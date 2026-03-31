@@ -1,8 +1,8 @@
 [← Back to Backlog](README.md)
 
-# [REFACT-005] ✅ COMPLETED - Extract `Assert-WslDistroExists` guard to replace inline distro validation (DRY)
+# [REFACT-005] ✅ DONE - Extract `Assert-WslDistroExists` guard to replace inline distro validation (DRY)
 
-**Status**: Completed (2026-02-24)
+**Status**: Done (2026-02-24)
 **Priority**: Medium
 **Component**: `tools/pslib/wsl/` (7 source files, 7 test files)
 **Related**: REFACT-004 (same pattern — entry-point guard extraction)

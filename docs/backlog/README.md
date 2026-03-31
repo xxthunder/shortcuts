@@ -4,17 +4,16 @@
 
 ## Status Legend
 
-- **IN PROGRESS** - Currently being worked on
-- **TODO** - Ready to be picked up
-- **DONE** - Completed
+- **Open** - Ready to be picked up
+- **In Progress** - Currently being worked on
+- **Done** - Completed
 
 ## Table of Contents
 
 ### In Progress
 - [SC-001 — Backlog refinement](sc-001.md)
-- [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 
-### TODO
+### Open
 - [SC-029 — Drop PowerShell 5.1 requirement and adopt PowerShell 7.6+](sc-029.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
@@ -25,6 +24,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 
 ### Done
+- [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 - [SC-013 — Fix and enhance documentation](sc-013.md)
 - [SC-026 — Add setup-devpod action to wsl-manager](sc-026.md)
 - [SC-025 — Apply automount metadata and umask defaults in per-distro wsl.conf](sc-025.md)
@@ -76,8 +76,8 @@
 ### Closing an item (checklist)
 
 1. **Verify acceptance criteria** - all `[ ]` must be `[x]`. Do NOT close with unchecked items.
-2. **Update the heading** - add `✅ COMPLETED` (e.g., `# [SC-004] ✅ COMPLETED - …`)
-3. **Update the Status field** - change to `**Status**: Completed (YYYY-MM-DD)`
+2. **Update the heading** - add `✅ DONE -` prefix (e.g., `# [SC-004] ✅ DONE - …`)
+3. **Update the Status field** - change to `**Status**: Done (YYYY-MM-DD)`
 4. **Update this README** - move the entry from its current section to **Done**
 
 ---
