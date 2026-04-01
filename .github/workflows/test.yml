@@ -12,26 +12,14 @@ on:
 
 jobs:
   test:
-    name: Tests (${{ matrix.shell_name }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            shell: pwsh
-            shell_name: "PowerShell 7.x"
-            shell_label: PS7
-    runs-on: ${{ matrix.os }}
+    name: Tests (PowerShell 7.x)
+    runs-on: windows-latest
     timeout-minutes: 30 # remote install + Scoop + coverage is slower than a plain checkout
     permissions:
       checks: write # publish test report as PR check
       pull-requests: write
       contents: read
     steps:
-      # Hardcoded shell: powershell
-      # - step shell: key does NOT accept matrix expressions.
-      # - Multi-line PowerShell cannot be wrapped via shell: cmd either,
-      #   so we use a fixed shell here.
       - name: Remote install
         shell: powershell
         run: |
@@ -54,25 +42,23 @@ jobs:
           Write-Host "==> Debug: GITHUB_ENV content:"
           Get-Content $Env:GITHUB_ENV -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
 
-      # Steps below use shell: cmd and invoke the matrix shell explicitly,
-      # because the shell: key does not resolve matrix expressions.
       - name: Install test dependencies
-        shell: cmd
+        shell: pwsh
         run: |
-          ${{ matrix.shell }} -Command "Set-Location $Env:SHORTCUTS_DIR; .\test\bin\init.ps1"
+          Set-Location $Env:SHORTCUTS_DIR; .\test\bin\init.ps1
 
       - name: Execute tests
         continue-on-error: true # let the report step decide pass/fail
-        shell: cmd
+        shell: pwsh
         run: |
-          ${{ matrix.shell }} -Command "Set-Location $Env:SHORTCUTS_DIR; .\test\bin\testrunner.ps1 -Coverage"
+          Set-Location $Env:SHORTCUTS_DIR; .\test\bin\testrunner.ps1 -Coverage
 
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@v5
         with:
           files: "${{ env.SHORTCUTS_DIR }}/test/out/coverage.xml"
-          flags: ${{ matrix.shell_label }}
+          flags: PS7
           token: ${{ secrets.CODECOV_TOKEN }}
           root_dir: "${{ env.SHORTCUTS_DIR }}"
           fail_ci_if_error: true
@@ -82,7 +68,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: "${{ env.SHORTCUTS_DIR }}/test/out/junit.xml"
-          flags: ${{ matrix.shell_label }}
+          flags: PS7
           token: ${{ secrets.CODECOV_TOKEN }}
           root_dir: "${{ env.SHORTCUTS_DIR }}"
           report_type: test_results
@@ -98,4 +84,4 @@ jobs:
           fail_on_failure: true
           fail_on_parse_error: true
           require_tests: true
-          check_name: "Test Results (${{ matrix.shell_name }})"
+          check_name: "Test Results (PowerShell 7.x)"
