@@ -275,7 +275,7 @@ if (-not $InPlace) {
             return
         }
 
-        $install = Get-UserConfirmation -message "Install optional tools (pwsh, windows-terminal, ditto, winmerge, sysinternals, vscode, autohotkey)?"
+        $install = Get-UserConfirmation -message "Install optional tools (windows-terminal, ditto, winmerge, sysinternals, vscode, autohotkey)?"
         if ($install) {
             Write-Status "Installing optional tools..."
             Invoke-CommandLine -CommandLine "scoop import `"$optionalJson`"" -StopAtError $true
