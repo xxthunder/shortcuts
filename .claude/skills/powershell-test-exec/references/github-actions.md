@@ -45,12 +45,8 @@ jobs:
         include:
           - os: windows-latest
             shell: pwsh
-            shell_name: "Powershell 7.x"
+            shell_name: "PowerShell 7.x"
             shell_label: PS7
-          - os: windows-latest
-            shell: powershell
-            shell_name: "Powershell 5.x"
-            shell_label: PS5
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -104,7 +100,7 @@ jobs:
 
 ## Key Patterns
 
-### Matrix Strategy for Multiple PowerShell Versions
+### Matrix Strategy
 
 ```yaml
 strategy:
@@ -113,8 +109,6 @@ strategy:
     include:
       - shell: pwsh
         shell_label: PS7
-      - shell: powershell
-        shell_label: PS5
 ```
 
 ### Wrapper Shell Pattern

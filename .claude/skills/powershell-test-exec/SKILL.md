@@ -1,6 +1,6 @@
 ---
 name: powershell-test-exec
-description: "This project's test execution skill. Execute Pester tests for PowerShell code. Use this skill when: (1) Running unit tests, (2) Running integration tests, (3) Running tests with code coverage, (4) Running tests on specific files or paths, (5) Running tests on both PowerShell 5.1 and 7.x, (6) Executing pre-commit test checks, (7) Troubleshooting test failures, or any testing task. Generic workflow skills (commit-helper, tdd-workflow) delegate test execution to this skill."
+description: "This project's test execution skill. Execute Pester tests for PowerShell code. Use this skill when: (1) Running unit tests, (2) Running integration tests, (3) Running tests with code coverage, (4) Running tests on specific files or paths, (5) Executing pre-commit test checks, (6) Troubleshooting test failures, or any testing task. Generic workflow skills (commit-helper, tdd-workflow) delegate test execution to this skill."
 ---
 
 # Test Execution (Pester)
@@ -29,9 +29,6 @@ pwsh -File ".\test\bin\testrunner.ps1" -Integration -Coverage
 # Specific test path
 pwsh -File ".\test\bin\testrunner.ps1" -TestPath "lib\utils\utils.Tests.ps1"
 
-# PowerShell 5.1 compatibility
-powershell -File ".\test\bin\testrunner.ps1" -Unit
-powershell -File ".\test\bin\testrunner.ps1"
 ```
 
 ### Test Types
@@ -103,19 +100,10 @@ Run before first test execution: `pwsh -File ".\test\bin\init.ps1"`
 
 ## PowerShell Version Compatibility
 
-All tests must pass on both PowerShell 5.1 and 7.x.
-
-**Avoid these PowerShell 6.0+ features:**
-
-- `ErrorMessage` parameter in `ValidateScript`
-- Ternary operator `? :`
-- Null-coalescing operators `??`, `??=`
-
-**Always test on both versions before PR:**
+All tests require PowerShell 7.4+ (`pwsh`). Run tests with:
 
 ```bash
 pwsh -File ".\test\bin\testrunner.ps1"
-powershell -File ".\test\bin\testrunner.ps1"
 ```
 
 ## AI Agent Patterns
@@ -166,7 +154,7 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
    ```
 
 3. **Common causes**:
-   - File encoding issues (PowerShell 5.1 vs 7.x)
+   - File encoding issues (missing UTF-8 BOM)
    - Path separator issues (Windows vs Linux)
    - Module import order changes
    - Test discovery pattern changes

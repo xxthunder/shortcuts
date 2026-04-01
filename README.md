@@ -177,12 +177,6 @@ Your shortcuts are stored as `.url` files in the `links/` directory. After refre
 
 ### Installing Optional Tools
 
-**PowerShell Core** (recommended for developers):
-
-```powershell
-scoop install pwsh
-```
-
 **Other useful tools via Scoop:**
 
 ```powershell

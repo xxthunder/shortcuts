@@ -23,13 +23,13 @@ Executable PowerShell scripts should have a .bat wrapper in the same directory.
 
 ```batch
 @echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
+pwsh -ExecutionPolicy Bypass -File "%~dp0script-name.ps1" %*
 ```
 
 ### Template Breakdown
 
 - `@echo off` - Suppress command echoing
-- `powershell` - Use Windows PowerShell 5.1 (inbox on all Windows 10+, ensures bootstrapping works)
+- `pwsh` - Use PowerShell 7.4+ (installed as mandatory via Scoop)
 - `-ExecutionPolicy Bypass` - Run without policy restrictions
 - `-File` - Execute script file
 - `"%~dp0script-name.ps1"` - Path to PS1 file in same directory
@@ -54,18 +54,16 @@ tools/wsl-manager/
 Wrapper content:
 ```batch
 @echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0wsl-manager.ps1" %*
+pwsh -ExecutionPolicy Bypass -File "%~dp0wsl-manager.ps1" %*
 ```
 
-## Why `powershell` instead of `pwsh`?
+## Why `pwsh` instead of `powershell`?
 
-All batch wrappers **must** use `powershell` (Windows PowerShell 5.1), not `pwsh` (PowerShell 7):
+All application-tier batch wrappers **must** use `pwsh` (PowerShell 7.4+), not `powershell` (Windows PowerShell 5.1):
 
-- This project targets **PowerShell 5.1+** (see `development-principles.md`)
-- PowerShell 5.1 is inbox on all Windows 10+ machines - no install required
-- PowerShell 7 (`pwsh`) is installed via Scoop, which is itself bootstrapped by these scripts
-- Using `pwsh` in wrappers creates a chicken-and-egg problem on fresh machines
-- All scripts must use only 5.1-compatible syntax, so they work under both versions
+- This project requires **PowerShell 7.4+** as the minimum (see `development-principles.md`)
+- `pwsh` is installed as a mandatory Scoop package during setup
+- The only exception is `bin/update.bat`, which calls `bin/install.ps1` (the bootstrap script that must run on a fresh machine before pwsh is available)
 
 ## Automated Wrapper Creation
 
@@ -191,7 +189,7 @@ See `assets/wrapper-template.bat` for a template file.
 
 1. **Same directory** - Wrapper must be in same directory as .ps1 file
 2. **Same name** - Wrapper must have same name as .ps1 file (except extension)
-3. **Use powershell** - Use Windows PowerShell 5.1 for compatibility (see development-principles.md)
+3. **Use pwsh** - Use PowerShell 7.4+ (see development-principles.md); only bootstrap scripts use `powershell`
 4. **Pass arguments** - Always include `%*` to pass arguments
 5. **Bypass execution policy** - Use `-ExecutionPolicy Bypass`
 6. **Test** - Verify wrapper works before committing
