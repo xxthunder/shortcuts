@@ -41,13 +41,12 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **All PowerShell code MUST adhere to project coding standards.**
 
-- MUST use PowerShell 5.1+ compatible syntax (no PowerShell 6.0+ exclusive features)
+- MUST use PowerShell 7.4+ syntax (`#Requires -Version 7.4`), except bootstrap scripts (`bin/install.ps1`, `.bootstrap/`) which remain PS 5.1-compatible
 - MUST pass PSScriptAnalyzer checks (Error/Warning severity)
 - MUST include proper help documentation (SYNOPSIS, DESCRIPTION, EXAMPLE)
-- MUST follow standard script structure with `#Requires -Version 5.1`
 - MUST use `[CmdletBinding()]` and proper parameter declarations
 
-**Rationale**: Ensures compatibility across Windows PowerShell 5.1 and PowerShell 7.x environments, maintains code quality, and provides consistent user experience.
+**Rationale**: Requires PowerShell 7.4+ (installed via Scoop on developer machines; pre-installed on CI runners) to enable modern .NET libraries such as PwshSpectreConsole. Bootstrap scripts remain PS 5.1-compatible so they can run on a fresh Windows machine before pwsh is available.
 
 ### IV. Error Handling & Robustness
 
@@ -147,14 +146,10 @@ PSScriptAnalyzer checks are automatically included in test suite. Code MUST have
 
 ### Compatibility Gate
 
-Tests MUST pass on both PowerShell 5.1 and PowerShell 7.x:
+Tests MUST pass on PowerShell 7.4+:
 
 ```powershell
-# PowerShell 7.x
 pwsh -File ".\test\bin\testrunner.ps1"
-
-# PowerShell 5.1
-powershell -File ".\test\bin\testrunner.ps1"
 ```
 
 ---

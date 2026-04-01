@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   </a>
   <a href="https://github.com/xxthunder/shortcuts">
-    <img src="https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg" alt="PowerShell 5.1+">
+    <img src="https://img.shields.io/badge/PowerShell-7.4%2B-blue.svg" alt="PowerShell 7.4+">
   </a>
   <a href="https://github.com/xxthunder/shortcuts">
     <img src="https://img.shields.io/badge/platform-Windows-lightgrey.svg" alt="Platform: Windows">
@@ -79,8 +79,8 @@ Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 <summary><strong>Click here if you want to verify your system</strong></summary>
 
 - **Operating System**: Windows 10 or later ✓
-- **PowerShell**: Version 5.1+ (pre-installed on Windows 10+)
-  - Check your version: `$PSVersionTable.PSVersion`
+- **PowerShell**: Windows PowerShell 5.1 is sufficient to run `install.ps1`; it installs PowerShell 7.4+ (pwsh) automatically for all other tools
+  - Check your version after install: `$PSVersionTable.PSVersion`
 - **Internet Connection**: Required for downloads
 
 </details>
@@ -416,7 +416,7 @@ Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.18.0 -Force
 
 #### Running Tests
 
-The project supports testing on both **PowerShell 5.1** and **PowerShell 7.x** to ensure compatibility across all environments.
+The project requires **PowerShell 7.4+** (pwsh) for all tests.
 
 **Test types:**
 
@@ -436,11 +436,7 @@ pwsh -File .\test\bin\testrunner.ps1 -Integration
 **Run all tests (CI/comprehensive testing):**
 
 ```powershell
-# PowerShell 7.x (recommended)
 pwsh -File .\test\bin\testrunner.ps1
-
-# PowerShell 5.1 (for compatibility testing)
-powershell -File .\test\bin\testrunner.ps1
 ```
 
 **Run tests with code coverage:**
@@ -470,7 +466,7 @@ pwsh -File .\test\bin\testrunner.ps1 -TestPath "lib\utils\utils.Tests.ps1"
 
 - Always run tests **without** the `CI` environment variable set (unless testing CI-specific behavior)
 - The test suite automatically detects Pester environment and handles non-interactive scenarios
-- Tests should pass on both PowerShell 5.1 and 7.x for CI compatibility
+- Tests require PowerShell 7.4+ (pwsh)
 - Path must be quoted when passed to `-File` parameter (e.g., `".\test\bin\testrunner.ps1"`)
 
 #### Code Quality Checks

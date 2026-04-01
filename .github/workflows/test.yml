@@ -1,6 +1,6 @@
 # Unified CI workflow: remote-installs shortcuts via install.ps1 (no checkout),
-# then runs the full test suite under both PowerShell 5.x and 7.x.
-# Each matrix entry publishes its own test report as a PR check.
+# then runs the full test suite under PowerShell 7.x.
+# install.ps1 runs in powershell (5.1) to simulate a fresh machine; all tests run in pwsh (7.x).
 name: CI
 
 on:
@@ -19,12 +19,8 @@ jobs:
         include:
           - os: windows-latest
             shell: pwsh
-            shell_name: "Powershell 7.x"
+            shell_name: "PowerShell 7.x"
             shell_label: PS7
-          - os: windows-latest
-            shell: powershell
-            shell_name: "Powershell 5.x"
-            shell_label: PS5
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30 # remote install + Scoop + coverage is slower than a plain checkout
     permissions:

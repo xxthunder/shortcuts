@@ -14,7 +14,6 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
-- [SC-029 — Drop PowerShell 5.1 requirement and adopt PowerShell 7.6+](sc-029.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
@@ -24,6 +23,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 
 ### Done
+- [SC-029 — Drop PowerShell 5.1 requirement and adopt PowerShell 7.6+](sc-029.md)
 - [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 - [SC-013 — Fix and enhance documentation](sc-013.md)
 - [SC-026 — Add setup-devpod action to wsl-manager](sc-026.md)

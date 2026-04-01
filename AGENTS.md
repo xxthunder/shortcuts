@@ -10,7 +10,7 @@ This document provides technical guidelines for AI agents working on the Shortcu
 
 ### Technical Stack
 
-- **Language**: PowerShell 5.1+
+- **Language**: PowerShell 7.4+ (bootstrap scripts remain PS 5.1-compatible)
 - **Package Manager**: Scoop (for Windows tools)
 - **Launcher Integration**: Keypirinha (fast keyboard-driven launcher)
 - **Testing**: Pester 5.7.1+
@@ -287,7 +287,7 @@ powershell -File script.ps1 | grep "foo"
 **Standalone Executable Script Structure:**
 
 ```powershell
-#Requires -Version 5.1
+#Requires -Version 7.4
 
 <#
 .SYNOPSIS
@@ -329,7 +329,7 @@ try {
 **Dot-Sourced Library File Structure:**
 
 ```powershell
-#Requires -Version 5.1
+#Requires -Version 7.4
 
 <#
 .DESCRIPTION
@@ -363,7 +363,7 @@ All PowerShell code must include **Pester tests**.
 The skill covers:
 
 - Running unit tests (`-Unit`), integration tests (`-Integration`), and coverage (`-Coverage`)
-- PowerShell 5.1 and 7.x compatibility testing
+- PowerShell 7.4+ test execution
 - AI agent patterns for calling PowerShell from Bash
 - GitHub Actions CI/CD patterns
 - TDD workflow and pre-commit checks
@@ -380,8 +380,8 @@ pwsh -File ".\test\bin\testrunner.ps1" -Integration
 # All tests with coverage
 pwsh -File ".\test\bin\testrunner.ps1" -Coverage
 
-# PowerShell 5.1 compatibility
-powershell -File ".\test\bin\testrunner.ps1"
+# Bootstrap script (PS 5.1 only - install.ps1 and .bootstrap/ scripts)
+powershell -File ".\bin\install.ps1"
 ```
 
 **Test types:**
@@ -393,7 +393,7 @@ powershell -File ".\test\bin\testrunner.ps1"
 
 - Mock external dependencies
 - Test both success and failure paths
-- Ensure tests pass on both PowerShell 5.1 and 7.x
+- Ensure tests pass on PowerShell 7.4+
 
 **Never mock `Test-RunningInCIorTestEnvironment` in integration tests.**
 This function exists to prevent interactive prompts (`Read-Host`) in CI/test environments.

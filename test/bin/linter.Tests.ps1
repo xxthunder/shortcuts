@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     PSScriptAnalyzer linting tests for PowerShell scripts.
 
@@ -11,7 +11,7 @@
     This test file is typically invoked by testrunner.ps1, not run directly.
 #>
 
-#Requires -Version 5.1
+#Requires -Version 7.4
 #Requires -Modules @{ModuleName = 'Pester'; ModuleVersion = '5.2.0'}
 #Requires -Modules @{ModuleName = 'PSScriptAnalyzer'; ModuleVersion = '1.18.0'}
 
