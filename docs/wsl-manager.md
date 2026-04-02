@@ -25,6 +25,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 - [DevContainer Setup](#devcontainer-setup)
 - [Technical Reference](#technical-reference)
 - [Additional Resources](#additional-resources)
+- [Architecture](#architecture)
 
 ---
 
@@ -1011,6 +1012,14 @@ export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
 export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 ```
+
+---
+
+## Architecture
+
+For the planned C4 architecture of the WSL Manager (including Context, Container, and Component diagrams), see:
+
+- [WSL Manager C4 Architecture](architecture/wsl-manager-c4.md)
 
 ---
 
