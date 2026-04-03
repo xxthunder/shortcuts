@@ -50,7 +50,7 @@ function Show-WslMenu {
         "Quit"                          = "quit"
     }
 
-    $selection = Read-SpectreSelection -Message "WSL Manager" -Choices $menuChoices.Keys -PageSize 14
+    $selection = Read-SpectreSelection -Message "Select command" -Choices $menuChoices.Keys -PageSize 14
 
     if ($null -eq $selection) {
         return $null

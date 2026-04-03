@@ -23,7 +23,7 @@ Describe "Show-WslMenu" {
         Show-WslMenu
 
         Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
-            $Message -eq "WSL Manager" -and
+            $Message -eq "Select command" -and
             $Choices -contains "Install new distribution" -and
             $Choices -contains "Remove distribution" -and
             $Choices -contains "Setup Podman" -and
