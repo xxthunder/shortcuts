@@ -14,10 +14,49 @@ param()
 # Import PwshSpectreConsole for TUI primitives (SC-016)
 # Skip in CI/test environments where the module is mocked
 if (-not (Test-RunningInCIorTestEnvironment)) {
+    # Enable UTF-8 encoding for Spectre.Console (avoids "Western European (DOS)" warning)
+    $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+
     if (-not (Get-Module -Name PwshSpectreConsole -ListAvailable)) {
         throw "PwshSpectreConsole module is not installed. Run bin/install.ps1 to set up dependencies."
     }
     Import-Module PwshSpectreConsole -ErrorAction Stop
+}
+
+function Show-WslMenu {
+    <#
+    .SYNOPSIS
+        Displays the main menu using Read-SpectreSelection and returns the selected command.
+    .OUTPUTS
+        The command string (e.g. "install", "remove") or $null if the user cancels (Ctrl+C).
+    #>
+    [CmdletBinding()]
+    param()
+
+    # Menu choices: label -> command mapping
+    $menuChoices = [ordered]@{
+        "Install new distribution"      = "install"
+        "Clone distribution"            = "clone"
+        "Update distribution"           = "update"
+        "Setup user account"            = "setup-user"
+        "Setup Docker"                  = "setup-docker"
+        "Setup Podman"                  = "setup-podman"
+        "Setup DevPod"                  = "setup-devpod"
+        "Setup proxy (corporate)"       = "setup-proxy"
+        "Remove distribution"           = "remove"
+        "Terminate distribution"        = "terminate"
+        "Shutdown WSL"                  = "shutdown"
+        "Configure .wslconfig defaults" = "configure-wsl"
+        "Quit"                          = "quit"
+    }
+
+    $selection = Read-SpectreSelection -Message "WSL Manager" -Choices $menuChoices.Keys -PageSize 14
+
+    if ($null -eq $selection) {
+        return $null
+    }
+
+    return $menuChoices[$selection]
 }
 
 function Start-InteractiveMode {
@@ -36,28 +75,10 @@ function Start-InteractiveMode {
         return $false
     }
 
-    # Map menu keys to command names
-    $menuKeyMap = @{
-        "I" = "install"
-        "C" = "clone"
-        "U" = "update"
-        "S" = "setup-user"
-        "D" = "setup-docker"
-        "P" = "setup-podman"
-        "V" = "setup-devpod"
-        "X" = "setup-proxy"
-        "R" = "remove"
-        "T" = "terminate"
-        "H" = "shutdown"
-        "W" = "configure-wsl"
-    }
-
     $continue = $true
     while ($continue) {
         Clear-Host
-        Write-Host "============================================" -ForegroundColor Cyan
-        Write-Host "  WSL Manager" -ForegroundColor Cyan
-        Write-Host "============================================" -ForegroundColor Cyan
+        "[cyan]WSL Manager[/]" | Format-SpectrePanel -Border Rounded
 
         # Fetch current distributions once per loop iteration and display the table.
         # The fetched list is passed to action functions so they use consistent numbering
@@ -72,31 +93,12 @@ function Start-InteractiveMode {
             Write-Host ""
         }
 
-        # Show menu
-        Write-Host "Commands:" -ForegroundColor Cyan
-        Write-Host "  [I] Install new distribution" -ForegroundColor White
-        Write-Host "  [C] Clone distribution" -ForegroundColor White
-        Write-Host "  [U] Update distribution" -ForegroundColor White
-        Write-Host "  [S] Setup user account" -ForegroundColor White
-        Write-Host "  [D] Setup Docker" -ForegroundColor White
-        Write-Host "  [P] Setup Podman" -ForegroundColor White
-        Write-Host "  [V] Setup DevPod" -ForegroundColor White
-        Write-Host "  [X] Setup proxy (corporate)" -ForegroundColor White
-        Write-Host "  [R] Remove distribution" -ForegroundColor White
-        Write-Host "  [T] Terminate distribution" -ForegroundColor White
-        Write-Host "  [H] Shutdown WSL" -ForegroundColor White
-        Write-Host "  [W] Configure .wslconfig defaults" -ForegroundColor White
-        Write-Host "  [Q] Quit" -ForegroundColor White
-        Write-Host ""
+        $command = Show-WslMenu
 
-        $choice = Read-Host "Select command"
-        $key = $choice.ToUpper()
-
-        if ($key -eq "Q") {
+        if ($null -eq $command -or $command -eq "quit") {
             $continue = $false
         }
-        elseif ($menuKeyMap.ContainsKey($key)) {
-            $command = $menuKeyMap[$key]
+        else {
             if ($PSCmdlet.ShouldProcess($command, "Execute WSL command")) {
                 try {
                     Invoke-WslCommand -Command $command -Distros $menuDistros
@@ -104,12 +106,8 @@ function Start-InteractiveMode {
                 catch {
                     Write-ErrorMsg "$_"
                 }
+                Read-Host -Prompt "Press Enter to continue"
             }
-            Read-Host -Prompt "Press Enter to continue ..."
-        }
-        else {
-            Write-ErrorMsg "Invalid option. Please try again."
-            Start-Sleep -Seconds 1
         }
     }
 

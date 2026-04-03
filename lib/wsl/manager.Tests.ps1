@@ -16,6 +16,46 @@ AfterAll {
     Stop-SutIsolation
 }
 
+Describe "Show-WslMenu" {
+    It "Should call Read-SpectreSelection with menu choices" {
+        Mock Read-SpectreSelection { "Quit" }
+
+        Show-WslMenu
+
+        Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
+            $Message -eq "WSL Manager" -and
+            $Choices -contains "Install new distribution" -and
+            $Choices -contains "Remove distribution" -and
+            $Choices -contains "Setup Podman" -and
+            $Choices -contains "Quit"
+        }
+    }
+
+    It "Should return command string for selected menu option" {
+        Mock Read-SpectreSelection { "Setup Podman" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "setup-podman"
+    }
+
+    It "Should return 'quit' when Quit is selected" {
+        Mock Read-SpectreSelection { "Quit" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "quit"
+    }
+
+    It "Should return null when user cancels with Ctrl+C" {
+        Mock Read-SpectreSelection { $null }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be $null
+    }
+}
+
 Describe "Start-InteractiveMode" {
     Context "When in CI environment" {
         It "Should display message and exit" {
@@ -32,54 +72,43 @@ Describe "Start-InteractiveMode" {
     Context "When running interactively" {
         BeforeEach {
             Mock Clear-Host {}
+            Mock Read-Host {}
+            Mock Format-SpectrePanel {}
         }
 
-        It "Should display menu options" {
+        It "Should exit when user selects Quit" {
             Mock Test-RunningInCIorTestEnvironment { $false }
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Q" }
-
-            Start-InteractiveMode
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Install*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Remove*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Setup Podman*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Quit*" }
-        }
-
-        It "Should exit when user selects Q" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Q" }
+            Mock Show-WslMenu { "quit" }
 
             $result = Start-InteractiveMode
 
             $result | Should -Be $true
         }
 
-        It "Should dispatch to Invoke-WslCommand with 'setup-podman' when P is selected" {
+        It "Should exit when user cancels with Ctrl+C" {
             Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Show-WslMenu { $null }
 
+            $result = Start-InteractiveMode
+
+            $result | Should -Be $true
+        }
+
+        It "Should dispatch to Invoke-WslCommand with 'setup-podman'" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             $script:callCount = 0
-            Mock Read-Host {
+            Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "P" }
-                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
-                else { "Q" }
+                if ($script:callCount -eq 1) { "setup-podman" }
+                else { "quit" }
             }
             Mock Invoke-WslCommand {}
 
@@ -88,21 +117,17 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-podman" } -Times 1
         }
 
-        It "Should dispatch to Invoke-WslCommand with 'setup-devpod' when V is selected" {
+        It "Should dispatch to Invoke-WslCommand with 'setup-devpod'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
-
             Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             $script:callCount = 0
-            Mock Read-Host {
+            Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "V" }
-                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
-                else { "Q" }
+                if ($script:callCount -eq 1) { "setup-devpod" }
+                else { "quit" }
             }
             Mock Invoke-WslCommand {}
 
@@ -111,21 +136,17 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-devpod" } -Times 1
         }
 
-        It "Should dispatch to Invoke-WslCommand with 'setup-proxy' when X is selected" {
+        It "Should dispatch to Invoke-WslCommand with 'setup-proxy'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
-
             Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             $script:callCount = 0
-            Mock Read-Host {
+            Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "X" }
-                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
-                else { "Q" }
+                if ($script:callCount -eq 1) { "setup-proxy" }
+                else { "quit" }
             }
             Mock Invoke-WslCommand {}
 
@@ -134,20 +155,18 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-proxy" } -Times 1
         }
 
-        It "Should fetch distro list once and pass it to Invoke-WslCommand" {
+        It "Should fetch distro list once per loop and pass it to Invoke-WslCommand" {
             Mock Test-RunningInCIorTestEnvironment { $false }
-
             $mockDistros = @(
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
             Mock Get-WslDistroList { $mockDistros } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             $script:callCount = 0
-            Mock Read-Host {
+            Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "T" }
-                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
-                else { "Q" }
+                if ($script:callCount -eq 1) { "terminate" }
+                else { "quit" }
             }
             Mock Invoke-WslCommand {}
 
@@ -162,12 +181,7 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList { throw "WSL service not available" } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Write-ErrorMsg {}
-            $script:callCount = 0
-            Mock Read-Host {
-                $script:callCount++
-                if ($script:callCount -eq 1) { "Q" }
-                else { "Q" }
-            }
+            Mock Show-WslMenu { "quit" }
 
             Start-InteractiveMode
 
@@ -177,43 +191,21 @@ Describe "Start-InteractiveMode" {
         It "Should handle Invoke-WslCommand errors gracefully" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Write-ErrorMsg {}
             Mock Invoke-WslCommand { throw "Command failed" }
             $script:callCount = 0
-            Mock Read-Host {
+            Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "I" }
-                elseif ($script:callCount -eq 2) { "" }  # Press Enter to continue
-                else { "Q" }
+                if ($script:callCount -eq 1) { "install" }
+                else { "quit" }
             }
 
             Start-InteractiveMode
 
             Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Command failed*" }
-        }
-
-        It "Should show error for invalid menu key" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Write-ErrorMsg {}
-            Mock Start-Sleep {}
-            $script:callCount = 0
-            Mock Read-Host {
-                $script:callCount++
-                if ($script:callCount -eq 1) { "Z" }
-                else { "Q" }
-            }
-
-            Start-InteractiveMode
-
-            Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like "*Invalid option*" }
-            Should -Invoke Start-Sleep -Times 1
         }
     }
 }
