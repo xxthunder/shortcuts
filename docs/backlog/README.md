@@ -13,7 +13,6 @@
 ### In Progress
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-  - [SC-016a — Add PwshSpectreConsole module dependency to setup process](sc-016a.md)
 
 ### Open
   - [SC-016b — Replace main menu with Read-SpectreSelection](sc-016b.md)
@@ -28,6 +27,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 
 ### Done
+- [SC-016a — Add PwshSpectreConsole module dependency to setup process](sc-016a.md)
 - [SC-029 — Drop PowerShell 5.1 requirement and adopt PowerShell 7.6+](sc-029.md)
 - [SC-027 — Make shared skills available to Claude GitHub App via plugin](sc-027.md)
 - [SC-013 — Fix and enhance documentation](sc-013.md)
