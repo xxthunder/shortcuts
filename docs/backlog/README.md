@@ -25,6 +25,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
+- [SC-032 — Investigate split-pane TUI layout for WSL Manager](sc-032.md)
 
 ### Done
 - [SC-016a — Add PwshSpectreConsole module dependency to setup process](sc-016a.md)
