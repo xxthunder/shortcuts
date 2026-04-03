@@ -285,6 +285,32 @@ if (-not $InPlace) {
         }
     }
 
+    function Install-PowerShellModule {
+        <#
+        .SYNOPSIS
+            Installs required PowerShell modules from PSGallery. Idempotent.
+        .DESCRIPTION
+            Installs PwshSpectreConsole v2 for the WSL Manager TUI.
+            Ensures NuGet provider is available before installing modules.
+        #>
+
+        # Ensure NuGet provider is available
+        if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+            Write-Status "Installing NuGet package provider..."
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+        }
+
+        # PwshSpectreConsole v2 (TUI primitives for WSL Manager)
+        if (Get-InstalledModule -Name PwshSpectreConsole -MinimumVersion 2.0 -ErrorAction SilentlyContinue) {
+            Write-Status "PwshSpectreConsole is already installed"
+        }
+        else {
+            Write-Status "Installing PwshSpectreConsole..."
+            Install-Module -Name PwshSpectreConsole -Repository PSGallery -Scope CurrentUser -Force -MinimumVersion 2.0 -SkipPublisherCheck
+            Write-Success "PwshSpectreConsole installed"
+        }
+    }
+
     #endregion
 
     #region Main Execution (guarded - not triggered by dot-sourcing)
@@ -305,6 +331,7 @@ if (-not $InPlace) {
             Install-ScoopDependency
             Install-Git
             Install-MandatoryToolset
+            Install-PowerShellModule
             Install-OptionalToolset
 
             # Post-install: Keypirinha config

@@ -11,6 +11,15 @@ param()
 # Source dependencies
 . "$PSScriptRoot\commands.ps1"
 
+# Import PwshSpectreConsole for TUI primitives (SC-016)
+# Skip in CI/test environments where the module is mocked
+if (-not (Test-RunningInCIorTestEnvironment)) {
+    if (-not (Get-Module -Name PwshSpectreConsole -ListAvailable)) {
+        throw "PwshSpectreConsole module is not installed. Run bin/install.ps1 to set up dependencies."
+    }
+    Import-Module PwshSpectreConsole -ErrorAction Stop
+}
+
 function Start-InteractiveMode {
     <#
     .SYNOPSIS

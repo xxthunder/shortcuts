@@ -12,10 +12,10 @@
 
 ### In Progress
 - [SC-001 — Backlog refinement](sc-001.md)
-
-### Open
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
   - [SC-016a — Add PwshSpectreConsole module dependency to setup process](sc-016a.md)
+
+### Open
   - [SC-016b — Replace main menu with Read-SpectreSelection](sc-016b.md)
   - [SC-016c — Replace distro table with Format-SpectreTable](sc-016c.md)
   - [SC-016d — Replace distro selection with Read-SpectreSelection](sc-016d.md)

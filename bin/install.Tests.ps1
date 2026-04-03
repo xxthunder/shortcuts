@@ -207,6 +207,59 @@ Describe 'Install-OptionalToolset' {
     }
 }
 
+Describe 'Install-PowerShellModule' {
+    BeforeAll {
+        . $script:installScript -InPlace
+    }
+
+    Context 'when PwshSpectreConsole is already installed' {
+        BeforeAll {
+            Mock Get-InstalledModule { return @{ Name = 'PwshSpectreConsole'; Version = '2.1.0' } } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Install-Module {}
+        }
+
+        It 'skips installation' {
+            Install-PowerShellModule
+            Should -Not -Invoke Install-Module
+        }
+    }
+
+    Context 'when PwshSpectreConsole is not installed' {
+        BeforeAll {
+            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Get-PackageProvider { return @{ Name = 'NuGet' } } -ParameterFilter { $Name -eq 'NuGet' }
+            Mock Install-Module {}
+        }
+
+        It 'installs PwshSpectreConsole from PSGallery' {
+            Install-PowerShellModule
+            Should -Invoke Install-Module -Times 1 -ParameterFilter {
+                $Name -eq 'PwshSpectreConsole' -and
+                $Repository -eq 'PSGallery' -and
+                $Scope -eq 'CurrentUser'
+            }
+        }
+    }
+
+    Context 'when NuGet provider is missing' {
+        BeforeAll {
+            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Get-PackageProvider { $null } -ParameterFilter { $Name -eq 'NuGet' }
+            Mock Install-PackageProvider {}
+            Mock Install-Module {}
+        }
+
+        It 'installs NuGet provider before the module' {
+            Install-PowerShellModule
+            Should -Invoke Install-PackageProvider -Times 1 -ParameterFilter {
+                $Name -eq 'NuGet' -and
+                $Scope -eq 'CurrentUser'
+            }
+            Should -Invoke Install-Module -Times 1
+        }
+    }
+}
+
 Describe 'Copy-Config' {
     BeforeAll {
         . $script:installScript -InPlace

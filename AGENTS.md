@@ -60,6 +60,10 @@ tools/wsl-manager/
 
 - **No em-dashes** (`—`) in any `.md` file. Use a colon (`:`) to introduce explanations, a semicolon (`;`) to join independent clauses, or a normal dash (`-`) for asides and parenthetical remarks.
 
+## Backlog Lifecycle
+
+When starting work on a backlog item, update its status to **In Progress** and move it in the README index before committing implementation changes. When a subtask or the full item is completed, update status accordingly per the closing checklist in `docs/backlog/README.md`. Backlog updates are part of the implementation commit, not a separate afterthought.
+
 ## Coding Guidelines
 
 - TDD
