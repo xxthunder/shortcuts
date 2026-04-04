@@ -3,11 +3,21 @@
     Pester tests for manager.ps1
 #>
 
+# Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
 param()
 
 BeforeAll {
     . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
     Start-SutIsolation
+
+    # Define stub functions for PwshSpectreConsole commands so Pester can mock them
+    # without triggering module auto-import (which causes UTF-8 encoding warnings).
+    # manager.ps1 skips Import-Module in test environments, so these stubs provide
+    # the command names that Pester needs for Mock/Should -Invoke.
+    function Read-SpectreSelection { param($Message, $Choices, $PageSize) }
+    function Format-SpectrePanel { param($Border) process { } }
+
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"
 }

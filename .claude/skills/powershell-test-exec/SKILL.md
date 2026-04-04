@@ -7,6 +7,10 @@ description: "This project's test execution skill. Execute Pester tests for Powe
 
 This project's test execution skill. Runs Pester tests for PowerShell code.
 
+## CRITICAL: Always Use testrunner.ps1
+
+**NEVER call `Invoke-Pester` directly.** Always use `testrunner.ps1` to run tests. The testrunner includes linting (PSScriptAnalyzer), JUnit report generation, and other checks that `Invoke-Pester` alone skips. Running `Invoke-Pester` directly will miss failures.
+
 ## Quick Reference
 
 ### Standard Test Commands
