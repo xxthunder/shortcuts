@@ -15,7 +15,7 @@ BeforeAll {
     # without triggering module auto-import (which causes UTF-8 encoding warnings).
     # manager.ps1 skips Import-Module in test environments, so these stubs provide
     # the command names that Pester needs for Mock/Should -Invoke.
-    function Read-SpectreSelection { param($Message, $Choices, $PageSize) }
+    function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) }
     function Format-SpectrePanel { param($Border) process { } }
 
     . "$PSScriptRoot\commands.ps1"
@@ -37,7 +37,8 @@ Describe "Show-WslMenu" {
             $Choices -contains "Install new distribution" -and
             $Choices -contains "Remove distribution" -and
             $Choices -contains "Setup Podman" -and
-            $Choices -contains "Quit"
+            $Choices -contains "Quit" -and
+            $EnableSearch -eq $true
         }
     }
 
