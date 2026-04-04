@@ -1627,3 +1627,76 @@ Describe "Invoke-WslManager" {
         }
     }
 }
+
+Describe "Install-WslManagerDependency" {
+    Context "When dependency is already installed" {
+        BeforeAll {
+            Mock Get-InstalledModule { return @{ Name = 'PwshSpectreConsole'; Version = '2.1.0' } } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Install-Module {}
+            Mock Write-Host {}
+        }
+
+        It "Should skip installation" {
+            Install-WslManagerDependency
+            Should -Not -Invoke Install-Module
+        }
+    }
+
+    Context "When dependency is missing and NuGet is available" {
+        BeforeAll {
+            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Get-PackageProvider { return @{ Name = 'NuGet' } } -ParameterFilter { $Name -eq 'NuGet' }
+            Mock Install-PackageProvider {}
+            Mock Install-Module {}
+            Mock Write-Host {}
+        }
+
+        It "Should install PwshSpectreConsole from PSGallery" {
+            Install-WslManagerDependency
+            Should -Invoke Install-Module -Times 1 -ParameterFilter {
+                $Name -eq 'PwshSpectreConsole' -and
+                $Repository -eq 'PSGallery' -and
+                $Scope -eq 'CurrentUser' -and
+                $MinimumVersion -eq '2.0'
+            }
+        }
+
+        It "Should not install NuGet provider" {
+            Install-WslManagerDependency
+            Should -Not -Invoke Install-PackageProvider
+        }
+    }
+
+    Context "When NuGet provider is missing" {
+        BeforeAll {
+            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
+            Mock Get-PackageProvider { $null } -ParameterFilter { $Name -eq 'NuGet' }
+            Mock Install-PackageProvider {}
+            Mock Install-Module {}
+            Mock Write-Host {}
+        }
+
+        It "Should install NuGet provider before the module" {
+            Install-WslManagerDependency
+            Should -Invoke Install-PackageProvider -Times 1 -ParameterFilter {
+                $Name -eq 'NuGet' -and
+                $Scope -eq 'CurrentUser'
+            }
+            Should -Invoke Install-Module -Times 1
+        }
+    }
+}
+
+Describe "Dependency auto-detect" {
+    # These tests verify the module-load guard behavior in manager.ps1 top-level code.
+    # The guard runs at dot-source time, so we test via the $script:Dependencies declaration.
+
+    It "Should declare PwshSpectreConsole in Dependencies" {
+        $script:Dependencies | Should -Not -BeNullOrEmpty
+        $dep = $script:Dependencies | Where-Object { $_.Name -eq 'PwshSpectreConsole' }
+        $dep | Should -Not -BeNullOrEmpty
+        $dep.Type | Should -Be 'PSModule'
+        $dep.MinVersion | Should -Be '2.0'
+        $dep.Repository | Should -Be 'PSGallery'
+    }
+}

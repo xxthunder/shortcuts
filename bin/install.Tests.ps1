@@ -207,7 +207,7 @@ Describe 'Install-OptionalToolset' {
     }
 }
 
-Describe 'Install-PowerShellModule' {
+Describe 'Install-PwshSpectreDependency' {
     BeforeAll {
         . $script:installScript -InPlace
     }
@@ -216,10 +216,11 @@ Describe 'Install-PowerShellModule' {
         BeforeAll {
             Mock Get-InstalledModule { return @{ Name = 'PwshSpectreConsole'; Version = '2.1.0' } } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
             Mock Install-Module {}
+            Mock Write-Host {}
         }
 
         It 'skips installation' {
-            Install-PowerShellModule
+            Install-PwshSpectreDependency
             Should -Not -Invoke Install-Module
         }
     }
@@ -229,10 +230,11 @@ Describe 'Install-PowerShellModule' {
             Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
             Mock Get-PackageProvider { return @{ Name = 'NuGet' } } -ParameterFilter { $Name -eq 'NuGet' }
             Mock Install-Module {}
+            Mock Write-Host {}
         }
 
         It 'installs PwshSpectreConsole from PSGallery' {
-            Install-PowerShellModule
+            Install-PwshSpectreDependency
             Should -Invoke Install-Module -Times 1 -ParameterFilter {
                 $Name -eq 'PwshSpectreConsole' -and
                 $Repository -eq 'PSGallery' -and
@@ -247,10 +249,11 @@ Describe 'Install-PowerShellModule' {
             Mock Get-PackageProvider { $null } -ParameterFilter { $Name -eq 'NuGet' }
             Mock Install-PackageProvider {}
             Mock Install-Module {}
+            Mock Write-Host {}
         }
 
         It 'installs NuGet provider before the module' {
-            Install-PowerShellModule
+            Install-PwshSpectreDependency
             Should -Invoke Install-PackageProvider -Times 1 -ParameterFilter {
                 $Name -eq 'NuGet' -and
                 $Scope -eq 'CurrentUser'

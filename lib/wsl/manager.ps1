@@ -11,6 +11,40 @@ param()
 # Source dependencies
 . "$PSScriptRoot\commands.ps1"
 
+# Dependency declaration (SC-033): each tool owns its dependency list
+$script:Dependencies = @(
+    @{ Name = 'PwshSpectreConsole'; Type = 'PSModule'; MinVersion = '2.0'; Repository = 'PSGallery' }
+)
+
+function Install-WslManagerDependency {
+    <#
+    .SYNOPSIS
+        Installs all declared dependencies for WSL Manager.
+    .DESCRIPTION
+        Iterates over $script:Dependencies and installs any missing PSModule dependencies.
+        Called by wsl-manager.ps1 -InstallDeps or by the auto-detect prompt.
+    #>
+    [CmdletBinding()]
+    param()
+
+    foreach ($dep in $script:Dependencies) {
+        if ($dep.Type -eq 'PSModule') {
+            if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+                Write-Status "Installing NuGet package provider..."
+                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+            }
+            if (Get-InstalledModule -Name $dep.Name -MinimumVersion $dep.MinVersion -ErrorAction SilentlyContinue) {
+                Write-Status "$($dep.Name) is already installed"
+            }
+            else {
+                Write-Status "Installing $($dep.Name)..."
+                Install-Module -Name $dep.Name -Repository $dep.Repository -Scope CurrentUser -Force -MinimumVersion $dep.MinVersion -SkipPublisherCheck
+                Write-Success "$($dep.Name) installed"
+            }
+        }
+    }
+}
+
 # Import PwshSpectreConsole for TUI primitives (SC-016)
 # Skip in CI/test environments where the module is mocked
 if (-not (Test-RunningInCIorTestEnvironment)) {
@@ -18,7 +52,13 @@ if (-not (Test-RunningInCIorTestEnvironment)) {
     $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 
     if (-not (Get-Module -Name PwshSpectreConsole -ListAvailable)) {
-        throw "PwshSpectreConsole module is not installed. Run bin/install.ps1 to set up dependencies."
+        $install = Get-UserConfirmation -message "PwshSpectreConsole module is missing. Install now?"
+        if ($install) {
+            Install-WslManagerDependency
+        }
+        else {
+            throw "PwshSpectreConsole module is required. Run bin/install.ps1 or relaunch and accept the install prompt."
+        }
     }
     Import-Module PwshSpectreConsole -ErrorAction Stop
 }

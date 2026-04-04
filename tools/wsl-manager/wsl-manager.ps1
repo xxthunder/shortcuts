@@ -53,6 +53,9 @@
     .\wsl-manager.ps1 install Ubuntu-22.04
     Installs an Ubuntu 22.04 LTS distribution.
 
+.PARAMETER InstallDeps
+    Install declared tool dependencies and exit. Used by bin/install.ps1 and automation.
+
 .PARAMETER Username
     The username to create (used with setup-user command).
     If not provided, the user is prompted interactively.
@@ -90,9 +93,16 @@ param(
     [string]$TargetName = "",
 
     [string]$Username = "",
-    [string]$Password = ""
+    [string]$Password = "",
+
+    [switch]$InstallDeps
 )
 
 . "$PSScriptRoot\..\..\lib\wsl\manager.ps1"
+
+if ($InstallDeps) {
+    Install-WslManagerDependency
+    return
+}
 
 Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password

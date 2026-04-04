@@ -285,13 +285,14 @@ if (-not $InPlace) {
         }
     }
 
-    function Install-PowerShellModule {
+    function Install-PwshSpectreDependency {
         <#
         .SYNOPSIS
-            Installs required PowerShell modules from PSGallery. Idempotent.
+            Installs PwshSpectreConsole for TUI-based shortcut tools.
         .DESCRIPTION
-            Installs PwshSpectreConsole v2 for the WSL Manager TUI.
-            Ensures NuGet provider is available before installing modules.
+            Several shortcut tools use PwshSpectreConsole for their terminal UI.
+            Cannot delegate to individual tools because install.ps1 must run
+            under PS 5.1 while tool scripts require PS 7.4.
         #>
 
         # Ensure NuGet provider is available
@@ -300,7 +301,7 @@ if (-not $InPlace) {
             Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
         }
 
-        # PwshSpectreConsole v2 (TUI primitives for WSL Manager)
+        # PwshSpectreConsole v2 (TUI primitives for shortcut tools)
         if (Get-InstalledModule -Name PwshSpectreConsole -MinimumVersion 2.0 -ErrorAction SilentlyContinue) {
             Write-Status "PwshSpectreConsole is already installed"
         }
@@ -331,7 +332,7 @@ if (-not $InPlace) {
             Install-ScoopDependency
             Install-Git
             Install-MandatoryToolset
-            Install-PowerShellModule
+            Install-PwshSpectreDependency
             Install-OptionalToolset
 
             # Post-install: Keypirinha config
