@@ -231,7 +231,7 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "`n==> TEST: Listing distributions ..." -ForegroundColor Magenta
 
             # Call the script to display the list (for visual verification)
-            Show-WslDistroList
+            Show-WslDistroTable
 
             Write-Host "`n==> Captured Output:" -ForegroundColor Cyan
 

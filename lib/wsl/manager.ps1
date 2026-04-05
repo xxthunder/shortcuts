@@ -63,6 +63,48 @@ if (-not (Test-RunningInCIorTestEnvironment)) {
     Import-Module PwshSpectreConsole -ErrorAction Stop
 }
 
+function Get-WslBrandingPanel {
+    <#
+    .SYNOPSIS
+        Creates the branding content with shortcuts logo, Tux ASCII art, FigletText, and slogan.
+    .OUTPUTS
+        A Spectre renderable for the right panel of the TUI layout.
+    #>
+    [CmdletBinding()]
+    param()
+
+    # Shortcuts logo - 4-quadrant colored badge representing the hexagonal logo
+    $logoArt = @(
+        "  [dodgerblue2]▄▄▄▄[/][orange1]▄▄▄▄[/]"
+        " [dodgerblue2]██████[/][orange1]██████[/]"
+        " [dodgerblue2]██████[/][orange1]██████[/]"
+        " [green]██████[/][deeppink3]██████[/]"
+        " [green]██████[/][deeppink3]██████[/]"
+        "  [green]▀▀▀▀[/][deeppink3]▀▀▀▀[/]"
+    ) -join "`n"
+
+    # Tux (Linux penguin) ASCII art
+    $tuxArt = @(
+        "    .--."
+        "   |o_o |"
+        "   |:_/ |"
+        "  //   \ \"
+        " (|     | )"
+        "/'\_   _/``\"
+        "\___)=(___/"
+    ) -join "`n"
+
+    # FigletText title
+    $figlet = Write-SpectreFigletText -Text "WSL Manager" -Alignment Center -Color "DeepSkyBlue1" -PassThru
+
+    # Slogan
+    $slogan = "[italic grey]Your DevOps environment at ease![/]"
+
+    # Compose: logo and tux side by side, then figlet and slogan below
+    $artRow = @($logoArt, $tuxArt) | Format-SpectreColumns
+    @($artRow, $figlet, $slogan) | Format-SpectreRows
+}
+
 function Show-WslMenu {
     <#
     .SYNOPSIS
@@ -118,20 +160,27 @@ function Start-InteractiveMode {
     $continue = $true
     while ($continue) {
         Clear-Host
-        "[cyan]WSL Manager[/]" | Format-SpectrePanel -Border Rounded
 
-        # Fetch current distributions once per loop iteration and display the table.
+        # Fetch current distributions once per loop iteration.
         # The fetched list is passed to action functions so they use consistent numbering
         # and do not re-fetch or reprint the table.
         $menuDistros = $null
         try {
             $menuDistros = @(Get-WslDistroList -Detailed)
-            Show-WslDistroList -Distros $menuDistros
         }
         catch {
             Write-ErrorMsg "$_"
-            Write-Host ""
         }
+
+        # Build two-column layout: distro table (left), branding (right)
+        $distroContent = if ($null -ne $menuDistros) {
+            Show-WslDistroTable -Distros $menuDistros
+        } else {
+            "[yellow]Could not load distributions.[/]"
+        }
+        $leftPanel = $distroContent | Format-SpectrePanel -Header "Distributions" -Border Rounded -Expand
+        $rightPanel = Get-WslBrandingPanel | Format-SpectrePanel -Border Rounded -Expand
+        New-SpectreLayout -Columns @($leftPanel, $rightPanel)
 
         $command = Show-WslMenu
 

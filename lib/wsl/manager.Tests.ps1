@@ -16,7 +16,12 @@ BeforeAll {
     # manager.ps1 skips Import-Module in test environments, so these stubs provide
     # the command names that Pester needs for Mock/Should -Invoke.
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) }
-    function Format-SpectrePanel { param($Border) process { } }
+    function Format-SpectrePanel { param($Header, $Border, [switch]$Expand) process { } }
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { } }
+    function Format-SpectreColumns { process { } }
+    function Format-SpectreRows { process { } }
+    function Write-SpectreFigletText { param($Text, $Alignment, $Color, [switch]$PassThru) }
+    function New-SpectreLayout { param($Columns, $Rows) }
 
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"
@@ -24,6 +29,34 @@ BeforeAll {
 
 AfterAll {
     Stop-SutIsolation
+}
+
+Describe "Get-WslBrandingPanel" {
+    BeforeEach {
+        Mock Write-SpectreFigletText { "mocked-figlet" }
+        Mock Format-SpectreColumns { "mocked-columns" }
+        Mock Format-SpectreRows { "mocked-rows" }
+    }
+
+    It "Should call Write-SpectreFigletText with WSL Manager text" {
+        Get-WslBrandingPanel
+
+        Should -Invoke Write-SpectreFigletText -ParameterFilter {
+            $Text -eq "WSL Manager" -and $Alignment -eq "Center" -and $PassThru -eq $true
+        }
+    }
+
+    It "Should compose logo and tux side by side with Format-SpectreColumns" {
+        Get-WslBrandingPanel
+
+        Should -Invoke Format-SpectreColumns -Times 1
+    }
+
+    It "Should compose all elements vertically with Format-SpectreRows" {
+        Get-WslBrandingPanel
+
+        Should -Invoke Format-SpectreRows -Times 1
+    }
 }
 
 Describe "Show-WslMenu" {
@@ -85,12 +118,14 @@ Describe "Start-InteractiveMode" {
             Mock Clear-Host {}
             Mock Read-Host {}
             Mock Format-SpectrePanel {}
+            Mock New-SpectreLayout {}
+            Mock Show-WslDistroTable { "mocked-table" }
+            Mock Get-WslBrandingPanel { "mocked-branding" }
         }
 
         It "Should exit when user selects Quit" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslMenu { "quit" }
 
             $result = Start-InteractiveMode
@@ -101,7 +136,6 @@ Describe "Start-InteractiveMode" {
         It "Should exit when user cancels with Ctrl+C" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslMenu { $null }
 
             $result = Start-InteractiveMode
@@ -109,12 +143,22 @@ Describe "Start-InteractiveMode" {
             $result | Should -Be $true
         }
 
+        It "Should build two-column layout with New-SpectreLayout" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Show-WslMenu { "quit" }
+
+            Start-InteractiveMode
+
+            Should -Invoke New-SpectreLayout -Times 1
+            Should -Invoke Format-SpectrePanel -Times 2  # left and right panels
+        }
+
         It "Should dispatch to Invoke-WslCommand with 'setup-podman'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -133,7 +177,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -152,7 +195,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -172,7 +214,6 @@ Describe "Start-InteractiveMode" {
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
             Mock Get-WslDistroList { $mockDistros } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -190,7 +231,6 @@ Describe "Start-InteractiveMode" {
         It "Should handle Get-WslDistroList errors gracefully" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { throw "WSL service not available" } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Write-ErrorMsg {}
             Mock Show-WslMenu { "quit" }
 
@@ -204,7 +244,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Write-ErrorMsg {}
             Mock Invoke-WslCommand { throw "Command failed" }
             $script:callCount = 0
@@ -241,12 +280,12 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'list' argument" {
-        It "Should call Show-WslDistroList" {
-            Mock Show-WslDistroList {}
+        It "Should call Show-WslDistroTable" {
+            Mock Show-WslDistroTable {}
 
             Invoke-WslManager -Command "list"
 
-            Should -Invoke Show-WslDistroList -Times 1
+            Should -Invoke Show-WslDistroTable -Times 1
         }
     }
 
