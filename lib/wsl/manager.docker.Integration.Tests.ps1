@@ -29,6 +29,9 @@
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Integration tests use Write-Host for user feedback during manual test runs.')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File is UTF-8 without BOM, which is standard for cross-platform compatibility.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters mirror PwshSpectreConsole cmdlet signatures')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
 param()
 
 Describe "WSL Manager Integration Tests" -Tag "Integration" {
@@ -48,6 +51,31 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
 
         Write-Host "==> Preparing test environment ..." -ForegroundColor Cyan
+
+        # Define stub functions for PwshSpectreConsole commands that are not
+        # available in CI.  These must be defined BEFORE dot-sourcing the
+        # library files so the commands resolve at call-time.
+        if (-not (Get-Command Format-SpectreTable -ErrorAction SilentlyContinue)) {
+            function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $_ } }
+        }
+        if (-not (Get-Command Format-SpectrePanel -ErrorAction SilentlyContinue)) {
+            function Format-SpectrePanel { param($Header, $Border, [switch]$Expand) process { $_ } }
+        }
+        if (-not (Get-Command Format-SpectreColumns -ErrorAction SilentlyContinue)) {
+            function Format-SpectreColumns { process { $_ } }
+        }
+        if (-not (Get-Command Format-SpectreRows -ErrorAction SilentlyContinue)) {
+            function Format-SpectreRows { process { $_ } }
+        }
+        if (-not (Get-Command Write-SpectreFigletText -ErrorAction SilentlyContinue)) {
+            function Write-SpectreFigletText { param($Text, $Alignment, $Color, [switch]$PassThru) }
+        }
+        if (-not (Get-Command New-SpectreLayout -ErrorAction SilentlyContinue)) {
+            function New-SpectreLayout { param($Columns, $Rows) }
+        }
+        if (-not (Get-Command Read-SpectreSelection -ErrorAction SilentlyContinue)) {
+            function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) }
+        }
 
         # Load the library functions
         . (Join-Path $PSScriptRoot "commands.ps1")
