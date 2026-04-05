@@ -3,10 +3,7 @@
     Pester tests for manager.ps1
 #>
 
-# Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
-# Stub functions mirror PwshSpectreConsole cmdlet signatures which use plural nouns and state-changing verbs
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
+# Stub functions mirror PwshSpectreConsole cmdlet names which use state-changing verbs
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
 param()
 
@@ -18,13 +15,21 @@ BeforeAll {
     # without triggering module auto-import (which causes UTF-8 encoding warnings).
     # manager.ps1 skips Import-Module in test environments, so these stubs provide
     # the command names that Pester needs for Mock/Should -Invoke.
-    function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) }
-    function Format-SpectrePanel { param($Header, $Border, [switch]$Expand) process { } }
-    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { } }
-    function Format-SpectreColumns { process { } }
-    function Format-SpectreRows { process { } }
-    function Write-SpectreFigletText { param($Text, $Alignment, $Color, [switch]$PassThru) }
-    function New-SpectreLayout { param($Columns, $Rows) }
+    # Note: Format-SpectreColumns and Format-SpectreRows use plural nouns to match
+    # the real PwshSpectreConsole cmdlet names; renaming is not possible.
+    function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
+    function Format-SpectrePanel { param($Header, $Border, [switch]$Expand) process { $null = $Header, $Border, $Expand; $_ } }
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
+    function Format-SpectreColumns {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
+        param() process { $_ }
+    }
+    function Format-SpectreRows {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
+        param() process { $_ }
+    }
+    function Write-SpectreFigletText { param($Text, $Alignment, $Color, [switch]$PassThru) $null = $Text, $Alignment, $Color, $PassThru }
+    function New-SpectreLayout { param($Columns, $Rows) $null = $Columns, $Rows }
 
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"

@@ -67,8 +67,18 @@ function Get-WslBrandingPanel {
     <#
     .SYNOPSIS
         Creates the branding content with shortcuts logo, Tux ASCII art, FigletText, and slogan.
+
+    .DESCRIPTION
+        Composes a Spectre.Console renderable combining the shortcuts 4-quadrant colored logo,
+        Tux ASCII art, a FigletText "WSL Manager" title, and a slogan. Used as the right panel
+        in the TUI two-column layout.
+
     .OUTPUTS
         A Spectre renderable for the right panel of the TUI layout.
+
+    .EXAMPLE
+        Get-WslBrandingPanel | Format-SpectrePanel -Header "Branding" -Border Rounded
+        # Creates the branding panel and wraps it in a Spectre panel with a header.
     #>
     [CmdletBinding()]
     param()

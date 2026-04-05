@@ -25,12 +25,27 @@ function Show-WslDistroTable {
     .SYNOPSIS
         Displays installed WSL distributions as a formatted Spectre table.
 
+    .DESCRIPTION
+        Renders a Spectre.Console table showing all installed WSL distributions with
+        their index, name, state (Running/Stopped), WSL version, and default marker.
+        Returns a Spectre renderable object for use in layouts or panels.
+
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If not provided, fetches from WSL.
 
     .OUTPUTS
         A Spectre renderable table object, or a markup string when no distributions are found.
+
+    .EXAMPLE
+        Show-WslDistroTable
+        # Fetches distributions from WSL and displays them as a formatted table.
+
+    .EXAMPLE
+        $distros = Get-WslDistroList -Detailed
+        Show-WslDistroTable -Distros $distros
+        # Displays a pre-fetched list of distributions as a formatted table.
     #>
+    [CmdletBinding()]
     param(
         [PSCustomObject[]]$Distros = $null
     )
@@ -91,7 +106,7 @@ function Select-WslDistro {
     }
 
     if ($showTable) {
-        Show-WslDistroTable -Distros $Distros
+        Show-WslDistroTable -Distros $Distros | Out-Host
     }
 
     if ([string]::IsNullOrWhiteSpace($Selection)) {

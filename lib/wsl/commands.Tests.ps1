@@ -3,8 +3,6 @@
     Pester tests for commands.ps1
 #>
 
-# Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
 param()
 
 BeforeAll {
@@ -12,7 +10,7 @@ BeforeAll {
     Start-SutIsolation
 
     # Stub PwshSpectreConsole commands used by commands.ps1
-    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { } }
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
 
     . "$PSScriptRoot\commands.ps1"
 }
