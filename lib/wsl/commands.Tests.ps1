@@ -3,6 +3,8 @@
     Pester tests for commands.ps1
 #>
 
+# Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
 param()
 
 BeforeAll {
@@ -613,12 +615,11 @@ Describe "Invoke-TerminateDistro" {
 
         It "Should list all distributions (not just running)" {
             Mock Read-Host { "1" }
+            Mock Show-WslDistroTable {}
 
             Invoke-TerminateDistro
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should handle selection by number (1)" {

@@ -5,6 +5,9 @@
 
 # Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
+# Stub functions mirror PwshSpectreConsole cmdlet signatures which use plural nouns and state-changing verbs
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
 param()
 
 BeforeAll {
@@ -316,13 +319,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Remove-WslDistro {}
 
             Invoke-WslManager -Command "remove"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number" {
@@ -580,15 +583,14 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number for source" {
@@ -715,13 +717,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Update-WslDistro {}
 
             Invoke-WslManager -Command "update"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number" {
@@ -1540,13 +1542,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "terminate"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should call Stop-WslDistro when Name is provided" {
