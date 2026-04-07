@@ -18,46 +18,36 @@ $ErrorActionPreference = "Stop"
 # Source dependencies
 . "$PSScriptRoot\wsl.ps1"
 
+. "$PSScriptRoot\spectre.ps1"
+
 #region Functions
 
-function Format-DistroListEntry {
+function Show-WslDistroTable {
     <#
     .SYNOPSIS
-        Formats a distribution list entry with state information.
+        Displays installed WSL distributions as a formatted Spectre table.
 
-    .PARAMETER Index
-        The index number to display.
-
-    .PARAMETER Distro
-        The distribution object with Name, State, Version, and IsDefault properties.
-    #>
-    param(
-        [int]$Index,
-        [PSCustomObject]$Distro
-    )
-
-    $statusParts = @()
-    $statusParts += $Distro.State
-    $statusParts += "WSL$($Distro.Version)"
-    if ($Distro.IsDefault) {
-        $statusParts += "Default"
-    }
-    $status = $statusParts -join ", "
-
-    $stateColor = if ($Distro.State -eq "Running") { "Green" } else { "Gray" }
-    Write-Host "  $Index. " -NoNewline -ForegroundColor White
-    Write-Host "$($Distro.Name) " -NoNewline -ForegroundColor White
-    Write-Host "($status)" -ForegroundColor $stateColor
-}
-
-function Show-WslDistroList {
-    <#
-    .SYNOPSIS
-        Displays a list of installed WSL distributions with state information.
+    .DESCRIPTION
+        Renders a Spectre.Console table showing all installed WSL distributions with
+        their index, name, state (Running/Stopped), WSL version, and default marker.
+        Returns a Spectre renderable object for use in layouts or panels.
 
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If not provided, fetches from WSL.
+
+    .OUTPUTS
+        A Spectre renderable table object, or a markup string when no distributions are found.
+
+    .EXAMPLE
+        Show-WslDistroTable
+        # Fetches distributions from WSL and displays them as a formatted table.
+
+    .EXAMPLE
+        $distros = Get-WslDistroList -Detailed
+        Show-WslDistroTable -Distros $distros
+        # Displays a pre-fetched list of distributions as a formatted table.
     #>
+    [CmdletBinding()]
     param(
         [PSCustomObject[]]$Distros = $null
     )
@@ -66,21 +56,25 @@ function Show-WslDistroList {
         $Distros = @(Get-WslDistroList -Detailed)
     }
 
-    Write-Host ""
-    Write-Host "Installed WSL Distributions:" -ForegroundColor Cyan
-    Write-Host "-----------------------------" -ForegroundColor Cyan
-
     if ($Distros.Count -eq 0) {
-        Write-Host "  No WSL distributions found." -ForegroundColor Yellow
+        return "[yellow]No WSL distributions found.[/]"
     }
-    else {
-        $index = 1
-        foreach ($distro in $Distros) {
-            Format-DistroListEntry -Index $index -Distro $distro
-            $index++
+
+    $index = 0
+    $tableData = foreach ($distro in $Distros) {
+        $index++
+        $stateMarkup = if ($distro.State -eq "Running") { "[green]Running[/]" } else { "[grey]Stopped[/]" }
+        $defaultMark = if ($distro.IsDefault) { "[green]*[/]" } else { "" }
+        [PSCustomObject]@{
+            '#'       = $index
+            'Name'    = $distro.Name
+            'State'   = $stateMarkup
+            'Version' = "WSL$($distro.Version)"
+            'Default' = $defaultMark
         }
     }
-    Write-Host ""
+
+    $tableData | Format-SpectreTable -Border Rounded -Color Cyan -AllowMarkup -Expand
 }
 
 function Select-WslDistro {
@@ -114,14 +108,7 @@ function Select-WslDistro {
     }
 
     if ($showTable) {
-        Write-Host ""
-        Write-Host "Available distributions:" -ForegroundColor Cyan
-        $index = 1
-        foreach ($distro in $Distros) {
-            Format-DistroListEntry -Index $index -Distro $distro
-            $index++
-        }
-        Write-Host ""
+        Show-WslDistroTable -Distros $Distros | Out-Host
     }
 
     if ([string]::IsNullOrWhiteSpace($Selection)) {
@@ -700,7 +687,7 @@ function Invoke-WslCommand {
 
     switch ($Command) {
         "list" {
-            Show-WslDistroList -Distros $Distros
+            Show-WslDistroTable -Distros $Distros
         }
         "install" {
             Invoke-CreateDistro -Name $Name

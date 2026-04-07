@@ -3,8 +3,8 @@
     Pester tests for manager.ps1
 #>
 
-# Stub parameters are required for Pester ParameterFilter matching but are not used in the stub body
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Stub function parameters are required for Pester ParameterFilter matching')]
+# Stub functions mirror PwshSpectreConsole cmdlet names which use state-changing verbs
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Stub functions mirror PwshSpectreConsole cmdlet names')]
 param()
 
 BeforeAll {
@@ -15,8 +15,20 @@ BeforeAll {
     # without triggering module auto-import (which causes UTF-8 encoding warnings).
     # manager.ps1 skips Import-Module in test environments, so these stubs provide
     # the command names that Pester needs for Mock/Should -Invoke.
-    function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) }
-    function Format-SpectrePanel { param($Border) process { } }
+    # Note: Format-SpectreColumns and Format-SpectreRows use plural nouns to match
+    # the real PwshSpectreConsole cmdlet names; renaming is not possible.
+    function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
+    function Format-SpectrePanel { param($Header, $Border, $Color, [switch]$Expand) process { $null = $Header, $Border, $Color, $Expand; $_ } }
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
+    function Format-SpectreColumns {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
+        param() process { $_ }
+    }
+    function Format-SpectreRows {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
+        param() process { $_ }
+    }
+    function Write-SpectreFigletText { param($Text, $Alignment, $Color, [switch]$PassThru) $null = $Text, $Alignment, $Color, $PassThru }
 
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"
@@ -24,6 +36,21 @@ BeforeAll {
 
 AfterAll {
     Stop-SutIsolation
+}
+
+Describe "Get-WslManagerPanel" {
+    BeforeEach {
+        Mock Format-SpectrePanel { "mocked-panel" }
+    }
+
+    It "Should wrap content in a panel with WSL Manager header, dark blue border and full width" {
+        Get-WslManagerPanel -DistroContent "mocked-table"
+
+        Should -Invoke Format-SpectrePanel -Times 1 -ParameterFilter {
+            $Header -like "*WSL Manager*" -and
+            $Border -eq "Rounded" -and $Color -eq "DarkBlue" -and $Expand -eq $true
+        }
+    }
 }
 
 Describe "Show-WslMenu" {
@@ -84,13 +111,13 @@ Describe "Start-InteractiveMode" {
         BeforeEach {
             Mock Clear-Host {}
             Mock Read-Host {}
-            Mock Format-SpectrePanel {}
+            Mock Show-WslDistroTable { "mocked-table" }
+            Mock Get-WslManagerPanel {}
         }
 
         It "Should exit when user selects Quit" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslMenu { "quit" }
 
             $result = Start-InteractiveMode
@@ -101,7 +128,6 @@ Describe "Start-InteractiveMode" {
         It "Should exit when user cancels with Ctrl+C" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslMenu { $null }
 
             $result = Start-InteractiveMode
@@ -109,12 +135,21 @@ Describe "Start-InteractiveMode" {
             $result | Should -Be $true
         }
 
+        It "Should build single manager panel with distro content" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Show-WslMenu { "quit" }
+
+            Start-InteractiveMode
+
+            Should -Invoke Get-WslManagerPanel -Times 1
+        }
+
         It "Should dispatch to Invoke-WslCommand with 'setup-podman'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -133,7 +168,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -152,7 +186,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -172,7 +205,6 @@ Describe "Start-InteractiveMode" {
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
             Mock Get-WslDistroList { $mockDistros } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -190,7 +222,6 @@ Describe "Start-InteractiveMode" {
         It "Should handle Get-WslDistroList errors gracefully" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { throw "WSL service not available" } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Write-ErrorMsg {}
             Mock Show-WslMenu { "quit" }
 
@@ -204,7 +235,6 @@ Describe "Start-InteractiveMode" {
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Write-ErrorMsg {}
             Mock Invoke-WslCommand { throw "Command failed" }
             $script:callCount = 0
@@ -241,12 +271,12 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'list' argument" {
-        It "Should call Show-WslDistroList" {
-            Mock Show-WslDistroList {}
+        It "Should call Show-WslDistroTable" {
+            Mock Show-WslDistroTable {}
 
             Invoke-WslManager -Command "list"
 
-            Should -Invoke Show-WslDistroList -Times 1
+            Should -Invoke Show-WslDistroTable -Times 1
         }
     }
 
@@ -277,13 +307,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Remove-WslDistro {}
 
             Invoke-WslManager -Command "remove"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number" {
@@ -541,15 +571,14 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*number or name*" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
             Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number for source" {
@@ -676,13 +705,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Update-WslDistro {}
 
             Invoke-WslManager -Command "update"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should support selection by number" {
@@ -1501,13 +1530,13 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
+            Mock Show-WslDistroTable {}
             Mock Read-Host { "Debian" }
             Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "terminate"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should call Stop-WslDistro when Name is provided" {
@@ -1628,75 +1657,3 @@ Describe "Invoke-WslManager" {
     }
 }
 
-Describe "Install-WslManagerDependency" {
-    Context "When dependency is already installed" {
-        BeforeAll {
-            Mock Get-InstalledModule { return @{ Name = 'PwshSpectreConsole'; Version = '2.1.0' } } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
-            Mock Install-Module {}
-            Mock Write-Host {}
-        }
-
-        It "Should skip installation" {
-            Install-WslManagerDependency
-            Should -Not -Invoke Install-Module
-        }
-    }
-
-    Context "When dependency is missing and NuGet is available" {
-        BeforeAll {
-            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
-            Mock Get-PackageProvider { return @{ Name = 'NuGet' } } -ParameterFilter { $Name -eq 'NuGet' }
-            Mock Install-PackageProvider {}
-            Mock Install-Module {}
-            Mock Write-Host {}
-        }
-
-        It "Should install PwshSpectreConsole from PSGallery" {
-            Install-WslManagerDependency
-            Should -Invoke Install-Module -Times 1 -ParameterFilter {
-                $Name -eq 'PwshSpectreConsole' -and
-                $Repository -eq 'PSGallery' -and
-                $Scope -eq 'CurrentUser' -and
-                $MinimumVersion -eq '2.0'
-            }
-        }
-
-        It "Should not install NuGet provider" {
-            Install-WslManagerDependency
-            Should -Not -Invoke Install-PackageProvider
-        }
-    }
-
-    Context "When NuGet provider is missing" {
-        BeforeAll {
-            Mock Get-InstalledModule { $null } -ParameterFilter { $Name -eq 'PwshSpectreConsole' }
-            Mock Get-PackageProvider { $null } -ParameterFilter { $Name -eq 'NuGet' }
-            Mock Install-PackageProvider {}
-            Mock Install-Module {}
-            Mock Write-Host {}
-        }
-
-        It "Should install NuGet provider before the module" {
-            Install-WslManagerDependency
-            Should -Invoke Install-PackageProvider -Times 1 -ParameterFilter {
-                $Name -eq 'NuGet' -and
-                $Scope -eq 'CurrentUser'
-            }
-            Should -Invoke Install-Module -Times 1
-        }
-    }
-}
-
-Describe "Dependency auto-detect" {
-    # These tests verify the module-load guard behavior in manager.ps1 top-level code.
-    # The guard runs at dot-source time, so we test via the $script:Dependencies declaration.
-
-    It "Should declare PwshSpectreConsole in Dependencies" {
-        $script:Dependencies | Should -Not -BeNullOrEmpty
-        $dep = $script:Dependencies | Where-Object { $_.Name -eq 'PwshSpectreConsole' }
-        $dep | Should -Not -BeNullOrEmpty
-        $dep.Type | Should -Be 'PSModule'
-        $dep.MinVersion | Should -Be '2.0'
-        $dep.Repository | Should -Be 'PSGallery'
-    }
-}

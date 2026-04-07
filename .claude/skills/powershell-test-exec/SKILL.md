@@ -173,6 +173,49 @@ See [references/ai-agent-patterns.md](references/ai-agent-patterns.md) for:
    git bisect good  # or bad, depending on result
    ```
 
+## Stubbing External Modules in Unit Tests
+
+When production code imports an external module at dot-source time (e.g., `Import-Module PwshSpectreConsole`), unit tests must prevent the real import while still providing the command names that Pester needs for `Mock` and `Should -Invoke`.
+
+**Pattern**: A dedicated loader file (e.g., `spectre.ps1`) owns the module import, guarded by a command-existence check. Unit tests define lightweight stub functions in `BeforeAll` *before* dot-sourcing library files. The loader detects the stubs and skips the real import.
+
+```powershell
+# Unit test file (*.Tests.ps1)
+BeforeAll {
+    . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
+    Start-SutIsolation
+
+    # Stubs: defined BEFORE dot-sourcing so the loader (spectre.ps1)
+    # detects them and skips Import-Module.
+    function Format-SpectreTable { param($Border, $Color) process { $_ } }
+    function Format-SpectrePanel { param($Header, $Border) process { $_ } }
+
+    . "$PSScriptRoot\production-file.ps1"   # loader sees stubs, skips real import
+}
+```
+
+```powershell
+# Loader file (e.g., lib/wsl/spectre.ps1)
+# Stubs defined by unit tests make this check pass, skipping the import.
+# Integration tests and production use have no stubs, so the real module loads.
+if (Get-Command Format-SpectreTable -ErrorAction SilentlyContinue) {
+    return
+}
+# ... install prompt (guarded for interactive use) ...
+Import-Module PwshSpectreConsole -ErrorAction Stop
+```
+
+```powershell
+# Production library file (e.g., commands.ps1, manager.ps1)
+. "$PSScriptRoot\spectre.ps1"
+```
+
+**Key rules:**
+- Stubs must be defined *before* the dot-source line
+- Integration tests (`*.Integration.Tests.ps1`) must NOT define stubs; they test the full stack including real module imports
+- The loader checks for a representative command, not for a test environment flag
+- Each library that needs Spectre commands dot-sources the loader; the second call is a no-op since the commands already exist
+
 ## Advanced Workflows
 
 See [references/workflows.md](references/workflows.md) for:

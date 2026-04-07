@@ -490,6 +490,5 @@ if ($MyInvocation.InvocationName -ne '.') {
         $ErrorActionPreference = 'SilentlyContinue'
     }
 
-    $host.SetShouldExit($exitCode)
     exit $exitCode
 }

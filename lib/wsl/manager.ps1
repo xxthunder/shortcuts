@@ -11,56 +11,36 @@ param()
 # Source dependencies
 . "$PSScriptRoot\commands.ps1"
 
-# Dependency declaration (SC-033): each tool owns its dependency list
-$script:Dependencies = @(
-    @{ Name = 'PwshSpectreConsole'; Type = 'PSModule'; MinVersion = '2.0'; Repository = 'PSGallery' }
-)
 
-function Install-WslManagerDependency {
+. "$PSScriptRoot\spectre.ps1"
+
+function Get-WslManagerPanel {
     <#
     .SYNOPSIS
-        Installs all declared dependencies for WSL Manager.
+        Builds the WSL Manager panel with the distro table inside.
+
     .DESCRIPTION
-        Iterates over $script:Dependencies and installs any missing PSModule dependencies.
-        Called by wsl-manager.ps1 -InstallDeps or by the auto-detect prompt.
+        Wraps the distribution table content in a full-width Spectre.Console panel
+        with a dark blue rounded border and "WSL Manager" as the header text.
+
+    .PARAMETER DistroContent
+        A Spectre renderable or markup string for the distribution table.
+
+    .OUTPUTS
+        A Spectre renderable panel written to the host.
+
+    .EXAMPLE
+        $table = Show-WslDistroTable -Distros $distros
+        Get-WslManagerPanel -DistroContent $table
     #>
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory)]
+        $DistroContent
+    )
 
-    foreach ($dep in $script:Dependencies) {
-        if ($dep.Type -eq 'PSModule') {
-            if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
-                Write-Status "Installing NuGet package provider..."
-                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
-            }
-            if (Get-InstalledModule -Name $dep.Name -MinimumVersion $dep.MinVersion -ErrorAction SilentlyContinue) {
-                Write-Status "$($dep.Name) is already installed"
-            }
-            else {
-                Write-Status "Installing $($dep.Name)..."
-                Install-Module -Name $dep.Name -Repository $dep.Repository -Scope CurrentUser -Force -MinimumVersion $dep.MinVersion -SkipPublisherCheck
-                Write-Success "$($dep.Name) installed"
-            }
-        }
-    }
-}
-
-# Import PwshSpectreConsole for TUI primitives (SC-016)
-# Skip in CI/test environments where the module is mocked
-if (-not (Test-RunningInCIorTestEnvironment)) {
-    # Enable UTF-8 encoding for Spectre.Console (avoids "Western European (DOS)" warning)
-    $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-
-    if (-not (Get-Module -Name PwshSpectreConsole -ListAvailable)) {
-        $install = Get-UserConfirmation -message "PwshSpectreConsole module is missing. Install now?"
-        if ($install) {
-            Install-WslManagerDependency
-        }
-        else {
-            throw "PwshSpectreConsole module is required. Run bin/install.ps1 or relaunch and accept the install prompt."
-        }
-    }
-    Import-Module PwshSpectreConsole -ErrorAction Stop
+    $DistroContent |
+        Format-SpectrePanel -Header "[bold deepskyblue1]WSL Manager[/]" -Border Rounded -Color DarkBlue -Expand
 }
 
 function Show-WslMenu {
@@ -118,20 +98,25 @@ function Start-InteractiveMode {
     $continue = $true
     while ($continue) {
         Clear-Host
-        "[cyan]WSL Manager[/]" | Format-SpectrePanel -Border Rounded
 
-        # Fetch current distributions once per loop iteration and display the table.
+        # Fetch current distributions once per loop iteration.
         # The fetched list is passed to action functions so they use consistent numbering
         # and do not re-fetch or reprint the table.
         $menuDistros = $null
         try {
             $menuDistros = @(Get-WslDistroList -Detailed)
-            Show-WslDistroList -Distros $menuDistros
         }
         catch {
             Write-ErrorMsg "$_"
-            Write-Host ""
         }
+
+        # Build single panel: branding header + distro table
+        $distroContent = if ($null -ne $menuDistros) {
+            Show-WslDistroTable -Distros $menuDistros
+        } else {
+            "[yellow]Could not load distributions.[/]"
+        }
+        Get-WslManagerPanel -DistroContent $distroContent
 
         $command = Show-WslMenu
 

@@ -8,6 +8,10 @@ param()
 BeforeAll {
     . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
     Start-SutIsolation
+
+    # Stub PwshSpectreConsole commands used by commands.ps1
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
+
     . "$PSScriptRoot\commands.ps1"
 }
 
@@ -15,211 +19,69 @@ AfterAll {
     Stop-SutIsolation
 }
 
-Describe "Format-DistroListEntry" {
-    BeforeEach {
-        Mock Write-Host {}
-    }
-
-    It "Should display index number" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $Object -like "*1.*" }
-    }
-
-    It "Should display distribution name" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-    }
-
-    It "Should use green color for running state" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $ForegroundColor -eq "Green" -and $Object -like "*Running*" }
-    }
-
-    It "Should use gray color for stopped state" {
-        $distro = [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $ForegroundColor -eq "Gray" -and $Object -like "*Stopped*" }
-    }
-
-    It "Should include Default indicator for default distribution" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $Object -like "*Default*" }
-    }
-
-    It "Should not include Default indicator for non-default distribution" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $Object -like "*Default*" } -Times 0
-    }
-
-    It "Should display WSL version number" {
-        $distro = [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 1; IsDefault = $false }
-
-        Format-DistroListEntry -Index 1 -Distro $distro
-
-        Should -Invoke Write-Host -ParameterFilter { $Object -like "*WSL1*" }
-    }
-}
-
-Describe "Show-WslDistroList" {
-    Context "When WSL is installed" {
+Describe "Show-WslDistroTable" {
+    Context "When distributions exist" {
         BeforeEach {
-            Mock Write-Host {}
+            Mock Format-SpectreTable { "mocked-table" }
         }
 
-        It "Should display message when no distributions are installed" {
-            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
-        }
-
-        It "Should call Get-WslDistroList with -Detailed switch" {
-            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Get-WslDistroList -ParameterFilter { $Detailed -eq $true } -Times 1
-        }
-
-        It "Should display distribution name and state" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Running*" }
-        }
-
-        It "Should display state with green color when running" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter {
-                $ForegroundColor -eq "Green" -and $Object -like "*Running*"
-            }
-        }
-
-        It "Should display state with gray color when stopped" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter {
-                $ForegroundColor -eq "Gray" -and $Object -like "*Stopped*"
-            }
-        }
-
-        It "Should display WSL version" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*WSL2*" }
-        }
-
-        It "Should display default indicator for default distribution" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Default*" }
-        }
-
-        It "Should handle mixed running and stopped distributions" {
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter {
-                $ForegroundColor -eq "Green" -and $Object -like "*Running*"
-            }
-            Should -Invoke Write-Host -ParameterFilter {
-                $ForegroundColor -eq "Gray" -and $Object -like "*Stopped*"
-            }
-        }
-
-        It "Should display header" {
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $false })
-            } -ParameterFilter { $Detailed }
-
-            Show-WslDistroList
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Installed*Distributions*" }
-        }
-    }
-
-    Context "When pre-fetched Distros are provided" {
-        BeforeEach {
-            Mock Get-WslDistroList {}
-            Mock Write-Host {}
-        }
-
-        It "Should use provided distros and not call Get-WslDistroList" {
+        It "Should call Format-SpectreTable with Rounded border and AllowMarkup" {
             $distros = @(
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
 
-            Show-WslDistroList -Distros $distros
+            Show-WslDistroTable -Distros $distros
 
-            Should -Invoke Get-WslDistroList -Times 0
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Format-SpectreTable -ParameterFilter {
+                $Border -eq "Rounded" -and $Color -eq "Cyan" -and $AllowMarkup -eq $true -and $Expand -eq $true
+            }
         }
 
-        It "Should display provided distros without re-fetching" {
+        It "Should fetch distros when not provided" {
+            Mock Get-WslDistroList {
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            } -ParameterFilter { $Detailed }
+
+            Show-WslDistroTable
+
+            Should -Invoke Get-WslDistroList -ParameterFilter { $Detailed -eq $true } -Times 1
+            Should -Invoke Format-SpectreTable -Times 1
+        }
+
+        It "Should use provided distros without fetching" {
+            Mock Get-WslDistroList {}
             $distros = @(
-                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                [PSCustomObject]@{ Name = "Fedora"; State = "Running"; Version = 2; IsDefault = $false }
+                [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
             )
 
-            Show-WslDistroList -Distros $distros
+            Show-WslDistroTable -Distros $distros
 
             Should -Invoke Get-WslDistroList -Times 0
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Fedora*" }
+            Should -Invoke Format-SpectreTable -Times 1
+        }
+    }
+
+    Context "When no distributions exist" {
+        It "Should return no-distributions message when empty" {
+            $result = Show-WslDistroTable -Distros @()
+
+            $result | Should -BeLike "*No WSL distributions*"
         }
 
-        It "Should display no-distributions message when provided empty list" {
-            Show-WslDistroList -Distros @()
+        It "Should return no-distributions message when fetched list is empty" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
 
-            Should -Invoke Get-WslDistroList -Times 0
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*No WSL distributions*" }
+            $result = Show-WslDistroTable
+
+            $result | Should -BeLike "*No WSL distributions*"
+        }
+
+        It "Should not call Format-SpectreTable when empty" {
+            Mock Format-SpectreTable {}
+
+            Show-WslDistroTable -Distros @()
+
+            Should -Invoke Format-SpectreTable -Times 0
         }
     }
 }
@@ -355,7 +217,7 @@ Describe "Select-WslDistro" {
 
     Context "Table display logic" {
         BeforeEach {
-            Mock Write-Host {}
+            Mock Format-SpectreTable { "mocked-table" }
             Mock Read-Host { "1" }
         }
 
@@ -366,8 +228,7 @@ Describe "Select-WslDistro" {
 
             Select-WslDistro
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Available distributions*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
+            Should -Invoke Format-SpectreTable -Times 1
         }
 
         It "Should not show the table when Distros are pre-fetched" {
@@ -377,7 +238,7 @@ Describe "Select-WslDistro" {
 
             Select-WslDistro -Distros $distros
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Available distributions*" } -Times 0
+            Should -Invoke Format-SpectreTable -Times 0
         }
 
         It "Should not call Get-WslDistroList when Distros are pre-fetched" {
@@ -395,12 +256,12 @@ Describe "Select-WslDistro" {
 
 Describe "Invoke-WslCommand" {
     Context "When dispatching commands" {
-        It "Should dispatch 'list' to Show-WslDistroList" {
-            Mock Show-WslDistroList {}
+        It "Should dispatch 'list' to Show-WslDistroTable" {
+            Mock Show-WslDistroTable {}
 
             Invoke-WslCommand -Command "list"
 
-            Should -Invoke Show-WslDistroList -Times 1
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should dispatch 'install' with Name parameter" {
@@ -510,13 +371,13 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-TerminateDistro -ParameterFilter { $null -ne $Distros }
         }
 
-        It "Should pass Distros to Show-WslDistroList for list command" {
+        It "Should pass Distros to Show-WslDistroTable for list command" {
             $testDistros = @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
-            Mock Show-WslDistroList {}
+            Mock Show-WslDistroTable {}
 
             Invoke-WslCommand -Command "list" -Distros $testDistros
 
-            Should -Invoke Show-WslDistroList -ParameterFilter { $null -ne $Distros }
+            Should -Invoke Show-WslDistroTable -ParameterFilter { $null -ne $Distros }
         }
     }
 }
@@ -752,12 +613,11 @@ Describe "Invoke-TerminateDistro" {
 
         It "Should list all distributions (not just running)" {
             Mock Read-Host { "1" }
+            Mock Show-WslDistroTable {}
 
             Invoke-TerminateDistro
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Alpine*" }
+            Should -Invoke Show-WslDistroTable -Times 1
         }
 
         It "Should handle selection by number (1)" {

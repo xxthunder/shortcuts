@@ -40,15 +40,12 @@ Describe "WSL Manager Podman Integration Tests" -Tag "Integration" {
 
         # Verify WSL is installed
         if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
-            Write-Warning "WSL is not installed. Skipping integration tests."
-            Set-ItResult -Skipped -Because "WSL is not installed"
-            return
+            throw "WSL is required for integration tests. wsl.exe not found."
         }
 
         Write-Host "==> Preparing Podman test environment ..." -ForegroundColor Cyan
 
-        # Load the library functions
-        . (Join-Path $PSScriptRoot "commands.ps1")
+        # Load the library functions (manager.ps1 dot-sources commands.ps1)
         . (Join-Path $PSScriptRoot "manager.ps1")
 
         # Check if base distro already exists

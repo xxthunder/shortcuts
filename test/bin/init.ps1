@@ -43,4 +43,14 @@ if (Get-InstalledModule -Name PSScriptAnalyzer -MinimumVersion 1.24 -ErrorAction
     Install-Module -Name PSScriptAnalyzer -Repository PSGallery -Scope $Scope -Force -MinimumVersion 1.24 -SkipPublisherCheck
 }
 
+# --- PWSHSPECTRECONSOLE ---
+# install.ps1 installs this under PS 5.1 scope; pwsh 7.x has separate module paths,
+# so integration tests (which run under pwsh) need it installed here too.
+if (Get-InstalledModule -Name PwshSpectreConsole -MinimumVersion 2.0 -ErrorAction SilentlyContinue) {
+    Write-Output 'PwshSpectreConsole is already installed.'
+} else {
+    Write-Output 'Installing PwshSpectreConsole ...'
+    Install-Module -Name PwshSpectreConsole -Repository PSGallery -Scope $Scope -Force -MinimumVersion 2.0 -SkipPublisherCheck
+}
+
 Exit 0

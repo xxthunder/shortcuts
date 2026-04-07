@@ -500,6 +500,25 @@ git log develop..HEAD   # Review ALL commits on branch
 
 The CI workflow no longer uses a matrix (only one shell: `pwsh`). Steps use `shell: pwsh` directly, except the "Remote install" step which uses `shell: powershell` to simulate a fresh machine running `install.ps1` under Windows PowerShell 5.1.
 
+#### CI Environment: Never Assume, Always Verify
+
+**Issue**: Fabricating claims about what is or isn't available in CI without checking.
+
+**Context**: The CI runner is a full Windows machine with WSL, PwshSpectreConsole, Scoop, and all project dependencies. `install.ps1` installs production dependencies; `test/bin/init.ps1` installs test dependencies (Pester, PSScriptAnalyzer) and runs `wsl --update`. All 1000+ tests run with 0 skipped.
+
+**Guideline**: Before making any claim about the CI environment (what's installed, what's available, what's skipped), read `test.yml`, `init.ps1`, and `install.ps1`. Trust CI test results over assumptions. If CI reports 0 skipped, nothing is skipped.
+
+**You MUST NOT:**
+- Assume standard GitHub Actions limitations apply (e.g., "WSL isn't available") without checking
+- Invent plausible-sounding explanations for test behavior without verifying
+- Add defensive stubs or skip-guards for dependencies that are actually installed in CI
+- Double down on wrong assumptions when challenged; re-investigate instead
+
+**You MUST:**
+- Read the CI workflow and setup scripts before claiming anything about the CI environment
+- When CI results contradict your mental model, trust the data
+- Say "I don't know" rather than fabricate an explanation
+
 #### Backlog Conventions
 
 Backlog structure and format are defined by the `refinement` skill (from the `xxthunder-dev-skills` plugin). See `docs/backlog/README.md` for the TOC and notes.

@@ -20,9 +20,7 @@ Describe "WSL Library Integration Tests" -Tag "Integration" {
 
         # Check for WSL
         if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
-            Write-Warning "WSL is not installed. Skipping integration tests."
-            Set-ItResult -Skipped -Because "WSL is not installed"
-            return
+            throw "WSL is required for integration tests. wsl.exe not found."
         }
     }
 
