@@ -19,9 +19,6 @@
     .\install-npm-global.ps1 -PackageName "@anthropic-ai/claude-code" -CheckCommand "claude"
 
 .EXAMPLE
-    .\install-npm-global.ps1 -PackageName "@github/copilot" -CheckCommand "copilot"
-
-.EXAMPLE
     pwsh -ExecutionPolicy Bypass -File install-npm-global.ps1 -PackageName "@some/package"
 #>
 
