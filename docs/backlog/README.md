@@ -25,6 +25,7 @@
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 - [SC-032 — Investigate split-pane TUI layout for WSL Manager](sc-032.md)
 - [SC-034 — Shared dependency utilities and auto-discovery](sc-034.md)
+- [SC-035 — Add setup-devpod-ssh command for Windows DevPod access](sc-035.md)
 
 ### Done
 - [SC-016c — Replace distro table with Format-SpectreTable](sc-016c.md)

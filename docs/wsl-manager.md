@@ -229,11 +229,7 @@ git config --global --list
 
 This reuses your Windows git identity, aliases, and all other settings. Any changes made on either side take effect immediately.
 
-**Important:** Your Windows `.gitconfig` must include the SSH command setting for SSH key reuse (see below). If it doesn't, add it:
-
-```bash
-git config --global core.sshCommand "ssh.exe"
-```
+> **Note:** Do **not** set `core.sshCommand = ssh.exe` in your `.gitconfig`. While this was previously recommended, it breaks DevPod and other tools that need Linux-native SSH. Instead, use `setup-devpod-ssh` (Step 11) to copy your SSH keys into WSL.
 
 ##### Option B: Configure Git Manually
 
@@ -242,25 +238,12 @@ git config --global core.sshCommand "ssh.exe"
 git config --global user.name "Your Name"
 git config --global user.email "your.email@example.com"
 
-# Use ssh.exe from Windows for git operations (see explanation below)
-git config --global core.sshCommand "ssh.exe"
-
 # Use Git Credential Manager from Windows
 git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe"
 
 # Prevent line ending conversion issues
 git config --global core.autocrlf input
 ```
-
-##### Why `core.sshCommand = ssh.exe`?
-
-With WSL interop enabled (`[interop] enabled=true` in `/etc/wsl.conf`), WSL can execute Windows binaries directly. Setting `core.sshCommand` to `ssh.exe` tells git to use the **Windows OpenSSH client** instead of the Linux one. This means:
-
-- **SSH keys** stored in `%USERPROFILE%\.ssh\` are reused automatically - no need to copy or manage keys inside each WSL distribution.
-- **SSH config** (`%USERPROFILE%\.ssh\config`) with host aliases, proxy settings, etc. is reused as well.
-- The **Windows SSH Agent** handles key authentication, so keys loaded via `ssh-add` on Windows are available to git inside WSL.
-
-**Prerequisite:** WSL interop must be enabled (the automated Docker/Podman setup handles this).
 
 #### Step 8: Clone Distribution (Optional)
 
@@ -435,6 +418,21 @@ Additionally, for rootless Podman, add `--userns=keep-id` to your `devcontainer.
 
 This maps your host UID into the container, which is critical for file permissions in rootless mode.
 
+#### Step 11: Setup DevPod SSH Access
+
+This copies your Windows SSH keys into the WSL distribution and syncs DevPod SSH config blocks from WSL to your Windows SSH config (with adapted ProxyCommand), so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
+
+- **TUI**: select **Setup DevPod SSH** -> select distribution
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod-ssh <distro>`
+
+This command:
+- Copies all SSH key pairs from `%USERPROFILE%\.ssh\` into the distribution's `~/.ssh/` with correct permissions
+- Reads all `# DevPod Start/End` blocks from the WSL-side `~/.ssh/config`
+- Adapts the ProxyCommand to route through `wsl.exe -d <distro>` and writes them to `%USERPROFILE%\.ssh\config`
+- Removes stale DevPod entries from the Windows config that no longer exist in WSL
+- Preserves all non-DevPod entries in the Windows SSH config
+- Is idempotent: safe to re-run after adding new keys or DevPod workspaces
+
 ### Validation
 
 #### Common Checks (SSH, Git Identity)
@@ -518,32 +516,30 @@ cd /mnt/c/Users/username/projects && git clone ...
 
 **Solutions:**
 
-1. **Verify Windows SSH agent is running:**
+1. **Verify SSH keys are in WSL** (run inside WSL):
+
+```bash
+ls -la ~/.ssh/
+# Should show your key files (id_ed25519, id_rsa, etc.)
+# Private keys should be mode 600, public keys 644
+```
+
+2. **Re-run key copy if keys are missing:**
+
+Run `setup-devpod-ssh` from WSL Manager to copy keys from Windows.
+
+3. **Verify Windows SSH agent is running** (for Windows-side tools):
 
 ```powershell
 Get-Service ssh-agent
 # Should show Status: Running
 ```
 
-2. **Verify key is loaded:**
+4. **Verify key is loaded in Windows agent:**
 
 ```powershell
 ssh-add -l
 # Should show your key fingerprint
-```
-
-3. **Verify git SSH command:**
-
-```bash
-git config --global core.sshCommand
-# Should show: ssh.exe
-```
-
-4. **Test direct SSH.exe:**
-
-```bash
-ssh.exe -T git@github.com
-# Should authenticate successfully
 ```
 
 #### Git Identity Not Showing
@@ -1040,7 +1036,7 @@ For the planned C4 architecture of the WSL Manager (including Context, Container
 
 **Notes:**
 - **Why binfmt.d?** Uses kernel-level configuration managed by `systemd-binfmt.service` instead of late-boot rc.local scripts. This prevents VS Code from interfering with Windows executable interop when opening WSL folders.
-- **Why ssh.exe?** Using `ssh.exe` from Windows allows git operations inside WSL to leverage the Windows SSH agent, enabling seamless SSH key forwarding without managing keys inside each WSL distribution.
+- **Why copy SSH keys into WSL?** DevPod and other WSL-native tools need Linux SSH, which cannot access the Windows SSH agent. Copying keys ensures git and DevPod work with Linux-native SSH inside WSL, while the Windows SSH config gets the correct ProxyCommand for connecting from Windows editors.
 - **Security consideration:** This setup forwards your SSH agent into containers. Only use with trusted dev container configurations.
 
 ---
