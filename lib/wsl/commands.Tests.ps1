@@ -336,6 +336,14 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-SetupDevPod -ParameterFilter { $DistroName -eq "Debian" }
         }
 
+        It "Should dispatch 'setup-devpod-ssh' with DistroName" {
+            Mock Invoke-SetupDevPodSsh {}
+
+            Invoke-WslCommand -Command "setup-devpod-ssh" -Name "Debian"
+
+            Should -Invoke Invoke-SetupDevPodSsh -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
         It "Should dispatch 'repair-interop' with DistroName" {
             Mock Invoke-RepairInterop {}
 
@@ -982,6 +990,49 @@ Describe "Invoke-SetupDevPod" {
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
             Should -Invoke Install-WslDevPod -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupDevPodSsh" {
+    Context "When DistroName is provided" {
+        BeforeEach {
+            Mock Write-Host {}
+            Mock Invoke-WslSetupDevPodSsh { $true }
+        }
+
+        It "Should call Invoke-WslSetupDevPodSsh directly" {
+            Invoke-SetupDevPodSsh -DistroName "Debian"
+
+            Should -Invoke Invoke-WslSetupDevPodSsh -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Invoke-SetupDevPodSsh -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully synced SSH config*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Invoke-WslSetupDevPodSsh { throw "SSH setup failed" }
+
+            $act = { Invoke-SetupDevPodSsh -DistroName "Debian" }
+
+            $act | Should -Throw "*SSH setup failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Invoke-WslSetupDevPodSsh {}
+
+            Invoke-SetupDevPodSsh
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Invoke-WslSetupDevPodSsh -Times 0
         }
     }
 }

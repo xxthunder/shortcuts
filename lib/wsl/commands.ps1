@@ -512,6 +512,38 @@ function Invoke-SetupDevPod {
     }
 }
 
+function Invoke-SetupDevPodSsh {
+    <#
+    .SYNOPSIS
+        Handles the DevPod SSH setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to set up DevPod SSH for. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Syncing SSH config between Windows host and '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $result = Invoke-WslSetupDevPodSsh -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully synced SSH config for '$DistroName'."
+    }
+}
+
 function Invoke-RepairInterop {
     <#
     .SYNOPSIS
@@ -675,7 +707,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "repair-interop", "terminate", "shutdown", "configure-wsl")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "setup-devpod-ssh", "repair-interop", "terminate", "shutdown", "configure-wsl")]
         [string]$Command,
 
         [string]$Name = "",
@@ -715,6 +747,9 @@ function Invoke-WslCommand {
         }
         "setup-devpod" {
             Invoke-SetupDevPod -DistroName $Name -Distros $Distros
+        }
+        "setup-devpod-ssh" {
+            Invoke-SetupDevPodSsh -DistroName $Name -Distros $Distros
         }
         "repair-interop" {
             Invoke-RepairInterop -DistroName $Name -Distros $Distros

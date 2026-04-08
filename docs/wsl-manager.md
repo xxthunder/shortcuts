@@ -422,7 +422,7 @@ This maps your host UID into the container, which is critical for file permissio
 
 This copies your Windows SSH keys into the WSL distribution and syncs DevPod SSH config blocks from WSL to your Windows SSH config (with adapted ProxyCommand), so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
 
-- **TUI**: select **Setup DevPod SSH** -> select distribution
+- **TUI**: select **Sync SSH Config** -> select distribution
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod-ssh <distro>`
 
 This command:
