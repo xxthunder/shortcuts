@@ -33,12 +33,22 @@ Describe "Install-WslProxy" {
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
             Mock Read-Host { "N" }
 
-            Install-WslProxy -DistroName "Debian" -Confirm:$false
+            $originalNoProxy = $env:NO_PROXY
+            try {
+                Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
 
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
-                $Arguments -contains "--no-proxy=localhost,127.0.0.1" -and
-                $Arguments -contains "--username=developer"
+                Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                    $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
+                    $Arguments -contains "--no-proxy=localhost,127.0.0.1" -and
+                    $Arguments -contains "--username=developer"
+                }
+            }
+            finally {
+                if ($null -ne $originalNoProxy) {
+                    $env:NO_PROXY = $originalNoProxy
+                }
             }
         }
     }
@@ -114,11 +124,21 @@ Describe "Install-WslProxy" {
                 }
             }
 
-            Install-WslProxy -DistroName "Debian" -Confirm:$false
+            $originalNoProxy = $env:NO_PROXY
+            try {
+                Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
 
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $Arguments -contains "--proxy-url=http://myproxy.com:8080" -and
-                $Arguments -contains "--no-proxy=localhost,127.0.0.1"
+                Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+                Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                    $Arguments -contains "--proxy-url=http://myproxy.com:8080" -and
+                    $Arguments -contains "--no-proxy=localhost,127.0.0.1"
+                }
+            }
+            finally {
+                if ($null -ne $originalNoProxy) {
+                    $env:NO_PROXY = $originalNoProxy
+                }
             }
         }
     }
