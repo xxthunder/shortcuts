@@ -420,7 +420,7 @@ This maps your host UID into the container, which is critical for file permissio
 
 #### Step 11: Sync SSH Config
 
-This syncs SSH configuration between Windows and the WSL distribution — copying keys, known_hosts, and SSH config in both directions — so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
+This syncs SSH configuration between Windows and the WSL distribution — copying keys, known_hosts, and SSH config in both directions. If DevPod is installed, it also syncs DevPod SSH config blocks so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
 
 - **TUI**: select **Sync SSH Config** -> select distribution
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 sync-ssh-config <distro>`
@@ -867,12 +867,10 @@ This command:
 
 ### Sync SSH Config
 
-Sync SSH configuration between Windows and a WSL distribution: copies keys and known_hosts, syncs non-DevPod config from Windows into WSL, and syncs DevPod SSH config blocks to Windows with adapted ProxyCommand for Windows-side editor access.
+Sync SSH configuration between Windows and a WSL distribution: copies keys and known_hosts, syncs non-DevPod config from Windows into WSL, and (if DevPod is installed) syncs DevPod SSH config blocks to Windows with adapted ProxyCommand for Windows-side editor access.
 
 - **TUI**: select **Sync SSH Config**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 sync-ssh-config <distro>`
-
-Prerequisites: DevPod (`setup-devpod`) must be installed first.
 
 This command:
 - Copies all SSH key pairs from `%USERPROFILE%\.ssh\` into the distribution's `~/.ssh/` with correct permissions (`chmod 600` private, `chmod 644` public)

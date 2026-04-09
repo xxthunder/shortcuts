@@ -1317,12 +1317,6 @@ Describe "Invoke-WslManager" {
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully synced SSH config*" }
         }
 
-        It "Should handle DevPod not installed error" {
-            Mock Invoke-WslSyncSshConfig { throw "DevPod is not installed in 'Debian'." }
-
-            { Invoke-WslManager -Command "sync-ssh-config" -Name "Debian" } | Should -Throw "*DevPod*not installed*"
-        }
-
         It "Should prompt for distribution when Name is not provided" {
 
             Mock Get-WslDistroList {
