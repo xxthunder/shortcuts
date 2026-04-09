@@ -62,6 +62,7 @@ function Show-WslMenu {
         "Setup Docker"                  = "setup-docker"
         "Setup Podman"                  = "setup-podman"
         "Setup DevPod"                  = "setup-devpod"
+        "Sync SSH Config"               = "sync-ssh-config"
         "Setup proxy (corporate)"       = "setup-proxy"
         "Remove distribution"           = "remove"
         "Terminate distribution"        = "terminate"
@@ -70,7 +71,7 @@ function Show-WslMenu {
         "Quit"                          = "quit"
     }
 
-    $selection = Read-SpectreSelection -Message "Select command" -Choices $menuChoices.Keys -PageSize 14 -EnableSearch
+    $selection = Read-SpectreSelection -Message "Select command" -Choices $menuChoices.Keys -PageSize 15 -EnableSearch
 
     if ($null -eq $selection) {
         return $null
@@ -149,7 +150,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]

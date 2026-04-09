@@ -153,6 +153,21 @@ PSScriptAnalyzer enforces `PSUseBOMForUnicodeEncodedFile`; any `.ps1` file conta
 
 This applies only to `.ps1` files. Other file types (`.sh`, `.yml`, `.json`, `.md`, `.bat`) should remain UTF-8 without BOM, as BOM can cause problems in those formats.
 
+#### 3a. Line Endings
+
+This project uses `autocrlf=false` and `safecrlf=true` (always). Git will **not** auto-convert line endings; `.gitattributes` defines the rules, but files must have correct line endings **before** `git add`:
+
+- `.sh`, `.bash`: **LF** (`eol=lf` in `.gitattributes`) - required for WSL/Linux execution
+- `.ps1`, `.psm1`, `.psd1`, `.bat`, `.cmd`, `.md`: **CRLF** (`eol=crlf` in `.gitattributes`)
+
+**AI agents**: the `create` tool writes CRLF on Windows. After creating `.sh` files, convert line endings to LF before staging. For example:
+
+```powershell
+$content = Get-Content -Raw 'path/to/script.sh'
+$content = $content -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText('path/to/script.sh', $content, [System.Text.UTF8Encoding]::new($false))
+```
+
 #### 4. Environment Awareness
 
 Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `lib/utils/utils.ps1`:

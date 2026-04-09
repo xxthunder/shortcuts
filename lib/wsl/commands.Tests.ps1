@@ -336,6 +336,14 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-SetupDevPod -ParameterFilter { $DistroName -eq "Debian" }
         }
 
+        It "Should dispatch 'sync-ssh-config' with DistroName" {
+            Mock Invoke-SyncSshConfig {}
+
+            Invoke-WslCommand -Command "sync-ssh-config" -Name "Debian"
+
+            Should -Invoke Invoke-SyncSshConfig -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
         It "Should dispatch 'repair-interop' with DistroName" {
             Mock Invoke-RepairInterop {}
 
@@ -982,6 +990,49 @@ Describe "Invoke-SetupDevPod" {
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
             Should -Invoke Install-WslDevPod -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SyncSshConfig" {
+    Context "When DistroName is provided" {
+        BeforeEach {
+            Mock Write-Host {}
+            Mock Invoke-WslSyncSshConfig { $true }
+        }
+
+        It "Should call Invoke-WslSyncSshConfig directly" {
+            Invoke-SyncSshConfig -DistroName "Debian"
+
+            Should -Invoke Invoke-WslSyncSshConfig -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+        }
+
+        It "Should display success message" {
+            Invoke-SyncSshConfig -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully synced SSH config*" }
+        }
+
+        It "Should propagate errors" {
+            Mock Invoke-WslSyncSshConfig { throw "SSH setup failed" }
+
+            $act = { Invoke-SyncSshConfig -DistroName "Debian" }
+
+            $act | Should -Throw "*SSH setup failed*"
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should warn when no distributions exist" {
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Write-WarningMsg {}
+            Mock Invoke-WslSyncSshConfig {}
+
+            Invoke-SyncSshConfig
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
+            Should -Invoke Invoke-WslSyncSshConfig -Times 0
         }
     }
 }

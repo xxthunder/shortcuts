@@ -181,6 +181,24 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-devpod" } -Times 1
         }
 
+        It "Should dispatch to Invoke-WslCommand with 'sync-ssh-config'" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList {
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            } -ParameterFilter { $Detailed }
+            $script:callCount = 0
+            Mock Show-WslMenu {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "sync-ssh-config" }
+                else { "quit" }
+            }
+            Mock Invoke-WslCommand {}
+
+            Start-InteractiveMode
+
+            Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "sync-ssh-config" } -Times 1
+        }
+
         It "Should dispatch to Invoke-WslCommand with 'setup-proxy'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
@@ -1275,6 +1293,69 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Install-WslDevPod -Times 0
+        }
+    }
+
+    Context "When called with 'sync-ssh-config' argument" {
+        It "Should call Invoke-WslSyncSshConfig when Name is provided" {
+            Mock Invoke-WslSyncSshConfig { $true }
+
+            Invoke-WslManager -Command "sync-ssh-config" -Name "Debian"
+
+            Should -Invoke Invoke-WslSyncSshConfig -ParameterFilter {
+                $DistroName -eq "Debian" -and
+                $Confirm -eq $false
+            }
+        }
+
+        It "Should display success message after SSH setup" {
+            Mock Write-Host {}
+            Mock Invoke-WslSyncSshConfig { $true }
+
+            Invoke-WslManager -Command "sync-ssh-config" -Name "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully synced SSH config*" }
+        }
+
+        It "Should handle DevPod not installed error" {
+            Mock Invoke-WslSyncSshConfig { throw "DevPod is not installed in 'Debian'." }
+
+            { Invoke-WslManager -Command "sync-ssh-config" -Name "Debian" } | Should -Throw "*DevPod*not installed*"
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "Debian" }
+            Mock Invoke-WslSyncSshConfig { $true }
+
+            Invoke-WslManager -Command "sync-ssh-config"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Invoke-WslSyncSshConfig -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should cancel when no selection provided" {
+
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Read-Host { "" }
+            Mock Invoke-WslSyncSshConfig { $true }
+
+            Invoke-WslManager -Command "sync-ssh-config"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Invoke-WslSyncSshConfig -Times 0
         }
     }
 
