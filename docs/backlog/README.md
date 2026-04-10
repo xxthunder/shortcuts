@@ -22,6 +22,7 @@
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
+- [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
