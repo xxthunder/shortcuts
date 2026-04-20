@@ -147,14 +147,18 @@ If you're behind a corporate proxy, configure proxy settings before updating or 
 - **TUI**: select **Setup proxy (corporate)** → select `Ubuntu-24.04`, follow proxy detection prompts
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04`
 
-The command auto-detects your proxy configuration:
+The command opens with an upfront mode prompt, then guides you through the rest:
 
-1. **PAC/registry detection**: reads `AutoConfigURL` from Windows Internet Settings and resolves the proxy URL automatically via `setProxy.ps1` functions
-2. **Credentials**: asks whether you want to provide proxy credentials (username/password embedded in URL)
-3. **Manual fallback**: if no PAC is configured, prompts you to enter `host:port` manually or choose DIRECT (no proxy)
-4. **DIRECT mode**: when no proxy is needed, removes all managed proxy configurations from the distro
+1. **Mode**: `[A]uto / [M]anual / [R]emove`
+   - **Auto** — reads `AutoConfigURL` from Windows Internet Settings, resolves the proxy URL via `setProxy.ps1`, and shows it for confirmation before proceeding
+   - **Manual** — prompts you to enter `host:port` directly (no PAC probe; feels instant)
+   - **Remove** — tears down all managed proxy config with no further prompts (equivalent to `setup-proxy.sh --remove` inside the distro)
+2. **Auth method** *(shown only after a URL is resolved — not for Remove or Auto→DIRECT)*: `[B]asic / [N]egotiate`
+   - **Basic** — optional credentials (username/password) embedded in the proxy URL
+   - **Negotiate** — Kerberos/SPNEGO via `px` daemon *(not yet implemented — ships in SC-036b through SC-036e)*
+3. **DIRECT collapse**: when Auto resolves to `DIRECT`, the same teardown as Remove runs automatically
 
-No prerequisite steps are needed; proxy detection is fully self-contained.
+For non-interactive teardown, run `setup-proxy.sh --remove` directly inside the WSL distro. No prerequisite steps are needed; proxy detection is fully self-contained.
 
 **What this configures automatically:**
 
@@ -805,14 +809,16 @@ Configure corporate proxy settings with automatic detection. Auto-detects proxy 
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
 
 This command:
-- Auto-detects proxy configuration from Windows PAC/registry settings
-- Prompts for proxy credentials (username/password) if needed
-- Falls back to manual `host:port` entry or DIRECT mode if no PAC is configured
-- Configures `~/.bashrc` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
+- Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down)
+- Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
+- Auto → DIRECT collapses to Remove (no proxy needed on this network)
+- After a URL is resolved, prompts for auth method: `[B]asic` (credentials in URL) or `[N]egotiate` (Kerberos via `px` — stub, not yet active)
+- Configures `~/.profile` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
 - Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
 - Configures `~/.docker/config.json` proxy settings
 - Configures `~/.config/containers/containers.conf` for Podman
-- DIRECT mode removes all managed proxy configurations
+- Writes `/etc/wsl-manager/proxy-mode` (`basic` or `negotiate`) for mode-aware teardown
+- Remove mode deletes all managed proxy configurations and the mode marker
 - Is idempotent - safe to run multiple times (overwrites configuration)
 
 ### Setup Docker
@@ -967,9 +973,10 @@ lib/wsl/
 ├── proxy.ps1                  # Proxy configuration
 ├── user.ps1                   # User account creation & configuration
 └── scripts/
-    ├── install-docker.sh      # Docker Engine installation script
-    ├── install-podman.sh      # Rootless Podman installation script
-    └── setup-proxy.sh         # Proxy configuration script
+    ├── install-docker.sh          # Docker Engine installation script
+    ├── install-podman.sh          # Rootless Podman installation script
+    ├── setup-proxy.sh             # Basic proxy configuration script
+    └── setup-proxy-negotiate.sh   # Negotiate (Kerberos) proxy stub (SC-036b+)
 ```
 
 ### Library Usage

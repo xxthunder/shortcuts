@@ -12,9 +12,10 @@ function Install-WslProxy {
         Configures or removes proxy settings inside a WSL distribution with automatic proxy detection.
 
     .DESCRIPTION
-        Auto-detects proxy settings by dot-sourcing setProxy.ps1 in library mode and calling
-        its PAC/registry detection functions. Prompts the user for credentials if needed.
-        Falls back to manual entry or DIRECT (no proxy) when auto-detection is unavailable.
+        Prompts the user upfront to choose a setup mode: Auto (PAC-based detection),
+        Manual (enter host:port), or Remove (tear down existing proxy config). When a
+        proxy URL is resolved, also prompts for auth method (Basic or Negotiate) and
+        — for Basic — credentials.
 
         This function is idempotent - safe to run multiple times (overwrites config).
 
@@ -32,12 +33,8 @@ function Install-WslProxy {
         Returns $true if configuration succeeds, $false otherwise.
 
     .EXAMPLE
-        Install-WslProxy -DistroName "Debian" -Confirm:$false
-        Auto-detects proxy from PAC/registry and configures Debian.
-
-    .EXAMPLE
         Install-WslProxy -DistroName "Debian"
-        Interactive mode - prompts for credentials and DIRECT/manual choices.
+        Interactive mode - prompts for Auto/Manual/Remove, then auth method and credentials.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -63,56 +60,63 @@ function Install-WslProxy {
         }
     }
 
-    # 2. Auto-detect proxy from PAC/registry
+    # 2. Top-level mode prompt: Auto / Manual / Remove
     $ProxyUrl = $null
     $isDirect = $false
 
-    $internetSettings = Get-InternetSettingsFromRegistry
-    $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
+    $modeChoice = Read-Host "Proxy setup: [A]uto / [M]anual / [R]emove"
+    switch -Regex ($modeChoice) {
+        '^\s*[Aa]' {
+            # Auto: PAC detection with explicit confirmation
+            $internetSettings = Get-InternetSettingsFromRegistry
+            $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
 
-    if ($null -ne $pacResult) {
-        # PAC was found and resolved
-        if ($pacResult.IsDirect) {
-            # PAC says DIRECT - ask user to confirm or enter manual proxy
-            Write-Information "PAC resolved to DIRECT (no proxy needed)."
-            $choice = Read-Host "Choose: [D]irect (no proxy) or [M]anual entry"
-            if ($choice -eq 'M' -or $choice -eq 'm') {
-                $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
-                if ([string]::IsNullOrWhiteSpace($manualEntry)) {
-                    throw "No proxy host:port provided."
-                }
-                $ProxyUrl = "http://$manualEntry"
+            if ($null -eq $pacResult) {
+                throw "No PAC/AutoConfigURL detected in registry. Re-run setup-proxy and choose [M]anual."
             }
-            else {
+            if ($pacResult.IsDirect) {
+                Write-Information "PAC resolved to DIRECT (no proxy needed). Removing any existing proxy configuration."
                 $isDirect = $true
             }
+            else {
+                Write-Information "Auto-detected proxy: $($pacResult.ProxyUrl)"
+                $confirmed = Get-UserConfirmation -message "Use this proxy?" -defaultValueForUser $true
+                if (-not $confirmed) {
+                    throw "Auto-detected proxy rejected. Re-run setup-proxy and choose [M]anual."
+                }
+                $ProxyUrl = $pacResult.ProxyUrl
+            }
+            break
         }
-        else {
-            # PAC resolved to a proxy URL
-            $ProxyUrl = $pacResult.ProxyUrl
-            Write-Information "Auto-detected proxy: $ProxyUrl"
-        }
-    }
-    else {
-        # No PAC detected - prompt user
-        Write-Information "No PAC/AutoConfigURL detected in registry."
-        $choice = Read-Host "Choose: [M]anual proxy entry or [D]irect (no proxy)"
-        if ($choice -eq 'D' -or $choice -eq 'd') {
-            $isDirect = $true
-        }
-        else {
+        '^\s*[Mm]' {
             $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
             if ([string]::IsNullOrWhiteSpace($manualEntry)) {
                 throw "No proxy host:port provided."
             }
             $ProxyUrl = "http://$manualEntry"
+            break
+        }
+        '^\s*[Rr]' {
+            $isDirect = $true
+            break
+        }
+        default {
+            throw "Invalid choice '$modeChoice'. Expected [A]uto, [M]anual, or [R]emove."
         }
     }
 
-    # 3. If proxy URL resolved, ask about credentials
+    # 3. If proxy URL resolved, ask for auth method, then (Basic only) credentials
+    $authMode = 'basic'
     if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $wantCreds = Read-Host "Do you want to provide proxy credentials? [Y/N]"
-        if ($wantCreds -eq 'Y' -or $wantCreds -eq 'y') {
+        $authChoice = Read-Host "Auth method: [B]asic (credentials in env) or [N]egotiate (Kerberos via px)"
+        if ($authChoice -eq 'N' -or $authChoice -eq 'n') {
+            $authMode = 'negotiate'
+        }
+    }
+
+    if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
+        $wantCreds = Get-UserConfirmation -message "Do you want to provide proxy credentials?" -defaultValueForUser $true
+        if ($wantCreds) {
             $credentialPrefix = Get-ProxyCredentialsFromUser
             if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
                 # Insert credentials into proxy URL: http://user:pass@host:port
@@ -164,11 +168,13 @@ Then run setup-proxy again.
         Write-Information "  Proxy URL: $(Get-MaskedProxyUrl -ProxyUrl $ProxyUrl)"
         Write-Information "  No Proxy:  $NoProxy"
         Write-Information "  User:      $username"
+        Write-Information "  Auth mode: $authMode"
     }
     Write-Information ""
 
     try {
-        $scriptPath = Join-Path $PSScriptRoot "scripts\setup-proxy.sh"
+        $scriptName = if ($authMode -eq 'negotiate') { 'setup-proxy-negotiate.sh' } else { 'setup-proxy.sh' }
+        $scriptPath = Join-Path $PSScriptRoot "scripts\$scriptName"
 
         if ($isDirect) {
             $scriptArgs = @(
@@ -214,6 +220,9 @@ Then run setup-proxy again.
             }
             4 {
                 throw "Argument error. Required proxy parameters missing."
+            }
+            10 {
+                throw "Negotiate proxy mode is not yet implemented. Full support ships in SC-036b through SC-036e."
             }
             default {
                 throw "Proxy configuration failed with exit code: $exitCode"

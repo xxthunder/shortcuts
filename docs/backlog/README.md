@@ -14,6 +14,7 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
 
 ### Open
 
@@ -22,8 +23,6 @@
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
-- [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
-- [SC-036a — Add auth-method prompt and mode marker to setup-proxy](sc-036a.md)
 - [SC-036b — Negotiate mode Phase 1: bootstrap install of krb5 and px](sc-036b.md)
 - [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md)
 - [SC-036d — Negotiate mode Phase 4: switch targets to localhost and auto-start px](sc-036d.md)
@@ -36,6 +35,7 @@
 
 ### Done
 
+- [SC-036a — Add setup-proxy mode/auth prompts and mode marker](sc-036a.md)
 - [SC-035 — Add sync-ssh-config command for Windows DevPod access](sc-035.md)
 - [SC-016c — Replace distro table with Format-SpectreTable](sc-016c.md)
 - [SC-033 — Tool-level dependency declaration and installation](sc-033.md)

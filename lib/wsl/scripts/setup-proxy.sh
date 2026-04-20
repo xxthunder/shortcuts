@@ -69,6 +69,10 @@ BASHRC="$TARGET_HOME/.bashrc"
 MARKER_BEGIN="# BEGIN wsl-manager proxy"
 MARKER_END="# END wsl-manager proxy"
 
+# Mode marker — read by `--remove` to dispatch mode-aware teardown (see SC-036e)
+MODE_MARKER_DIR="/etc/wsl-manager"
+MODE_MARKER_FILE="$MODE_MARKER_DIR/proxy-mode"
+
 # --- Remove mode ---
 remove_proxy_configs() {
     log_info "Removing proxy configurations for user '$TARGET_USER'..."
@@ -111,6 +115,12 @@ remove_proxy_configs() {
         log_info "Removed $containers_conf"
     else
         log_info "No Podman proxy config found (already clean)"
+    fi
+
+    # Remove mode marker last — survives partial failure so reruns dispatch correctly
+    if [ -f "$MODE_MARKER_FILE" ]; then
+        sudo rm -f "$MODE_MARKER_FILE"
+        log_info "Removed $MODE_MARKER_FILE"
     fi
 
     log_info "Proxy configurations removed successfully!"
@@ -238,6 +248,11 @@ if [ "$verify_ok" = false ]; then
     log_error "Proxy verification failed"
     exit 3
 fi
+
+# Write mode marker so `--remove` knows which teardown to run (see SC-036e)
+sudo mkdir -p "$MODE_MARKER_DIR"
+echo "basic" | sudo tee "$MODE_MARKER_FILE" > /dev/null
+log_info "Wrote mode marker: $MODE_MARKER_FILE = basic"
 
 log_info "Proxy configuration completed successfully!"
 exit 0
