@@ -31,21 +31,21 @@ Describe "Remove-WslDistro" {
         BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
+            Mock Stop-WslDistro { }
             Mock Invoke-CommandLine { }
         }
 
-        It "Should throw error with terminate instruction" {
-            $act = { Remove-WslDistro -Name "TestProject" -Confirm:$false }
+        It "Should auto-terminate the distribution before removing" {
+            Remove-WslDistro -Name "TestProject" -Confirm:$false
 
-            $act | Should -Throw "*is running*Stop it first with*wsl --terminate TestProject*"
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "TestProject" }
         }
 
-        It "Should not call unregister when distribution is running" {
-            try { Remove-WslDistro -Name "TestProject" -Confirm:$false }
-            catch { $null = $_ }
+        It "Should call unregister after auto-terminating" {
+            Remove-WslDistro -Name "TestProject" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -Times 0 -ParameterFilter {
-                $CommandLine -like "*wsl.exe --unregister*"
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -eq "wsl.exe --unregister TestProject"
             }
         }
     }
@@ -124,21 +124,25 @@ Describe "Copy-WslDistro" {
             Mock Assert-WslDistroExists { }
             Mock Assert-WslDistroNotExists { }
             Mock Test-WslDistroRunning { $true }
+            Mock Stop-WslDistro { }
             Mock Invoke-CommandLine { }
+            Mock Test-Path { $false } -ParameterFilter { $Path -notlike "*temp*.tar" }
+            Mock Test-Path { $true } -ParameterFilter { $Path -like "*temp*.tar" }
+            Mock New-Item { }
+            Mock Remove-Item { }
         }
 
-        It "Should throw error with terminate instruction" {
-            $act = { Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false }
+        It "Should auto-terminate the source distribution before exporting" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false
 
-            $act | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
-        It "Should not call export when source distribution is running" {
-            try { Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false }
-            catch { $null = $_ }
+        It "Should call export after auto-terminating" {
+            Copy-WslDistro -SourceName "Debian" -TargetName "MyProject" -Confirm:$false
 
-            Should -Invoke Invoke-CommandLine -Times 0 -ParameterFilter {
-                $CommandLine -like "*wsl.exe --export*"
+            Should -Invoke Invoke-CommandLine -ParameterFilter {
+                $CommandLine -like "wsl.exe --export Debian *"
             }
         }
     }
@@ -342,21 +346,23 @@ Describe "Update-WslDistro" {
         BeforeEach {
             Mock Assert-WslDistroExists { }
             Mock Test-WslDistroRunning { $true }
+            Mock Stop-WslDistro { }
             Mock Get-WslDistroType { "debian" }
             Mock Invoke-WslDistroCommand { }
         }
 
-        It "Should throw error with terminate instruction" {
-            $act = { Update-WslDistro -Name "Debian" -Confirm:$false }
+        It "Should auto-terminate the distribution before updating" {
+            Update-WslDistro -Name "Debian" -Confirm:$false
 
-            $act | Should -Throw "*is running*Stop it first with*wsl --terminate Debian*"
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
-        It "Should not call apt update when distribution is running" {
-            try { Update-WslDistro -Name "Debian" -Confirm:$false }
-            catch { $null = $_ }
+        It "Should call apt update after auto-terminating" {
+            Update-WslDistro -Name "Debian" -Confirm:$false
 
-            Should -Invoke Invoke-WslDistroCommand -Times 0
+            Should -Invoke Invoke-WslDistroCommand -ParameterFilter {
+                $Command -like "*apt update*"
+            }
         }
     }
 
@@ -860,6 +866,7 @@ Describe "Invoke-ConfigureWsl" {
         Mock Set-Content { }
         Mock Copy-Item { }
         Mock Get-Date { "20260309120000" }
+        Mock Stop-WslSubsystem { }
     }
 
     Context "When .wslconfig does not exist" {
@@ -943,12 +950,28 @@ Describe "Invoke-ConfigureWsl" {
             }
         }
 
-        It "Should hint to restart WSL" {
+        It "Should auto-shutdown the WSL subsystem to apply changes" {
             Invoke-ConfigureWsl -Confirm:$false
 
-            Should -Invoke Write-Output -ParameterFilter {
-                $InputObject -like "*wsl-manager shutdown*"
-            }
+            Should -Invoke Stop-WslSubsystem -Times 1
+        }
+    }
+
+    Context "When .wslconfig already has all defaults (no auto-shutdown)" {
+        It "Should not shut down WSL when nothing changed" {
+            $existingContent = @(
+                "[wsl2]",
+                "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
+                "networkingMode = mirrored",
+                "dnsTunneling = true",
+                "autoProxy = true"
+            )
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
+            Mock Get-Content { $existingContent }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Stop-WslSubsystem -Times 0
         }
     }
 

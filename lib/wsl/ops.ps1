@@ -37,9 +37,9 @@ function Remove-WslDistro {
     # Check if distribution exists
     Assert-WslDistroExists -DistroName $Name
 
-    # Check if distribution is running (must be stopped for removal)
+    # Auto-terminate if running (must be stopped for removal)
     if (Test-WslDistroRunning -DistroName $Name) {
-        throw "Distribution '$Name' is running. Stop it first with: wsl --terminate $Name"
+        Stop-WslDistro -Name $Name -Confirm:$false | Out-Null
     }
 
     # Ask for confirmation using ShouldProcess
@@ -107,9 +107,9 @@ function Copy-WslDistro {
     $SourceName = $SourceName.Trim()
     $TargetName = $TargetName.Trim()
 
-    # Check if source distribution is running (must be stopped for export)
+    # Auto-terminate source if running (must be stopped for export)
     if (Test-WslDistroRunning -DistroName $SourceName) {
-        throw "Distribution '$SourceName' is running. Stop it first with: wsl --terminate $SourceName"
+        Stop-WslDistro -Name $SourceName -Confirm:$false | Out-Null
     }
 
     # Set default install path if not provided
@@ -344,7 +344,8 @@ function Invoke-ConfigureWsl {
 
         For 'kernelCommandLine', missing parameters are appended to any existing value.
         A timestamped backup is created before any modification.
-        After applying changes, the user is reminded to restart WSL for them to take effect.
+        After applying changes, the WSL subsystem is automatically shut down so the new
+        global settings take effect on the next launch.
 
     .EXAMPLE
         Invoke-ConfigureWsl
@@ -396,9 +397,10 @@ function Invoke-ConfigureWsl {
     $mergeResult.Lines | Set-Content -Path $wslConfigPath -Encoding UTF8
 
     Write-Output "Applied default settings to $wslConfigPath"
-    Write-Output ""
-    Write-Output "To apply the changes, restart WSL with:"
-    Write-Output "  wsl-manager shutdown"
+
+    # Auto-shutdown the WSL subsystem so the new global settings take effect.
+    # Stop-WslSubsystem already lists running distributions in a warning before stopping.
+    Stop-WslSubsystem -Confirm:$false | Out-Null
 }
 
 function Update-WslDistro {
@@ -438,9 +440,9 @@ function Update-WslDistro {
     # Trim name for use in commands below
     $Name = $Name.Trim()
 
-    # Check if distribution is running (must be stopped for update)
+    # Auto-terminate if running (must be stopped for update)
     if (Test-WslDistroRunning -DistroName $Name) {
-        throw "Distribution '$Name' is running. Stop it first with: wsl --terminate $Name"
+        Stop-WslDistro -Name $Name -Confirm:$false | Out-Null
     }
 
     # Detect distribution type

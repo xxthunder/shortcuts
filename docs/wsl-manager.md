@@ -117,19 +117,12 @@ Each step shows equivalent **TUI** and **CLI** instructions; pick whichever you 
 
 ### Step 1: Configure WSL Global Settings
 
-Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig` (pure cgroups v2, mirrored networking, DNS tunneling, auto proxy).
+Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig` (pure cgroups v2, mirrored networking, DNS tunneling, auto proxy). The WSL subsystem is automatically shut down after the changes are applied so the new global settings take effect.
 
 - **TUI**: select **Configure .wslconfig defaults**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 configure-wsl`
 
 → [Configure .wslconfig Defaults](#configure-wslconfig-defaults)
-
-Then restart WSL to apply:
-
-- **TUI**: select **Shutdown WSL**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
-
-→ [Shutdown WSL](#shutdown-wsl)
 
 ### Step 2: Install WSL Distribution
 
@@ -804,7 +797,8 @@ This command:
   - `[wsl2] autoProxy = true` (applies Windows proxy settings)
 - For `kernelCommandLine`, appends missing parameters rather than replacing the whole value
 - Creates a timestamped backup of the existing file before writing
-- Is idempotent - safe to run multiple times
+- Auto-shuts down the WSL subsystem after changes so the new global settings take effect
+- Is idempotent - safe to run multiple times (skips the shutdown when nothing changed)
 
 ### Remove Distribution
 
@@ -814,7 +808,7 @@ Unregister a distribution (with confirmation prompt in TUI mode).
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
 
 This command:
-- Validates the distribution exists and is not running
+- Validates the distribution exists; auto-terminates it if running
 - Prompts for confirmation before proceeding (TUI shows a Y/N prompt)
 - Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
 - This operation cannot be undone

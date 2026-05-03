@@ -561,13 +561,13 @@ Describe "Install-WslDockerEngine" {
             Mock Get-WslDefaultUser { "developer" }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
-            Mock Start-Sleep { }
 
             Install-WslDockerEngine -DistroName "Debian" -Confirm:$false
 
-            # Verify systemd configuration happened and Start-Sleep was called (which only happens after terminate)
+            # Verify wsl.conf was written and the distro was terminated to apply changes.
+            # Stop-WslDistro is invoked twice: once after wsl.conf changes, once post-install.
             Should -Invoke Set-WslConf -Times 1
-            Should -Invoke Start-Sleep -Times 1
+            Should -Invoke Stop-WslDistro -Times 2 -ParameterFilter { $Name -eq "Debian" }
         }
     }
 

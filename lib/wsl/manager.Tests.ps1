@@ -871,15 +871,6 @@ Describe "Invoke-WslManager" {
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully created user*" }
         }
 
-        It "Should display restart instructions" {
-            Mock Write-Host {}
-            Mock New-WslUser {}
-
-            Invoke-WslManager -Command "setup-user" -Name "Ubuntu" -Username "developer" -Password "pass"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*wsl.exe --terminate*" }
-        }
-
         It "Should handle invalid username with validation error" {
             Mock Write-Host {}
             Mock New-WslUser { throw "Invalid username 'InvalidUser'. Username must start with a lowercase letter" }
@@ -1486,6 +1477,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "Debian" }
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop"
 
@@ -1497,6 +1489,7 @@ Describe "Invoke-WslManager" {
             Mock Write-Host {}
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop" -Name "Debian"
 
@@ -1507,6 +1500,7 @@ Describe "Invoke-WslManager" {
             Mock Write-Host {}
             Mock Test-WslInteropConfigured { $true }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop" -Name "Debian"
 
@@ -1527,6 +1521,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "2" }
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop"
 
@@ -1545,6 +1540,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "99" }
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop"
 
@@ -1564,6 +1560,7 @@ Describe "Invoke-WslManager" {
             Mock Read-Host { "" }
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop"
 

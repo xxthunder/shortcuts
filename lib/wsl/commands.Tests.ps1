@@ -1089,6 +1089,7 @@ Describe "Invoke-RepairInterop" {
         It "Should check interop configuration and repair if needed" {
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-RepairInterop -DistroName "Debian"
 
@@ -1100,14 +1101,26 @@ Describe "Invoke-RepairInterop" {
             }
         }
 
+        It "Should auto-terminate the distribution after configuring wsl.conf" {
+            Mock Test-WslInteropConfigured { $false }
+            Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
+
+            Invoke-RepairInterop -DistroName "Debian"
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
         It "Should skip repair when interop is already configured" {
             Mock Test-WslInteropConfigured { $true }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
 
             Invoke-RepairInterop -DistroName "Debian"
 
             Should -Invoke Test-WslInteropConfigured -ParameterFilter { $DistroName -eq "Debian" }
             Should -Invoke Set-WslConf -Times 0
+            Should -Invoke Stop-WslDistro -Times 0
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*already configured*" }
         }
     }
@@ -1123,6 +1136,7 @@ Describe "Invoke-RepairInterop" {
             Mock Write-Host {}
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
         }
 
         It "Should prompt for distribution selection" {
@@ -1178,6 +1192,7 @@ Describe "Invoke-RepairInterop" {
             Mock Read-Host { "1" }
             Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
+            Mock Stop-WslDistro {}
             $distros = @(
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                 [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }

@@ -373,9 +373,6 @@ function Invoke-SetupUser {
 
         Write-Host ""
         Write-Success "Successfully created user '$Username' in '$DistroName'."
-        Write-Host ""
-        Write-Host "To apply the default user change, restart the distribution with:" -ForegroundColor Yellow
-        Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
     }
     finally {
         $Password = $null
@@ -587,11 +584,11 @@ function Invoke-RepairInterop {
     Write-Host "Configuring Windows interop in wsl.conf ..." -ForegroundColor Cyan
     Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false
 
+    # Auto-terminate so wsl.conf changes take effect (no manual step required)
+    Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
+
     Write-Host ""
     Write-Success "Successfully configured Windows interop in '$DistroName'."
-    Write-Host ""
-    Write-Host "To apply the changes, restart the distribution with:" -ForegroundColor Yellow
-    Write-Host "  wsl.exe --terminate $DistroName" -ForegroundColor Yellow
 }
 
 function Invoke-CloneDistro {

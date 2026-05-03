@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL user management functions for creating users and querying default users.
 #>
@@ -19,8 +19,8 @@ function New-WslUser {
         - Configures passwordless sudo (NOPASSWD)
         - Sets user as default user in wsl.conf
 
-        After creation, the distribution must be restarted with 'wsl.exe --terminate <DistroName>'
-        for the default user change to take effect.
+        The distribution is automatically terminated after creation so the default user
+        change takes effect on the next launch.
 
     .PARAMETER DistroName
         The name of the WSL distribution where the user will be created.
@@ -43,8 +43,8 @@ function New-WslUser {
         Creates a user with a securely entered password without confirmation prompt.
 
     .NOTES
-        The distribution must be restarted after user creation:
-        wsl.exe --terminate <DistroName>
+        The distribution is automatically terminated after user creation so wsl.conf
+        changes (default user, systemd) take effect on the next launch.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Function accepts both SecureString and plain text for flexibility. SecureString is handled internally.')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '', Justification = 'Password parameter accepts both SecureString and String. SecureString is properly converted internally.')]

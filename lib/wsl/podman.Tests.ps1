@@ -162,7 +162,7 @@ Describe "Install-WslPodman" {
             Mock Test-WslPodmanInstalled { $false }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
-            Mock Start-Sleep { }
+            Mock Stop-WslDistro { }
             Mock Invoke-WslDistroCommand { "ubuntu`njammy`namd64" } -ParameterFilter { $Command -like "*bash << 'EOF'*os-release*" }
             Mock Invoke-WslDistroCommand { }
 
@@ -458,17 +458,23 @@ Describe "Install-WslPodman" {
 
             Install-WslPodman -DistroName "TestDistro" -Confirm:$false
 
-            Should -Invoke Stop-WslDistro -Times 1 -ParameterFilter {
+            # Stop-WslDistro is invoked twice for this scenario:
+            # once during pre-install wsl.conf configuration, once after a successful install.
+            Should -Invoke Stop-WslDistro -Times 2 -ParameterFilter {
                 $Name -eq "TestDistro"
             }
         }
 
-        It "Should not call Stop-WslDistro when install fails" {
+        It "Should not call Stop-WslDistro post-install when install fails" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
 
             Install-WslPodman -DistroName "TestDistro" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
 
-            Should -Invoke Stop-WslDistro -Times 0
+            # Only the pre-install wsl.conf termination should fire; the post-install
+            # call must not happen on failure.
+            Should -Invoke Stop-WslDistro -Times 1 -ParameterFilter {
+                $Name -eq "TestDistro"
+            }
         }
     }
 
@@ -635,12 +641,13 @@ Describe "Install-WslPodman" {
             Mock Get-WslDefaultUser { "developer" }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
-            Mock Start-Sleep { }
 
             Install-WslPodman -DistroName "Debian" -Confirm:$false
 
+            # Verify wsl.conf was written and the distro was terminated to apply changes.
+            # Stop-WslDistro is invoked twice: once after wsl.conf changes, once post-install.
             Should -Invoke Set-WslConf -Times 1
-            Should -Invoke Start-Sleep -Times 1
+            Should -Invoke Stop-WslDistro -Times 2 -ParameterFilter { $Name -eq "Debian" }
         }
     }
 

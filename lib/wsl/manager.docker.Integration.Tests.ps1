@@ -240,9 +240,9 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
-    Context "State Validation for Operations" {
-        It "Should prevent update when distribution is running" {
-            Write-Host "`n==> TEST: Testing state validation for Update on running $script:customDistroName ..." -ForegroundColor Magenta
+    Context "Auto-terminate for Operations" {
+        It "Should auto-terminate the distribution and complete update when running" {
+            Write-Host "`n==> TEST: Auto-terminate behavior for Update on running $script:customDistroName ..." -ForegroundColor Magenta
 
             # Start the distribution
             Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'starting distro'" -PrintCommand $false -Silent $true
@@ -252,65 +252,11 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    Current state: $state" -ForegroundColor Cyan
             $state | Should -Be "Running"
 
-            # Try to update (should fail with error message)
-            Write-Host "    Attempting update on running distribution ..." -ForegroundColor Cyan
-            { Invoke-WslManager -Command "update" -Name $script:customDistroName } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
-
-            Write-Host "    State validation correctly blocked update" -ForegroundColor Green
-        }
-
-        It "Should prevent clone when source distribution is running" {
-            Write-Host "`n==> TEST: Testing state validation for Clone on running $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Ensure distribution is running
-            Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'starting distro'" -PrintCommand $false -Silent $true
-
-            # Verify it's running
-            $state = Get-WslDistroState -DistroName $script:customDistroName
-            Write-Host "    Current state: $state" -ForegroundColor Cyan
-            $state | Should -Be "Running"
-
-            # Try to clone (should fail with error message)
-            Write-Host "    Attempting clone of running distribution ..." -ForegroundColor Cyan
-            { Invoke-WslManager -Command "clone" -Name $script:customDistroName -TargetName "clone-test-temp" } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
-
-            Write-Host "    State validation correctly blocked clone" -ForegroundColor Green
-        }
-
-        It "Should prevent remove when distribution is running" {
-            Write-Host "`n==> TEST: Testing state validation for Remove on running $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Ensure distribution is running
-            Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'starting distro'" -PrintCommand $false -Silent $true
-
-            # Verify it's running
-            $state = Get-WslDistroState -DistroName $script:customDistroName
-            Write-Host "    Current state: $state" -ForegroundColor Cyan
-            $state | Should -Be "Running"
-
-            # Try to remove (should fail with error message)
-            Write-Host "    Attempting remove of running distribution ..." -ForegroundColor Cyan
-            { Invoke-WslManager -Command "remove" -Name $script:customDistroName } | Should -Throw "*is running*Stop it first with*wsl --terminate*"
-
-            Write-Host "    State validation correctly blocked remove" -ForegroundColor Green
-        }
-
-        It "Should allow operations after distribution is stopped" {
-            Write-Host "`n==> TEST: Testing operations succeed after terminating $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Terminate the distribution
-            Stop-WslDistro -Name $script:customDistroName -Confirm:$false
-
-            # Verify it's stopped
-            $state = Get-WslDistroState -DistroName $script:customDistroName
-            Write-Host "    Current state: $state" -ForegroundColor Cyan
-            $state | Should -Be "Stopped"
-
-            # Update should succeed now
-            Write-Host "    Attempting update on stopped distribution ..." -ForegroundColor Cyan
+            # Update should auto-terminate then proceed (no manual termination required)
+            Write-Host "    Running update on running distribution ..." -ForegroundColor Cyan
             { Invoke-WslManager -Command "update" -Name $script:customDistroName } | Should -Not -Throw
 
-            Write-Host "    Update succeeded after termination" -ForegroundColor Green
+            Write-Host "    Update auto-terminated and completed without user intervention" -ForegroundColor Green
         }
     }
 

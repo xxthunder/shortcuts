@@ -25,6 +25,7 @@ Describe "Install-WslProxy" {
         Mock Assert-WslDistroExists { }
         Mock Get-WslDefaultUser { "developer" }
         Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
+        Mock Stop-WslDistro { }
         # Default prompt answers — filtered mocks take precedence, so tests only
         # override the prompts they care about. Unfiltered Read-Host mocks at test
         # level still act as the fallback for unmatched prompts (e.g. credentials).
@@ -32,6 +33,35 @@ Describe "Install-WslProxy" {
         Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $true }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $false }
+    }
+
+    Context "Auto-terminate after successful proxy configuration" {
+        It "Should terminate the distribution on success so a fresh shell picks up env vars" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Stop-WslDistro -Times 1 -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should terminate the distribution on Remove teardown success" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Stop-WslDistro -Times 1 -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should not terminate when configuration fails" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+
+            Should -Invoke Stop-WslDistro -Times 0
+        }
     }
 
     Context "Auto — PAC resolves to proxy URL, no credentials" {

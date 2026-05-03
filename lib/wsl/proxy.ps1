@@ -207,6 +207,9 @@ Then run setup-proxy again.
                 Write-Information "  - /etc/apt/apt.conf.d/99proxy"
                 Write-Information "  - ~/.docker/config.json"
                 Write-Information "  - ~/.config/containers/containers.conf"
+
+                # Auto-terminate so a fresh shell loads the updated ~/.profile
+                Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
                 return $true
             }
             1 {

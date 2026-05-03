@@ -238,8 +238,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
         Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false | Out-Null
 
         Write-Information "Restarting distribution to apply changes..."
-        Invoke-CommandLine -Command "wsl.exe --terminate $DistroName" -StopAtError $false -PrintCommand $false | Out-Null
-        Start-Sleep -Seconds 2
+        Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
     }
     else {
         # Systemd already configured - ensure boot command is set for rootless Podman
@@ -260,8 +259,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
         Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false | Out-Null
 
         Write-Information "Restarting distribution to apply changes..."
-        Invoke-CommandLine -Command "wsl.exe --terminate $DistroName" -StopAtError $false -PrintCommand $false | Out-Null
-        Start-Sleep -Seconds 2
+        Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
     }
 
     # SupportsShouldProcess - prompt for confirmation

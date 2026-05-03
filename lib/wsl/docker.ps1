@@ -224,8 +224,7 @@ Then run setup-docker again.
         Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false | Out-Null
 
         Write-Information "Restarting distribution to apply changes..."
-        Invoke-CommandLine -Command "wsl.exe --terminate $DistroName" -StopAtError $false -PrintCommand $false | Out-Null
-        Start-Sleep -Seconds 2
+        Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
     }
 
     # SupportsShouldProcess - prompt for confirmation
