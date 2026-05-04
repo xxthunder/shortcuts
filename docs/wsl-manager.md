@@ -797,7 +797,7 @@ This command:
   - `[wsl2] autoProxy = true` (applies Windows proxy settings)
 - For `kernelCommandLine`, appends missing parameters rather than replacing the whole value
 - Creates a timestamped backup of the existing file before writing
-- Auto-shuts down the WSL subsystem after changes so the new global settings take effect
+- Auto-shuts down the WSL subsystem after changes so the new global settings take effect. **This terminates all running distributions, not just one** — `.wslconfig` is a global VM-level setting and a full `wsl --shutdown` is the only way to apply it. Running distributions are listed in a warning before the shutdown.
 - Is idempotent - safe to run multiple times (skips the shutdown when nothing changed)
 
 ### Remove Distribution

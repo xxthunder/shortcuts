@@ -208,8 +208,15 @@ Then run setup-proxy again.
                 Write-Information "  - ~/.docker/config.json"
                 Write-Information "  - ~/.config/containers/containers.conf"
 
-                # Auto-terminate so a fresh shell loads the updated ~/.profile
-                Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
+                # Auto-terminate so a fresh shell loads the updated ~/.profile.
+                # Wrapped: a termination failure here must not be reported as a
+                # proxy-configuration failure — the proxy was applied successfully.
+                try {
+                    Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
+                }
+                catch {
+                    Write-Warning "Proxy was configured successfully, but auto-terminate failed: $_. Run 'wsl.exe --terminate $DistroName' manually so a fresh shell picks up the new environment."
+                }
                 return $true
             }
             1 {

@@ -14,7 +14,6 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
 
 ### Open
@@ -36,6 +35,7 @@
 
 ### Done
 
+- [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-036a — Add setup-proxy mode/auth prompts and mode marker](sc-036a.md)
 - [SC-035 — Add sync-ssh-config command for Windows DevPod access](sc-035.md)
 - [SC-016c — Replace distro table with Format-SpectreTable](sc-016c.md)

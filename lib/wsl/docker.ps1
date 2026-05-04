@@ -109,8 +109,8 @@ function Install-WslDockerEngine {
 
     .NOTES
         This function requires sudo privileges in the WSL distribution.
-        After installation, the user must restart the distribution for group membership to take effect:
-          wsl.exe --terminate <DistroName>
+        The distribution is automatically terminated after installation so docker
+        group membership and wsl.conf changes take effect on the next launch:
           wsl.exe --distribution <DistroName>
     #>
     [CmdletBinding(SupportsShouldProcess)]

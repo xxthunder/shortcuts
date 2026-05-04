@@ -62,6 +62,20 @@ Describe "Install-WslProxy" {
 
             Should -Invoke Stop-WslDistro -Times 0
         }
+
+        It "Should return true and emit a warning (not error) when Stop-WslDistro throws after a successful configuration" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Stop-WslDistro { throw "Failed to terminate distribution 'Debian' after 3 attempts." }
+            Mock Write-Warning { }
+
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            $result | Should -BeTrue
+            Should -Invoke Write-Warning -ParameterFilter {
+                $Message -like "*Proxy was configured successfully*auto-terminate failed*"
+            }
+        }
     }
 
     Context "Auto — PAC resolves to proxy URL, no credentials" {

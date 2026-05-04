@@ -258,6 +258,72 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
 
             Write-Host "    Update auto-terminated and completed without user intervention" -ForegroundColor Green
         }
+
+        It "Should auto-terminate the source distribution and complete clone when running" {
+            $cloneTarget = "auto-term-clone-target"
+            Write-Host "`n==> TEST: Auto-terminate behavior for Clone with running source $script:customDistroName ..." -ForegroundColor Magenta
+
+            try {
+                # Start the source distribution
+                Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'starting distro'" -PrintCommand $false -Silent $true
+                $state = Get-WslDistroState -DistroName $script:customDistroName
+                Write-Host "    Source state: $state" -ForegroundColor Cyan
+                $state | Should -Be "Running"
+
+                # Clone should auto-terminate the source then proceed
+                Write-Host "    Running clone with running source ..." -ForegroundColor Cyan
+                { Invoke-WslManager -Command "clone" -Name $script:customDistroName -TargetName $cloneTarget } | Should -Not -Throw
+
+                # Verify the clone exists
+                $existingDistros = Get-WslDistroList
+                $existingDistros | Should -Contain $cloneTarget
+
+                Write-Host "    Clone auto-terminated source and completed without user intervention" -ForegroundColor Green
+            }
+            finally {
+                # Cleanup the temporary clone
+                $cleanupDistros = Get-WslDistroList
+                if ($cloneTarget -in $cleanupDistros) {
+                    Write-Host "    Cleaning up temporary clone $cloneTarget ..." -ForegroundColor Yellow
+                    Remove-WslDistro -Name $cloneTarget -Confirm:$false
+                }
+            }
+        }
+
+        It "Should auto-terminate the distribution and complete remove when running" {
+            $removeTarget = "auto-term-remove-target"
+            Write-Host "`n==> TEST: Auto-terminate behavior for Remove on running $removeTarget ..." -ForegroundColor Magenta
+
+            try {
+                # Create a disposable target via clone (the source is whatever state it's in)
+                Write-Host "    Setting up disposable target via clone ..." -ForegroundColor Cyan
+                Copy-WslDistro -SourceName $script:customDistroName -TargetName $removeTarget -Confirm:$false
+
+                # Start the disposable target so we can prove auto-terminate happens
+                Invoke-WslDistroCommand -DistroName $removeTarget -Command "echo 'starting distro'" -PrintCommand $false -Silent $true
+                $state = Get-WslDistroState -DistroName $removeTarget
+                Write-Host "    Target state: $state" -ForegroundColor Cyan
+                $state | Should -Be "Running"
+
+                # Remove should auto-terminate then unregister
+                Write-Host "    Running remove on running distribution ..." -ForegroundColor Cyan
+                { Invoke-WslManager -Command "remove" -Name $removeTarget } | Should -Not -Throw
+
+                # Verify the distribution is gone
+                $existingDistros = Get-WslDistroList
+                $existingDistros | Should -Not -Contain $removeTarget
+
+                Write-Host "    Remove auto-terminated and unregistered without user intervention" -ForegroundColor Green
+            }
+            finally {
+                # Defensive cleanup if remove failed
+                $cleanupDistros = Get-WslDistroList
+                if ($removeTarget -in $cleanupDistros) {
+                    Write-Host "    Defensive cleanup of $removeTarget ..." -ForegroundColor Yellow
+                    Remove-WslDistro -Name $removeTarget -Confirm:$false
+                }
+            }
+        }
     }
 
     Context "Terminate Distribution" {

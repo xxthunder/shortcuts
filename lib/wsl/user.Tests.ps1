@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/user.ps1 - WSL user management functions
 #>
@@ -189,6 +189,18 @@ Describe "New-WslUser" {
             Should -Invoke Write-Output -ParameterFilter {
                 $InputObject -like "*Restarting distribution*"
             }
+        }
+
+        It "Should auto-terminate the distribution via Stop-WslDistro" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "" } -ParameterFilter { $Command -like "*id -u*" }
+            Mock Invoke-WslDistroCommand { "" }
+            Mock Stop-WslDistro { }
+
+            New-WslUser -DistroName "Debian" -Username "testuser" -Password "testpass" -Confirm:$false
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should trim username" {

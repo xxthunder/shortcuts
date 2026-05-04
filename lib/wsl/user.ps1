@@ -150,8 +150,7 @@ For production systems, consider:
 
         # Restart the distribution to apply wsl.conf changes (especially systemd)
         Write-Output "Restarting distribution to apply wsl.conf changes ..."
-        wsl.exe --terminate $DistroName
-        Start-Sleep -Seconds 2
+        Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
 
         Write-Output "Successfully created user '$Username' in '$DistroName'."
     }
