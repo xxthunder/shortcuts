@@ -43,13 +43,21 @@ jobs:
           ALIAS_LOWER=$(echo "$ALIAS" | tr '[:upper:]' '[:lower:]')
 
           case "$ALIAS_LOWER" in
-            opus|opus-4-6)
+            opus|opus-4-7)
+              echo "model=claude-opus-4-7" >> "$GITHUB_OUTPUT"
+              echo "Resolved model alias '$ALIAS' -> claude-opus-4-7"
+              ;;
+            opus-4-6)
               echo "model=claude-opus-4-6" >> "$GITHUB_OUTPUT"
               echo "Resolved model alias '$ALIAS' -> claude-opus-4-6"
               ;;
             sonnet|sonnet-4-6)
               echo "model=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
               echo "Resolved model alias '$ALIAS' -> claude-sonnet-4-6"
+              ;;
+            haiku|haiku-4-5)
+              echo "model=claude-haiku-4-5-20251001" >> "$GITHUB_OUTPUT"
+              echo "Resolved model alias '$ALIAS' -> claude-haiku-4-5-20251001"
               ;;
             *)
               echo "model=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
