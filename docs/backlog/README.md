@@ -35,6 +35,7 @@
 
 ### Done
 
+- [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-036a — Add setup-proxy mode/auth prompts and mode marker](sc-036a.md)
