@@ -35,6 +35,7 @@
 
 ### Done
 
+- [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-036a — Add setup-proxy mode/auth prompts and mode marker](sc-036a.md)
 - [SC-035 — Add sync-ssh-config command for Windows DevPod access](sc-035.md)
