@@ -243,7 +243,10 @@ function Invoke-WslExeWithStdin {
         [Parameter(Mandatory = $true)][string]$StdinInput
     )
 
+    # Out-Host (not Out-Null): stream the script's stdout to the console so the
+    # user sees install progress live during a multi-minute apt/pipx run, while
+    # keeping it out of the pipeline so $LASTEXITCODE stays the only return value.
     $global:LASTEXITCODE = 0
-    $StdinInput | & wsl.exe --distribution $DistroName --exec bash -l $WslPath @Arguments | Out-Null
+    $StdinInput | & wsl.exe --distribution $DistroName --exec bash -l $WslPath @Arguments | Out-Host
     return $LASTEXITCODE
 }

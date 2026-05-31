@@ -148,6 +148,10 @@ configure_apt() {
 Acquire::http::Proxy "$BOOTSTRAP_PROXY_URL";
 Acquire::https::Proxy "$BOOTSTRAP_PROXY_URL";
 EOF
+    # The file holds Basic-auth creds. tee creates it world-readable (644) by
+    # default; lock it to root-only so the creds are not exposed during Phases
+    # 1-3 (apt runs as root, so 600 is sufficient). Matches the temp pip.conf.
+    sudo chmod 600 /etc/apt/apt.conf.d/99proxy
 }
 configure_apt || { log_error "Failed to configure apt proxy"; exit 2; }
 
@@ -171,8 +175,10 @@ log_info "Installing krb5-user and pipx via apt..."
 # bootstrap password therefore yields a 407 that apt swallows, and the install
 # below can still succeed offline if the packages are already cached/installed.
 # Capture the output and treat a 407 (or any non-zero exit) as a hard failure so
-# bad credentials abort here instead of producing a false success.
-apt_update_output=$(sudo apt-get update 2>&1)
+# bad credentials abort here instead of producing a false success. Force the C
+# locale so the 407 line is emitted in English — apt localizes its messages, and
+# a translated "Proxy Authentication Required" would slip past the grep below.
+apt_update_output=$(sudo env LC_ALL=C apt-get update 2>&1)
 apt_update_rc=$?
 echo "$apt_update_output"
 if [ "$apt_update_rc" -ne 0 ] || echo "$apt_update_output" | grep -qi 'Proxy Authentication Required'; then

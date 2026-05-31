@@ -28,6 +28,11 @@ function Get-NegotiateBootstrapCredential {
         return ""
     }
 
+    # Percent-encode the username too: corporate logins are often domain- or
+    # UPN-qualified ('DOMAIN\user', 'user@corp.com'), and an unescaped '\' or '@'
+    # would produce a malformed userinfo segment when spliced into the URL.
+    [string]$encodedUser = [System.Uri]::EscapeDataString($username)
+
     $pwdSec = Read-Host "Enter your proxy password" -AsSecureString
     $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwdSec)
     try {
@@ -37,7 +42,7 @@ function Get-NegotiateBootstrapCredential {
         [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
     }
 
-    return "${username}:${encoded}@"
+    return "${encodedUser}:${encoded}@"
 }
 
 function Install-WslProxy {

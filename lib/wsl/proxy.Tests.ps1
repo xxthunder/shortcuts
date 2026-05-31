@@ -579,7 +579,19 @@ Describe "Install-WslProxy" {
             # (SC-036b UAT step 5). The script must capture the output and abort
             # on 'Proxy Authentication Required'.
             $script:NegotiateScript | Should -Match 'Proxy Authentication Required'
-            $script:NegotiateScript | Should -Match 'apt_update_output=\$\(sudo apt-get update'
+            $script:NegotiateScript | Should -Match 'apt_update_output=\$\(sudo env LC_ALL=C apt-get update'
+        }
+
+        It "setup-proxy-negotiate.sh forces the C locale on apt-get update so the 407 line stays English" {
+            # apt localizes its output; a translated 'Proxy Authentication Required'
+            # would slip past the grep. LC_ALL=C guarantees the English string.
+            $script:NegotiateScript | Should -Match 'sudo env LC_ALL=C apt-get update'
+        }
+
+        It "setup-proxy-negotiate.sh locks /etc/apt/apt.conf.d/99proxy to root-only (600)" {
+            # The apt proxy file holds Basic-auth creds; tee creates it 644
+            # (world-readable). Lock it to 600 so creds are not exposed in Phases 1-3.
+            $script:NegotiateScript | Should -Match 'chmod 600 /etc/apt/apt.conf.d/99proxy'
         }
 
         It "setup-proxy-negotiate.sh installs krb5-user, pipx, and px-proxy" {
@@ -642,6 +654,23 @@ Describe "Get-NegotiateBootstrapCredential" {
 
         # '@' -> %40 and ' ' -> %20, so the creds can be spliced into http://<this>host
         $result | Should -Be 'guentherk:p%40ss%20word@'
+    }
+
+    It "Percent-encodes a domain/UPN username so the userinfo segment stays valid" {
+        # Corporate logins are often 'DOMAIN\user' or 'user@corp.com'. An
+        # unescaped '\' or '@' would corrupt the spliced URL, so the username
+        # must be encoded just like the password.
+        Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith {
+            $ss = [System.Security.SecureString]::new()
+            'pw'.ToCharArray() | ForEach-Object { $ss.AppendChar($_) }
+            $ss
+        }
+        Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { 'DOMAIN\user@corp' }
+
+        $result = Get-NegotiateBootstrapCredential
+
+        # '\' -> %5C and '@' -> %40
+        $result | Should -Be 'DOMAIN%5Cuser%40corp:pw@'
     }
 
     It "Returns empty string, warns, and does not prompt for a password when the username is blank" {
