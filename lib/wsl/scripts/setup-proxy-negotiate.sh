@@ -119,15 +119,18 @@ trap cleanup_pip_conf EXIT
 # no Basic-auth creds linger in the environment during Phases 1-3. SC-036d later
 # rewrites the same marker block to point at http://localhost:3128 (no creds).
 log_info "Removing any legacy Basic-mode proxy block from shell rc files..."
+# Delete the managed "# BEGIN/END wsl-manager proxy" block from a single file.
+# Parameterized so .profile and .bashrc share one grep+sed instead of repeating it.
+remove_managed_block() {
+    local file="$1"
+    if grep -q "$MARKER_BEGIN" "$file" 2>/dev/null; then
+        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$file"
+        log_info "Removed legacy proxy block from $file (Basic-auth creds no longer in env)"
+    fi
+}
 remove_legacy_proxy_env() {
-    if grep -q "$MARKER_BEGIN" "$PROFILE" 2>/dev/null; then
-        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$PROFILE"
-        log_info "Removed legacy proxy block from $PROFILE (Basic-auth creds no longer in env)"
-    fi
-    if grep -q "$MARKER_BEGIN" "$BASHRC" 2>/dev/null; then
-        sed -i "/$MARKER_BEGIN/,/$MARKER_END/d" "$BASHRC"
-        log_info "Removed legacy proxy block from $BASHRC"
-    fi
+    remove_managed_block "$PROFILE"
+    remove_managed_block "$BASHRC"
 }
 remove_legacy_proxy_env
 
@@ -181,7 +184,11 @@ log_info "Installing krb5-user and pipx via apt..."
 apt_update_output=$(sudo env LC_ALL=C apt-get update 2>&1)
 apt_update_rc=$?
 echo "$apt_update_output"
-if [ "$apt_update_rc" -ne 0 ] || echo "$apt_update_output" | grep -qi 'Proxy Authentication Required'; then
+# A 407 means bad creds; "Failed to fetch" / "connect" failures mean the proxy is
+# unreachable or refused the connection. Either way apt-get update may still exit
+# 0 (failed fetches are only W: warnings), so treat the message as a hard failure
+# too — otherwise a cached/already-installed distro reports a false success.
+if [ "$apt_update_rc" -ne 0 ] || echo "$apt_update_output" | grep -qiE 'Proxy Authentication Required|Failed to fetch|Could not connect|Unable to connect|Cannot initiate the connection'; then
     log_error "apt-get update failed — proxy rejected the bootstrap credentials (HTTP 407) or the proxy is unreachable. Check the username/password."
     exit 2
 fi

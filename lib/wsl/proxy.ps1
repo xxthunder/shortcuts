@@ -22,27 +22,12 @@ function Get-NegotiateBootstrapCredential {
     Write-Information "Negotiate bootstrap requires temporary Basic-auth credentials to install Kerberos tooling (krb5-user, pipx, px-proxy)."
     Write-Information "Credentials are written to root-owned config files for the install step only. They are never exported to any process environment. Phase 4 replaces them with the localhost px proxy."
 
-    [string]$username = Read-Host "Enter your proxy username (for one-time bootstrap install)"
-    if ([string]::IsNullOrEmpty($username)) {
-        Write-Warning "No username provided. Bootstrap cannot proceed."
-        return ""
-    }
-
-    # Percent-encode the username too: corporate logins are often domain- or
-    # UPN-qualified ('DOMAIN\user', 'user@corp.com'), and an unescaped '\' or '@'
-    # would produce a malformed userinfo segment when spliced into the URL.
-    [string]$encodedUser = [System.Uri]::EscapeDataString($username)
-
-    $pwdSec = Read-Host "Enter your proxy password" -AsSecureString
-    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwdSec)
-    try {
-        [string]$encoded = [System.Uri]::EscapeDataString([System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr))
-    }
-    finally {
-        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    }
-
-    return "${encodedUser}:${encoded}@"
+    # Reuse the shared prompt/encode helper (from setProxy.ps1, dot-sourced by
+    # Install-WslProxy). It percent-encodes both username and password so domain/
+    # UPN logins splice into the URL safely, and returns "" on a blank username.
+    return Get-ProxyCredentialPrefix `
+        -NamePrompt "Enter your proxy username (for one-time bootstrap install)" `
+        -SecretPrompt "Enter your proxy password"
 }
 
 function Install-WslProxy {
@@ -241,12 +226,20 @@ Then run setup-proxy again.
             )
         }
 
+        # Single call; only the Negotiate path adds -StdinInput (the bootstrap URL
+        # piped via stdin). Omitting the key on the Basic path keeps the stdin
+        # branch in Invoke-WslDistroScript inactive (it gates on ContainsKey).
+        $invokeParams = @{
+            ScriptPath  = $scriptPath
+            DistroName  = $DistroName
+            Arguments   = $scriptArgs
+            StopAtError = $false
+            PrintCommand = $false
+        }
         if ($authMode -eq 'negotiate' -and -not $isDirect) {
-            $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -StdinInput $bootstrapProxyUrl
+            $invokeParams['StdinInput'] = $bootstrapProxyUrl
         }
-        else {
-            $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
-        }
+        $exitCode = Invoke-WslDistroScript @invokeParams
 
         switch ($exitCode) {
             0 {
@@ -292,6 +285,9 @@ Then run setup-proxy again.
                 throw "Prerequisite check failed. Ensure script has root access."
             }
             2 {
+                if ($authMode -eq 'negotiate') {
+                    throw "Negotiate bootstrap install failed (exit 2): the proxy rejected the bootstrap credentials, the proxy is unreachable, or a package install failed. See the script output above for details."
+                }
                 throw "Configuration failed. Check file system permissions."
             }
             3 {

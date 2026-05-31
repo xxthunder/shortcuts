@@ -499,6 +499,14 @@ Describe "Install-WslProxy" {
             Should -Invoke Invoke-WslDistroScript -Times 0
         }
 
+        It "Should surface a Negotiate-specific error on exit 2 (not the Basic 'file system permissions' message)" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
+
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result | Should -Be $false
+            $err[0].Exception.Message | Should -BeLike "*Negotiate bootstrap install failed*exit 2*"
+        }
+
         It "Should not pipe stdin on the Basic path" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
 
@@ -568,9 +576,9 @@ Describe "Install-WslProxy" {
             # `export http_proxy=user:pass@...` in ~/.profile. Negotiate bootstrap
             # must remove that managed block so the creds stop leaking into env
             # during Phases 1-3 (see SC-036b UAT step 3).
-            $script:NegotiateScript | Should -Match 'remove_legacy_proxy_env'
-            $script:NegotiateScript | Should -Match 'sed -i ".*MARKER_BEGIN.*MARKER_END.*d" "\$PROFILE"'
-            $script:NegotiateScript | Should -Match 'sed -i ".*MARKER_BEGIN.*MARKER_END.*d" "\$BASHRC"'
+            $script:NegotiateScript | Should -Match 'remove_managed_block "\$PROFILE"'
+            $script:NegotiateScript | Should -Match 'remove_managed_block "\$BASHRC"'
+            $script:NegotiateScript | Should -Match 'sed -i ".*MARKER_BEGIN.*MARKER_END.*d" "\$file"'
         }
 
         It "setup-proxy-negotiate.sh treats a 407 from apt-get update as a hard failure" {
@@ -586,6 +594,14 @@ Describe "Install-WslProxy" {
             # apt localizes its output; a translated 'Proxy Authentication Required'
             # would slip past the grep. LC_ALL=C guarantees the English string.
             $script:NegotiateScript | Should -Match 'sudo env LC_ALL=C apt-get update'
+        }
+
+        It "setup-proxy-negotiate.sh also fails on an unreachable proxy, not only a 407" {
+            # apt-get update exits 0 on failed fetches, so a wrong proxy host
+            # (connection refused) on an already-installed distro would otherwise
+            # be a false success. Detect fetch/connect failures too.
+            $script:NegotiateScript | Should -Match 'Failed to fetch'
+            $script:NegotiateScript | Should -Match 'Could not connect|Unable to connect'
         }
 
         It "setup-proxy-negotiate.sh locks /etc/apt/apt.conf.d/99proxy to root-only (600)" {

@@ -685,6 +685,30 @@ Describe "Get-ProxyCredentialsFromUser" {
     }
 }
 
+Describe "Get-ProxyCredentialPrefix" {
+    It "Percent-encodes both username and password into a URL-ready prefix" {
+        $securePassword = ConvertTo-SecureString 'P@ss=word' -AsPlainText -Force
+        Mock Read-Host { 'DOMAIN\user@corp' } -ParameterFilter { $Prompt -and -not $AsSecureString }
+        Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+
+        $result = Get-ProxyCredentialPrefix
+
+        # '\' -> %5C, '@' -> %40, '=' -> %3D
+        $result | Should -Be 'DOMAIN%5Cuser%40corp:P%40ss%3Dword@'
+    }
+
+    It "Returns empty string and warns once when no username is provided" {
+        Mock Read-Host { '' } -ParameterFilter { $Prompt -and -not $AsSecureString }
+        Mock Write-Warning { }
+
+        $result = Get-ProxyCredentialPrefix
+
+        $result | Should -Be ''
+        Should -Invoke Write-Warning -Times 1 -Scope It
+        Should -Invoke Read-Host -Times 0 -ParameterFilter { $AsSecureString }
+    }
+}
+
 Describe "Get-MaskedProxyUrl" {
     Context "When proxy URL contains credentials" {
         It "Should mask username and password" {

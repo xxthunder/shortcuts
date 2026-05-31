@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Proxy settings for PowerShell using PAC resolution (no hardcoded proxy hosts)
 .DESCRIPTION
@@ -106,10 +106,51 @@ function Set-NoProxyEnvironment {
 
 <#
 .SYNOPSIS
+    Prompts for a username/password and returns a URL-ready "user:pass@" prefix.
+.DESCRIPTION
+    Shared by Get-ProxyCredentialsFromUser (Basic mode) and
+    Get-NegotiateBootstrapCredential (Negotiate bootstrap). Both the username and
+    the password are percent-encoded so domain/UPN logins ('DOMAIN\user',
+    'user@corp.com') and special-character passwords splice into a proxy URL
+    without corrupting the userinfo segment. The password BSTR is zeroed even on
+    failure. Returns "" (after one warning) when no username is entered.
+.OUTPUTS
+    String "encodedUser:encodedPassword@", or "" when no username is provided.
+#>
+function Get-ProxyCredentialPrefix {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [string]$NamePrompt = "Please enter your proxy username",
+        [string]$SecretPrompt = "Please enter your proxy password"
+    )
+
+    [string]$account = Read-Host $NamePrompt
+    if ([string]::IsNullOrEmpty($account)) {
+        Write-Warning "No username provided."
+        return ""
+    }
+    [string]$encodedUser = [System.Uri]::EscapeDataString($account)
+
+    $pwdSec = Read-Host $SecretPrompt -AsSecureString
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwdSec)
+    try {
+        [string]$encodedPwd = [System.Uri]::EscapeDataString([System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr))
+    }
+    finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    }
+
+    return "${encodedUser}:${encodedPwd}@"
+}
+
+<#
+.SYNOPSIS
     Gets credentials for proxy authentication from user input
 .DESCRIPTION
-    Prompts user for username and password, URL-encodes the password,
-    and returns formatted credentials string for proxy URL
+    Prompts user for username and password, URL-encodes both, and returns a
+    formatted credentials string for the proxy URL. Warns first that Basic-mode
+    creds are stored in environment variables in plain text.
 .OUTPUTS
     String with format "username:encodedPassword@" or empty string if cancelled
 #>
@@ -122,22 +163,9 @@ function Get-ProxyCredentialsFromUser {
     Write-Warning "This makes your password visible to any process that reads environment variables."
     Write-Warning "Only use this option when absolutely required by specific tools."
 
-    [string]$username = Read-Host "Please enter your Windows user name for proxy authentication"
-    if ([string]::IsNullOrEmpty($username)) {
-        Write-Warning "No username provided. Skipping credential embedding."
-        return ""
-    }
-
-    $userpwd_sec = Read-Host "Please enter your Windows password for proxy authentication" -AsSecureString
-    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($userpwd_sec)
-    try {
-        [string]$encodedPwd = [System.Uri]::EscapeDataString([System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr))
-    }
-    finally {
-        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    }
-
-    return "${username}:${encodedPwd}@"
+    return Get-ProxyCredentialPrefix `
+        -NamePrompt "Please enter your Windows user name for proxy authentication" `
+        -SecretPrompt "Please enter your Windows password for proxy authentication"
 }
 
 <#
