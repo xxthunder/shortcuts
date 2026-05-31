@@ -382,4 +382,86 @@ Describe "Invoke-WslDistroScript" {
             }
         }
     }
+
+    Context "StdinInput" {
+        It "Should bypass Invoke-CommandLine and call Invoke-WslExeWithStdin when StdinInput is provided" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+            Mock Invoke-WslExeWithStdin { 0 }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StdinInput "secret-line"
+
+            Should -Invoke Invoke-CommandLine -Times 0
+            Should -Invoke Invoke-WslExeWithStdin -Times 1 -ParameterFilter {
+                $StdinInput -eq "secret-line" -and $DistroName -eq "Debian"
+            }
+        }
+
+        It "Should forward arguments and converted WSL path to Invoke-WslExeWithStdin" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeWithStdin { 0 }
+
+            Invoke-WslDistroScript -ScriptPath "C:\path\to\script.sh" -DistroName "Debian" `
+                -Arguments @("--proxy-url=http://proxy:8080", "--username=dev") `
+                -StdinInput "http://u:p@proxy:8080"
+
+            Should -Invoke Invoke-WslExeWithStdin -Times 1 -ParameterFilter {
+                $WslPath -eq "/mnt/c/path/to/script.sh" -and
+                $Arguments -contains "--proxy-url=http://proxy:8080" -and
+                $Arguments -contains "--username=dev"
+            }
+        }
+
+        It "Should return the exit code from Invoke-WslExeWithStdin" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeWithStdin { 2 }
+
+            $exitCode = Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StdinInput "x" -StopAtError $false
+
+            $exitCode | Should -Be 2
+        }
+
+        It "Should throw on non-zero exit when StopAtError is true" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeWithStdin { 3 }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StdinInput "x" -StopAtError $true } |
+                Should -Throw "*exit code: 3*"
+        }
+
+        It "Should not throw on non-zero exit when StopAtError is false" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeWithStdin { 3 }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -StdinInput "x" -StopAtError $false } |
+                Should -Not -Throw
+        }
+    }
+}
+
+Describe "Invoke-WslExeWithStdin" {
+    Context "Native invocation" {
+        It "Should pipe stdin to wsl.exe with the distro, path, and arguments and return its exit code" {
+            Mock wsl.exe { $global:LASTEXITCODE = 0 }
+
+            $rc = Invoke-WslExeWithStdin -DistroName "Debian" -WslPath "/mnt/c/test.sh" `
+                -Arguments @("--username=dev") -StdinInput "secret-line"
+
+            $rc | Should -Be 0
+            Should -Invoke wsl.exe -Times 1
+        }
+
+        It "Should return the non-zero exit code reported by wsl.exe" {
+            Mock wsl.exe { $global:LASTEXITCODE = 5 }
+
+            $rc = Invoke-WslExeWithStdin -DistroName "Debian" -WslPath "/mnt/c/test.sh" -StdinInput "x"
+
+            $rc | Should -Be 5
+        }
+    }
 }

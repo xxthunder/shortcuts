@@ -6,6 +6,40 @@
 # Source dependencies
 . "$PSScriptRoot\..\utils\utils.ps1"
 
+function Get-NegotiateBootstrapCredential {
+    <#
+    .SYNOPSIS
+        Prompts for temporary Basic-auth credentials used to bootstrap the Negotiate
+        Kerberos install. Distinct from Get-ProxyCredentialsFromUser: these creds
+        are written to root-owned config files for the install only and are never
+        exported to any process environment, so the "stored in env vars" warning
+        does not apply.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    Write-Information "Negotiate bootstrap requires temporary Basic-auth credentials to install Kerberos tooling (krb5-user, pipx, px-proxy)."
+    Write-Information "Credentials are written to root-owned config files for the install step only. They are never exported to any process environment. Phase 4 replaces them with the localhost px proxy."
+
+    [string]$username = Read-Host "Enter your proxy username (for one-time bootstrap install)"
+    if ([string]::IsNullOrEmpty($username)) {
+        Write-Warning "No username provided. Bootstrap cannot proceed."
+        return ""
+    }
+
+    $pwdSec = Read-Host "Enter your proxy password" -AsSecureString
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwdSec)
+    try {
+        [string]$encoded = [System.Uri]::EscapeDataString([System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr))
+    }
+    finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    }
+
+    return "${username}:${encoded}@"
+}
+
 function Install-WslProxy {
     <#
     .SYNOPSIS
@@ -125,6 +159,18 @@ function Install-WslProxy {
         }
     }
 
+    # Negotiate: prompt for bootstrap creds. The Basic-auth URL is piped to the
+    # script via stdin (not cmdline, not env) so it never appears in /proc/<pid>/*.
+    # The clean $ProxyUrl (no creds) is what the long-lived px config will use.
+    $bootstrapProxyUrl = $null
+    if ($authMode -eq 'negotiate' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
+        $bootstrapPrefix = Get-NegotiateBootstrapCredential
+        if ([string]::IsNullOrWhiteSpace($bootstrapPrefix)) {
+            throw "Bootstrap credentials are required for Negotiate mode setup."
+        }
+        $bootstrapProxyUrl = $ProxyUrl -replace '://', "://$bootstrapPrefix"
+    }
+
     # 4. Set NoProxy — prefer existing env var, fall back to default
     $NoProxy = if ($env:NO_PROXY) { $env:NO_PROXY } else { "localhost,127.0.0.1" }
 
@@ -190,7 +236,12 @@ Then run setup-proxy again.
             )
         }
 
-        $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
+        if ($authMode -eq 'negotiate' -and -not $isDirect) {
+            $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false -StdinInput $bootstrapProxyUrl
+        }
+        else {
+            $exitCode = Invoke-WslDistroScript -ScriptPath $scriptPath -DistroName $DistroName -Arguments $scriptArgs -StopAtError $false -PrintCommand $false
+        }
 
         switch ($exitCode) {
             0 {
@@ -198,15 +249,28 @@ Then run setup-proxy again.
                 if ($isDirect) {
                     Write-Information "Successfully removed proxy configuration from '$DistroName'."
                 }
+                elseif ($authMode -eq 'negotiate') {
+                    Write-Information "Successfully completed Negotiate Phase 1 (bootstrap install) in '$DistroName'."
+                }
                 else {
                     Write-Information "Successfully configured proxy in '$DistroName'."
                 }
                 Write-Information ""
                 Write-Information "Affected targets:"
-                Write-Information "  - ~/.profile (environment variables)"
-                Write-Information "  - /etc/apt/apt.conf.d/99proxy"
-                Write-Information "  - ~/.docker/config.json"
-                Write-Information "  - ~/.config/containers/containers.conf"
+                if ($authMode -eq 'negotiate' -and -not $isDirect) {
+                    Write-Information "  - krb5-user, pipx, px-proxy (installed)"
+                    Write-Information "  - /etc/apt/apt.conf.d/99proxy (bootstrap credentials)"
+                    Write-Information "  - /etc/wsl-manager/proxy-mode (= negotiate-bootstrap)"
+                    Write-Information "  - ~/.profile, ~/.bashrc (legacy Basic-mode proxy block removed)"
+                    Write-Information ""
+                    Write-Information "Phases 2-4 (Kerberos config, px activation, switch to localhost:3128) are not done yet."
+                }
+                else {
+                    Write-Information "  - ~/.profile (environment variables)"
+                    Write-Information "  - /etc/apt/apt.conf.d/99proxy"
+                    Write-Information "  - ~/.docker/config.json"
+                    Write-Information "  - ~/.config/containers/containers.conf"
+                }
 
                 # Auto-terminate so a fresh shell loads the updated ~/.profile.
                 # Wrapped: a termination failure here must not be reported as a
@@ -230,9 +294,6 @@ Then run setup-proxy again.
             }
             4 {
                 throw "Argument error. Required proxy parameters missing."
-            }
-            10 {
-                throw "Negotiate proxy mode is not yet implemented. Full support ships in SC-036b through SC-036e."
             }
             default {
                 throw "Proxy configuration failed with exit code: $exitCode"

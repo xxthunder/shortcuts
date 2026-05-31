@@ -144,6 +144,12 @@ function Invoke-WslDistroScript {
         if ($exitCode -ne 0) {
             Write-Host "Script failed with exit code: $exitCode"
         }
+
+    .PARAMETER StdinInput
+        Optional string piped to the script's stdin. Used to pass secrets without
+        exposing them in /proc/<pid>/cmdline (env vars persist for every child shell;
+        cmdline persists for the script's lifetime). Bypasses Invoke-CommandLine
+        because Invoke-Expression cannot pipe stdin.
     #>
     [CmdletBinding()]
     param(
@@ -162,7 +168,10 @@ function Invoke-WslDistroScript {
         [bool]$StopAtError = $true,
 
         [Parameter(Mandatory = $false)]
-        [bool]$PrintCommand = $true
+        [bool]$PrintCommand = $true,
+
+        [Parameter(Mandatory = $false)]
+        [string]$StdinInput
     )
 
     # Validate script exists
@@ -191,6 +200,19 @@ function Invoke-WslDistroScript {
         $argString = " " + ($Arguments -join ' ')
     }
 
+    # Stdin path: bypass Invoke-CommandLine (Invoke-Expression cannot pipe stdin).
+    # Used for secrets that must not appear in /proc/<pid>/cmdline.
+    if ($PSBoundParameters.ContainsKey('StdinInput')) {
+        if ($PrintCommand) {
+            Write-Verbose "Executing (stdin piped): wsl.exe --distribution $DistroName --exec bash -l `"$wslPath`"$argString"
+        }
+        $exitCode = Invoke-WslExeWithStdin -DistroName $DistroName -WslPath $wslPath -Arguments $Arguments -StdinInput $StdinInput
+        if ($exitCode -ne 0 -and $StopAtError) {
+            throw "Script execution failed with exit code: $exitCode"
+        }
+        return $exitCode
+    }
+
     # Execute via bash login shell (no need for script to be +x since we're invoking bash directly)
     # -l (login shell) causes bash to source /etc/profile and ~/.profile,
     # making proxy env vars configured by setup-proxy available to curl and other tools.
@@ -203,5 +225,25 @@ function Invoke-WslDistroScript {
     Invoke-CommandLine -CommandLine $commandLine -StopAtError $StopAtError -PrintCommand $PrintCommand | Out-Null
 
     # Return exit code
+    return $LASTEXITCODE
+}
+
+function Invoke-WslExeWithStdin {
+    <#
+    .SYNOPSIS
+        Runs wsl.exe with a string piped to the script's stdin. Mockable wrapper
+        around the native invocation so tests don't shell out.
+    #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory = $true)][string]$DistroName,
+        [Parameter(Mandatory = $true)][string]$WslPath,
+        [Parameter(Mandatory = $false)][string[]]$Arguments = @(),
+        [Parameter(Mandatory = $true)][string]$StdinInput
+    )
+
+    $global:LASTEXITCODE = 0
+    $StdinInput | & wsl.exe --distribution $DistroName --exec bash -l $WslPath @Arguments | Out-Null
     return $LASTEXITCODE
 }

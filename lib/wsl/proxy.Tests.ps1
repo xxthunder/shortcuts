@@ -33,6 +33,10 @@ Describe "Install-WslProxy" {
         Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $true }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $false }
+        # Default Negotiate bootstrap creds — used whenever a test selects the
+        # Negotiate auth path. Override per-test to exercise the empty-creds
+        # rejection path.
+        Mock Get-NegotiateBootstrapCredential { "bsuser:bspass@" }
     }
 
     Context "Auto-terminate after successful proxy configuration" {
@@ -394,14 +398,6 @@ Describe "Install-WslProxy" {
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*exit code: 99*"
         }
-
-        It "Should return false and write error on exit code 10 (Negotiate not yet implemented)" {
-            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 10; return 10 }
-
-            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
-            $result | Should -Be $false
-            $err[0].Exception.Message | Should -BeLike "*Negotiate*not yet implemented*"
-        }
     }
 
     Context "Auth method selection" {
@@ -428,13 +424,16 @@ Describe "Install-WslProxy" {
             }
         }
 
-        It "Should not embed credentials in URL when Negotiate is chosen" {
+        It "Should not embed credentials in --proxy-url= when Negotiate is chosen" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
+            # Basic-mode prompt must not be triggered on the Negotiate path.
             Should -Invoke Get-ProxyCredentialsFromUser -Times 0
+            # The clean (cred-less) URL goes on the cmdline; bootstrap creds are
+            # piped via stdin instead (asserted in the bootstrap-credentials context).
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
                 $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
             }
@@ -462,15 +461,135 @@ Describe "Install-WslProxy" {
         }
     }
 
+    Context "Negotiate bootstrap credentials" {
+        BeforeEach {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
+        }
+
+        It "Should prompt for bootstrap creds via Get-NegotiateBootstrapCredential" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-NegotiateBootstrapCredential -Times 1
+        }
+
+        It "Should pipe the bootstrap URL via -StdinInput to Invoke-WslDistroScript" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $StdinInput -eq "http://bsuser:bspass@proxy.corp.com:8080"
+            }
+        }
+
+        It "Should not include bootstrap creds in --proxy-url= (clean URL on cmdline)" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
+                -not ($Arguments -match "bsuser") -and
+                -not ($Arguments -match "bspass")
+            }
+        }
+
+        It "Should throw when no bootstrap creds are provided" {
+            Mock Get-NegotiateBootstrapCredential { "" }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*Bootstrap credentials*required*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
+
+        It "Should not pipe stdin on the Basic path" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            # On the Basic path Install-WslProxy must not call the negotiate
+            # script and must not invoke the bootstrap-cred prompt.
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -notlike "*setup-proxy-negotiate.sh" -and
+                [string]::IsNullOrEmpty($StdinInput)
+            }
+            Should -Invoke Get-NegotiateBootstrapCredential -Times 0
+        }
+
+        It "Should report Negotiate Phase-1 targets, not the Basic-mode .profile/Docker/Podman list" {
+            # Mis-report guard: the success banner must reflect what bootstrap
+            # actually touched (apt config + tooling), not the Basic-mode targets.
+            Mock Write-Information { }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*Negotiate Phase 1*bootstrap install*"
+            }
+            Should -Invoke Write-Information -Times 0 -ParameterFilter {
+                $MessageData -like "*~/.docker/config.json*" -or $MessageData -like "*containers.conf*"
+            }
+        }
+    }
+
     Context "Sibling script artifacts" {
+        BeforeAll {
+            $script:NegotiateScript = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") -Raw
+        }
+
         It "setup-proxy-negotiate.sh exists" {
             Test-Path (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") | Should -Be $true
         }
 
-        It "setup-proxy-negotiate.sh exits with code 10 on the not-yet-implemented path" {
-            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") -Raw
-            $script | Should -Match 'exit 10'
-            $script | Should -Match 'not yet implemented'
+        It "setup-proxy-negotiate.sh reads BOOTSTRAP_PROXY_URL from stdin" {
+            $script:NegotiateScript | Should -Match 'read -r BOOTSTRAP_PROXY_URL'
+        }
+
+        It "setup-proxy-negotiate.sh refuses to read stdin when invoked from a TTY" {
+            $script:NegotiateScript | Should -Match '\[ -t 0 \]'
+        }
+
+        It "setup-proxy-negotiate.sh writes the negotiate-bootstrap mode marker" {
+            $script:NegotiateScript | Should -Match '/etc/wsl-manager'
+            $script:NegotiateScript | Should -Match 'proxy-mode'
+            $script:NegotiateScript | Should -Match 'negotiate-bootstrap'
+        }
+
+        It "setup-proxy-negotiate.sh traps EXIT to remove the temporary pip.conf" {
+            $script:NegotiateScript | Should -Match 'trap cleanup_pip_conf EXIT'
+            $script:NegotiateScript | Should -Match 'rm -f "\$PIP_CONF_FILE"'
+        }
+
+        It "setup-proxy-negotiate.sh never exports HTTP_PROXY-style env vars" {
+            # The threat model rejects HTTP_PROXY=user:pass@... in env. Phase 1
+            # writes config files only; no `export` of proxy env vars anywhere.
+            $script:NegotiateScript | Should -Not -Match '(?im)^\s*export\s+(HTTP_PROXY|HTTPS_PROXY|http_proxy|https_proxy)\b'
+        }
+
+        It "setup-proxy-negotiate.sh strips the legacy Basic-mode proxy block from .profile and .bashrc" {
+            # Migration: a distro previously configured by SC-007 Basic mode has
+            # `export http_proxy=user:pass@...` in ~/.profile. Negotiate bootstrap
+            # must remove that managed block so the creds stop leaking into env
+            # during Phases 1-3 (see SC-036b UAT step 3).
+            $script:NegotiateScript | Should -Match 'remove_legacy_proxy_env'
+            $script:NegotiateScript | Should -Match 'sed -i ".*MARKER_BEGIN.*MARKER_END.*d" "\$PROFILE"'
+            $script:NegotiateScript | Should -Match 'sed -i ".*MARKER_BEGIN.*MARKER_END.*d" "\$BASHRC"'
+        }
+
+        It "setup-proxy-negotiate.sh treats a 407 from apt-get update as a hard failure" {
+            # apt-get update exits 0 even when fetches fail behind a 407, so a
+            # wrong bootstrap password would otherwise produce a false success
+            # (SC-036b UAT step 5). The script must capture the output and abort
+            # on 'Proxy Authentication Required'.
+            $script:NegotiateScript | Should -Match 'Proxy Authentication Required'
+            $script:NegotiateScript | Should -Match 'apt_update_output=\$\(sudo apt-get update'
+        }
+
+        It "setup-proxy-negotiate.sh installs krb5-user, pipx, and px-proxy" {
+            $script:NegotiateScript | Should -Match 'apt-get install.*krb5-user.*pipx'
+            $script:NegotiateScript | Should -Match 'pipx install px-proxy'
+        }
+
+        It "setup-proxy-negotiate.sh skips pipx install when px-proxy already present" {
+            # Idempotent re-run: AC requires no-op on second run.
+            $script:NegotiateScript | Should -Match 'pipx list'
         }
 
         It "setup-proxy.sh writes the basic mode marker on success" {
@@ -500,5 +619,40 @@ Describe "Install-WslProxy" {
                 $ScriptPath -like "*setup-proxy.sh*"
             }
         }
+    }
+}
+
+Describe "Get-NegotiateBootstrapCredential" {
+    BeforeEach {
+        # Silence the informational guidance the function prints.
+        Mock Write-Information { }
+    }
+
+    It "Returns 'user:percent-encoded-password@' so the URL is safe to embed" {
+        # Build the SecureString via AppendChar rather than ConvertTo-SecureString
+        # -AsPlainText (which PSScriptAnalyzer rejects even in tests).
+        Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith {
+            $ss = [System.Security.SecureString]::new()
+            'p@ss word'.ToCharArray() | ForEach-Object { $ss.AppendChar($_) }
+            $ss
+        }
+        Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { 'guentherk' }
+
+        $result = Get-NegotiateBootstrapCredential
+
+        # '@' -> %40 and ' ' -> %20, so the creds can be spliced into http://<this>host
+        $result | Should -Be 'guentherk:p%40ss%20word@'
+    }
+
+    It "Returns empty string, warns, and does not prompt for a password when the username is blank" {
+        Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { '' }
+        Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith { [System.Security.SecureString]::new() }
+        Mock Write-Warning { }
+
+        $result = Get-NegotiateBootstrapCredential
+
+        $result | Should -Be ''
+        Should -Invoke Write-Warning -Times 1
+        Should -Invoke Read-Host -Times 0 -ParameterFilter { $AsSecureString }
     }
 }
