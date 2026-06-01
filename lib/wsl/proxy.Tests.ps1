@@ -37,6 +37,15 @@ Describe "Install-WslProxy" {
         # Negotiate auth path. Override per-test to exercise the empty-creds
         # rejection path.
         Mock Get-NegotiateBootstrapCredential { "bsuser:bspass@" }
+        # Default Kerberos realm/KDC answers for the Negotiate Phase-2 prompts so
+        # negotiate tests never block on real input. Override per-test to exercise
+        # the empty-value rejection paths.
+        Mock Read-Host -ParameterFilter { $Prompt -like "*Kerberos realm*" } -MockWith { "CORP.EXAMPLE.COM" }
+        Mock Read-Host -ParameterFilter { $Prompt -like "*KDC*" } -MockWith { "kdc.example.com" }
+        Mock Read-Host -ParameterFilter { $Prompt -like "*username/principal*" } -MockWith { "tuser" }
+        # No Windows-detected defaults by default — so blank-input tests still hit
+        # the rejection path. Override per-test to exercise the Enter-to-accept path.
+        Mock Get-WindowsKerberosDefault { @{ Realm = $null; Kdc = $null; Principal = $null } }
     }
 
     Context "Auto-terminate after successful proxy configuration" {
@@ -118,6 +127,19 @@ Describe "Install-WslProxy" {
 
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
                 $Arguments -contains "--proxy-url=http://user1:p%40ss@proxy.corp.com:8080"
+            }
+        }
+
+        It "Should pre-fill the proxy username with the Windows account ($env:USERNAME)" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 1 -ParameterFilter {
+                $DefaultUser -eq $env:USERNAME
             }
         }
     }
@@ -414,13 +436,23 @@ Describe "Install-WslProxy" {
             }
         }
 
+        It "Should not prompt for Kerberos realm/KDC on the Basic path" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Kerberos realm*" }
+            Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*KDC*" }
+        }
+
         It "Should dispatch to setup-proxy-negotiate.sh when Negotiate is chosen" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
+            # The Phase-1 (stdin-piped) bootstrap call routes to the negotiate
+            # script. A second, interactive activate call also runs (asserted in
+            # the bootstrap-credentials context); scope this assertion to Phase 1.
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $ScriptPath -like "*setup-proxy-negotiate.sh"
+                $ScriptPath -like "*setup-proxy-negotiate.sh" -and -not [string]::IsNullOrEmpty($StdinInput)
             }
         }
 
@@ -435,7 +467,7 @@ Describe "Install-WslProxy" {
             # The clean (cred-less) URL goes on the cmdline; bootstrap creds are
             # piped via stdin instead (asserted in the bootstrap-credentials context).
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and -not [string]::IsNullOrEmpty($StdinInput)
             }
         }
 
@@ -488,7 +520,8 @@ Describe "Install-WslProxy" {
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
                 $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
                 -not ($Arguments -match "bsuser") -and
-                -not ($Arguments -match "bspass")
+                -not ($Arguments -match "bspass") -and
+                -not [string]::IsNullOrEmpty($StdinInput)
             }
         }
 
@@ -499,12 +532,127 @@ Describe "Install-WslProxy" {
             Should -Invoke Invoke-WslDistroScript -Times 0
         }
 
+        It "Should prompt for the Kerberos realm, KDC, and principal (Phase 2 inputs)" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*Kerberos realm*" }
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*KDC*" }
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*username/principal*" }
+        }
+
+        It "Should throw when the Kerberos principal is blank" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*username/principal*" } -MockWith { "" }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*principal*required*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
+
+        It "Should throw when the Kerberos realm is blank" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Kerberos realm*" } -MockWith { "" }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*realm*required*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
+
+        It "Should throw when the Kerberos KDC is blank" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*KDC*" } -MockWith { "" }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*KDC*required*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
+
+        It "Should use the Windows-detected realm/KDC/principal when the user accepts the defaults (blank input)" {
+            # The user presses Enter at every prompt; detected values are used.
+            Mock Get-WindowsKerberosDefault { @{ Realm = "MARQUARDT.DE"; Kdc = "dc01.marquardt.de"; Principal = "guentherk" } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Kerberos realm*" } -MockWith { "" }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*KDC*" } -MockWith { "" }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*username/principal*" } -MockWith { "" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--activate" -and
+                $Arguments -contains "--realm=MARQUARDT.DE" -and
+                $Arguments -contains "--kdc=dc01.marquardt.de" -and
+                $Arguments -contains "--principal=guentherk"
+            }
+        }
+
+        It "Should show the detected realm/KDC/principal as the prompt default" {
+            Mock Get-WindowsKerberosDefault { @{ Realm = "MARQUARDT.DE"; Kdc = "dc01.marquardt.de"; Principal = "guentherk" } }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*Kerberos realm*[MARQUARDT.DE]*" }
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*KDC*[dc01.marquardt.de]*" }
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { $Prompt -like "*username/principal*[guentherk]*" }
+        }
+
+        It "Should let a typed value override the detected default" {
+            Mock Get-WindowsKerberosDefault { @{ Realm = "MARQUARDT.DE"; Kdc = "dc01.marquardt.de"; Principal = "guentherk" } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Kerberos realm*" } -MockWith { "OTHER.REALM" }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*KDC*" } -MockWith { "other.kdc" }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*username/principal*" } -MockWith { "otheruser" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--realm=OTHER.REALM" -and
+                $Arguments -contains "--kdc=other.kdc" -and
+                $Arguments -contains "--principal=otheruser"
+            }
+        }
+
+        It "Should run Phase 2-3 as a second interactive activate call (no stdin) with realm/KDC/clean proxy" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*setup-proxy-negotiate.sh" -and
+                $Interactive -eq $true -and
+                [string]::IsNullOrEmpty($StdinInput) -and
+                $Arguments -contains "--activate" -and
+                $Arguments -contains "--realm=CORP.EXAMPLE.COM" -and
+                $Arguments -contains "--kdc=kdc.example.com" -and
+                $Arguments -contains "--principal=tuser" -and
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080" -and
+                $Arguments -contains "--username=developer"
+            }
+        }
+
+        It "Should not run the activate call when Phase 1 bootstrap fails" {
+            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+
+            # Only the Phase-1 (stdin) call runs; activation is gated on exit 0.
+            Should -Invoke Invoke-WslDistroScript -Times 0 -ParameterFilter {
+                $Arguments -contains "--activate"
+            }
+        }
+
+        It "Should not auto-terminate the distro on Negotiate success (px is running; no .profile change to reload)" {
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+
         It "Should surface a Negotiate-specific error on exit 2 (not the Basic 'file system permissions' message)" {
             Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 2; return 2 }
 
             $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
             $result | Should -Be $false
-            $err[0].Exception.Message | Should -BeLike "*Negotiate bootstrap install failed*exit 2*"
+            $err[0].Exception.Message | Should -BeLike "*Negotiate setup failed*exit 2*"
+        }
+
+        It "Should surface a kinit/px-test hint on exit 3 (activation verification failure)" {
+            # Phase 1 succeeds (0); activate fails verification (3).
+            Mock Invoke-WslDistroScript -ParameterFilter { -not [string]::IsNullOrEmpty($StdinInput) } -MockWith { $global:LASTEXITCODE = 0; return 0 }
+            Mock Invoke-WslDistroScript -ParameterFilter { $Interactive -eq $true } -MockWith { $global:LASTEXITCODE = 3; return 3 }
+
+            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
+            $result | Should -Be $false
+            $err[0].Exception.Message | Should -BeLike "*Negotiate verification failed*exit 3*"
+            $err[0].Exception.Message | Should -BeLike "*kinit*"
         }
 
         It "Should not pipe stdin on the Basic path" {
@@ -521,15 +669,19 @@ Describe "Install-WslProxy" {
             Should -Invoke Get-NegotiateBootstrapCredential -Times 0
         }
 
-        It "Should report Negotiate Phase-1 targets, not the Basic-mode .profile/Docker/Podman list" {
-            # Mis-report guard: the success banner must reflect what bootstrap
-            # actually touched (apt config + tooling), not the Basic-mode targets.
+        It "Should report Negotiate Phases 1-3 targets, not the Basic-mode .profile/Docker/Podman list" {
+            # Mis-report guard: the success banner must reflect what the Negotiate
+            # path actually touched (apt bootstrap, tooling, krb5.conf, px.ini, px),
+            # not the Basic-mode .profile/Docker/Podman targets.
             Mock Write-Information { }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Write-Information -ParameterFilter {
-                $MessageData -like "*Negotiate Phase 1*bootstrap install*"
+                $MessageData -like "*Negotiate*Phases 1-3*"
+            }
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*krb5.conf*" -or $MessageData -like "*px.ini*"
             }
             Should -Invoke Write-Information -Times 0 -ParameterFilter {
                 $MessageData -like "*~/.docker/config.json*" -or $MessageData -like "*containers.conf*"
@@ -620,6 +772,73 @@ Describe "Install-WslProxy" {
             $script:NegotiateScript | Should -Match 'pipx list'
         }
 
+        It "setup-proxy-negotiate.sh accepts --activate, --realm, and --kdc for Phase 2-3" {
+            $script:NegotiateScript | Should -Match '--activate'
+            $script:NegotiateScript | Should -Match '--realm='
+            $script:NegotiateScript | Should -Match '--kdc='
+        }
+
+        It "setup-proxy-negotiate.sh writes /etc/krb5.conf with the realm and KDC (Phase 2)" {
+            $script:NegotiateScript | Should -Match 'tee /etc/krb5.conf'
+            $script:NegotiateScript | Should -Match 'default_realm = \$KRB_REALM'
+            $script:NegotiateScript | Should -Match 'kdc = \$KRB_KDC'
+        }
+
+        It "setup-proxy-negotiate.sh writes ~/.config/px/px.ini with auth = NEGOTIATE and no credentials (Phase 2)" {
+            $script:NegotiateScript | Should -Match '\.config/px'
+            $script:NegotiateScript | Should -Match 'px\.ini'
+            $script:NegotiateScript | Should -Match 'auth = NEGOTIATE'
+            $script:NegotiateScript | Should -Match 'listen = 127\.0\.0\.1'
+            $script:NegotiateScript | Should -Match 'port = 3128'
+        }
+
+        It "setup-proxy-negotiate.sh runs kinit interactively, guarded by klist -s (Phase 2)" {
+            $script:NegotiateScript | Should -Match 'klist -s'
+            $script:NegotiateScript | Should -Match 'kinit'
+        }
+
+        It "setup-proxy-negotiate.sh runs kinit with the corporate principal, not the WSL user (Phase 2)" {
+            # kinit with no principal defaults to the Linux username (e.g. wsluser),
+            # which is not in the AD directory. The principal comes from --principal.
+            $script:NegotiateScript | Should -Match '--principal='
+            $script:NegotiateScript | Should -Match 'kinit "\$KINIT_PRINCIPAL"'
+        }
+
+        It "setup-proxy-negotiate.sh starts px detached and verifies end-to-end with curl through the proxy, not px --test (Phase 3)" {
+            # px is started detached (setsid + </dev/null) so the backgrounded daemon
+            # does not hold the pty open and hang the caller (SC-036c UAT).
+            $script:NegotiateScript | Should -Match 'setsid "\$PX_BIN" < /dev/null'
+            # curl honors the system CA store; px --test does not, so it false-fails
+            # HTTPS on a TLS-inspecting proxy (SC-036c UAT). Verification uses curl.
+            $script:NegotiateScript | Should -Match "curl -x http://127\.0\.0\.1:3128"
+            # No actual `px --test` invocation (the explanatory comment may mention it).
+            $script:NegotiateScript | Should -Not -Match '"\$PX_BIN" --test'
+        }
+
+        It "setup-proxy-negotiate.sh stops px after verification so the one-shot wsl.exe call does not hang (Phase 3)" {
+            # A lingering daemon keeps the WSL session alive and hangs the caller
+            # (Start-Process -Wait); SC-036c only needs px transiently to verify.
+            # Persistent px is SC-036d. The activate-mode banner must not claim px
+            # is left running.
+            $script:NegotiateScript | Should -Match 'Stopping px \(verification done'
+            $script:NegotiateScript | Should -Not -Match 'px running on 127\.0\.0\.1:3128'
+        }
+
+        It "setup-proxy-negotiate.sh exits 3 on kinit/px-test verification failure (Phase 3 failure policy)" {
+            # On verification failure the script leaves the Phase-1 Basic state
+            # intact and exits non-zero; it must not switch .profile to localhost.
+            $script:NegotiateScript | Should -Match 'exit 3'
+        }
+
+        It "setup-proxy-negotiate.sh activate path does not switch tools to localhost (that is SC-036d)" {
+            # SC-036c must not point any tool at http://localhost:3128 — the
+            # localhost env block + apt rewrite + .bashrc auto-start belong to
+            # SC-036d. (Log hints that mention the URL are fine; this targets the
+            # actual config writes.)
+            $script:NegotiateScript | Should -Not -Match 'export\s+\w*proxy="http://localhost'
+            $script:NegotiateScript | Should -Not -Match 'Acquire::http.*Proxy "http://localhost'
+        }
+
         It "setup-proxy.sh writes the basic mode marker on success" {
             $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
             $script | Should -Match '/etc/wsl-manager'
@@ -689,15 +908,92 @@ Describe "Get-NegotiateBootstrapCredential" {
         $result | Should -Be 'DOMAIN%5Cuser%40corp:pw@'
     }
 
-    It "Returns empty string, warns, and does not prompt for a password when the username is blank" {
-        Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { '' }
-        Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith { [System.Security.SecureString]::new() }
-        Mock Write-Warning { }
+    It "Returns empty string, warns, and does not prompt for a password when the username is blank and no default exists" {
+        $origUserName = $env:USERNAME
+        try {
+            Remove-Item Env:\USERNAME -ErrorAction SilentlyContinue
+            Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { '' }
+            Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith { [System.Security.SecureString]::new() }
+            Mock Write-Warning { }
 
-        $result = Get-NegotiateBootstrapCredential
+            $result = Get-NegotiateBootstrapCredential
 
-        $result | Should -Be ''
-        Should -Invoke Write-Warning -Times 1
-        Should -Invoke Read-Host -Times 0 -ParameterFilter { $AsSecureString }
+            $result | Should -Be ''
+            Should -Invoke Write-Warning -Times 1
+            Should -Invoke Read-Host -Times 0 -ParameterFilter { $AsSecureString }
+        }
+        finally {
+            if ($null -ne $origUserName) { $env:USERNAME = $origUserName }
+        }
+    }
+
+    It "Pre-fills the username with the Windows account, used when the user presses Enter (blank input)" {
+        $origUserName = $env:USERNAME
+        try {
+            $env:USERNAME = "guentherk"
+            $securePassword = [System.Security.SecureString]::new()
+            'pw'.ToCharArray() | ForEach-Object { $securePassword.AppendChar($_) }
+            Mock Read-Host -ParameterFilter { -not $AsSecureString } -MockWith { '' }
+            Mock Read-Host -ParameterFilter { $AsSecureString } -MockWith { $securePassword }
+
+            $result = Get-NegotiateBootstrapCredential
+
+            # Blank input falls back to $env:USERNAME, not the empty-string warning.
+            $result | Should -Be 'guentherk:pw@'
+            Should -Invoke Read-Host -Times 1 -ParameterFilter { -not $AsSecureString -and $Prompt -like "*[guentherk]*" }
+        }
+        finally {
+            if ($null -eq $origUserName) { Remove-Item Env:\USERNAME -ErrorAction SilentlyContinue }
+            else { $env:USERNAME = $origUserName }
+        }
+    }
+}
+
+Describe "Get-WindowsKerberosDefault" {
+    BeforeEach {
+        $script:origUserDnsDomain = $env:USERDNSDOMAIN
+        $script:origLogonServer = $env:LOGONSERVER
+        $script:origUserName = $env:USERNAME
+    }
+
+    AfterEach {
+        if ($null -eq $script:origUserDnsDomain) { Remove-Item Env:\USERDNSDOMAIN -ErrorAction SilentlyContinue }
+        else { $env:USERDNSDOMAIN = $script:origUserDnsDomain }
+        if ($null -eq $script:origLogonServer) { Remove-Item Env:\LOGONSERVER -ErrorAction SilentlyContinue }
+        else { $env:LOGONSERVER = $script:origLogonServer }
+        if ($null -eq $script:origUserName) { Remove-Item Env:\USERNAME -ErrorAction SilentlyContinue }
+        else { $env:USERNAME = $script:origUserName }
+    }
+
+    It "Derives realm (uppercased), an FQDN KDC, and the principal from the Windows session" {
+        $env:USERDNSDOMAIN = "marquardt.de"
+        $env:LOGONSERVER = "\\MQDE01DC07"
+        $env:USERNAME = "guentherk"
+
+        $result = Get-WindowsKerberosDefault
+
+        $result.Realm | Should -Be "MARQUARDT.DE"
+        $result.Kdc | Should -Be "MQDE01DC07.marquardt.de"
+        $result.Principal | Should -Be "guentherk"
+    }
+
+    It "Returns null realm and KDC off-domain (no USERDNSDOMAIN, no LOGONSERVER)" {
+        Remove-Item Env:\USERDNSDOMAIN -ErrorAction SilentlyContinue
+        Remove-Item Env:\LOGONSERVER -ErrorAction SilentlyContinue
+
+        $result = Get-WindowsKerberosDefault
+
+        $result.Realm | Should -BeNullOrEmpty
+        $result.Kdc | Should -BeNullOrEmpty
+    }
+
+    It "Falls back to the bare LOGONSERVER host when USERDNSDOMAIN is absent" {
+        Remove-Item Env:\USERDNSDOMAIN -ErrorAction SilentlyContinue
+        $env:LOGONSERVER = "\\DC01"
+
+        $result = Get-WindowsKerberosDefault
+
+        $result.Realm | Should -BeNullOrEmpty
+        $result.Kdc | Should -Be "DC01"
     }
 }

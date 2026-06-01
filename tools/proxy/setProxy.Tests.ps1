@@ -707,6 +707,27 @@ Describe "Get-ProxyCredentialPrefix" {
         Should -Invoke Write-Warning -Times 1 -Scope It
         Should -Invoke Read-Host -Times 0 -ParameterFilter { $AsSecureString }
     }
+
+    It "Uses -DefaultUser when the user presses Enter (blank input)" {
+        $securePassword = ConvertTo-SecureString 'pw' -AsPlainText -Force
+        Mock Read-Host { '' } -ParameterFilter { $Prompt -and -not $AsSecureString }
+        Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+
+        $result = Get-ProxyCredentialPrefix -DefaultUser 'guentherk'
+
+        $result | Should -Be 'guentherk:pw@'
+    }
+
+    It "Shows -DefaultUser in the prompt and lets a typed value override it" {
+        $securePassword = ConvertTo-SecureString 'pw' -AsPlainText -Force
+        Mock Read-Host { 'typed' } -ParameterFilter { $Prompt -and -not $AsSecureString }
+        Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+
+        $result = Get-ProxyCredentialPrefix -DefaultUser 'guentherk'
+
+        $result | Should -Be 'typed:pw@'
+        Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*[guentherk]*" -and -not $AsSecureString }
+    }
 }
 
 Describe "Get-MaskedProxyUrl" {

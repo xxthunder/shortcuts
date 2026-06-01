@@ -23,7 +23,6 @@
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
-- [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md)
 - [SC-036d — Negotiate mode Phase 4: switch targets to localhost and auto-start px](sc-036d.md)
 - [SC-036e — Mode-aware `--remove` teardown and Negotiate docs](sc-036e.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
@@ -34,6 +33,7 @@
 
 ### Done
 
+- [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)

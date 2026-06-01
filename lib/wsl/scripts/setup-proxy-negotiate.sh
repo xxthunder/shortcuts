@@ -8,25 +8,34 @@
 # written to root-owned config files (apt + temp pip.conf) for the install
 # step only and does not enter the user's interactive shell environment.
 #
-# Phase 1 ends with krb5-user, pipx, and px-proxy installed. Kerberos
-# configuration, kinit, and px startup ship in SC-036c; the switch of
+# Phase 1 (bootstrap, default) ends with krb5-user, pipx, and px-proxy installed.
+#
+# Phase 2-3 (--activate, SC-036c): writes /etc/krb5.conf + ~/.config/px/px.ini,
+# runs kinit interactively, starts px on 127.0.0.1:3128, and verifies the chain
+# with `px --test`. On kinit/px-test failure it leaves the Phase-1 Basic state
+# intact and exits non-zero (no half-migration). The switch of
 # .profile/apt/Docker/Podman to localhost:3128 ships in SC-036d.
 #
 # Exit codes:
 #   0  : Success
 #   1  : Prereq failure
 #   2  : Configuration / install failure
-#   3  : Verification failure
+#   3  : Verification failure (bootstrap tooling missing, or kinit / px --test failed)
 #   4  : Argument error
 
 USAGE="Usage: $0 --proxy-url=<url> --no-proxy=<hosts> --username=<user>
        (bootstrap proxy URL with credentials must be piped to stdin)
+       $0 --activate --proxy-url=<url> --realm=<REALM> --kdc=<host> --username=<user>
        $0 --remove --username=<user>"
 
 PROXY_URL=""
 NO_PROXY=""
 TARGET_USER=""
+KRB_REALM=""
+KRB_KDC=""
+KRB_PRINCIPAL=""
 REMOVE_MODE=false
+ACTIVATE_MODE=false
 
 for i in "$@"; do
   case $i in
@@ -39,8 +48,20 @@ for i in "$@"; do
     --username=*)
       TARGET_USER="${i#*=}"
       ;;
+    --realm=*)
+      KRB_REALM="${i#*=}"
+      ;;
+    --kdc=*)
+      KRB_KDC="${i#*=}"
+      ;;
+    --principal=*)
+      KRB_PRINCIPAL="${i#*=}"
+      ;;
     --remove)
       REMOVE_MODE=true
+      ;;
+    --activate)
+      ACTIVATE_MODE=true
       ;;
     *)
       ;;
@@ -64,6 +85,182 @@ if [ "$REMOVE_MODE" = true ]; then
     log_error "Negotiate --remove teardown is not yet implemented (ships in SC-036e)."
     log_error "Use 'wsl-manager setup-proxy' interactively or call setup-proxy.sh --remove directly to clean up Basic-mode artifacts."
     exit 4
+fi
+
+# --------------------------------------------------------------------------
+# Phase 2-3 — Kerberos config + px activation (SC-036c)
+# --------------------------------------------------------------------------
+# Runs as a SEPARATE invocation from Phase 1 so stdin stays attached to the
+# terminal — kinit prompts for the Kerberos password interactively. All inputs
+# here (realm, KDC, proxy host) are non-secret, so they arrive on the cmdline.
+if [ "$ACTIVATE_MODE" = true ]; then
+    if [ -z "$PROXY_URL" ] || [ -z "$KRB_REALM" ] || [ -z "$KRB_KDC" ] || [ -z "$KRB_PRINCIPAL" ] || [ -z "$TARGET_USER" ]; then
+        log_error "--activate requires --proxy-url, --realm, --kdc, --principal, and --username."
+        echo "$USAGE" >&2
+        exit 4
+    fi
+
+    TARGET_HOME=$(eval echo "~$TARGET_USER")
+    PX_BIN="$TARGET_HOME/.local/bin/px"
+    PX_CONF_DIR="$TARGET_HOME/.config/px"
+    PX_INI="$PX_CONF_DIR/px.ini"
+    # px.ini server = host:port — strip the scheme (the Negotiate URL carries no
+    # credentials) and any trailing path.
+    PX_SERVER="${PROXY_URL#*://}"
+    PX_SERVER="${PX_SERVER%%/*}"
+    # domain_realm maps DNS domains to the realm; derive it from the realm by
+    # lowercasing. Hostname->realm lookups that don't match still fall back to
+    # default_realm, so an imperfect domain here does not break SPNEGO.
+    KRB_DOMAIN=$(echo "$KRB_REALM" | tr '[:upper:]' '[:lower:]')
+
+    if [ ! -x "$PX_BIN" ]; then
+        log_error "$PX_BIN not found — run the Phase 1 bootstrap install first."
+        exit 3
+    fi
+
+    # Phase 2: /etc/krb5.conf (root-owned, system-wide). Teardown (SC-036e) does
+    # NOT delete this — other services may rely on Kerberos.
+    log_info "Writing /etc/krb5.conf (realm $KRB_REALM, kdc $KRB_KDC)..."
+    write_krb5_conf() {
+        sudo tee /etc/krb5.conf > /dev/null <<EOF
+[libdefaults]
+    default_realm = $KRB_REALM
+
+[realms]
+    $KRB_REALM = {
+        kdc = $KRB_KDC
+        admin_server = $KRB_KDC
+    }
+
+[domain_realm]
+    .$KRB_DOMAIN = $KRB_REALM
+    $KRB_DOMAIN = $KRB_REALM
+EOF
+    }
+    write_krb5_conf || { log_error "Failed to write /etc/krb5.conf"; exit 2; }
+
+    # Phase 2: ~/.config/px/px.ini (NO credentials — px authenticates with the
+    # Kerberos ticket via SPNEGO). auth = NEGOTIATE is mandatory; px defaults to
+    # NTLM, which a Kerberos-only upstream rejects. listen is an IP, not a port.
+    log_info "Writing $PX_INI (server $PX_SERVER, auth NEGOTIATE, no credentials)..."
+    write_px_ini() {
+        mkdir -p "$PX_CONF_DIR" || return 1
+        cat > "$PX_INI" <<EOF
+[proxy]
+server = $PX_SERVER
+port = 3128
+listen = 127.0.0.1
+auth = NEGOTIATE
+EOF
+    }
+    write_px_ini || { log_error "Failed to write $PX_INI"; exit 2; }
+
+    # Phase 2: kinit interactively, unless a valid ticket already exists (idempotent
+    # re-run). kinit reads the password from /dev/tty, so it prompts on the terminal.
+    # The principal is the CORPORATE account (passed in via --principal), not the WSL
+    # Linux user — kinit with no principal would default to the Linux username (e.g.
+    # 'wsluser'), which is not in the AD directory. If the principal already carries a
+    # realm (UPN-style user@domain) use it verbatim; otherwise qualify with the realm.
+    case "$KRB_PRINCIPAL" in
+        *@*) KINIT_PRINCIPAL="$KRB_PRINCIPAL" ;;
+        *)   KINIT_PRINCIPAL="$KRB_PRINCIPAL@$KRB_REALM" ;;
+    esac
+    if klist -s 2>/dev/null; then
+        log_info "A valid Kerberos ticket already exists (klist -s); skipping kinit."
+    else
+        log_info "Obtaining a Kerberos ticket for $KINIT_PRINCIPAL — enter your Kerberos password when prompted."
+        if ! kinit "$KINIT_PRINCIPAL"; then
+            log_error "kinit failed — no Kerberos ticket obtained for $KINIT_PRINCIPAL. Your previous (Basic) proxy config is left intact; nothing was switched to localhost. Re-run and check the principal/realm/KDC and your password."
+            exit 3
+        fi
+    fi
+
+    # Phase 3: stop any stale px so our verification instance can bind 3128.
+    if pgrep -x px > /dev/null 2>&1; then
+        log_info "Stopping existing px instance..."
+        pkill -x px 2>/dev/null || true
+        sleep 1
+    fi
+
+    # Phase 3: start px ONLY to verify the chain, then stop it (below). px is NOT
+    # left running by this phase: a persistent daemon keeps the WSL session alive,
+    # so the one-shot wsl.exe invocation (Start-Process -Wait) never returns and the
+    # caller hangs after the script finishes (SC-036c UAT — setsid/nohup detachment
+    # does not help; WSL waits for the session's processes). The persistent px
+    # lifecycle (shell auto-start guarded by `klist -s`) belongs to SC-036d, and
+    # nothing points at localhost:3128 until then anyway. setsid + </dev/null still
+    # detaches it from the pty for the brief verification window.
+    log_info "Starting px on 127.0.0.1:3128 for verification..."
+    setsid "$PX_BIN" < /dev/null > /dev/null 2>&1 &
+    # px takes a moment to bind; wait for the process before verifying.
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        pgrep -x px > /dev/null 2>&1 && break
+        sleep 1
+    done
+    if ! pgrep -x px > /dev/null 2>&1; then
+        log_error "px did not start. Check $PX_INI."
+        exit 3
+    fi
+
+    # Phase 3: verify the full chain (Kerberos ticket + SPNEGO + upstream proxy +
+    # TLS) end-to-end with curl THROUGH px. We deliberately do NOT use `px --test`:
+    # px's own test client does not use the system CA bundle (/etc/ssl/certs), so
+    # its HTTPS sub-tests fail with cert error 60 against a corporate TLS-inspecting
+    # proxy even when the chain is fully working (SC-036c UAT). curl honors the
+    # system trust store, so once the corporate root CA is installed there an HTTPS
+    # request via px is the authoritative test of the whole chain. The result is
+    # captured (not exited on) so px is always stopped before we return.
+    verify_rc=0
+    verify_msg=""
+    if command -v curl > /dev/null 2>&1; then
+        VERIFY_URL="https://www.google.com"
+        log_info "Verifying the proxy chain end-to-end (curl $VERIFY_URL via px)..."
+        http_code=""
+        curl_rc=0
+        for _ in 1 2 3; do
+            http_code=$(curl -x http://127.0.0.1:3128 -s -o /dev/null -w '%{http_code}' --max-time 30 "$VERIFY_URL")
+            curl_rc=$?
+            [ "$curl_rc" -eq 0 ] && [ -n "$http_code" ] && [ "$http_code" != "000" ] && break
+            sleep 2
+        done
+        case "$http_code" in
+            2*|3*)
+                verify_msg="Proxy chain verified: $VERIFY_URL returned HTTP $http_code via px."
+                ;;
+            407)
+                verify_rc=3
+                verify_msg="The upstream proxy returned HTTP 407 — Negotiate/Kerberos authentication failed. Check the realm/KDC/principal and your ticket (klist)."
+                ;;
+            *)
+                verify_rc=3
+                if [ "$curl_rc" -eq 60 ] || [ "$curl_rc" -eq 35 ] || [ "$curl_rc" -eq 77 ]; then
+                    verify_msg="HTTPS via px failed TLS certificate verification (curl error $curl_rc). Your corporate TLS-inspecting proxy re-signs HTTPS with an internal root CA this distro does not trust. Install it, then re-run: sudo cp /mnt/c/path/to/corporate-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates"
+                else
+                    verify_msg="Could not verify the proxy chain via px (curl exit $curl_rc, HTTP '$http_code')."
+                fi
+                ;;
+        esac
+    else
+        verify_msg="curl not found — skipped end-to-end verification (px started and bound 127.0.0.1:3128 successfully)."
+    fi
+
+    # Always stop px before returning — a lingering daemon would hang the caller.
+    log_info "Stopping px (verification done; SC-036d runs px persistently from your shell)..."
+    pkill -x px 2>/dev/null || true
+
+    if [ "$verify_rc" -ne 0 ]; then
+        log_error "$verify_msg"
+        log_error "Your previous (Basic) proxy config is left intact; nothing was switched to localhost."
+        exit 3
+    fi
+
+    log_info "Phases 2-3 complete."
+    log_info "  $verify_msg"
+    log_info "  /etc/krb5.conf written (realm $KRB_REALM, kdc $KRB_KDC)"
+    log_info "  $PX_INI written (auth = NEGOTIATE, no credentials)"
+    log_info "  Negotiate chain verified end-to-end via px (px started for the test, then stopped)."
+    log_info "  Mode marker stays 'negotiate-bootstrap' until Phase 4 (SC-036d) switches tools to localhost:3128 and auto-starts px from your shell."
+    exit 0
 fi
 
 if [ -z "$PROXY_URL" ] || [ -z "$NO_PROXY" ] || [ -z "$TARGET_USER" ]; then

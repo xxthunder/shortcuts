@@ -25,9 +25,54 @@ function Get-NegotiateBootstrapCredential {
     # Reuse the shared prompt/encode helper (from setProxy.ps1, dot-sourced by
     # Install-WslProxy). It percent-encodes both username and password so domain/
     # UPN logins splice into the URL safely, and returns "" on a blank username.
+    # Pre-fill the username with the Windows account (same value proposed for the
+    # Kerberos principal) so the user usually just presses Enter.
     return Get-ProxyCredentialPrefix `
         -NamePrompt "Enter your proxy username (for one-time bootstrap install)" `
-        -SecretPrompt "Enter your proxy password"
+        -SecretPrompt "Enter your proxy password" `
+        -DefaultUser $env:USERNAME
+}
+
+function Get-WindowsKerberosDefault {
+    <#
+    .SYNOPSIS
+        Best-effort discovery of the Kerberos realm, KDC, and principal from the
+        Windows domain session, used to pre-fill the Negotiate prompts.
+
+    .DESCRIPTION
+        On a domain-joined PC the Kerberos realm equals the AD DNS domain
+        ($env:USERDNSDOMAIN, uppercased by convention), the DC that authenticated
+        the session ($env:LOGONSERVER) is a guaranteed-reachable KDC, and the
+        Kerberos principal is the Windows account name ($env:USERNAME) — NOT the
+        WSL Linux user, which is not in the corporate directory. Returns nulls
+        off-domain so the caller falls back to manual entry.
+
+    .OUTPUTS
+        Hashtable with keys Realm, Kdc, and Principal (any may be $null).
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    $realm = if (-not [string]::IsNullOrWhiteSpace($env:USERDNSDOMAIN)) {
+        $env:USERDNSDOMAIN.ToUpperInvariant()
+    }
+    else { $null }
+
+    $principal = if (-not [string]::IsNullOrWhiteSpace($env:USERNAME)) { $env:USERNAME } else { $null }
+
+    # LOGONSERVER is "\\HOST" (NetBIOS). Promote to an FQDN under the DNS domain
+    # so it resolves inside WSL, which uses the corporate resolver.
+    $kdc = $null
+    $logonHost = if ($env:LOGONSERVER) { $env:LOGONSERVER -replace '^\\\\', '' } else { $null }
+    if (-not [string]::IsNullOrWhiteSpace($logonHost)) {
+        $kdc = if (-not [string]::IsNullOrWhiteSpace($env:USERDNSDOMAIN)) {
+            "$logonHost.$($env:USERDNSDOMAIN)"
+        }
+        else { $logonHost }
+    }
+
+    return @{ Realm = $realm; Kdc = $kdc; Principal = $principal }
 }
 
 function Install-WslProxy {
@@ -141,7 +186,9 @@ function Install-WslProxy {
     if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
         $wantCreds = Get-UserConfirmation -message "Do you want to provide proxy credentials?" -defaultValueForUser $true
         if ($wantCreds) {
-            $credentialPrefix = Get-ProxyCredentialsFromUser
+            # Pre-fill the username with the Windows account so the user can accept
+            # it with Enter (same value proposed for Negotiate/Kerberos).
+            $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
             if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
                 # Insert credentials into proxy URL: http://user:pass@host:port
                 $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
@@ -152,13 +199,57 @@ function Install-WslProxy {
     # Negotiate: prompt for bootstrap creds. The Basic-auth URL is piped to the
     # script via stdin (not cmdline, not env) so it never appears in /proc/<pid>/*.
     # The clean $ProxyUrl (no creds) is what the long-lived px config will use.
+    # Also gather the Kerberos realm + KDC for Phase 2 (krb5.conf). These are not
+    # secrets, so they ride on the cmdline of the (separate) activate invocation.
     $bootstrapProxyUrl = $null
+    $krbRealm = $null
+    $krbKdc = $null
+    $krbPrincipal = $null
     if ($authMode -eq 'negotiate' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
         $bootstrapPrefix = Get-NegotiateBootstrapCredential
         if ([string]::IsNullOrWhiteSpace($bootstrapPrefix)) {
             throw "Bootstrap credentials are required for Negotiate mode setup."
         }
         $bootstrapProxyUrl = $ProxyUrl -replace '://', "://$bootstrapPrefix"
+
+        # Pre-fill realm/KDC from the Windows domain session so the user can press
+        # Enter to accept rather than hunting for values they rarely know. The
+        # detected value is shown in the prompt, so the choice stays auditable.
+        $krbDefaults = Get-WindowsKerberosDefault
+
+        $realmPrompt = if ($krbDefaults.Realm) {
+            "Enter your Kerberos realm [$($krbDefaults.Realm)]"
+        }
+        else { "Enter your Kerberos realm (e.g. CORP.COMPANY.COM)" }
+        $krbRealm = Read-Host $realmPrompt
+        if ([string]::IsNullOrWhiteSpace($krbRealm)) { $krbRealm = $krbDefaults.Realm }
+        if ([string]::IsNullOrWhiteSpace($krbRealm)) {
+            throw "A Kerberos realm is required for Negotiate mode setup."
+        }
+
+        $kdcPrompt = if ($krbDefaults.Kdc) {
+            "Enter your Kerberos KDC hostname [$($krbDefaults.Kdc)]"
+        }
+        else { "Enter your Kerberos KDC hostname (e.g. kdc.company.com)" }
+        $krbKdc = Read-Host $kdcPrompt
+        if ([string]::IsNullOrWhiteSpace($krbKdc)) { $krbKdc = $krbDefaults.Kdc }
+        if ([string]::IsNullOrWhiteSpace($krbKdc)) {
+            throw "A Kerberos KDC hostname is required for Negotiate mode setup."
+        }
+
+        # Kerberos principal = the corporate (Windows) account, NOT the WSL Linux
+        # user. kinit with no principal defaults to the Linux username (e.g.
+        # 'wsluser'), which is not in the AD directory and fails. Default to the
+        # Windows username; user can override (e.g. a UPN).
+        $principalPrompt = if ($krbDefaults.Principal) {
+            "Enter your Kerberos username/principal [$($krbDefaults.Principal)]"
+        }
+        else { "Enter your Kerberos username/principal (e.g. jdoe)" }
+        $krbPrincipal = Read-Host $principalPrompt
+        if ([string]::IsNullOrWhiteSpace($krbPrincipal)) { $krbPrincipal = $krbDefaults.Principal }
+        if ([string]::IsNullOrWhiteSpace($krbPrincipal)) {
+            throw "A Kerberos username/principal is required for Negotiate mode setup."
+        }
     }
 
     # 4. Set NoProxy — prefer existing env var, fall back to default
@@ -241,6 +332,33 @@ Then run setup-proxy again.
         }
         $exitCode = Invoke-WslDistroScript @invokeParams
 
+        # Negotiate Phases 2-3 (SC-036c): on bootstrap success, run the activate
+        # step as a SEPARATE interactive invocation (no stdin pipe) so kinit can
+        # prompt for the Kerberos password on the terminal. Realm/KDC/proxy are not
+        # secrets, so they go on the cmdline. The script leaves the Phase-1 Basic
+        # state intact on failure (marker stays 'negotiate-bootstrap').
+        if ($authMode -eq 'negotiate' -and -not $isDirect -and $exitCode -eq 0) {
+            Write-Information ""
+            Write-Information "Phase 1 bootstrap complete. Starting Phases 2-3 (Kerberos config + px activation)..."
+            Write-Information "  You will be prompted for your Kerberos password (kinit)."
+            Write-Information ""
+            $activateArgs = @(
+                "--activate",
+                "--proxy-url=$ProxyUrl",
+                "--realm=$krbRealm",
+                "--kdc=$krbKdc",
+                "--principal=$krbPrincipal",
+                "--username=$username"
+            )
+            $exitCode = Invoke-WslDistroScript `
+                -ScriptPath $scriptPath `
+                -DistroName $DistroName `
+                -Arguments $activateArgs `
+                -StopAtError $false `
+                -PrintCommand $false `
+                -Interactive
+        }
+
         switch ($exitCode) {
             0 {
                 Write-Information ""
@@ -248,7 +366,7 @@ Then run setup-proxy again.
                     Write-Information "Successfully removed proxy configuration from '$DistroName'."
                 }
                 elseif ($authMode -eq 'negotiate') {
-                    Write-Information "Successfully completed Negotiate Phase 1 (bootstrap install) in '$DistroName'."
+                    Write-Information "Successfully configured Negotiate proxy (Phases 1-3) in '$DistroName'."
                 }
                 else {
                     Write-Information "Successfully configured proxy in '$DistroName'."
@@ -257,11 +375,14 @@ Then run setup-proxy again.
                 Write-Information "Affected targets:"
                 if ($authMode -eq 'negotiate' -and -not $isDirect) {
                     Write-Information "  - krb5-user, pipx, px-proxy (installed)"
+                    Write-Information "  - /etc/krb5.conf (realm + KDC)"
+                    Write-Information "  - ~/.config/px/px.ini (no credentials)"
+                    Write-Information "  - Negotiate chain verified end-to-end via px over HTTPS (px started for the test, then stopped)"
                     Write-Information "  - /etc/apt/apt.conf.d/99proxy (bootstrap credentials)"
                     Write-Information "  - /etc/wsl-manager/proxy-mode (= negotiate-bootstrap)"
                     Write-Information "  - ~/.profile, ~/.bashrc (legacy Basic-mode proxy block removed)"
                     Write-Information ""
-                    Write-Information "Phases 2-4 (Kerberos config, px activation, switch to localhost:3128) are not done yet."
+                    Write-Information "Phase 4 (switch apt/Docker/Podman/.profile to localhost:3128 + px shell auto-start) ships in SC-036d."
                 }
                 else {
                     Write-Information "  - ~/.profile (environment variables)"
@@ -271,13 +392,17 @@ Then run setup-proxy again.
                 }
 
                 # Auto-terminate so a fresh shell loads the updated ~/.profile.
+                # Skipped for Negotiate: Phases 1-3 do not change ~/.profile, and a
+                # terminate would kill the px instance we just started and verified.
                 # Wrapped: a termination failure here must not be reported as a
                 # proxy-configuration failure — the proxy was applied successfully.
-                try {
-                    Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
-                }
-                catch {
-                    Write-Warning "Proxy was configured successfully, but auto-terminate failed: $_. Run 'wsl.exe --terminate $DistroName' manually so a fresh shell picks up the new environment."
+                if ($authMode -ne 'negotiate') {
+                    try {
+                        Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
+                    }
+                    catch {
+                        Write-Warning "Proxy was configured successfully, but auto-terminate failed: $_. Run 'wsl.exe --terminate $DistroName' manually so a fresh shell picks up the new environment."
+                    }
                 }
                 return $true
             }
@@ -286,11 +411,14 @@ Then run setup-proxy again.
             }
             2 {
                 if ($authMode -eq 'negotiate') {
-                    throw "Negotiate bootstrap install failed (exit 2): the proxy rejected the bootstrap credentials, the proxy is unreachable, or a package install failed. See the script output above for details."
+                    throw "Negotiate setup failed (exit 2): the proxy rejected the bootstrap credentials, the proxy is unreachable, a package install failed, or writing the Kerberos/px config failed. See the script output above for details."
                 }
                 throw "Configuration failed. Check file system permissions."
             }
             3 {
+                if ($authMode -eq 'negotiate') {
+                    throw "Negotiate verification failed (exit 3): kinit could not obtain a Kerberos ticket, or the end-to-end proxy check (curl HTTPS via px) failed — a 407 (auth) or a TLS cert error (corporate root CA not trusted in the distro). Your previous proxy configuration was left intact (nothing was switched to localhost). See the output above for the specific cause."
+                }
                 throw "Verification failed. Proxy configured but verification checks did not pass."
             }
             4 {

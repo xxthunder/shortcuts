@@ -442,6 +442,70 @@ Describe "Invoke-WslDistroScript" {
                 Should -Not -Throw
         }
     }
+
+    Context "Interactive" {
+        It "Should bypass Invoke-CommandLine and call Invoke-WslExeInteractive when -Interactive is provided" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-CommandLine { $global:LASTEXITCODE = 0; "" }
+            Mock Invoke-WslExeInteractive { 0 }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Interactive
+
+            Should -Invoke Invoke-CommandLine -Times 0
+            Should -Invoke Invoke-WslExeInteractive -Times 1 -ParameterFilter {
+                $DistroName -eq "Debian"
+            }
+        }
+
+        It "Should forward arguments and converted WSL path to Invoke-WslExeInteractive" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeInteractive { 0 }
+
+            Invoke-WslDistroScript -ScriptPath "C:\path\to\script.sh" -DistroName "Debian" `
+                -Arguments @("--activate", "--realm=CORP.X.COM") -Interactive
+
+            Should -Invoke Invoke-WslExeInteractive -Times 1 -ParameterFilter {
+                $WslPath -eq "/mnt/c/path/to/script.sh" -and
+                $Arguments -contains "--activate" -and
+                $Arguments -contains "--realm=CORP.X.COM"
+            }
+        }
+
+        It "Should not pipe stdin on the interactive path (keeps the console tty for kinit)" {
+            # Interactive must use the no-stdin wrapper so WSL allocates a pty and
+            # kinit's password prompt reaches /dev/tty. The stdin wrapper would
+            # close stdin and break the prompt.
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeWithStdin { 0 }
+            Mock Invoke-WslExeInteractive { 0 }
+
+            Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Interactive
+
+            Should -Invoke Invoke-WslExeWithStdin -Times 0
+            Should -Invoke Invoke-WslExeInteractive -Times 1
+        }
+
+        It "Should throw on non-zero exit when StopAtError is true" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeInteractive { 3 }
+
+            { Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Interactive -StopAtError $true } |
+                Should -Throw "*exit code: 3*"
+        }
+
+        It "Should return the exit code from Invoke-WslExeInteractive when StopAtError is false" {
+            Mock Test-Path { $true }
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslExeInteractive { 3 }
+
+            $rc = Invoke-WslDistroScript -ScriptPath "C:\test.sh" -DistroName "Debian" -Interactive -StopAtError $false
+            $rc | Should -Be 3
+        }
+    }
 }
 
 Describe "Invoke-WslExeWithStdin" {
@@ -462,6 +526,52 @@ Describe "Invoke-WslExeWithStdin" {
             $rc = Invoke-WslExeWithStdin -DistroName "Debian" -WslPath "/mnt/c/test.sh" -StdinInput "x"
 
             $rc | Should -Be 5
+        }
+    }
+}
+
+Describe "Invoke-WslExeInteractive" {
+    Context "Native invocation" {
+        It "Should start wsl.exe (inheriting the console) with the distro, path, and arguments and return its exit code" {
+            Mock Start-Process { [PSCustomObject]@{ ExitCode = 0 } }
+
+            $rc = Invoke-WslExeInteractive -DistroName "Debian" -WslPath "/mnt/c/test.sh" `
+                -Arguments @("--activate", "--realm=CORP.X.COM")
+
+            $rc | Should -Be 0
+            Should -Invoke Start-Process -Times 1 -ParameterFilter {
+                $FilePath -eq 'wsl.exe' -and
+                $NoNewWindow -eq $true -and
+                $Wait -eq $true -and
+                $PassThru -eq $true -and
+                $ArgumentList -contains '--distribution' -and
+                $ArgumentList -contains 'Debian' -and
+                $ArgumentList -contains '/mnt/c/test.sh' -and
+                $ArgumentList -contains '--activate' -and
+                $ArgumentList -contains '--realm=CORP.X.COM'
+            }
+        }
+
+        It "Should return the non-zero exit code reported by the process" {
+            Mock Start-Process { [PSCustomObject]@{ ExitCode = 3 } }
+
+            $rc = Invoke-WslExeInteractive -DistroName "Debian" -WslPath "/mnt/c/test.sh"
+
+            $rc | Should -Be 3
+        }
+
+        It "Should run wsl.exe via Start-Process -NoNewWindow, not a captured/piped call (preserves the pty for kinit)" {
+            # SC-036c UAT: the call operator (with or without Out-Host) either
+            # corrupted kinit's password input or swallowed output, because
+            # capturing the child's stdout denies WSL a real pty. The child must
+            # inherit the console via Start-Process -NoNewWindow. Guard the source.
+            $execSource = Get-Content (Join-Path $PSScriptRoot "exec.ps1") -Raw
+            # Capture the code AFTER the doc comment (which mentions Out-Host/pty to
+            # explain the gotcha) up to the closing brace.
+            ($execSource -match '(?s)function Invoke-WslExeInteractive.*?#>(.*?\n})') | Should -BeTrue
+            $Matches[1] | Should -Match 'Start-Process'
+            $Matches[1] | Should -Match '-NoNewWindow'
+            $Matches[1] | Should -Not -Match 'Out-Host'
         }
     }
 }

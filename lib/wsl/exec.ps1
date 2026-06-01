@@ -150,6 +150,12 @@ function Invoke-WslDistroScript {
         exposing them in /proc/<pid>/cmdline (env vars persist for every child shell;
         cmdline persists for the script's lifetime). Bypasses Invoke-CommandLine
         because Invoke-Expression cannot pipe stdin.
+
+    .PARAMETER Interactive
+        If set, runs the script with stdin attached to the console (not piped, not
+        suppressed) so WSL allocates a pty and interactive prompts inside the script
+        — e.g. kinit's Kerberos password prompt — reach /dev/tty. Mutually exclusive
+        with StdinInput (a piped stdin closes the terminal the prompt needs).
     #>
     [CmdletBinding()]
     param(
@@ -171,7 +177,10 @@ function Invoke-WslDistroScript {
         [bool]$PrintCommand = $true,
 
         [Parameter(Mandatory = $false)]
-        [string]$StdinInput
+        [string]$StdinInput,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Interactive
     )
 
     # Validate script exists
@@ -207,6 +216,20 @@ function Invoke-WslDistroScript {
             Write-Verbose "Executing (stdin piped): wsl.exe --distribution $DistroName --exec bash -l `"$wslPath`"$argString"
         }
         $exitCode = Invoke-WslExeWithStdin -DistroName $DistroName -WslPath $wslPath -Arguments $Arguments -StdinInput $StdinInput
+        if ($exitCode -ne 0 -and $StopAtError) {
+            throw "Script execution failed with exit code: $exitCode"
+        }
+        return $exitCode
+    }
+
+    # Interactive path: leave stdin on the console so WSL allocates a pty and the
+    # script can prompt (e.g. kinit). Bypasses Invoke-CommandLine, which redirects
+    # stdout to Out-Null and would hide the prompt's surrounding output.
+    if ($Interactive) {
+        if ($PrintCommand) {
+            Write-Verbose "Executing (interactive): wsl.exe --distribution $DistroName --exec bash -l `"$wslPath`"$argString"
+        }
+        $exitCode = Invoke-WslExeInteractive -DistroName $DistroName -WslPath $wslPath -Arguments $Arguments
         if ($exitCode -ne 0 -and $StopAtError) {
             throw "Script execution failed with exit code: $exitCode"
         }
@@ -249,4 +272,37 @@ function Invoke-WslExeWithStdin {
     $global:LASTEXITCODE = 0
     $StdinInput | & wsl.exe --distribution $DistroName --exec bash -l $WslPath @Arguments | Out-Host
     return $LASTEXITCODE
+}
+
+function Invoke-WslExeInteractive {
+    <#
+    .SYNOPSIS
+        Runs wsl.exe as a child that inherits the real console, so the script can
+        prompt the user interactively (e.g. kinit's Kerberos password) and its
+        output appears live. Mockable wrapper so tests don't shell out.
+
+    .DESCRIPTION
+        Uses Start-Process -NoNewWindow -Wait -PassThru rather than the call
+        operator. The call operator does not work here: WSL allocates a pty only
+        when its std handles are console handles, but PowerShell captures a native
+        command's stdout whenever the result is consumed up the call chain (here
+        Install-WslProxy assigns the exit code). That capture replaces stdout with
+        a pipe — so the output is swallowed (blinking cursor) AND no pty is
+        allocated, which corrupts kinit's password read. Earlier piping to Out-Host
+        showed output but still broke the pty (kinit reported "Password incorrect"
+        for a correct password — SC-036c UAT). Start-Process -NoNewWindow gives the
+        child the parent console directly (real pty, live I/O) and -PassThru yields
+        the exit code without the pipeline ever touching the child's stdout.
+    #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory = $true)][string]$DistroName,
+        [Parameter(Mandatory = $true)][string]$WslPath,
+        [Parameter(Mandatory = $false)][string[]]$Arguments = @()
+    )
+
+    $argList = @('--distribution', $DistroName, '--exec', 'bash', '-l', $WslPath) + $Arguments
+    $proc = Start-Process -FilePath 'wsl.exe' -ArgumentList $argList -NoNewWindow -Wait -PassThru
+    return $proc.ExitCode
 }

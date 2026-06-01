@@ -122,13 +122,27 @@ function Get-ProxyCredentialPrefix {
     [OutputType([string])]
     param(
         [string]$NamePrompt = "Please enter your proxy username",
-        [string]$SecretPrompt = "Please enter your proxy password"
+        [string]$SecretPrompt = "Please enter your proxy password",
+        [string]$DefaultUser = ""
     )
 
-    [string]$account = Read-Host $NamePrompt
+    # Pre-fill the username with a caller-supplied default (e.g. the Windows
+    # account) so the user can press Enter to accept. Shown in the prompt so the
+    # choice stays visible. Blank default => original "no username" behavior.
+    $namePromptText = if (-not [string]::IsNullOrWhiteSpace($DefaultUser)) {
+        "$NamePrompt [$DefaultUser]"
+    }
+    else { $NamePrompt }
+
+    [string]$account = Read-Host $namePromptText
     if ([string]::IsNullOrEmpty($account)) {
-        Write-Warning "No username provided."
-        return ""
+        if (-not [string]::IsNullOrWhiteSpace($DefaultUser)) {
+            $account = $DefaultUser
+        }
+        else {
+            Write-Warning "No username provided."
+            return ""
+        }
     }
     [string]$encodedUser = [System.Uri]::EscapeDataString($account)
 
@@ -157,7 +171,9 @@ function Get-ProxyCredentialPrefix {
 function Get-ProxyCredentialsFromUser {
     [CmdletBinding()]
     [OutputType([string])]
-    param()
+    param(
+        [string]$DefaultUser = ""
+    )
 
     Write-Warning "SECURITY RISK: Credentials will be stored in environment variables in plain text!"
     Write-Warning "This makes your password visible to any process that reads environment variables."
@@ -165,7 +181,8 @@ function Get-ProxyCredentialsFromUser {
 
     return Get-ProxyCredentialPrefix `
         -NamePrompt "Please enter your Windows user name for proxy authentication" `
-        -SecretPrompt "Please enter your Windows password for proxy authentication"
+        -SecretPrompt "Please enter your Windows password for proxy authentication" `
+        -DefaultUser $DefaultUser
 }
 
 <#
