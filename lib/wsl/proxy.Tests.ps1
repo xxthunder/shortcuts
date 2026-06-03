@@ -26,6 +26,10 @@ Describe "Install-WslProxy" {
         Mock Get-WslDefaultUser { "developer" }
         Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
         Mock Stop-WslDistro { }
+        # Force interactive behavior so the mode/auth prompts go through Read-Host
+        # (Get-UserChoice otherwise short-circuits to its default under Pester). The
+        # Read-Host mocks below then drive the selection, as before.
+        Mock Test-RunningInCIorTestEnvironment { $false }
         # Default prompt answers — filtered mocks take precedence, so tests only
         # override the prompts they care about. Unfiltered Read-Host mocks at test
         # level still act as the fallback for unmatched prompts (e.g. credentials).
@@ -250,7 +254,7 @@ Describe "Install-WslProxy" {
     }
 
     Context "Invalid mode choice" {
-        It "Should throw on unrecognized input" {
+        It "Should re-prompt and then throw on persistently unrecognized input" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "X" }
 
             { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*Invalid choice*"

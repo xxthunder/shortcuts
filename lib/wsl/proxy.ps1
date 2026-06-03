@@ -133,9 +133,12 @@ function Install-WslProxy {
     $ProxyUrl = $null
     $isDirect = $false
 
-    $modeChoice = Read-Host "Proxy setup: [A]uto / [M]anual / [R]emove"
-    switch -Regex ($modeChoice) {
-        '^\s*[Aa]' {
+    # Enter accepts the default (Auto); the capitalized letter marks it, matching
+    # the [Y/n] convention used by Get-UserConfirmation. Get-UserChoice re-prompts
+    # on invalid input instead of aborting.
+    $modeChoice = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+    switch ($modeChoice) {
+        'Auto' {
             # Auto: PAC detection with explicit confirmation
             $internetSettings = Get-InternetSettingsFromRegistry
             $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
@@ -157,7 +160,7 @@ function Install-WslProxy {
             }
             break
         }
-        '^\s*[Mm]' {
+        'Manual' {
             $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
             if ([string]::IsNullOrWhiteSpace($manualEntry)) {
                 throw "No proxy host:port provided."
@@ -165,22 +168,19 @@ function Install-WslProxy {
             $ProxyUrl = "http://$manualEntry"
             break
         }
-        '^\s*[Rr]' {
+        'Remove' {
             $isDirect = $true
             break
         }
-        default {
-            throw "Invalid choice '$modeChoice'. Expected [A]uto, [M]anual, or [R]emove."
-        }
     }
 
-    # 3. If proxy URL resolved, ask for auth method, then (Basic only) credentials
+    # 3. If proxy URL resolved, ask for auth method, then (Basic only) credentials.
+    # Enter defaults to Basic (preserves prior behavior, now shown explicitly).
     $authMode = 'basic'
     if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $authChoice = Read-Host "Auth method: [B]asic (credentials in env) or [N]egotiate (Kerberos via px)"
-        if ($authChoice -eq 'N' -or $authChoice -eq 'n') {
-            $authMode = 'negotiate'
-        }
+        Write-Information "Auth method — Basic stores credentials in environment variables; Negotiate uses Kerberos via a local px proxy."
+        $authChoice = Get-UserChoice -message "Auth method" -options @('Basic', 'Negotiate') -defaultOption 'Basic'
+        $authMode = $authChoice.ToLower()
     }
 
     if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {

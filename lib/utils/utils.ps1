@@ -265,6 +265,102 @@ function Get-UserConfirmation {
     }
 }
 
+function Get-UserChoice {
+    <#
+    .SYNOPSIS
+        Prompts the user to pick one option from a fixed set, with an Enter default.
+
+    .DESCRIPTION
+        Single-choice counterpart to Get-UserConfirmation. Mirrors its conventions:
+        the default option is returned when the user presses Enter, the prompt marks
+        the default by capitalizing its first letter (e.g. "[A]uto / [m]anual /
+        [r]emove"), invalid input re-prompts, and CI/test environments short-circuit
+        to a fixed value without prompting. The user selects by typing either the
+        full option label or its first letter (case-insensitive); option initials are
+        assumed distinct.
+
+    .PARAMETER message
+        The prompt text. The option hint and "(Enter = <default>)" suffix are
+        appended automatically.
+
+    .PARAMETER options
+        Ordered list of option labels (e.g. 'Auto','Manual','Remove').
+
+    .PARAMETER defaultOption
+        The label returned when the user presses Enter. Must be one of -options.
+
+    .PARAMETER valueForCi
+        The label returned in CI/test environments. Defaults to -defaultOption.
+
+    .PARAMETER maxAttempts
+        How many times to re-prompt on invalid input before throwing. Guards against
+        an infinite loop when input is non-interactive but not detected as CI.
+
+    .OUTPUTS
+        The selected option label, in its original casing (always a member of -options).
+
+    .EXAMPLE
+        Get-UserChoice -message "Proxy setup" -options @('Auto','Manual','Remove') -defaultOption 'Auto'
+        Prompts "Proxy setup [A]uto / [m]anual / [r]emove (Enter = Auto)"; Enter returns 'Auto'.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$message,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$options,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$defaultOption,
+        [Parameter(Mandatory = $false)]
+        [string]$valueForCi,
+        [Parameter(Mandatory = $false)]
+        [int]$maxAttempts = 3
+    )
+
+    # Resolve the default against the option list so callers can't typo a default
+    # that the user could never select.
+    $default = $options | Where-Object { $_ -ieq $defaultOption } | Select-Object -First 1
+    if (-not $default) {
+        throw "defaultOption '$defaultOption' is not one of: $($options -join ', ')."
+    }
+
+    if (Test-RunningInCIorTestEnvironment) {
+        if ($PSBoundParameters.ContainsKey('valueForCi')) {
+            return $valueForCi
+        }
+        return $default
+    }
+
+    # Build the hint: capitalize the default's first letter, lowercase the rest,
+    # matching Get-UserConfirmation's [Y/n] convention (capital = Enter default).
+    $hint = (
+        $options | ForEach-Object {
+            $first = $_.Substring(0, 1)
+            $rest = $_.Substring(1)
+            $first = if ($_ -ieq $default) { $first.ToUpper() } else { $first.ToLower() }
+            "[$first]$rest"
+        }
+    ) -join ' / '
+
+    for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
+        $response = (Read-Host "$message $hint (Enter = $default)").Trim()
+        if ([string]::IsNullOrEmpty($response)) {
+            return $default
+        }
+        $match = $options | Where-Object {
+            $_ -ieq $response -or $_.Substring(0, 1) -ieq $response
+        } | Select-Object -First 1
+        if ($match) {
+            return $match
+        }
+        Write-Warning "Invalid choice '$response'. Expected one of: $($options -join ', ')."
+    }
+
+    throw "Invalid choice after $maxAttempts attempts. Expected one of: $($options -join ', ')."
+}
+
 function Install-NpmPackage {
     <#
     .SYNOPSIS
