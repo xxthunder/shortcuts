@@ -528,6 +528,25 @@ Describe "Initialize-ProxyConfiguration" {
         }
     }
 
+    Context "When -AskForCreds is supplied" {
+        It "Should pass the Windows username as -DefaultUser to Get-ProxyCredentialsFromUser" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{ ProxyEnable = 1 }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+            Mock Get-ProxyCredentialsFromUser { return "" }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -AskForCreds
+
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 1 -ParameterFilter {
+                $DefaultUser -eq $env:USERNAME
+            }
+        }
+    }
+
     Context "Integration test for main orchestration" {
         It "Should execute without errors when ProbeUrl is provided" {
             { Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080" } | Should -Not -Throw

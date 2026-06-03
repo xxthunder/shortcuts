@@ -426,10 +426,12 @@ function Initialize-ProxyConfiguration {
         [switch]$AskForCreds
     )
 
-    # Get credentials if requested
+    # Get credentials if requested. Pre-fill the username with the Windows
+    # account (same default wsl-manager's proxy setup proposes) so the user can
+    # press Enter to accept it; the prompt shows it as "[user]".
     $credentialPrefix = ""
     if ($AskForCreds) {
-        $credentialPrefix = Get-ProxyCredentialsFromUser
+        $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
     }
 
     # Get Internet Setting from registry
