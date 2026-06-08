@@ -696,7 +696,7 @@ This command:
 
 ### Setup Proxy
 
-Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
+Configure corporate proxy settings with automatic detection. Auto-detects the proxy from the Windows PAC/registry, prompts for an authentication method, and supports DIRECT (no proxy) mode to remove existing proxy configuration.
 
 - **TUI**: select **Setup proxy (corporate)**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
@@ -705,14 +705,27 @@ This command:
 - Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down)
 - Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
 - Auto → DIRECT collapses to Remove (no proxy needed on this network)
-- After a URL is resolved, prompts for auth method: `[B]asic` (credentials in URL) or `[N]egotiate` (Kerberos via `px` — stub, not yet active)
+- After a URL is resolved, prompts for an authentication method (see **Authentication methods** below); Enter accepts the default, `Anonymous`
 - Configures `~/.profile` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
 - Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
 - Configures `~/.docker/config.json` proxy settings
 - Configures `~/.config/containers/containers.conf` for Podman
-- Writes `/etc/wsl-manager/proxy-mode` (`basic` or `negotiate`) for mode-aware teardown
+- Writes `/etc/wsl-manager/proxy-mode` (`basic` for Anonymous/Basic, `negotiate` for Kerberos) for mode-aware teardown
 - Remove mode deletes all managed proxy configurations and the mode marker
 - Is idempotent - safe to run multiple times (overwrites configuration)
+
+**Authentication methods**
+
+After a proxy URL is resolved, you choose how the distribution authenticates to the proxy. Press Enter to accept the default, `Anonymous`.
+
+- **`[A]nonymous`** (default) — Sets the proxy URL with no credentials, using the same managed-block configuration and teardown as Basic. Use when the proxy does not require per-user authentication — for example, it authorizes by source IP or is open inside the corporate network. Nothing secret is stored in the distribution.
+- **`[B]asic`** — Prompts for a username and password and embeds them in the proxy URL (`http://user:pass@host:port`), so they land in the `~/.profile` exports and the APT/Docker/Podman configs inside the distribution. Use when the proxy requires username/password authentication and Kerberos is unavailable. The username pre-fills with your Windows account — press Enter to accept it.
+- **`[N]egotiate`** (Kerberos) — Runs a local `px` proxy that performs Kerberos/Negotiate authentication to the corporate proxy on your behalf, so no long-lived credentials are stored in the distribution. Setup runs in phases:
+  - **Bootstrap** — Installs the Kerberos tooling (`krb5-user`, `pipx`, `px-proxy`). This one step needs temporary Basic-auth credentials to reach the proxy for the downloads. They are written to root-owned config files for the install only, are never exported to any process environment, and are replaced once `px` takes over. The password prompt restates this inline.
+  - **Configure** — Writes `/etc/krb5.conf` (realm + KDC) and `~/.config/px/px.ini` (no credentials). The realm, KDC, and principal pre-fill from your Windows domain session; the Kerberos principal is your Windows account, not the WSL Linux user.
+  - **Activate** — Obtains a Kerberos ticket with `kinit`, then verifies the Negotiate chain end-to-end through `px` over HTTPS. To avoid asking for the same corporate password twice, the bootstrap password is reused for `kinit` automatically; you are only prompted for a Kerberos password if that reuse is rejected (e.g. your proxy password differs from your AD password).
+
+  > Phase 4 — switching APT/Docker/Podman/`~/.profile` to `localhost:3128` and auto-starting `px` per shell — ships in SC-036d.
 
 ### Setup Docker
 

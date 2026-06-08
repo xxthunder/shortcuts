@@ -34,9 +34,16 @@ Describe "Install-WslProxy" {
         # override the prompts they care about. Unfiltered Read-Host mocks at test
         # level still act as the fallback for unmatched prompts (e.g. credentials).
         Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "A" }
-        Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
+        # Auth method defaults to Anonymous (no credentials, no extra prompt) so
+        # tests that don't care about auth take the simplest path; Basic/Negotiate
+        # tests override with "B"/"N".
+        Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "A" }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $true }
-        Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $false }
+        # Basic mode now always prompts for credentials (the separate "provide
+        # credentials?" confirm is gone). Stub the prompt to a blank prefix by
+        # default so Basic tests don't block on real input; cred-bearing tests
+        # override this.
+        Mock Get-ProxyCredentialsFromUser { "" }
         # Default Negotiate bootstrap creds — used whenever a test selects the
         # Negotiate auth path. Override per-test to exercise the empty-creds
         # rejection path.
@@ -124,8 +131,8 @@ Describe "Install-WslProxy" {
         It "Should embed credentials in proxy URL" {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -137,8 +144,8 @@ Describe "Install-WslProxy" {
         It "Should pre-fill the proxy username with the Windows account ($env:USERNAME)" {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -240,7 +247,7 @@ Describe "Install-WslProxy" {
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Auth method*" }
-            Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*provide proxy credentials*" }
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
         }
 
         It "Should not run PAC detection" {
@@ -313,9 +320,9 @@ Describe "Install-WslProxy" {
         It "Should mask credentials in proxy URL output" {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
             Mock Write-Information { }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -432,7 +439,40 @@ Describe "Install-WslProxy" {
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
         }
 
+        It "Should dispatch to setup-proxy.sh when Anonymous is chosen, with no credentials" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "A" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $ScriptPath -like "*setup-proxy.sh" -and $ScriptPath -notlike "*setup-proxy-negotiate.sh" -and
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
+            }
+        }
+
+        It "Should not prompt for any credentials when Anonymous is chosen" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "A" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
+            Should -Invoke Get-NegotiateBootstrapCredential -Times 0
+        }
+
+        It "Should print auth mode in status output (anonymous)" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "A" }
+            Mock Write-Information { }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Write-Information -ParameterFilter {
+                $MessageData -like "*Auth mode:*anonymous*"
+            }
+        }
+
         It "Should dispatch to setup-proxy.sh when Basic is chosen" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
+
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
@@ -440,7 +480,20 @@ Describe "Install-WslProxy" {
             }
         }
 
+        It "Should prompt for credentials directly when Basic is chosen (no separate confirm)" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            # Choosing Basic IS the opt-in: the credential prompt runs unconditionally.
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 1 -ParameterFilter {
+                $DefaultUser -eq $env:USERNAME
+            }
+        }
+
         It "Should not prompt for Kerberos realm/KDC on the Basic path" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
+
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Kerberos realm*" }
@@ -476,6 +529,7 @@ Describe "Install-WslProxy" {
         }
 
         It "Should print auth mode in status output (Basic)" {
+            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
             Mock Write-Information { }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
@@ -796,9 +850,24 @@ Describe "Install-WslProxy" {
             $script:NegotiateScript | Should -Match 'port = 3128'
         }
 
-        It "setup-proxy-negotiate.sh runs kinit interactively, guarded by klist -s (Phase 2)" {
+        It "setup-proxy-negotiate.sh obtains a ticket guarded by klist -s, reusing the bootstrap password via setsid kinit with an interactive fallback (Phase 2)" {
+            # Idempotent guard: skip kinit when a valid ticket already exists.
             $script:NegotiateScript | Should -Match 'klist -s'
-            $script:NegotiateScript | Should -Match 'kinit'
+            # Single-entry reuse: recover the bootstrap password from the apt proxy
+            # config and feed it to kinit under setsid. setsid drops the controlling
+            # terminal so kinit's prompter reads the piped password from stdin
+            # instead of /dev/tty (validated in SC-036b UAT).
+            $script:NegotiateScript | Should -Match 'apt\.conf\.d/99proxy'
+            $script:NegotiateScript | Should -Match 'recover_bootstrap_password'
+            $script:NegotiateScript | Should -Match 'setsid -w kinit "\$KINIT_PRINCIPAL"'
+            # Interactive fallback when the reused password is absent or rejected.
+            $script:NegotiateScript | Should -Match 'kinit "\$KINIT_PRINCIPAL"'
+        }
+
+        It "setup-proxy-negotiate.sh percent-decodes the reused bootstrap password before kinit (Phase 2)" {
+            # The apt proxy URL stores the password percent-encoded; kinit needs the
+            # raw password. The script decodes %XX via printf %b.
+            $script:NegotiateScript | Should -Match "printf '%b' "
         }
 
         It "setup-proxy-negotiate.sh runs kinit with the corporate principal, not the WSL user (Phase 2)" {

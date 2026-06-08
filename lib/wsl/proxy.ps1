@@ -19,8 +19,7 @@ function Get-NegotiateBootstrapCredential {
     [OutputType([string])]
     param()
 
-    Write-Information "Negotiate bootstrap requires temporary Basic-auth credentials to install Kerberos tooling (krb5-user, pipx, px-proxy)."
-    Write-Information "Credentials are written to root-owned config files for the install step only. They are never exported to any process environment. Phase 4 replaces them with the localhost px proxy."
+    Write-Information "These credentials are used only for the one-time tooling install: written to root-owned config, never exported to any environment, and reused for the Kerberos sign-in so you are not asked twice. See 'Setup Proxy' in docs/wsl-manager.md for details."
 
     # Reuse the shared prompt/encode helper (from setProxy.ps1, dot-sourced by
     # Install-WslProxy). It percent-encodes both username and password so domain/
@@ -174,25 +173,28 @@ function Install-WslProxy {
         }
     }
 
-    # 3. If proxy URL resolved, ask for auth method, then (Basic only) credentials.
-    # Enter defaults to Basic (preserves prior behavior, now shown explicitly).
-    $authMode = 'basic'
+    # 3. If a proxy URL resolved, ask for the auth method. Three options:
+    #   Anonymous (default) — no credentials; the proxy needs no per-user auth.
+    #   Basic               — username/password embedded in the proxy URL.
+    #   Negotiate           — Kerberos via a local px proxy (creds handled below).
+    # The full explanation lives in docs/wsl-manager.md ("Authentication methods")
+    # so the prompt stays terse. Choosing Basic IS the opt-in to credentials, so
+    # the old separate "provide credentials?" confirm is gone; Anonymous is the
+    # explicit no-credentials choice.
+    $authMode = 'anonymous'
     if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        Write-Information "Auth method — Basic stores credentials in environment variables; Negotiate uses Kerberos via a local px proxy."
-        $authChoice = Get-UserChoice -message "Auth method" -options @('Basic', 'Negotiate') -defaultOption 'Basic'
+        $authChoice = Get-UserChoice -message "Auth method" -options @('Anonymous', 'Basic', 'Negotiate') -defaultOption 'Anonymous'
         $authMode = $authChoice.ToLower()
     }
 
     if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $wantCreds = Get-UserConfirmation -message "Do you want to provide proxy credentials?" -defaultValueForUser $true
-        if ($wantCreds) {
-            # Pre-fill the username with the Windows account so the user can accept
-            # it with Enter (same value proposed for Negotiate/Kerberos).
-            $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
-            if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
-                # Insert credentials into proxy URL: http://user:pass@host:port
-                $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
-            }
+        # Pre-fill the username with the Windows account so the user can accept it
+        # with Enter (same value proposed for Negotiate/Kerberos). A blank username
+        # yields an empty prefix, leaving the URL credential-less.
+        $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
+        if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
+            # Insert credentials into proxy URL: http://user:pass@host:port
+            $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
         }
     }
 
@@ -333,14 +335,15 @@ Then run setup-proxy again.
         $exitCode = Invoke-WslDistroScript @invokeParams
 
         # Negotiate Phases 2-3 (SC-036c): on bootstrap success, run the activate
-        # step as a SEPARATE interactive invocation (no stdin pipe) so kinit can
-        # prompt for the Kerberos password on the terminal. Realm/KDC/proxy are not
-        # secrets, so they go on the cmdline. The script leaves the Phase-1 Basic
-        # state intact on failure (marker stays 'negotiate-bootstrap').
+        # step as a SEPARATE interactive invocation (no stdin pipe) so the script's
+        # kinit fallback can prompt on the terminal if the reused bootstrap password
+        # is rejected (the happy path reuses it via setsid and does not prompt).
+        # Realm/KDC/proxy are not secrets, so they go on the cmdline. The script
+        # leaves the Phase-1 Basic state intact on failure (marker 'negotiate-bootstrap').
         if ($authMode -eq 'negotiate' -and -not $isDirect -and $exitCode -eq 0) {
             Write-Information ""
             Write-Information "Phase 1 bootstrap complete. Starting Phases 2-3 (Kerberos config + px activation)..."
-            Write-Information "  You will be prompted for your Kerberos password (kinit)."
+            Write-Information "  Your bootstrap password is reused for the Kerberos sign-in (kinit); you'll only be prompted if it isn't accepted."
             Write-Information ""
             $activateArgs = @(
                 "--activate",

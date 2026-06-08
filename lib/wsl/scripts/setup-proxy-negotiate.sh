@@ -11,9 +11,11 @@
 # Phase 1 (bootstrap, default) ends with krb5-user, pipx, and px-proxy installed.
 #
 # Phase 2-3 (--activate, SC-036c): writes /etc/krb5.conf + ~/.config/px/px.ini,
-# runs kinit interactively, starts px on 127.0.0.1:3128, and verifies the chain
-# with `px --test`. On kinit/px-test failure it leaves the Phase-1 Basic state
-# intact and exits non-zero (no half-migration). The switch of
+# runs kinit (reusing the bootstrap password recovered from the apt proxy config
+# via setsid, so the user is not prompted twice; falls back to an interactive
+# prompt if that password is absent or rejected), starts px on 127.0.0.1:3128,
+# and verifies the chain. On kinit/verification failure it leaves the Phase-1
+# Basic state intact and exits non-zero (no half-migration). The switch of
 # .profile/apt/Docker/Podman to localhost:3128 ships in SC-036d.
 #
 # Exit codes:
@@ -155,23 +157,73 @@ EOF
     }
     write_px_ini || { log_error "Failed to write $PX_INI"; exit 2; }
 
-    # Phase 2: kinit interactively, unless a valid ticket already exists (idempotent
-    # re-run). kinit reads the password from /dev/tty, so it prompts on the terminal.
-    # The principal is the CORPORATE account (passed in via --principal), not the WSL
-    # Linux user — kinit with no principal would default to the Linux username (e.g.
-    # 'wsluser'), which is not in the AD directory. If the principal already carries a
-    # realm (UPN-style user@domain) use it verbatim; otherwise qualify with the realm.
+    # Phase 2: obtain a Kerberos ticket, unless a valid one already exists
+    # (idempotent re-run). The principal is the CORPORATE account (passed in via
+    # --principal), not the WSL Linux user — kinit with no principal defaults to
+    # the Linux username (e.g. 'wsluser'), which is not in the AD directory. If the
+    # principal already carries a realm (UPN-style user@domain) use it verbatim;
+    # otherwise qualify with the realm.
     case "$KRB_PRINCIPAL" in
         *@*) KINIT_PRINCIPAL="$KRB_PRINCIPAL" ;;
         *)   KINIT_PRINCIPAL="$KRB_PRINCIPAL@$KRB_REALM" ;;
     esac
+
+    # The corporate Kerberos password is almost always the same one just used for
+    # the bootstrap Basic-auth proxy install, which Phase 1 wrote into the
+    # root-owned apt proxy config. Reuse it for a non-interactive kinit so the user
+    # isn't asked for the same password twice. kinit's prompter reads /dev/tty by
+    # preference and only falls back to stdin when there is NO controlling terminal,
+    # so the reuse runs under `setsid` (new session, no ctty) with the password
+    # piped in. If the password can't be recovered or the KDC rejects it (e.g. the
+    # proxy password differs from the AD password), fall back to an interactive
+    # prompt — this activate step runs with a real terminal attached.
+    APT_PROXY_CONF="/etc/apt/apt.conf.d/99proxy"
+
+    # Pull the percent-encoded password out of the apt proxy URL's userinfo and
+    # decode it. The '@' separating userinfo from host is the only unescaped '@'
+    # (EscapeDataString encodes any '@' in user/pass as %40), and likewise the only
+    # unescaped ':' splits user from pass. Percent-decode by turning %XX into \xXX
+    # and letting printf %b expand it.
+    recover_bootstrap_password() {
+        local conf url userinfo enc
+        conf=$(sudo cat "$APT_PROXY_CONF" 2>/dev/null) || return 1
+        url=$(printf '%s\n' "$conf" | sed -n 's/.*Acquire::http::Proxy "\([^"]*\)".*/\1/p' | head -n1)
+        case "$url" in
+            *://*@*) : ;;
+            *) return 1 ;;   # no credentials in the URL (nothing to reuse)
+        esac
+        userinfo="${url#*://}"
+        userinfo="${userinfo%@*}"
+        enc="${userinfo#*:}"
+        [ -n "$enc" ] || return 1
+        printf '%b' "${enc//%/\\x}"
+    }
+
     if klist -s 2>/dev/null; then
         log_info "A valid Kerberos ticket already exists (klist -s); skipping kinit."
     else
-        log_info "Obtaining a Kerberos ticket for $KINIT_PRINCIPAL — enter your Kerberos password when prompted."
-        if ! kinit "$KINIT_PRINCIPAL"; then
-            log_error "kinit failed — no Kerberos ticket obtained for $KINIT_PRINCIPAL. Your previous (Basic) proxy config is left intact; nothing was switched to localhost. Re-run and check the principal/realm/KDC and your password."
-            exit 3
+        KINIT_DONE=false
+        BOOTSTRAP_PW=$(recover_bootstrap_password) || BOOTSTRAP_PW=""
+        if [ -n "$BOOTSTRAP_PW" ]; then
+            log_info "Obtaining a Kerberos ticket for $KINIT_PRINCIPAL (reusing your bootstrap password; no second prompt)..."
+            # setsid detaches the controlling terminal so kinit's prompter reads the
+            # piped password from stdin instead of /dev/tty.
+            if printf '%s\n' "$BOOTSTRAP_PW" | setsid -w kinit "$KINIT_PRINCIPAL"; then
+                KINIT_DONE=true
+            else
+                log_info "The bootstrap password was not accepted for Kerberos (or the ticket could not be obtained non-interactively); falling back to an interactive prompt."
+            fi
+        fi
+        # Do not keep the recovered password in this shell's memory.
+        BOOTSTRAP_PW=""
+        unset BOOTSTRAP_PW
+
+        if [ "$KINIT_DONE" != true ]; then
+            log_info "Obtaining a Kerberos ticket for $KINIT_PRINCIPAL — enter your Kerberos password when prompted."
+            if ! kinit "$KINIT_PRINCIPAL"; then
+                log_error "kinit failed — no Kerberos ticket obtained for $KINIT_PRINCIPAL. Your previous (Basic) proxy config is left intact; nothing was switched to localhost. Re-run and check the principal/realm/KDC and your password."
+                exit 3
+            fi
         fi
     fi
 
