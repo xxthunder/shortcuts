@@ -1,6 +1,6 @@
 ---
 name: scoop-integration
-description: Manage Scoop package integration and dependencies in the Shortcuts project. Use when: (1) Installing or managing Scoop packages, (2) Creating tool installers, (3) Updating scoopfile.json, (4) Checking if Scoop is installed, (5) Working with package dependencies. Always use Invoke-CommandLine for Scoop commands.
+description: "Manage Scoop package integration and dependencies in the Shortcuts project. Use when: (1) Installing or managing Scoop packages, (2) Creating tool installers, (3) Updating scoopfile.json, (4) Checking if Scoop is installed, (5) Working with package dependencies. Always use Invoke-CommandLine for Scoop commands."
 ---
 
 # Scoop Integration

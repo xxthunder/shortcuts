@@ -1,6 +1,6 @@
 ---
 name: keypirinha-shortcuts
-description: Create and manage Keypirinha shortcuts and URL files for the Shortcuts project. Use when: (1) Creating new shortcuts, (2) Adding tool shortcuts, (3) Adding website shortcuts, (4) Organizing shortcuts in the links/ directory, (5) Setting up Keypirinha integrations.
+description: "Create and manage Keypirinha shortcuts and URL files for the Shortcuts project. Use when: (1) Creating new shortcuts, (2) Adding tool shortcuts, (3) Adding website shortcuts, (4) Organizing shortcuts in the links/ directory, (5) Setting up Keypirinha integrations."
 ---
 
 # Keypirinha Shortcuts
