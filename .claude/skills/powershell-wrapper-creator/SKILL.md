@@ -1,6 +1,6 @@
 ---
 name: powershell-wrapper-creator
-description: Create .bat wrappers for PowerShell scripts following project conventions. Use when: (1) Creating executable PowerShell scripts, (2) Making scripts launchable from command line, (3) Making scripts accessible from Keypirinha, (4) Following the PowerShell Script Wrapper Convention documented in AGENTS.md.
+description: "Create .bat wrappers for PowerShell scripts following project conventions. Use when: (1) Creating executable PowerShell scripts, (2) Making scripts launchable from command line, (3) Making scripts accessible from Keypirinha, (4) Following the PowerShell Script Wrapper Convention documented in AGENTS.md."
 ---
 
 # PowerShell Script Wrapper Creator

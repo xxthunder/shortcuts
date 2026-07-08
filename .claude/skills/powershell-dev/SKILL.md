@@ -1,6 +1,6 @@
 ---
 name: powershell-dev
-description: Streamline PowerShell development following Shortcuts project conventions. Use when: (1) Implementing new PowerShell functions or scripts, (2) Modifying existing PowerShell code, (3) Creating executable scripts with .bat wrappers, (4) Working with pslib library functions, (5) Setting up error handling and CI/interactive awareness, (6) Structuring PowerShell scripts with proper templates.
+description: "Streamline PowerShell development following Shortcuts project conventions. Use when: (1) Implementing new PowerShell functions or scripts, (2) Modifying existing PowerShell code, (3) Creating executable scripts with .bat wrappers, (4) Working with pslib library functions, (5) Setting up error handling and CI/interactive awareness, (6) Structuring PowerShell scripts with proper templates."
 ---
 
 # PowerShell Development
