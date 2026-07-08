@@ -28,6 +28,7 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 - Additional shortcuts and utilities
 - Improved Scoop integration
 - Enhanced tool installation workflows
+- Corporate proxy support: a Windows-side local authenticating proxy (px) providing seamless SSPI/Kerberos auth for native and WSL tools
 
 ### PowerShell Modernization
 
