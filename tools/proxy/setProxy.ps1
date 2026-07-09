@@ -1,23 +1,40 @@
-<#
+﻿<#
 .SYNOPSIS
     Proxy settings for PowerShell using PAC resolution (no hardcoded proxy hosts)
 .DESCRIPTION
     Reads PAC/Internet Settings from the registry and uses the system web proxy
     to determine the effective proxy. Sets PowerShell's default proxy and common
     environment variables for tools (git, Python, etc.).
+
+    If a local px proxy is detected running on its endpoint, setProxy targets it
+    automatically (px handles corporate authentication); pass -NoPx to force the
+    corporate proxy, or -UsePx to always target px.
 .PARAMETER ProbeUrl
     URL to probe for proxy resolution (default: https://www.microsoft.com)
 .PARAMETER FallbackProxyHost
     Fallback proxy host:port when PAC resolution fails or is not configured (default: some.fallback.de:8080)
+.PARAMETER UsePx
+    Always targets a local px proxy endpoint instead of resolving/using the corporate proxy.
+    Use this when running px as a local authenticating proxy (see px-proxy.ps1).
+.PARAMETER NoPx
+    Forces the corporate-proxy path even when a running px is auto-detected.
+.PARAMETER PxEndpoint
+    The local px proxy endpoint to target/probe (default: http://127.0.0.1:3128)
 .EXAMPLE
     .\setProxy.ps1
-    Uses default probe URL and fallback proxy
+    Auto-detects a running px and targets it; otherwise resolves the corporate proxy
 .EXAMPLE
     .\setProxy.ps1 -FallbackProxyHost "corporate.proxy.com:8080"
     Uses custom fallback proxy for corporate environment
 .EXAMPLE
     .\setProxy.ps1 -askForCreds
     Prompts for credentials and embeds them in proxy environment variables (WARNING: Security risk!)
+.EXAMPLE
+    .\setProxy.ps1 -UsePx
+    Always targets the local px proxy endpoint (http://127.0.0.1:3128) instead of the corporate proxy
+.EXAMPLE
+    .\setProxy.ps1 -NoPx
+    Ignores any running px and forces the corporate-proxy resolution path
 #>
 
 Param(
@@ -28,7 +45,16 @@ Param(
     [string]$FallbackProxyHost = "some.fallback.de:8080",
 
     [Parameter(Mandatory = $false)]
-    [switch]$askForCreds
+    [switch]$askForCreds,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$UsePx,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$NoPx,
+
+    [Parameter(Mandatory = $false)]
+    [string]$PxEndpoint = "http://127.0.0.1:3128"
 )
 
 $InformationPreference = "Continue"
@@ -356,6 +382,52 @@ function Initialize-DefaultWebProxy {
     [System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
 }
 
+function Test-PxProxyAvailable {
+    <#
+    .SYNOPSIS
+        Returns $true when a TCP listener answers at the px proxy endpoint.
+
+    .DESCRIPTION
+        Performs a short, decoupled TCP connect to the host:port parsed from the
+        px endpoint. Used to auto-detect a running px so setProxy can target it
+        without requiring the explicit -UsePx switch.
+
+    .PARAMETER PxEndpoint
+        The px proxy endpoint to probe (e.g. http://127.0.0.1:3128).
+
+    .PARAMETER TimeoutMs
+        Connect timeout in milliseconds (default: 500).
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$PxEndpoint = "http://127.0.0.1:3128",
+
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutMs = 500
+    )
+
+    $client = $null
+    try {
+        $uri = [Uri]$PxEndpoint
+        $client = [System.Net.Sockets.TcpClient]::new()
+        $asyncResult = $client.BeginConnect($uri.Host, $uri.Port, $null, $null)
+        $connected = $asyncResult.AsyncWaitHandle.WaitOne($TimeoutMs)
+        if ($connected -and $client.Connected) {
+            $client.EndConnect($asyncResult)
+            return $true
+        }
+        return $false
+    } catch {
+        return $false
+    } finally {
+        if ($client) {
+            $client.Close()
+        }
+    }
+}
+
 <#
 .SYNOPSIS
     Main orchestration function for proxy configuration
@@ -367,6 +439,12 @@ function Initialize-DefaultWebProxy {
     Fallback proxy host:port (uses script-level default if not provided)
 .PARAMETER AskForCreds
     If set, prompts user for credentials to embed in proxy environment variables
+.PARAMETER UsePx
+    If set, always targets the local px proxy endpoint instead of resolving/using the corporate proxy
+.PARAMETER NoPx
+    If set, forces the corporate-proxy path even when a running px is auto-detected
+.PARAMETER PxEndpoint
+    The local px proxy endpoint to target/probe (e.g., http://127.0.0.1:3128)
 #>
 function Initialize-ProxyConfiguration {
     [CmdletBinding()]
@@ -378,8 +456,49 @@ function Initialize-ProxyConfiguration {
         [string]$FallbackProxyHost,
 
         [Parameter(Mandatory = $false)]
-        [switch]$AskForCreds
+        [switch]$AskForCreds,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$UsePx,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoPx,
+
+        [Parameter(Mandatory = $false)]
+        [string]$PxEndpoint = "http://127.0.0.1:3128"
     )
+
+    # Decide whether to target a local px proxy. px is used when explicitly
+    # requested (-UsePx) or auto-detected as running, unless -NoPx forces the
+    # corporate-proxy path. px handles authentication itself, so no proxy
+    # credentials are configured in this branch.
+    $shouldUsePx = $false
+    if ($NoPx) {
+        $shouldUsePx = $false
+    } elseif ($UsePx) {
+        $shouldUsePx = $true
+    } elseif (Test-PxProxyAvailable -PxEndpoint $PxEndpoint) {
+        Write-Output "Detected running px proxy at $PxEndpoint; using it automatically (pass -NoPx to override)."
+        $shouldUsePx = $true
+    }
+
+    if ($shouldUsePx) {
+        Write-Output "Using local px proxy: $PxEndpoint"
+
+        $Env:HTTP_PROXY = $PxEndpoint
+        $Env:HTTPS_PROXY = $PxEndpoint
+
+        # Always set NO_PROXY
+        Set-NoProxyEnvironment
+
+        $noProxyList = if ($Env:NO_PROXY) { ($Env:NO_PROXY).Split(',') } else { @() }
+        [System.Net.WebRequest]::DefaultWebProxy = New-Object System.Net.WebProxy($PxEndpoint, $true, $noProxyList)
+
+        # Show summary
+        Write-Output "HTTP_PROXY/HTTPS_PROXY: $Env:HTTPS_PROXY"
+        Write-Output "NO_PROXY: $Env:NO_PROXY"
+        return
+    }
 
     # Get credentials if requested
     $credentialPrefix = ""
@@ -441,7 +560,7 @@ function Initialize-ProxyConfiguration {
 # Execute main logic unless in library mode (dot-sourced for function access only)
 # Set environment variable SETPROXY_LIBRARY_MODE=1 to expose functions without executing main logic
 if (-not $env:SETPROXY_LIBRARY_MODE) {
-    Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost -AskForCreds:$askForCreds
+    Initialize-ProxyConfiguration -ProbeUrl $ProbeUrl -FallbackProxyHost $FallbackProxyHost -AskForCreds:$askForCreds -UsePx:$UsePx -NoPx:$NoPx -PxEndpoint $PxEndpoint
 }
 
 #endregion
