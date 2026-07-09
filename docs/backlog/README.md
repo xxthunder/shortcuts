@@ -36,6 +36,7 @@
 
 ### Done
 
+- [SC-041 — Move tool-specific documentation into docs/runbooks/](sc-041.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)

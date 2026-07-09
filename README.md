@@ -204,7 +204,7 @@ It provides both a TUI (menu-driven interface) and CLI commands to:
 
 ## More Features
 
-- **[Flow Launcher](docs/flow-launcher-setup.md)**: A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
+- **[Flow Launcher](docs/runbooks/flow-launcher-setup.md)**: A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
 
 ---
 
