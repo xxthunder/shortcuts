@@ -1,4 +1,4 @@
-[← Back to README](../README.md)
+[← Back to README](../../README.md)
 
 # Flow Launcher Setup Guide
 
@@ -397,4 +397,4 @@ Flow Launcher supports advanced query syntax:
 
 ---
 
-[← Back to README](../README.md)
+[← Back to README](../../README.md)
