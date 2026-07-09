@@ -27,7 +27,6 @@
 - [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md)
 - [SC-036d — Negotiate mode Phase 4: switch targets to localhost and auto-start px](sc-036d.md)
 - [SC-036e — Mode-aware `--remove` teardown and Negotiate docs](sc-036e.md)
-- [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 - [SC-032 — Investigate split-pane TUI layout for WSL Manager](sc-032.md)
@@ -36,6 +35,7 @@
 
 ### Done
 
+- [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 - [SC-041 — Move tool-specific documentation into docs/runbooks/](sc-041.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)

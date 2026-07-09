@@ -205,6 +205,7 @@ It provides both a TUI (menu-driven interface) and CLI commands to:
 ## More Features
 
 - **[Flow Launcher](docs/runbooks/flow-launcher-setup.md)**: A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
+- **[px Proxy](docs/runbooks/px-proxy.md)**: A Windows-side local authenticating proxy (px) that gives native CLI tools and WSL seamless SSPI/Kerberos auth through the corporate proxy, with no stored credentials
 
 ---
 

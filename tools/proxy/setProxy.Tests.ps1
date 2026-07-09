@@ -383,6 +383,12 @@ Describe "Initialize-ProxyConfiguration" {
         [System.Net.WebRequest]::DefaultWebProxy = $script:SavedWebProxy
     }
 
+    BeforeEach {
+        # Default: no px running, so tests exercise the PAC/fallback path
+        # deterministically regardless of the host environment.
+        Mock Test-PxProxyAvailable { $false }
+    }
+
     Context "When PAC is configured and proxy is resolved" {
         It "Should initialize with system proxy and set environment variables" {
             Mock Get-InternetSettingsFromRegistry {
@@ -567,6 +573,193 @@ Describe "Initialize-ProxyConfiguration" {
             # This will pass if either PAC is configured (proxy set) or fallback is used
             $Env:HTTP_PROXY | Should -Not -BeNullOrEmpty
         }
+    }
+}
+
+Describe "Initialize-ProxyConfiguration -UsePx" {
+    BeforeAll {
+        # Save original environment and proxy state
+        $script:PxSavedHttpProxy = $Env:HTTP_PROXY
+        $script:PxSavedHttpsProxy = $Env:HTTPS_PROXY
+        $script:PxSavedNoProxy = $Env:NO_PROXY
+        $script:PxSavedWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+    }
+
+    AfterEach {
+        # Clean up environment variables and proxy state after each test
+        if ($null -eq $script:PxSavedHttpProxy) {
+            Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:HTTP_PROXY = $script:PxSavedHttpProxy
+        }
+
+        if ($null -eq $script:PxSavedHttpsProxy) {
+            Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:HTTPS_PROXY = $script:PxSavedHttpsProxy
+        }
+
+        if ($null -eq $script:PxSavedNoProxy) {
+            Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
+        } else {
+            $Env:NO_PROXY = $script:PxSavedNoProxy
+        }
+
+        [System.Net.WebRequest]::DefaultWebProxy = $script:PxSavedWebProxy
+    }
+
+    BeforeEach {
+        # Default: no px auto-detected. Individual tests override as needed;
+        # -UsePx still forces px regardless of this probe result.
+        Mock Test-PxProxyAvailable { $false }
+    }
+
+    Context "When -UsePx is supplied" {
+        It "Should set HTTP_PROXY and HTTPS_PROXY to the default px endpoint" {
+            Initialize-ProxyConfiguration -UsePx
+
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:3128"
+        }
+
+        It "Should set HTTP_PROXY and HTTPS_PROXY to a custom PxEndpoint" {
+            Initialize-ProxyConfiguration -UsePx -PxEndpoint "http://127.0.0.1:9999"
+
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:9999"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:9999"
+        }
+
+        It "Should set NO_PROXY to localhost" {
+            Initialize-ProxyConfiguration -UsePx
+
+            $Env:NO_PROXY | Should -Be "localhost"
+        }
+
+        It "Should set DefaultWebProxy to the px endpoint" {
+            Initialize-ProxyConfiguration -UsePx
+
+            $webProxy = [System.Net.WebRequest]::DefaultWebProxy
+            $webProxy | Should -Not -BeNullOrEmpty
+            $webProxy.Address.AbsoluteUri.TrimEnd('/') | Should -Be "http://127.0.0.1:3128"
+        }
+
+        It "Should NOT call PAC resolution functions" {
+            Mock Get-ProxyFromPac { }
+            Mock Get-InternetSettingsFromRegistry { }
+            Mock Set-ProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+
+            Initialize-ProxyConfiguration -UsePx
+
+            Should -Invoke Get-ProxyFromPac -Times 0
+            Should -Invoke Get-InternetSettingsFromRegistry -Times 0
+            Should -Invoke Set-ProxyEnvironment -Times 0
+            Should -Invoke Initialize-DefaultWebProxy -Times 0
+        }
+
+        It "Should NOT prompt for credentials even when AskForCreds is set" {
+            Mock Get-ProxyCredentialsFromUser { return "user:pass@" }
+
+            Initialize-ProxyConfiguration -UsePx -AskForCreds
+
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
+        }
+    }
+
+    Context "When -UsePx is NOT supplied" {
+        It "Should still take the existing PAC/fallback resolution path" {
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{
+                    ProxyEnable = 1
+                }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080"
+
+            Should -Invoke Get-InternetSettingsFromRegistry -Times 1
+            Should -Invoke Set-ProxyEnvironment -Times 1 -ParameterFilter { $UseFallback -eq $true }
+        }
+    }
+
+    Context "When px is auto-detected (no -UsePx/-NoPx)" {
+        It "Should target px automatically without touching PAC resolution" {
+            Mock Test-PxProxyAvailable { $true }
+            Mock Get-ProxyFromPac { }
+            Mock Get-InternetSettingsFromRegistry { }
+            Mock Set-ProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:3128"
+            Should -Invoke Get-ProxyFromPac -Times 0
+            Should -Invoke Set-ProxyEnvironment -Times 0
+        }
+
+        It "Should probe the custom PxEndpoint and target it when available" {
+            Mock Test-PxProxyAvailable { $true } -ParameterFilter { $PxEndpoint -eq "http://127.0.0.1:9999" }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -PxEndpoint "http://127.0.0.1:9999"
+
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:9999"
+            Should -Invoke Test-PxProxyAvailable -Times 1 -ParameterFilter { $PxEndpoint -eq "http://127.0.0.1:9999" }
+        }
+    }
+
+    Context "When px is running but -NoPx forces the corporate path" {
+        It "Should ignore px and take the PAC/fallback resolution path" {
+            Mock Test-PxProxyAvailable { $true }
+            Mock Get-InternetSettingsFromRegistry {
+                return [PSCustomObject]@{ ProxyEnable = 1 }
+            }
+            Mock Enable-ProxyInRegistry { return $false }
+            Mock Set-NoProxyEnvironment { }
+            Mock Initialize-DefaultWebProxy { }
+            Mock Set-ProxyEnvironment { }
+
+            Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com" -FallbackProxyHost "some.fallback.de:8080" -NoPx
+
+            $Env:HTTP_PROXY | Should -Not -Be "http://127.0.0.1:3128"
+            Should -Invoke Get-InternetSettingsFromRegistry -Times 1
+            Should -Invoke Set-ProxyEnvironment -Times 1
+        }
+    }
+
+    Context "When -UsePx is supplied and probe would be false" {
+        It "Should still target px without probing" {
+            Mock Test-PxProxyAvailable { $false }
+
+            Initialize-ProxyConfiguration -UsePx
+
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+        }
+    }
+}
+
+Describe "Test-PxProxyAvailable" {
+    It "Should return false when nothing is listening on the endpoint" {
+        # Port 1 is not listening in the test environment
+        Test-PxProxyAvailable -PxEndpoint "http://127.0.0.1:1" -TimeoutMs 300 | Should -BeFalse
+    }
+
+    It "Should return true when a TCP listener answers on the endpoint" {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $listener.Start()
+        try {
+            $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+            Test-PxProxyAvailable -PxEndpoint "http://127.0.0.1:$port" -TimeoutMs 1000 | Should -BeTrue
+        } finally {
+            $listener.Stop()
+        }
+    }
+
+    It "Should return false for a malformed endpoint" {
+        Test-PxProxyAvailable -PxEndpoint "not-a-uri" -TimeoutMs 300 | Should -BeFalse
     }
 }
 
