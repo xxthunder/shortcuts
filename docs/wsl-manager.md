@@ -705,12 +705,13 @@ This command:
 - Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down)
 - Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
 - Auto → DIRECT collapses to Remove (no proxy needed on this network)
-- After a URL is resolved, prompts for auth method: `[B]asic` (credentials in URL) or `[N]egotiate` (Kerberos via `px` — stub, not yet active)
+- Auto mode also probes for a running local **px** proxy (see [px Proxy runbook](runbooks/px-proxy.md)). When px is up, you choose between the px endpoint (`http://127.0.0.1:3128`, reachable from WSL via mirrored networking — px authenticates to the corporate proxy via SSPI on the Windows host, so no credentials are stored) and the PAC-detected corporate proxy
+- After a corporate proxy URL is resolved, prompts for auth method: `[A]nonymous` (no credentials) or `[B]asic` (username/password embedded in the URL, prefilled with your Windows username)
 - Configures `~/.profile` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
 - Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
 - Configures `~/.docker/config.json` proxy settings
 - Configures `~/.config/containers/containers.conf` for Podman
-- Writes `/etc/wsl-manager/proxy-mode` (`basic` or `negotiate`) for mode-aware teardown
+- Writes `/etc/wsl-manager/proxy-mode` (`basic`) for mode-aware teardown
 - Remove mode deletes all managed proxy configurations and the mode marker
 - Is idempotent - safe to run multiple times (overwrites configuration)
 
@@ -869,8 +870,7 @@ lib/wsl/
 └── scripts/
     ├── install-docker.sh          # Docker Engine installation script
     ├── install-podman.sh          # Rootless Podman installation script
-    ├── setup-proxy.sh             # Basic proxy configuration script
-    └── setup-proxy-negotiate.sh   # Negotiate (Kerberos) proxy stub (SC-036b+)
+    └── setup-proxy.sh             # Proxy configuration script (env, apt, Docker, Podman)
 ```
 
 ### Library Usage
