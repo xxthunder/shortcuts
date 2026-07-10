@@ -7,6 +7,7 @@
 - **Open** - Ready to be picked up
 - **In Progress** - Currently being worked on
 - **Done** - Completed
+- **Superseded** - Replaced by a different approach; kept for history, not being built
 
 ## Table of Contents
 
@@ -14,7 +15,8 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
+- [SC-036 — Corporate proxy for WSL without stored credentials](sc-036.md)
+- [SC-036f — Auto proxy setup detects a running Windows px](sc-036f.md)
 
 ### Open
 
@@ -23,15 +25,18 @@
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
-- [SC-036b — Negotiate mode Phase 1: bootstrap install of krb5 and px](sc-036b.md)
-- [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md)
-- [SC-036d — Negotiate mode Phase 4: switch targets to localhost and auto-start px](sc-036d.md)
-- [SC-036e — Mode-aware `--remove` teardown and Negotiate docs](sc-036e.md)
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 - [SC-023 — Per-file code coverage in testrunner.ps1](sc-023.md)
 - [SC-032 — Investigate split-pane TUI layout for WSL Manager](sc-032.md)
 - [SC-034 — Shared dependency utilities and auto-discovery](sc-034.md)
 - [SC-037 — Increase WSL Manager unit test coverage](sc-037.md)
+
+### Superseded
+
+- [SC-036b — Negotiate mode Phase 1: bootstrap install of krb5 and px](sc-036b.md) — replaced by [SC-040](sc-040.md) + [SC-036f](sc-036f.md)
+- [SC-036c — Negotiate mode Phases 2–3: Kerberos + px activation](sc-036c.md) — replaced by [SC-040](sc-040.md) + [SC-036f](sc-036f.md)
+- [SC-036d — Negotiate mode Phase 4: switch targets to localhost and auto-start px](sc-036d.md) — replaced by [SC-040](sc-040.md) + [SC-036f](sc-036f.md)
+- [SC-036e — Mode-aware `--remove` teardown and Negotiate docs](sc-036e.md) — replaced by [SC-040](sc-040.md) + [SC-036f](sc-036f.md)
 
 ### Done
 
