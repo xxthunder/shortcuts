@@ -49,8 +49,6 @@ If auto-discovery cannot resolve the proxy (PAC returns DIRECT and no Kerberos S
 
 ### Pointing tools at px
 
-### Pointing tools at px
-
 Once px is running, `setProxy.ps1` **auto-detects** it (a TCP probe on the px endpoint) and targets it automatically, no switch needed:
 
 ```powershell
