@@ -741,6 +741,46 @@ Describe "Initialize-ProxyConfiguration -UsePx" {
     }
 }
 
+Describe "Script entry point" {
+    BeforeAll {
+        $script:EntrySavedHttpProxy = $Env:HTTP_PROXY
+        $script:EntrySavedHttpsProxy = $Env:HTTPS_PROXY
+        $script:EntrySavedNoProxy = $Env:NO_PROXY
+        $script:EntrySavedWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+    }
+
+    AfterAll {
+        foreach ($pair in @(
+                @{ Name = 'HTTP_PROXY'; Value = $script:EntrySavedHttpProxy },
+                @{ Name = 'HTTPS_PROXY'; Value = $script:EntrySavedHttpsProxy },
+                @{ Name = 'NO_PROXY'; Value = $script:EntrySavedNoProxy })) {
+            if ($null -eq $pair.Value) {
+                Remove-Item "Env:\$($pair.Name)" -ErrorAction SilentlyContinue
+            } else {
+                Set-Item "Env:\$($pair.Name)" -Value $pair.Value
+            }
+        }
+        [System.Net.WebRequest]::DefaultWebProxy = $script:EntrySavedWebProxy
+        $env:SETPROXY_LIBRARY_MODE = '1'
+    }
+
+    # Runs the script as a program (library mode off) to prove the parameters
+    # declared in the Param() block reach Initialize-ProxyConfiguration. -UsePx
+    # is the one path that returns before any registry access, so this stays a
+    # side-effect-free unit test.
+    It "invokes the px path with -UsePx when not in library mode" {
+        Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
+        try {
+            & "$PSScriptRoot\setProxy.ps1" -UsePx -PxEndpoint "http://127.0.0.1:4242" | Out-Null
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:4242"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:4242"
+        }
+        finally {
+            $env:SETPROXY_LIBRARY_MODE = '1'
+        }
+    }
+}
+
 Describe "Test-PxProxyAvailable" {
     It "Should return false when nothing is listening on the endpoint" {
         # Port 1 is not listening in the test environment
