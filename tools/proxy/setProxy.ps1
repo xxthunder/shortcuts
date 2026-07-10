@@ -134,25 +134,47 @@ function Set-NoProxyEnvironment {
 .SYNOPSIS
     Gets credentials for proxy authentication from user input
 .DESCRIPTION
-    Prompts user for username and password, URL-encodes the password,
-    and returns formatted credentials string for proxy URL
+    Prompts user for username and password, percent-encodes both, and returns a
+    formatted credentials string for the proxy URL. Encoding the username as well
+    as the password lets domain/UPN logins ('DOMAIN\user', 'user@corp.com') and
+    special-character passwords splice into a proxy URL without corrupting the
+    userinfo segment. The password BSTR is zeroed even on failure.
+.PARAMETER DefaultUser
+    Optional username to pre-fill. When provided, it is shown in the prompt as
+    "[DefaultUser]" and returned when the user presses Enter, so the common case
+    (the current Windows account) needs no typing. A blank default preserves the
+    original "no username -> empty prefix" behavior.
 .OUTPUTS
-    String with format "username:encodedPassword@" or empty string if cancelled
+    String with format "encodedUser:encodedPassword@" or empty string if cancelled
 #>
 function Get-ProxyCredentialsFromUser {
     [CmdletBinding()]
     [OutputType([string])]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$DefaultUser = ""
+    )
 
     Write-Warning "SECURITY RISK: Credentials will be stored in environment variables in plain text!"
     Write-Warning "This makes your password visible to any process that reads environment variables."
     Write-Warning "Only use this option when absolutely required by specific tools."
 
-    [string]$username = Read-Host "Please enter your Windows user name for proxy authentication"
-    if ([string]::IsNullOrEmpty($username)) {
-        Write-Warning "No username provided. Skipping credential embedding."
-        return ""
+    $namePrompt = "Please enter your Windows user name for proxy authentication"
+    if (-not [string]::IsNullOrWhiteSpace($DefaultUser)) {
+        $namePrompt = "$namePrompt [$DefaultUser]"
     }
+
+    [string]$username = Read-Host $namePrompt
+    if ([string]::IsNullOrEmpty($username)) {
+        if (-not [string]::IsNullOrWhiteSpace($DefaultUser)) {
+            $username = $DefaultUser
+        }
+        else {
+            Write-Warning "No username provided. Skipping credential embedding."
+            return ""
+        }
+    }
+    [string]$encodedUser = [System.Uri]::EscapeDataString($username)
 
     $userpwd_sec = Read-Host "Please enter your Windows password for proxy authentication" -AsSecureString
     $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($userpwd_sec)
@@ -163,7 +185,7 @@ function Get-ProxyCredentialsFromUser {
         [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
     }
 
-    return "${username}:${encodedPwd}@"
+    return "${encodedUser}:${encodedPwd}@"
 }
 
 <#
@@ -500,10 +522,11 @@ function Initialize-ProxyConfiguration {
         return
     }
 
-    # Get credentials if requested
+    # Get credentials if requested. Pre-fill the username with the Windows
+    # account so the user can accept it with Enter; the prompt shows it as "[user]".
     $credentialPrefix = ""
     if ($AskForCreds) {
-        $credentialPrefix = Get-ProxyCredentialsFromUser
+        $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
     }
 
     # Get Internet Setting from registry
