@@ -916,6 +916,55 @@ Describe "Get-ProxyCredentialsFromUser" {
             $result | Should -Be ""
         }
     }
+
+    Context "When a DefaultUser is provided" {
+        It "Should return the default user when the user presses Enter at the name prompt" {
+            $securePassword = ConvertTo-SecureString "pw" -AsPlainText -Force
+            Mock Read-Host { "" } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+            Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+            Mock Write-Warning { }
+
+            $result = Get-ProxyCredentialsFromUser -DefaultUser "winuser"
+
+            $result | Should -Be "winuser:pw@"
+        }
+
+        It "Should show the default user in the name prompt" {
+            $securePassword = ConvertTo-SecureString "pw" -AsPlainText -Force
+            Mock Read-Host { "" } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+            Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+            Mock Write-Warning { }
+
+            Get-ProxyCredentialsFromUser -DefaultUser "winuser"
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*[[]winuser]*" }
+        }
+
+        It "Should prefer explicit input over the default user" {
+            $securePassword = ConvertTo-SecureString "pw" -AsPlainText -Force
+            Mock Read-Host { "typed" } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+            Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+            Mock Write-Warning { }
+
+            $result = Get-ProxyCredentialsFromUser -DefaultUser "winuser"
+
+            $result | Should -Be "typed:pw@"
+        }
+    }
+
+    Context "When the username contains characters that must be encoded" {
+        It "Should percent-encode a domain-qualified username" {
+            $securePassword = ConvertTo-SecureString "pw" -AsPlainText -Force
+            Mock Read-Host { 'CORP\jane' } -ParameterFilter { $Prompt -and $Prompt -notmatch "AsSecureString" }
+            Mock Read-Host { $securePassword } -ParameterFilter { $AsSecureString }
+            Mock Write-Warning { }
+
+            $result = Get-ProxyCredentialsFromUser
+
+            # '\' -> %5C
+            $result | Should -Be "CORP%5Cjane:pw@"
+        }
+    }
 }
 
 Describe "Get-MaskedProxyUrl" {
