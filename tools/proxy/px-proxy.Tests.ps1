@@ -80,7 +80,7 @@ Describe "Get-KerberosProxyHost" {
                 'Cached Tickets: (5)',
                 '    Server: HTTP/osproxy.corp.example @ CORP.EXAMPLE'
             ) }
-        Get-KerberosProxyHost | Should -Be 'osproxy.corp.example:8080'
+        Get-KerberosProxyHost -WarningAction SilentlyContinue | Should -Be 'osproxy.corp.example:8080'
     }
 
     It "returns null when no HTTP SPN is present" {
@@ -91,6 +91,22 @@ Describe "Get-KerberosProxyHost" {
     It "returns null when klist output is empty" {
         Mock Get-KlistOutput { $null }
         Get-KerberosProxyHost | Should -BeNullOrEmpty
+    }
+
+    It "warns that the host and port are a guess when it falls back to an SPN" {
+        Mock Get-KlistOutput { @('    Server: HTTP/intranet.corp.example @ CORP.EXAMPLE') }
+        Mock Write-Warning { }
+        Get-KerberosProxyHost | Out-Null
+        Should -Invoke Write-Warning -Times 1 -ParameterFilter {
+            $Message -match 'intranet\.corp\.example:8080' -and $Message -match '-ProxyHost'
+        }
+    }
+
+    It "does not warn when no SPN is found" {
+        Mock Get-KlistOutput { @('    Server: krbtgt/CORP.EXAMPLE') }
+        Mock Write-Warning { }
+        Get-KerberosProxyHost | Out-Null
+        Should -Invoke Write-Warning -Times 0
     }
 }
 
@@ -218,6 +234,15 @@ Describe "Start-PxProxy" {
         Mock Get-PxExecutable { $null }
         { Start-PxProxy } | Should -Throw
     }
+
+    It "fails fast without resolving the proxy or writing config when px is absent" {
+        Mock Get-PxExecutable { $null }
+        Mock Write-PxConfig { }
+        { Start-PxProxy } | Should -Throw
+        Should -Invoke Resolve-PxUpstreamProxy -Times 0
+        Should -Invoke Write-PxConfig -Times 0
+        Should -Invoke Start-Process -Times 0
+    }
 }
 
 Describe "Test-PxProxy" {
@@ -264,6 +289,14 @@ Describe "Remove-PxProxy" {
         Should -Invoke Invoke-CommandLine -Times 0
     }
 
+    It "keeps the marker when the uninstall is skipped because px is not on PATH" {
+        Set-Content -Path (Get-PxInstalledMarkerPath) -Value 'x'
+        Mock Test-PxInstalled { $false }
+        Remove-PxProxy
+        Should -Invoke Invoke-CommandLine -Times 0
+        Test-Path (Get-PxInstalledMarkerPath) | Should -BeTrue
+    }
+
     It "deletes the px config file" {
         Set-Content -Path (Get-PxConfigPath) -Value 'stale'
         Remove-PxProxy
@@ -294,6 +327,16 @@ Describe "Invoke-PxProxy" {
         Mock Test-PxProxy { $true }
         Invoke-PxProxy -Action test
         Should -Invoke Test-PxProxy -Times 1
+    }
+
+    It "throws when the test action fails, so the caller sees a non-zero exit code" {
+        Mock Test-PxProxy { $false }
+        { Invoke-PxProxy -Action test } | Should -Throw
+    }
+
+    It "does not throw when the test action succeeds" {
+        Mock Test-PxProxy { $true }
+        { Invoke-PxProxy -Action test } | Should -Not -Throw
     }
 
     It "dispatches remove" {

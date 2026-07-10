@@ -76,7 +76,7 @@ finally {
 # --- Constants ------------------------------------------------------------
 $script:PxListen = '127.0.0.1'
 $script:PxPort = 3128
-$script:PxEndpoint = "http://127.0.0.1:3128"
+$script:PxEndpoint = "http://${script:PxListen}:${script:PxPort}"
 $script:PxDefaultUpstreamPort = 8080
 $script:PxInstalledMarkerName = 'installed-by-px-proxy.marker'
 
@@ -219,7 +219,12 @@ function Get-KerberosProxyHost {
 
     foreach ($line in $output) {
         if ($line -match 'HTTP/(?<host>[A-Za-z0-9._-]+)') {
-            return ("{0}:{1}" -f $Matches['host'], $script:PxDefaultUpstreamPort)
+            $candidate = "{0}:{1}" -f $Matches['host'], $script:PxDefaultUpstreamPort
+            # The ticket cache holds an HTTP/ SPN for every intranet site this
+            # session has touched, not just the proxy. Take the first one, but
+            # never let the guess pass silently -- a wrong host surfaces as a 407.
+            Write-Warning "Guessing the upstream proxy is '$candidate': it is the first HTTP/ ticket in your klist cache and the port is a default. If requests fail, re-run with -ProxyHost '<host:port>'."
+            return $candidate
         }
     }
 
@@ -275,7 +280,6 @@ function Resolve-PxUpstreamProxy {
     # 2. klist SPN fallback
     $spnHost = Get-KerberosProxyHost
     if ($spnHost) {
-        Write-Information "Resolved upstream proxy via Kerberos SPN (klist): $spnHost"
         return $spnHost
     }
 
@@ -403,6 +407,12 @@ function Start-PxProxy {
         [string]$ProxyHost
     )
 
+    # Fail before resolving (which may prompt) or writing a config we cannot use.
+    $exe = Get-PxExecutable -Windowless
+    if (-not $exe) {
+        throw "px executable not found. Run 'px-proxy install' first."
+    }
+
     $upstream = Resolve-PxUpstreamProxy -ProxyHost $ProxyHost
 
     if (-not $PSCmdlet.ShouldProcess("px ($upstream)", 'Rewrite config and restart px')) {
@@ -414,11 +424,6 @@ function Start-PxProxy {
     # Always restart so the running instance reflects the fresh config.
     if (Test-PxRunning) {
         Stop-PxProxy
-    }
-
-    $exe = Get-PxExecutable -Windowless
-    if (-not $exe) {
-        throw "px executable not found. Run 'px-proxy install' first."
     }
 
     $dir = Get-PxDataDir
@@ -492,8 +497,13 @@ function Remove-PxProxy {
         if (Test-PxInstalled) {
             Write-Information "Uninstalling px via Scoop ..."
             Invoke-CommandLine -CommandLine 'scoop uninstall px' -StopAtError $false
+            # Keep the marker unless the uninstall actually ran, so a later
+            # 'remove' from a shell with px on PATH can still clean it up.
+            Remove-Item $marker -ErrorAction SilentlyContinue
         }
-        Remove-Item $marker -ErrorAction SilentlyContinue
+        else {
+            Write-Warning "px is not on PATH, so it was not uninstalled. Keeping the install marker at '$marker'; re-run 'px-proxy remove' from a shell where 'px' resolves."
+        }
     }
 
     $configPath = Get-PxConfigPath
@@ -529,7 +539,11 @@ function Invoke-PxProxy {
         'install' { Install-PxProxy }
         'start' { Start-PxProxy -ProxyHost $ProxyHost }
         'stop' { Stop-PxProxy }
-        'test' { [void](Test-PxProxy) }
+        'test' {
+            if (-not (Test-PxProxy)) {
+                throw "the HTTPS probe through $script:PxEndpoint did not succeed (see the warning above)."
+            }
+        }
         'remove' { Remove-PxProxy }
     }
 }
@@ -540,7 +554,9 @@ if (-not $env:PXPROXY_LIBRARY_MODE) {
         Invoke-PxProxy -Action $Action -ProxyHost $ProxyHost
     }
     catch {
-        Write-Error "px-proxy '$Action' failed: $_"
+        # -ErrorAction Continue: the script sets $ErrorActionPreference = 'Stop',
+        # which would otherwise make Write-Error terminating and skip the exit.
+        Write-Error "px-proxy '$Action' failed: $_" -ErrorAction Continue
         exit 1
     }
 }
