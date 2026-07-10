@@ -15,7 +15,6 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-036 — Add Negotiate (Kerberos) proxy auth mode to setup-proxy](sc-036.md)
-- [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 
 ### Open
 
@@ -36,6 +35,7 @@
 
 ### Done
 
+- [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 - [SC-041 — Move tool-specific documentation into docs/runbooks/](sc-041.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
