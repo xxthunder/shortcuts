@@ -449,6 +449,118 @@ Describe "Get-UserConfirmation" {
     }
 }
 
+Describe "Get-UserChoice" {
+    Context "When running in CI or test environment" {
+        It "Should return valueForCi without prompting" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-Host {}
+
+            $result = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto' -valueForCi 'Remove'
+
+            $result | Should -Be 'Remove'
+            Should -Invoke Read-Host -Times 0
+        }
+
+        It "Should fall back to the default option when valueForCi is not supplied" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-Host {}
+
+            $result = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            $result | Should -Be 'Auto'
+            Should -Invoke Read-Host -Times 0
+        }
+    }
+
+    Context "When running interactively" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+        }
+
+        It "Should return the default option when the user presses Enter" {
+            Mock Read-Host { "" }
+
+            $result = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            $result | Should -Be 'Auto'
+        }
+
+        It "Should match the canonical option for input '<UserInput>'" -ForEach @(
+            @{ UserInput = "a"; Expected = 'Auto' }
+            @{ UserInput = "A"; Expected = 'Auto' }
+            @{ UserInput = "auto"; Expected = 'Auto' }
+            @{ UserInput = "AUTO"; Expected = 'Auto' }
+            @{ UserInput = "m"; Expected = 'Manual' }
+            @{ UserInput = "Manual"; Expected = 'Manual' }
+            @{ UserInput = "r"; Expected = 'Remove' }
+            @{ UserInput = " r "; Expected = 'Remove' }
+        ) {
+            Mock Read-Host { $UserInput }
+
+            $result = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            $result | Should -Be $Expected
+        }
+
+        It "Should capitalize the default option and lowercase the others in the prompt" {
+            Mock Read-Host { "" }
+
+            Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            # -like treats "[A]" as a character class, so escape each "[" as "[[]".
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*[[]A]uto / [[]m]anual / [[]r]emove*" }
+        }
+
+        It "Should mark a non-first option as the default when chosen" {
+            Mock Read-Host { "" }
+
+            Get-UserChoice -message "Auth method" -options @('Basic', 'Negotiate') -defaultOption 'Negotiate'
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*[[]b]asic / [[]N]egotiate*" }
+        }
+
+        It "Should show the Enter default hint in the prompt" {
+            Mock Read-Host { "" }
+
+            Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Enter = Auto*" }
+        }
+
+        It "Should re-prompt on invalid input and then accept a valid choice" {
+            $script:callCount = 0
+            Mock Read-Host {
+                $script:callCount++
+                if ($script:callCount -eq 1) { return "x" }
+                return "m"
+            }
+
+            $result = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+
+            $result | Should -Be 'Manual'
+            Should -Invoke Read-Host -Times 2
+        }
+
+        It "Should throw after exhausting attempts on persistently invalid input" {
+            Mock Read-Host { "x" }
+
+            { Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto' -maxAttempts 3 } |
+                Should -Throw "*Invalid choice*"
+
+            Should -Invoke Read-Host -Times 3
+        }
+    }
+
+    Context "When parameters are invalid" {
+        It "Should throw when defaultOption is not one of the options" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            { Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual') -defaultOption 'Remove' } |
+                Should -Throw "*defaultOption*"
+        }
+    }
+}
+
 Describe "Test-RunningInCIorTestEnvironment" {
     Context "When running in CI environment" {
         It "Should return true when CI environment variable is set" {
