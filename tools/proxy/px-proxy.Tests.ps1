@@ -72,6 +72,45 @@ Describe "Get-PxExecutable" {
         Mock Get-Command { $null }
         Get-PxExecutable | Should -BeNullOrEmpty
     }
+
+    It "uses the pxw.exe sitting next to px when the shim is missing" {
+        Mock Get-Command { $null } -ParameterFilter { $Name -eq 'pxw' }
+        Mock Get-Command { [pscustomobject]@{ Source = 'C:\scoop\apps\px\current\px.exe' } } -ParameterFilter { $Name -eq 'px' }
+        Mock Test-Path { $true }
+        Get-PxExecutable -Windowless | Should -Be 'C:\scoop\apps\px\current\pxw.exe'
+    }
+}
+
+Describe "Test-PxRunning" {
+    It "returns true when a px process is present" {
+        Mock Get-Process { @([pscustomobject]@{ Id = 42 }) }
+        Test-PxRunning | Should -BeTrue
+    }
+
+    It "returns false when no px process is present" {
+        Mock Get-Process { $null }
+        Test-PxRunning | Should -BeFalse
+    }
+}
+
+Describe "Get-KlistOutput" {
+    It "returns the output of the klist command" {
+        Mock klist { 'Cached Tickets: (0)' }
+        Get-KlistOutput | Should -Be 'Cached Tickets: (0)'
+    }
+}
+
+Describe "Library-mode env restoration" {
+    It "restores a pre-existing SETPROXY_LIBRARY_MODE after dot-sourcing setProxy" {
+        $env:SETPROXY_LIBRARY_MODE = 'preset'
+        try {
+            . "$PSScriptRoot\px-proxy.ps1"
+            $env:SETPROXY_LIBRARY_MODE | Should -Be 'preset'
+        }
+        finally {
+            Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe "Get-KerberosProxyHost" {
@@ -108,6 +147,11 @@ Describe "Get-KerberosProxyHost" {
         Get-KerberosProxyHost | Out-Null
         Should -Invoke Write-Warning -Times 0
     }
+
+    It "returns null when klist is unavailable and throws" {
+        Mock Get-KlistOutput { throw 'klist: command not found' }
+        Get-KerberosProxyHost | Should -BeNullOrEmpty
+    }
 }
 
 Describe "Resolve-PxUpstreamProxy" {
@@ -133,6 +177,30 @@ Describe "Resolve-PxUpstreamProxy" {
         Mock Get-KerberosProxyHost { $null }
         Mock Test-RunningInCIorTestEnvironment { $true }
         { Resolve-PxUpstreamProxy } | Should -Throw
+    }
+
+    It "prompts for the host in an interactive session when nothing resolves" {
+        Mock Get-InternetSettingsFromRegistry { $null }
+        Mock Get-KerberosProxyHost { $null }
+        Mock Test-RunningInCIorTestEnvironment { $false }
+        Mock Read-Host { 'typed.corp:8080' }
+        Resolve-PxUpstreamProxy | Should -Be 'typed.corp:8080'
+        Should -Invoke Read-Host -Times 1
+    }
+
+    It "throws when the interactive prompt is answered with nothing" {
+        Mock Get-InternetSettingsFromRegistry { $null }
+        Mock Get-KerberosProxyHost { $null }
+        Mock Test-RunningInCIorTestEnvironment { $false }
+        Mock Read-Host { '   ' }
+        { Resolve-PxUpstreamProxy } | Should -Throw
+    }
+
+    It "ignores a PAC result that reports DIRECT" {
+        Mock Get-InternetSettingsFromRegistry { @{ AutoConfigUrl = 'http://wpad/pac' } }
+        Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
+        Mock Get-KerberosProxyHost { 'spn.corp:8080' }
+        Resolve-PxUpstreamProxy | Should -Be 'spn.corp:8080'
     }
 }
 
@@ -264,6 +332,59 @@ Describe "Test-PxProxy" {
     It "returns false on a generic error" {
         Mock Invoke-WebRequest { throw 'connection refused' }
         Test-PxProxy -WarningAction SilentlyContinue | Should -BeFalse
+    }
+
+    It "reports a revocation failure as its own diagnostic" {
+        Mock Invoke-WebRequest { throw 'The revocation function was unable to check revocation for the certificate.' }
+        Mock Write-Warning { }
+        Test-PxProxy | Should -BeFalse
+        Should -Invoke Write-Warning -Times 1 -ParameterFilter { $Message -match 'revocation check failed' }
+    }
+
+    It "reports a certificate error distinctly from a revocation failure" {
+        Mock Invoke-WebRequest { throw 'The remote certificate is invalid according to the validation procedure.' }
+        Mock Write-Warning { }
+        Test-PxProxy | Should -BeFalse
+        Should -Invoke Write-Warning -Times 1 -ParameterFilter { $Message -match 'TLS/certificate error' }
+    }
+}
+
+Describe "Script entry point" {
+    # Invokes the script as a program (library mode off) so the guard's
+    # 'exit (Invoke-PxProxyMain ...)' runs. Invoked with '&', so exit returns
+    # control here and sets $LASTEXITCODE rather than killing the test host.
+    # 'stop' is the only action that is a pure no-op when px is not running;
+    # skipped outright if px happens to be running, so the test never stops a
+    # developer's live px.
+    It "dispatches the action and exits 0 when not in library mode" -Skip:([bool](Get-Process -Name 'px', 'pxw' -ErrorAction SilentlyContinue)) {
+        Remove-Item Env:\PXPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
+        try {
+            & "$PSScriptRoot\px-proxy.ps1" stop *> $null
+            $LASTEXITCODE | Should -Be 0
+        }
+        finally {
+            $env:PXPROXY_LIBRARY_MODE = '1'
+        }
+    }
+}
+
+Describe "Invoke-PxProxyMain" {
+    It "returns 0 when the action succeeds" {
+        Mock Invoke-PxProxy { }
+        Invoke-PxProxyMain -Action stop | Should -Be 0
+    }
+
+    It "returns 1 and reports the failure when the action throws" {
+        Mock Invoke-PxProxy { throw 'boom' }
+        Mock Write-Error { }
+        Invoke-PxProxyMain -Action start | Should -Be 1
+        Should -Invoke Write-Error -Times 1 -ParameterFilter { $Message -match "px-proxy 'start' failed: boom" }
+    }
+
+    It "passes the ProxyHost override through to the dispatcher" {
+        Mock Invoke-PxProxy { }
+        Invoke-PxProxyMain -Action start -ProxyHost 'x.corp:8080' | Should -Be 0
+        Should -Invoke Invoke-PxProxy -Times 1 -ParameterFilter { $ProxyHost -eq 'x.corp:8080' }
     }
 }
 

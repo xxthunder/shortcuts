@@ -548,15 +548,43 @@ function Invoke-PxProxy {
     }
 }
 
-# --- Main -----------------------------------------------------------------
-if (-not $env:PXPROXY_LIBRARY_MODE) {
+function Invoke-PxProxyMain {
+    <#
+    .SYNOPSIS
+        Runs an action and maps the outcome to a process exit code.
+
+    .DESCRIPTION
+        Split from the entry-point guard so the error handling is reachable from
+        tests: the guard itself can only ever run when the script is invoked as a
+        program, never when it is dot-sourced.
+
+    .OUTPUTS
+        0 on success, 1 on failure.
+    #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('install', 'start', 'stop', 'test', 'remove')]
+        [string]$Action,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ProxyHost
+    )
+
     try {
         Invoke-PxProxy -Action $Action -ProxyHost $ProxyHost
+        return 0
     }
     catch {
         # -ErrorAction Continue: the script sets $ErrorActionPreference = 'Stop',
         # which would otherwise make Write-Error terminating and skip the exit.
         Write-Error "px-proxy '$Action' failed: $_" -ErrorAction Continue
-        exit 1
+        return 1
     }
+}
+
+# --- Main -----------------------------------------------------------------
+if (-not $env:PXPROXY_LIBRARY_MODE) {
+    exit (Invoke-PxProxyMain -Action $Action -ProxyHost $ProxyHost)
 }
