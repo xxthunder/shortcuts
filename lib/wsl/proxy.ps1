@@ -13,9 +13,15 @@ function Install-WslProxy {
 
     .DESCRIPTION
         Prompts the user upfront to choose a setup mode: Auto (PAC-based detection),
-        Manual (enter host:port), or Remove (tear down existing proxy config). When a
-        proxy URL is resolved, also prompts for auth method (Basic or Negotiate) and
-        — for Basic — credentials.
+        Manual (enter host:port), or Remove (tear down existing proxy config).
+
+        In Auto mode, if a local px proxy (see tools/proxy/px-proxy.ps1) is running
+        on the Windows host, the user is offered a choice between that px endpoint
+        (reachable from WSL via mirrored networking; px authenticates upstream via
+        SSPI so no credentials are stored) and the PAC-detected corporate proxy.
+
+        When a corporate proxy URL is resolved, the user picks an auth method:
+        Anonymous (no credentials) or Basic (username/password embedded in the URL).
 
         This function is idempotent - safe to run multiple times (overwrites config).
 
@@ -60,21 +66,43 @@ function Install-WslProxy {
         }
     }
 
+    # px endpoint the Windows-side px (SC-040) listens on. WSL reaches it via
+    # mirrored networking; detected in Auto so it can be offered as an alternative
+    # to the PAC-resolved corporate proxy.
+    $pxEndpoint = "http://127.0.0.1:3128"
+
     # 2. Top-level mode prompt: Auto / Manual / Remove
     $ProxyUrl = $null
     $isDirect = $false
+    $authMode = $null
 
     $modeChoice = Read-Host "Proxy setup: [A]uto / [M]anual / [R]emove"
     switch -Regex ($modeChoice) {
         '^\s*[Aa]' {
-            # Auto: PAC detection with explicit confirmation
+            # Auto: probe for a running local px and resolve the PAC proxy, then
+            # let the user choose between them when px is available.
+            $pxRunning = Test-PxProxyAvailable -PxEndpoint $pxEndpoint
+
             $internetSettings = Get-InternetSettingsFromRegistry
             $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
 
-            if ($null -eq $pacResult) {
+            $usePx = $false
+            if ($pxRunning) {
+                Write-Information "Detected a running local px proxy at $pxEndpoint."
+                $source = Get-UserChoice -message "Use the local px proxy or the PAC-detected corporate proxy?" -options @('Px', 'Pac') -defaultOption 'Px'
+                $usePx = ($source -ieq 'Px')
+            }
+
+            if ($usePx) {
+                # px authenticates upstream itself (SSPI on the Windows host), so
+                # WSL targets it with no credentials.
+                $ProxyUrl = $pxEndpoint
+                $authMode = 'anonymous'
+            }
+            elseif ($null -eq $pacResult) {
                 throw "No PAC/AutoConfigURL detected in registry. Re-run setup-proxy and choose [M]anual."
             }
-            if ($pacResult.IsDirect) {
+            elseif ($pacResult.IsDirect) {
                 Write-Information "PAC resolved to DIRECT (no proxy needed). Removing any existing proxy configuration."
                 $isDirect = $true
             }
@@ -105,23 +133,20 @@ function Install-WslProxy {
         }
     }
 
-    # 3. If proxy URL resolved, ask for auth method, then (Basic only) credentials
-    $authMode = 'basic'
-    if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $authChoice = Read-Host "Auth method: [B]asic (credentials in env) or [N]egotiate (Kerberos via px)"
-        if ($authChoice -eq 'N' -or $authChoice -eq 'n') {
-            $authMode = 'negotiate'
-        }
+    # 3. If a proxy URL resolved and the mode did not already fix the auth (px is
+    #    inherently anonymous), ask for the auth method. Basic is the opt-in to
+    #    credentials; Anonymous embeds none.
+    if (-not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl) -and $null -eq $authMode) {
+        $authMode = (Get-UserChoice -message "Auth method" -options @('Anonymous', 'Basic') -defaultOption 'Basic').ToLower()
     }
 
     if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        $wantCreds = Get-UserConfirmation -message "Do you want to provide proxy credentials?" -defaultValueForUser $true
-        if ($wantCreds) {
-            $credentialPrefix = Get-ProxyCredentialsFromUser
-            if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
-                # Insert credentials into proxy URL: http://user:pass@host:port
-                $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
-            }
+        # Pre-fill the Windows username so the user can accept it with Enter; a
+        # blank entry with no default yields an empty prefix (credential-less URL).
+        $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
+        if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
+            # Insert credentials into proxy URL: http://user:pass@host:port
+            $ProxyUrl = $ProxyUrl -replace '://', "://$credentialPrefix"
         }
     }
 
@@ -173,8 +198,7 @@ Then run setup-proxy again.
     Write-Information ""
 
     try {
-        $scriptName = if ($authMode -eq 'negotiate') { 'setup-proxy-negotiate.sh' } else { 'setup-proxy.sh' }
-        $scriptPath = Join-Path $PSScriptRoot "scripts\$scriptName"
+        $scriptPath = Join-Path $PSScriptRoot "scripts\setup-proxy.sh"
 
         if ($isDirect) {
             $scriptArgs = @(
@@ -230,9 +254,6 @@ Then run setup-proxy again.
             }
             4 {
                 throw "Argument error. Required proxy parameters missing."
-            }
-            10 {
-                throw "Negotiate proxy mode is not yet implemented. Full support ships in SC-036b through SC-036e."
             }
             default {
                 throw "Proxy configuration failed with exit code: $exitCode"

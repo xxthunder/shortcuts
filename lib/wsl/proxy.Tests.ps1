@@ -26,13 +26,16 @@ Describe "Install-WslProxy" {
         Mock Get-WslDefaultUser { "developer" }
         Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 0; return 0 }
         Mock Stop-WslDistro { }
+        # No local px by default, so Auto exercises the PAC path deterministically
+        # regardless of whether a px happens to be running on the host.
+        Mock Test-PxProxyAvailable { $false }
         # Default prompt answers — filtered mocks take precedence, so tests only
-        # override the prompts they care about. Unfiltered Read-Host mocks at test
-        # level still act as the fallback for unmatched prompts (e.g. credentials).
+        # override the prompts they care about.
         Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "A" }
-        Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "B" }
         Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $true }
-        Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $false }
+        # Auth method defaults to Basic; credentials are empty unless a test asks.
+        Mock Get-UserChoice -ParameterFilter { $message -like "*Auth method*" } -MockWith { 'Basic' }
+        Mock Get-ProxyCredentialsFromUser { "" }
     }
 
     Context "Auto-terminate after successful proxy configuration" {
@@ -103,17 +106,66 @@ Describe "Install-WslProxy" {
         }
     }
 
-    Context "Auto — PAC resolves to proxy URL, with credentials" {
+    Context "Auto — PAC resolves to proxy URL, with Basic credentials" {
         It "Should embed credentials in proxy URL" {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
                 $Arguments -contains "--proxy-url=http://user1:p%40ss@proxy.corp.com:8080"
+            }
+        }
+
+        It "Should pass the Windows username as the credential-prompt default" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 1 -ParameterFilter {
+                $DefaultUser -eq $env:USERNAME
+            }
+        }
+    }
+
+    Context "Auto — local px proxy detected" {
+        BeforeEach {
+            Mock Test-PxProxyAvailable { $true }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+        }
+
+        It "Should target the px endpoint with no credentials when the user picks Px" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Px' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://127.0.0.1:3128"
+            }
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
+        }
+
+        It "Should not prompt for the PAC confirmation or an auth method when Px is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Px' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*Use this proxy*" }
+            Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
+        }
+
+        It "Should fall through to the PAC proxy when the user picks Pac" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Pac' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-UserConfirmation -Times 1 -ParameterFilter { $message -like "*Use this proxy*" }
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
             }
         }
     }
@@ -129,7 +181,7 @@ Describe "Install-WslProxy" {
                 $Arguments -contains "--remove" -and
                 $Arguments -contains "--username=developer"
             }
-            Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Auth method*" }
+            Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
             Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*Use this proxy*" }
         }
     }
@@ -156,12 +208,10 @@ Describe "Install-WslProxy" {
     }
 
     Context "Manual — user enters host:port" {
-        It "Should use manually entered proxy URL" {
+        It "Should use manually entered proxy URL and not probe PAC or px" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "M" }
             Mock Read-Host -ParameterFilter { $Prompt -like "*host:port*" } -MockWith { "myproxy.com:8080" }
             Mock Get-ProxyFromPac { throw "PAC must not be probed on Manual path" }
-            # Credentials prompt → N (fallback)
-            Mock Read-Host { "N" }
 
             $originalNoProxy = $env:NO_PROXY
             try {
@@ -173,8 +223,9 @@ Describe "Install-WslProxy" {
                     $Arguments -contains "--proxy-url=http://myproxy.com:8080" -and
                     $Arguments -contains "--no-proxy=localhost,127.0.0.1"
                 }
-                # PAC detection must not run on the Manual path
+                # Neither PAC nor px detection runs on the Manual path
                 Should -Invoke Get-ProxyFromPac -Times 0
+                Should -Invoke Test-PxProxyAvailable -Times 0
             }
             finally {
                 if ($null -ne $originalNoProxy) {
@@ -209,17 +260,18 @@ Describe "Install-WslProxy" {
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
-            Should -Invoke Read-Host -Times 0 -ParameterFilter { $Prompt -like "*Auth method*" }
-            Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*provide proxy credentials*" }
+            Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
         }
 
-        It "Should not run PAC detection" {
+        It "Should not run PAC or px detection" {
             Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
             Mock Get-ProxyFromPac { throw "PAC must not be probed on Remove path" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Get-ProxyFromPac -Times 0
+            Should -Invoke Test-PxProxyAvailable -Times 0
         }
     }
 
@@ -236,7 +288,6 @@ Describe "Install-WslProxy" {
         BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
-            Mock Read-Host { "N" }
         }
 
         It "Should use existing NO_PROXY env var when set" {
@@ -285,7 +336,6 @@ Describe "Install-WslProxy" {
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
             Mock Write-Information { }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*provide proxy credentials*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -299,7 +349,6 @@ Describe "Install-WslProxy" {
         BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
-            Mock Read-Host { "N" }
         }
 
         It "Should throw when distribution does not exist" {
@@ -325,7 +374,6 @@ Describe "Install-WslProxy" {
         BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
-            Mock Read-Host { "N" }
         }
 
         It "Should not execute script when -WhatIf is specified" {
@@ -345,7 +393,6 @@ Describe "Install-WslProxy" {
         BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
-            Mock Read-Host { "N" }
         }
 
         It "Should return true on exit code 0 (success)" {
@@ -394,14 +441,6 @@ Describe "Install-WslProxy" {
             $result | Should -Be $false
             $err[0].Exception.Message | Should -BeLike "*exit code: 99*"
         }
-
-        It "Should return false and write error on exit code 10 (Negotiate not yet implemented)" {
-            Mock Invoke-WslDistroScript { $global:LASTEXITCODE = 10; return 10 }
-
-            $result = Install-WslProxy -DistroName "Debian" -Confirm:$false -ErrorVariable err -ErrorAction SilentlyContinue
-            $result | Should -Be $false
-            $err[0].Exception.Message | Should -BeLike "*Negotiate*not yet implemented*"
-        }
     }
 
     Context "Auth method selection" {
@@ -410,26 +449,16 @@ Describe "Install-WslProxy" {
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
         }
 
-        It "Should dispatch to setup-proxy.sh when Basic is chosen" {
+        It "Should always dispatch to setup-proxy.sh" {
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $ScriptPath -like "*setup-proxy.sh" -and $ScriptPath -notlike "*setup-proxy-negotiate.sh"
+                $ScriptPath -like "*setup-proxy.sh"
             }
         }
 
-        It "Should dispatch to setup-proxy-negotiate.sh when Negotiate is chosen" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
-
-            Install-WslProxy -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
-                $ScriptPath -like "*setup-proxy-negotiate.sh"
-            }
-        }
-
-        It "Should not embed credentials in URL when Negotiate is chosen" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
+        It "Should not embed credentials when Anonymous is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Auth method*" } -MockWith { 'Anonymous' }
             Mock Get-ProxyCredentialsFromUser { "user1:p%40ss@" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
@@ -450,27 +479,21 @@ Describe "Install-WslProxy" {
             }
         }
 
-        It "Should print auth mode in status output (Negotiate)" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Auth method*" } -MockWith { "N" }
+        It "Should print auth mode in status output (Anonymous)" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Auth method*" } -MockWith { 'Anonymous' }
             Mock Write-Information { }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Write-Information -ParameterFilter {
-                $MessageData -like "*Auth mode:*negotiate*"
+                $MessageData -like "*Auth mode:*anonymous*"
             }
         }
     }
 
-    Context "Sibling script artifacts" {
-        It "setup-proxy-negotiate.sh exists" {
-            Test-Path (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") | Should -Be $true
-        }
-
-        It "setup-proxy-negotiate.sh exits with code 10 on the not-yet-implemented path" {
-            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") -Raw
-            $script | Should -Match 'exit 10'
-            $script | Should -Match 'not yet implemented'
+    Context "Script artifacts" {
+        It "The obsolete setup-proxy-negotiate.sh no longer exists" {
+            Test-Path (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") | Should -Be $false
         }
 
         It "setup-proxy.sh writes the basic mode marker on success" {
@@ -490,7 +513,6 @@ Describe "Install-WslProxy" {
         BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy:8080"; IsDirect = $false } }
-            Mock Read-Host { "N" }
         }
 
         It "Should call script with setup-proxy.sh" {
