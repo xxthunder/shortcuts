@@ -230,6 +230,76 @@ Describe "Get-ProxyFromPac" {
             $result | Should -BeNullOrEmpty
         }
     }
+
+    Context "When proxy env vars are set (inherited px override)" {
+        # .NET's GetSystemWebProxy() honours HTTP_PROXY/HTTPS_PROXY/ALL_PROXY over
+        # the PAC, so an inherited px override (exported by the setProxy profile)
+        # would otherwise be reflected back as the corporate proxy. These tests
+        # lock in that Get-ProxyFromPac neutralises those vars during the probe and
+        # restores them afterward.
+        BeforeEach {
+            $mockSettings = [PSCustomObject]@{
+                AutoConfigURL = "http://proxy.company.com/proxy.pac"
+                ProxyEnable   = 1
+            }
+            $script:PacMockSettings = $mockSettings
+            $script:OrigHttpProxyForPac = $Env:HTTP_PROXY
+            $script:OrigHttpsProxyForPac = $Env:HTTPS_PROXY
+            $Env:HTTP_PROXY = "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY = "http://127.0.0.1:3128"
+        }
+
+        AfterEach {
+            if ($null -eq $script:OrigHttpProxyForPac) {
+                Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
+            } else {
+                $Env:HTTP_PROXY = $script:OrigHttpProxyForPac
+            }
+            if ($null -eq $script:OrigHttpsProxyForPac) {
+                Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+            } else {
+                $Env:HTTPS_PROXY = $script:OrigHttpsProxyForPac
+            }
+        }
+
+        It "Should clear the proxy env vars while resolving and restore them afterward" {
+            # Capture the HTTP_PROXY value observed at the moment of resolution.
+            $script:HttpProxyDuringResolve = "was-not-cleared"
+            Mock Get-SystemWebProxy {
+                $script:HttpProxyDuringResolve = $Env:HTTP_PROXY
+                $mockProxy = [PSCustomObject]@{}
+                $mockProxy | Add-Member -MemberType ScriptMethod -Name GetProxy -Value {
+                    param($uri)
+                    return [Uri]"http://corp.proxy.com:8080"
+                }
+                $mockProxy | Add-Member -MemberType ScriptMethod -Name IsBypassed -Value {
+                    param($uri)
+                    return $false
+                }
+                return $mockProxy
+            }
+
+            $result = Get-ProxyFromPac -InternetSettings $script:PacMockSettings -ProbeUrl "https://www.microsoft.com"
+
+            # PAC result wins over the inherited px env override
+            $result.ProxyUrl | Should -Be "http://corp.proxy.com:8080"
+            # Env was neutralized while GetSystemWebProxy resolved
+            $script:HttpProxyDuringResolve | Should -BeNullOrEmpty
+            # Env restored to the pre-call px value afterward
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:3128"
+        }
+
+        It "Should restore the proxy env vars even when resolution throws" {
+            Mock Get-SystemWebProxy { throw "Network error" }
+
+            $result = Get-ProxyFromPac -InternetSettings $script:PacMockSettings -ProbeUrl "https://www.microsoft.com"
+
+            $result | Should -BeNullOrEmpty
+            $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:3128"
+        }
+    }
 }
 
 Describe "Set-ProxyEnvironment" {

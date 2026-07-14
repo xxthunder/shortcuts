@@ -255,6 +255,14 @@ function Get-SystemWebProxy {
     URL to probe for proxy resolution
 .OUTPUTS
     Hashtable with ProxyUrl and IsDirect properties, or $null if no PAC
+.NOTES
+    In PowerShell 7 (.NET) GetSystemWebProxy() honours the process's
+    HTTP_PROXY/HTTPS_PROXY/ALL_PROXY environment variables and returns them
+    verbatim, ahead of the WinINET PAC. When the caller inherited those vars
+    pointing at a local px (the setProxy profile exports exactly that), an
+    un-neutralised probe would report px as the "corporate" proxy. This function
+    therefore clears those vars for the duration of the probe so the PAC is
+    resolved on its own terms, then restores them.
 #>
 function Get-ProxyFromPac {
     [CmdletBinding()]
@@ -275,7 +283,21 @@ function Get-ProxyFromPac {
 
     Write-Verbose "AutoConfigURL detected: $($InternetSettings.AutoConfigURL)"
 
+    # Snapshot the proxy env vars so they can be restored after the probe. The
+    # .NET system proxy is a process-global singleton resolved on first use, so
+    # these must be cleared before the first GetSystemWebProxy() call in the
+    # process for the PAC (not an inherited env override) to win.
+    $proxyEnvNames = @('HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY')
+    $savedProxyEnv = @{}
+    foreach ($name in $proxyEnvNames) {
+        $savedProxyEnv[$name] = [Environment]::GetEnvironmentVariable($name)
+    }
+
     try {
+        foreach ($name in $proxyEnvNames) {
+            Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
+        }
+
         $systemProxy = Get-SystemWebProxy
         $targetUri = [Uri]$ProbeUrl
 
@@ -307,6 +329,16 @@ function Get-ProxyFromPac {
     catch {
         Write-Warning "Failed to resolve proxy via system settings (PAC/WinINET). $_"
         return $null
+    }
+    finally {
+        foreach ($name in $proxyEnvNames) {
+            if ($null -eq $savedProxyEnv[$name]) {
+                Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
+            }
+            else {
+                Set-Item "Env:\$name" -Value $savedProxyEnv[$name]
+            }
+        }
     }
 }
 
