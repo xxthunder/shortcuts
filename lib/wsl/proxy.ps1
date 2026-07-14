@@ -15,10 +15,12 @@ function Install-WslProxy {
         Prompts the user upfront to choose a setup mode: Auto (PAC-based detection),
         Manual (enter host:port), or Remove (tear down existing proxy config).
 
-        In Auto mode, if a local px proxy (see tools/proxy/px-proxy.ps1) is running
-        on the Windows host, the user is offered a choice between that px endpoint
-        (reachable from WSL via mirrored networking; px authenticates upstream via
-        SSPI so no credentials are stored) and the PAC-detected corporate proxy.
+        In Auto mode both sources are detected first — a local px proxy (see
+        tools/proxy/px-proxy.ps1) on the Windows host, and the PAC-resolved
+        corporate proxy — and the findings are reported together. When both are
+        usable the user picks one; when only one is usable it is confirmed with a
+        single yes/no. px (reachable from WSL via mirrored networking) authenticates
+        upstream via SSPI, so choosing it stores no credentials.
 
         When a corporate proxy URL is resolved, the user picks an auth method:
         Anonymous (no credentials) or Basic (username/password embedded in the URL).
@@ -79,40 +81,88 @@ function Install-WslProxy {
     $modeChoice = Read-Host "Proxy setup: [A]uto / [M]anual / [R]emove"
     switch -Regex ($modeChoice) {
         '^\s*[Aa]' {
-            # Auto: probe for a running local px and resolve the PAC proxy, then
-            # let the user choose between them when px is available.
+            # Auto: detect BOTH sources up front, report the findings in one place,
+            # then present a single selection. Detection output is never interleaved
+            # with the prompt, and the resolved values are shown before the user
+            # chooses — so there is no hidden option and no redundant confirmation.
             $pxRunning = Test-PxProxyAvailable -PxEndpoint $pxEndpoint
 
             $internetSettings = Get-InternetSettingsFromRegistry
             $pacResult = Get-ProxyFromPac -InternetSettings $internetSettings -ProbeUrl "https://www.microsoft.com"
 
-            $usePx = $false
-            if ($pxRunning) {
-                Write-Information "Detected a running local px proxy at $pxEndpoint."
-                $source = Get-UserChoice -message "Use the local px proxy or the PAC-detected corporate proxy?" -options @('Px', 'Pac') -defaultOption 'Px'
-                $usePx = ($source -ieq 'Px')
-            }
+            # Classify the PAC outcome for both the findings block and the branching.
+            $pacHasProxy = ($null -ne $pacResult) -and (-not $pacResult.IsDirect) -and (-not [string]::IsNullOrWhiteSpace($pacResult.ProxyUrl))
+            $pacIsDirect = ($null -ne $pacResult) -and $pacResult.IsDirect
 
-            if ($usePx) {
-                # px authenticates upstream itself (SSPI on the Windows host), so
-                # WSL targets it with no credentials.
+            # Findings block — one place, actual resolved values.
+            Write-Information "Detecting proxies..."
+            if ($pxRunning) {
+                Write-Information "  Local px proxy    $pxEndpoint  (running)"
+            }
+            else {
+                Write-Information "  Local px proxy    (not running)"
+            }
+            if ($pacHasProxy) {
+                Write-Information "  Corporate proxy   $($pacResult.ProxyUrl)  (from PAC)"
+            }
+            elseif ($pacIsDirect) {
+                Write-Information "  Corporate proxy   DIRECT (no proxy needed)"
+            }
+            else {
+                Write-Information "  Corporate proxy   (none detected)"
+            }
+            Write-Information ""
+
+            # px authenticates upstream itself (SSPI on the Windows host), so when
+            # px is the target WSL uses it with no credentials.
+            if ($pxRunning -and $pacHasProxy) {
+                # Two real sources — a genuine choice. Distinct initials (L/C) so
+                # Get-UserChoice's first-letter matching resolves unambiguously.
+                $choice = Get-UserChoice -message "Which proxy should WSL use?" -options @('Local', 'Corporate') -defaultOption 'Local'
+                if ($choice -ieq 'Local') {
+                    $ProxyUrl = $pxEndpoint
+                    $authMode = 'anonymous'
+                }
+                else {
+                    $ProxyUrl = $pacResult.ProxyUrl
+                }
+            }
+            elseif ($pxRunning -and $pacIsDirect) {
+                # px is available even though the corp network says DIRECT — let the
+                # user pick px or honour DIRECT (tear down). Distinct initials (L/D).
+                $choice = Get-UserChoice -message "Which proxy should WSL use?" -options @('Local', 'Direct') -defaultOption 'Local'
+                if ($choice -ieq 'Local') {
+                    $ProxyUrl = $pxEndpoint
+                    $authMode = 'anonymous'
+                }
+                else {
+                    $isDirect = $true
+                }
+            }
+            elseif ($pxRunning) {
+                # Only px detected (no PAC) — nothing to choose between, just confirm.
+                if (-not (Get-UserConfirmation -message "Use the local px proxy?" -defaultValueForUser $true)) {
+                    throw "Local px proxy declined. Re-run setup-proxy and choose [M]anual."
+                }
                 $ProxyUrl = $pxEndpoint
                 $authMode = 'anonymous'
             }
-            elseif ($null -eq $pacResult) {
-                throw "No PAC/AutoConfigURL detected in registry. Re-run setup-proxy and choose [M]anual."
+            elseif ($pacHasProxy) {
+                # Only the corporate proxy detected — confirm, then pick auth below.
+                if (-not (Get-UserConfirmation -message "Use the corporate proxy?" -defaultValueForUser $true)) {
+                    throw "Corporate proxy declined. Re-run setup-proxy and choose [M]anual."
+                }
+                $ProxyUrl = $pacResult.ProxyUrl
             }
-            elseif ($pacResult.IsDirect) {
-                Write-Information "PAC resolved to DIRECT (no proxy needed). Removing any existing proxy configuration."
+            elseif ($pacIsDirect) {
+                # Corp network needs no proxy and px is down — tear down existing config.
+                if (-not (Get-UserConfirmation -message "PAC resolved to DIRECT. Remove proxy config?" -defaultValueForUser $true)) {
+                    throw "Proxy teardown declined. Re-run setup-proxy and choose [M]anual."
+                }
                 $isDirect = $true
             }
             else {
-                Write-Information "Auto-detected proxy: $($pacResult.ProxyUrl)"
-                $confirmed = Get-UserConfirmation -message "Use this proxy?" -defaultValueForUser $true
-                if (-not $confirmed) {
-                    throw "Auto-detected proxy rejected. Re-run setup-proxy and choose [M]anual."
-                }
-                $ProxyUrl = $pacResult.ProxyUrl
+                throw "No PAC/AutoConfigURL detected in registry and no local px proxy running. Re-run setup-proxy and choose [M]anual."
             }
             break
         }

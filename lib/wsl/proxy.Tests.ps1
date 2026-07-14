@@ -32,7 +32,7 @@ Describe "Install-WslProxy" {
         # Default prompt answers — filtered mocks take precedence, so tests only
         # override the prompts they care about.
         Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "A" }
-        Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $true }
+        Mock Get-UserConfirmation -MockWith { $true }
         # Auth method defaults to Basic; credentials are empty unless a test asks.
         Mock Get-UserChoice -ParameterFilter { $message -like "*Auth method*" } -MockWith { 'Basic' }
         Mock Get-ProxyCredentialsFromUser { "" }
@@ -131,15 +131,15 @@ Describe "Install-WslProxy" {
         }
     }
 
-    Context "Auto — local px proxy detected" {
+    Context "Auto — both px and a corporate PAC proxy detected (menu)" {
         BeforeEach {
             Mock Test-PxProxyAvailable { $true }
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
         }
 
-        It "Should target the px endpoint with no credentials when the user picks Px" {
-            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Px' }
+        It "Should target the px endpoint with no credentials or auth prompt when Local is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Which proxy*" } -MockWith { 'Local' }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -147,33 +147,117 @@ Describe "Install-WslProxy" {
                 $Arguments -contains "--proxy-url=http://127.0.0.1:3128"
             }
             Should -Invoke Get-ProxyCredentialsFromUser -Times 0
-        }
-
-        It "Should not prompt for the PAC confirmation or an auth method when Px is chosen" {
-            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Px' }
-
-            Install-WslProxy -DistroName "Debian" -Confirm:$false
-
-            Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*Use this proxy*" }
             Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
         }
 
-        It "Should fall through to the PAC proxy when the user picks Pac" {
-            Mock Get-UserChoice -ParameterFilter { $message -like "*px*" } -MockWith { 'Pac' }
+        It "Should target the corporate proxy and ask for an auth method when Corporate is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Which proxy*" } -MockWith { 'Corporate' }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
-            Should -Invoke Get-UserConfirmation -Times 1 -ParameterFilter { $message -like "*Use this proxy*" }
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
+            }
+            Should -Invoke Get-UserChoice -Times 1 -ParameterFilter { $message -like "*Auth method*" }
+        }
+
+        It "Should not fire a second yes/no confirmation in the two-source menu case" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Which proxy*" } -MockWith { 'Local' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-UserConfirmation -Times 0
+        }
+    }
+
+    Context "Auto — px running but PAC resolves to DIRECT (menu)" {
+        BeforeEach {
+            Mock Test-PxProxyAvailable { $true }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
+        }
+
+        It "Should target the px endpoint when Local is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Which proxy*" } -MockWith { 'Local' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://127.0.0.1:3128"
+            }
+        }
+
+        It "Should tear down proxy config and skip auth when Direct is chosen" {
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Which proxy*" } -MockWith { 'Direct' }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--remove"
+            }
+            Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
+        }
+    }
+
+    Context "Auto — only the corporate proxy detected (px down)" {
+        BeforeEach {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+        }
+
+        It "Should confirm and apply the corporate proxy" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*corporate proxy*" } -MockWith { $true }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
             Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
                 $Arguments -contains "--proxy-url=http://proxy.corp.com:8080"
             }
         }
+
+        It "Should throw with a Manual hint and not dispatch when the corporate proxy is declined" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*corporate proxy*" } -MockWith { $false }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*declined*Re-run*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
     }
 
-    Context "Auto — PAC resolves to DIRECT, collapses to Remove teardown" {
-        It "Should call setup-proxy.sh with --remove flag and skip auth prompt" {
+    Context "Auto — only px detected (no PAC)" {
+        BeforeEach {
+            Mock Test-PxProxyAvailable { $true }
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ } }
+            Mock Get-ProxyFromPac { $null }
+        }
+
+        It "Should confirm and target the px endpoint with no credentials or auth prompt" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*local px proxy*" } -MockWith { $true }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Invoke-WslDistroScript -Times 1 -ParameterFilter {
+                $Arguments -contains "--proxy-url=http://127.0.0.1:3128"
+            }
+            Should -Invoke Get-ProxyCredentialsFromUser -Times 0
+            Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
+        }
+
+        It "Should throw with a Manual hint when px is declined" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*local px proxy*" } -MockWith { $false }
+
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*declined*Re-run*"
+            Should -Invoke Invoke-WslDistroScript -Times 0
+        }
+    }
+
+    Context "Auto — PAC resolves to DIRECT, px down (teardown)" {
+        BeforeEach {
             Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
             Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
+        }
+
+        It "Should confirm, tear down proxy config, and skip the auth prompt" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*DIRECT*" } -MockWith { $true }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -182,17 +266,12 @@ Describe "Install-WslProxy" {
                 $Arguments -contains "--username=developer"
             }
             Should -Invoke Get-UserChoice -Times 0 -ParameterFilter { $message -like "*Auth method*" }
-            Should -Invoke Get-UserConfirmation -Times 0 -ParameterFilter { $message -like "*Use this proxy*" }
         }
-    }
 
-    Context "Auto — user rejects detected proxy" {
-        It "Should throw with a hint to re-run with Manual and not dispatch" {
-            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
-            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
-            Mock Get-UserConfirmation -ParameterFilter { $message -like "*Use this proxy*" } -MockWith { $false }
+        It "Should throw with a Manual hint when the teardown is declined" {
+            Mock Get-UserConfirmation -ParameterFilter { $message -like "*DIRECT*" } -MockWith { $false }
 
-            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*rejected*Re-run*"
+            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*declined*Re-run*"
             Should -Invoke Invoke-WslDistroScript -Times 0
         }
     }
