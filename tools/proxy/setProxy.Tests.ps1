@@ -490,6 +490,46 @@ Describe "Initialize-ProxyConfiguration" {
             }
         }
 
+        It "Should clear the inherited px override before the first system-proxy resolution and restore it after" {
+            # Regression: .NET caches the system proxy on its FIRST resolution
+            # (Initialize-DefaultWebProxy), so an inherited px override must be
+            # cleared before that call -- not just inside Get-ProxyFromPac -- or px
+            # is cached and reported as the corporate proxy.
+            $origHttp = $Env:HTTP_PROXY
+            $origHttps = $Env:HTTPS_PROXY
+            $Env:HTTP_PROXY = "http://127.0.0.1:3128"
+            $Env:HTTPS_PROXY = "http://127.0.0.1:3128"
+            try {
+                Mock Get-InternetSettingsFromRegistry {
+                    return [PSCustomObject]@{
+                        AutoConfigURL = "http://proxy.company.com/proxy.pac"
+                        ProxyEnable = 1
+                    }
+                }
+                Mock Enable-ProxyInRegistry { return $false }
+                Mock Set-NoProxyEnvironment { }
+                Mock Get-ProxyFromPac {
+                    return @{ ProxyUrl = "http://proxy.server.com:8080"; IsDirect = $false }
+                }
+                Mock Set-ProxyEnvironment { }
+                # Capture the env var observed at the moment of the first resolution.
+                $script:HttpDuringInit = "was-not-cleared"
+                Mock Initialize-DefaultWebProxy { $script:HttpDuringInit = $Env:HTTP_PROXY }
+
+                Initialize-ProxyConfiguration -ProbeUrl "https://www.microsoft.com"
+
+                # The first resolution saw the px override neutralized...
+                $script:HttpDuringInit | Should -BeNullOrEmpty
+                # ...and the inherited value was restored afterward.
+                $Env:HTTP_PROXY | Should -Be "http://127.0.0.1:3128"
+                $Env:HTTPS_PROXY | Should -Be "http://127.0.0.1:3128"
+            }
+            finally {
+                if ($null -eq $origHttp) { Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue } else { $Env:HTTP_PROXY = $origHttp }
+                if ($null -eq $origHttps) { Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue } else { $Env:HTTPS_PROXY = $origHttps }
+            }
+        }
+
         It "Should detect DIRECT connection when PAC returns IsDirect" {
             Mock Get-InternetSettingsFromRegistry {
                 return [PSCustomObject]@{

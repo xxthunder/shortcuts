@@ -191,8 +191,9 @@ function Install-WslProxy {
     }
 
     if ($authMode -eq 'basic' -and -not $isDirect -and -not [string]::IsNullOrWhiteSpace($ProxyUrl)) {
-        # Pre-fill the Windows username so the user can accept it with Enter; a
-        # blank entry with no default yields an empty prefix (credential-less URL).
+        # Pre-fill the Windows username so the user can accept it with Enter. A
+        # blank entry falls back to that username, so choosing Basic always embeds
+        # credentials; Anonymous is the way to get a credential-less URL.
         $credentialPrefix = Get-ProxyCredentialsFromUser -DefaultUser $env:USERNAME
         if (-not [string]::IsNullOrWhiteSpace($credentialPrefix)) {
             # Insert credentials into proxy URL: http://user:pass@host:port
