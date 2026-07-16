@@ -303,7 +303,9 @@ function Write-PxConfig {
     .DESCRIPTION
         Overwrites px.ini every call. Enables logging (log = 3: unique
         debug-<pid>.log in px's working directory, which start sets to the px
-        data directory).
+        data directory). Raises idle/socktimeout above px's defaults so long
+        AI agent requests (e.g. Copilot CLI, Claude Code) don't get dropped
+        mid-response.
 
     .PARAMETER UpstreamProxy
         The upstream proxy 'host:port' px authenticates to.
@@ -330,6 +332,8 @@ auth =
 
 [settings]
 log = 3
+idle = 60
+socktimeout = 300.0
 "@
 
     if ($PSCmdlet.ShouldProcess($configPath, "Write px config")) {
