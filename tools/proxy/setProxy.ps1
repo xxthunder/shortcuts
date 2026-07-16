@@ -244,6 +244,60 @@ function Get-SystemWebProxy {
     return [System.Net.WebRequest]::GetSystemWebProxy()
 }
 
+# Proxy env vars that .NET's system web proxy honours ahead of the WinINET PAC.
+$script:ProxyEnvVarNames = @('HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY')
+
+<#
+.SYNOPSIS
+    Clears the proxy env vars for the process and returns a snapshot to restore.
+.DESCRIPTION
+    In PowerShell 7 (.NET) GetSystemWebProxy() honours HTTP_PROXY/HTTPS_PROXY/
+    ALL_PROXY ahead of the WinINET PAC, and the result is resolved ONCE per
+    process and cached as a static singleton (HttpClient.DefaultProxy). Once that
+    first resolution happens with the vars set, no later env change can rebuild
+    it -- clearing the vars afterward has no effect. Callers that need the PAC to
+    win must therefore clear these vars BEFORE the process's first
+    GetSystemWebProxy() call, not merely around a later one. Pair with
+    Resume-ProxyEnvVar in a finally block.
+.OUTPUTS
+    Hashtable mapping each proxy env var name to its prior value ($null if unset).
+#>
+function Suspend-ProxyEnvVar {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    $saved = @{}
+    foreach ($name in $script:ProxyEnvVarNames) {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+        Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
+    }
+    return $saved
+}
+
+<#
+.SYNOPSIS
+    Restores proxy env vars from a Suspend-ProxyEnvVar snapshot.
+.PARAMETER Saved
+    The hashtable returned by Suspend-ProxyEnvVar.
+#>
+function Resume-ProxyEnvVar {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Saved
+    )
+
+    foreach ($name in $script:ProxyEnvVarNames) {
+        if ($null -eq $Saved[$name]) {
+            Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
+        }
+        else {
+            Set-Item "Env:\$name" -Value $Saved[$name]
+        }
+    }
+}
+
 <#
 .SYNOPSIS
     Resolves proxy URL from PAC configuration
@@ -256,13 +310,12 @@ function Get-SystemWebProxy {
 .OUTPUTS
     Hashtable with ProxyUrl and IsDirect properties, or $null if no PAC
 .NOTES
-    In PowerShell 7 (.NET) GetSystemWebProxy() honours the process's
-    HTTP_PROXY/HTTPS_PROXY/ALL_PROXY environment variables and returns them
-    verbatim, ahead of the WinINET PAC. When the caller inherited those vars
-    pointing at a local px (the setProxy profile exports exactly that), an
-    un-neutralised probe would report px as the "corporate" proxy. This function
-    therefore clears those vars for the duration of the probe so the PAC is
-    resolved on its own terms, then restores them.
+    Neutralises the inherited proxy env vars (see Suspend-ProxyEnvVar) so a px
+    override exported by the setProxy profile is not reported back as the
+    "corporate" proxy. This is only sufficient when Get-ProxyFromPac is the
+    process's first system-proxy resolution; callers that resolve the system
+    proxy earlier (e.g. Initialize-DefaultWebProxy) must suspend the vars around
+    that earlier call themselves, because .NET caches the first result.
 #>
 function Get-ProxyFromPac {
     [CmdletBinding()]
@@ -283,21 +336,12 @@ function Get-ProxyFromPac {
 
     Write-Verbose "AutoConfigURL detected: $($InternetSettings.AutoConfigURL)"
 
-    # Snapshot the proxy env vars so they can be restored after the probe. The
-    # .NET system proxy is a process-global singleton resolved on first use, so
-    # these must be cleared before the first GetSystemWebProxy() call in the
-    # process for the PAC (not an inherited env override) to win.
-    $proxyEnvNames = @('HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY')
-    $savedProxyEnv = @{}
-    foreach ($name in $proxyEnvNames) {
-        $savedProxyEnv[$name] = [Environment]::GetEnvironmentVariable($name)
-    }
+    # Clear the inherited proxy env vars before resolving so the PAC (not a px
+    # override) wins; restore them in finally. See Suspend-ProxyEnvVar for why
+    # this must precede the process's first GetSystemWebProxy() call.
+    $savedProxyEnv = Suspend-ProxyEnvVar
 
     try {
-        foreach ($name in $proxyEnvNames) {
-            Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
-        }
-
         $systemProxy = Get-SystemWebProxy
         $targetUri = [Uri]$ProbeUrl
 
@@ -331,14 +375,7 @@ function Get-ProxyFromPac {
         return $null
     }
     finally {
-        foreach ($name in $proxyEnvNames) {
-            if ($null -eq $savedProxyEnv[$name]) {
-                Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
-            }
-            else {
-                Set-Item "Env:\$name" -Value $savedProxyEnv[$name]
-            }
-        }
+        Resume-ProxyEnvVar -Saved $savedProxyEnv
     }
 }
 
@@ -576,11 +613,23 @@ function Initialize-ProxyConfiguration {
         $inetSettings.AutoConfigURL) {
         Write-Output "AutoConfigURL detected: $($inetSettings.AutoConfigURL)"
 
-        # Initialize DefaultWebProxy with system proxy
-        Initialize-DefaultWebProxy -UseSystemProxy $true -FallbackProxyHost $FallbackProxyHost
+        # Initialize-DefaultWebProxy performs the process's FIRST system-proxy
+        # resolution, and .NET caches that result for the process lifetime (see
+        # Suspend-ProxyEnvVar). If the inherited px override is still set here it
+        # seeds the cache, and Get-ProxyFromPac's own clear/restore comes too late
+        # to dislodge it -- px would be reported as the corporate proxy. Suspend
+        # the vars around both calls so the cache is seeded from the PAC.
+        $savedProxyEnv = Suspend-ProxyEnvVar
+        try {
+            # Initialize DefaultWebProxy with system proxy
+            Initialize-DefaultWebProxy -UseSystemProxy $true -FallbackProxyHost $FallbackProxyHost
 
-        # Resolve proxy from PAC
-        $proxyInfo = Get-ProxyFromPac -InternetSettings $inetSettings -ProbeUrl $ProbeUrl
+            # Resolve proxy from PAC
+            $proxyInfo = Get-ProxyFromPac -InternetSettings $inetSettings -ProbeUrl $ProbeUrl
+        }
+        finally {
+            Resume-ProxyEnvVar -Saved $savedProxyEnv
+        }
 
         if ($proxyInfo -and $proxyInfo.ContainsKey('IsDirect')) {
             if ($proxyInfo.IsDirect) {
