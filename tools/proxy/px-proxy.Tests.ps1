@@ -218,6 +218,8 @@ Describe "Write-PxConfig" {
         $content | Should -Match 'listen = 127\.0\.0\.1'
         $content | Should -Match 'port = 3128'
         $content | Should -Match 'log = 3'
+        $content | Should -Match 'idle = 60'
+        $content | Should -Match 'socktimeout = 300\.0'
     }
 
     It "overwrites an existing config on each call" {
