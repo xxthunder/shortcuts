@@ -15,8 +15,6 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-036 — Corporate proxy for WSL without stored credentials](sc-036.md)
-- [SC-036f — Auto proxy setup detects a running Windows px](sc-036f.md)
 
 ### Open
 
@@ -40,6 +38,8 @@
 
 ### Done
 
+- [SC-036 — Corporate proxy for WSL without stored credentials](sc-036.md)
+- [SC-036f — Auto proxy setup detects a running Windows px](sc-036f.md)
 - [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 - [SC-041 — Move tool-specific documentation into docs/runbooks/](sc-041.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
