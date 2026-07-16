@@ -30,6 +30,13 @@
     Optional manual upstream proxy 'host:port'. When provided, overrides
     PAC/klist discovery for the 'start' action.
 
+.PARAMETER WaitForKey
+    Pause for a key press before the script exits (default: on). Keeps the
+    console window open when the tool is launched from a .bat wrapper or
+    Keypirinha, so the user can read the result before the terminal closes.
+    Pass -WaitForKey:$false for unattended/scripted use. Always skipped in
+    CI/test environments.
+
 .EXAMPLE
     .\px-proxy.ps1 install
 
@@ -40,6 +47,7 @@
     .\px-proxy.ps1 test
 #>
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Interactive tool requires console output for the press-any-key prompt')]
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false, Position = 0)]
@@ -47,7 +55,10 @@ param(
     [string]$Action = 'start',
 
     [Parameter(Mandatory = $false)]
-    [string]$ProxyHost
+    [string]$ProxyHost,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Pause for a key press before exiting so batch/Keypirinha windows stay open. Default: $true. Pass -WaitForKey:$false to disable.')]
+    [bool]$WaitForKey = $true
 )
 
 Set-StrictMode -Version Latest
@@ -552,6 +563,54 @@ function Invoke-PxProxy {
     }
 }
 
+function Read-SingleKey {
+    <#
+    .SYNOPSIS
+        Blocks until the user presses a key (thin, mockable console wrapper).
+    #>
+    [CmdletBinding()]
+    param()
+
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+}
+
+function Wait-ForKeyPress {
+    <#
+    .SYNOPSIS
+        Pauses until a key press so a launched console window stays readable.
+
+    .DESCRIPTION
+        When px-proxy runs from its .bat wrapper (e.g. via Keypirinha) the
+        console closes as soon as the process exits, hiding the result. This
+        holds the window open until the user acknowledges. Skipped in CI/test
+        environments, and tolerant of hosts with no interactive console (the
+        read is best-effort, never fatal).
+
+    .PARAMETER Prompt
+        Message shown before waiting.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Prompt = 'Press any key to exit ...'
+    )
+
+    if (Test-RunningInCIorTestEnvironment) {
+        return
+    }
+
+    Write-Host ""
+    Write-Host $Prompt
+    try {
+        Read-SingleKey
+    }
+    catch {
+        # No interactive console (redirected input, non-interactive host):
+        # there is nothing to wait on, so continue without failing.
+        Write-Verbose "Key read skipped: $_"
+    }
+}
+
 function Invoke-PxProxyMain {
     <#
     .SYNOPSIS
@@ -561,6 +620,10 @@ function Invoke-PxProxyMain {
         Split from the entry-point guard so the error handling is reachable from
         tests: the guard itself can only ever run when the script is invoked as a
         program, never when it is dot-sourced.
+
+    .PARAMETER WaitForKey
+        Pause for a key press before returning, regardless of success or
+        failure, so a launched console window stays readable.
 
     .OUTPUTS
         0 on success, 1 on failure.
@@ -573,7 +636,10 @@ function Invoke-PxProxyMain {
         [string]$Action,
 
         [Parameter(Mandatory = $false)]
-        [string]$ProxyHost
+        [string]$ProxyHost,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$WaitForKey
     )
 
     try {
@@ -586,9 +652,16 @@ function Invoke-PxProxyMain {
         Write-Error "px-proxy '$Action' failed: $_" -ErrorAction Continue
         return 1
     }
+    finally {
+        # In finally so the window is held open on failures too -- that is
+        # exactly when the user most needs to read the message.
+        if ($WaitForKey) {
+            Wait-ForKeyPress
+        }
+    }
 }
 
 # --- Main -----------------------------------------------------------------
 if (-not $env:PXPROXY_LIBRARY_MODE) {
-    exit (Invoke-PxProxyMain -Action $Action -ProxyHost $ProxyHost)
+    exit (Invoke-PxProxyMain -Action $Action -ProxyHost $ProxyHost -WaitForKey:$WaitForKey)
 }

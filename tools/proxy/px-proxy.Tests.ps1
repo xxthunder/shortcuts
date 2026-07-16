@@ -388,6 +388,52 @@ Describe "Invoke-PxProxyMain" {
         Invoke-PxProxyMain -Action start -ProxyHost 'x.corp:8080' | Should -Be 0
         Should -Invoke Invoke-PxProxy -Times 1 -ParameterFilter { $ProxyHost -eq 'x.corp:8080' }
     }
+
+    It "pauses before returning when -WaitForKey is set and the action succeeds" {
+        Mock Invoke-PxProxy { }
+        Mock Wait-ForKeyPress { }
+        Invoke-PxProxyMain -Action stop -WaitForKey | Should -Be 0
+        Should -Invoke Wait-ForKeyPress -Times 1
+    }
+
+    It "pauses before returning even when the action fails so the error stays visible" {
+        Mock Invoke-PxProxy { throw 'boom' }
+        Mock Write-Error { }
+        Mock Wait-ForKeyPress { }
+        Invoke-PxProxyMain -Action start -WaitForKey | Should -Be 1
+        Should -Invoke Wait-ForKeyPress -Times 1
+    }
+
+    It "does not pause when -WaitForKey is not set" {
+        Mock Invoke-PxProxy { }
+        Mock Wait-ForKeyPress { }
+        Invoke-PxProxyMain -Action stop | Should -Be 0
+        Should -Invoke Wait-ForKeyPress -Times 0
+    }
+}
+
+Describe "Wait-ForKeyPress" {
+    It "does not read a key in a CI/test environment" {
+        Mock Test-RunningInCIorTestEnvironment { $true }
+        Mock Read-SingleKey { }
+        Wait-ForKeyPress
+        Should -Invoke Read-SingleKey -Times 0
+    }
+
+    It "reads a key when interactive" {
+        Mock Test-RunningInCIorTestEnvironment { $false }
+        Mock Read-SingleKey { }
+        Mock Write-Host { }
+        Wait-ForKeyPress
+        Should -Invoke Read-SingleKey -Times 1
+    }
+
+    It "does not throw when the console has no interactive key reader" {
+        Mock Test-RunningInCIorTestEnvironment { $false }
+        Mock Read-SingleKey { throw 'no console' }
+        Mock Write-Host { }
+        { Wait-ForKeyPress } | Should -Not -Throw
+    }
 }
 
 Describe "Remove-PxProxy" {
