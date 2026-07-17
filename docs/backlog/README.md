@@ -17,6 +17,7 @@
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
 - [SC-042 — WSL ambient proxy env bypasses px (autoProxy override + zsh profile gap)](sc-042.md)
+- [SC-043 — Trust the corporate TLS-inspection CA for tools with bundled cert stores (uv)](sc-043.md)
 
 ### Open
 

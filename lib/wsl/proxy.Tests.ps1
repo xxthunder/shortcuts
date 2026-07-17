@@ -611,6 +611,16 @@ Describe "Install-WslProxy" {
             $script | Should -Match '/etc/environment'
             $script | Should -Match 'legacy proxy block from \$PROFILE'
         }
+
+        It "setup-proxy.sh exports CA-trust vars for bundled-store tools, guarded on the system bundle (SC-043)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match '\[ -r /etc/ssl/certs/ca-certificates.crt \]'
+            $script | Should -Match 'export SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"'
+            $script | Should -Match 'export SSL_CERT_DIR="/etc/ssl/certs"'
+            $script | Should -Match 'export NODE_EXTRA_CA_CERTS="/etc/ssl/certs/ca-certificates.crt"'
+            $script | Should -Match 'export REQUESTS_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"'
+            $script | Should -Match 'export PIP_CERT="/etc/ssl/certs/ca-certificates.crt"'
+        }
     }
 
     Context "Script invocation" {

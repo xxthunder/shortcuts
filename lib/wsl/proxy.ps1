@@ -28,7 +28,7 @@ function Install-WslProxy {
         This function is idempotent - safe to run multiple times (overwrites config).
 
         Configured targets:
-        - /etc/profile.d/wsl-manager-proxy.sh (proxy exports, sourced from /etc/zsh/zshenv for zsh)
+        - /etc/profile.d/wsl-manager-proxy.sh (proxy + CA-trust exports, sourced from /etc/zsh/zshenv for zsh)
         - /etc/apt/apt.conf.d/99proxy
         - ~/.docker/config.json (proxies.default)
         - ~/.config/containers/containers.conf ([engine] env)

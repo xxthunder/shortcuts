@@ -81,6 +81,8 @@ env | grep -i proxy                  # http_proxy=http://127.0.0.1:3128
 
 To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
+`setup-proxy` also points tools that ship their own certificate store (uv, Node, pip, Go) at the system trust store, so they accept the corporate TLS-inspection certificate instead of failing with `UnknownIssuer`. This assumes the corporate root CA is already trusted system-wide (`curl`/`wget` working through px confirms it).
+
 ---
 
 ## How discovery works
