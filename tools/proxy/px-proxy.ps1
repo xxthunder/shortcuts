@@ -316,7 +316,9 @@ function Write-PxConfig {
         debug-<pid>.log in px's working directory, which start sets to the px
         data directory). Raises idle/socktimeout above px's defaults so long
         AI agent requests (e.g. Copilot CLI, Claude Code) don't get dropped
-        mid-response.
+        mid-response, and raises workers/threads above px's low defaults
+        (2/5) so parallel connection bursts from those tools aren't refused
+        when the pool or listen backlog overflows (SC-044).
 
     .PARAMETER UpstreamProxy
         The upstream proxy 'host:port' px authenticates to.
@@ -343,6 +345,8 @@ auth =
 
 [settings]
 log = 3
+workers = 8
+threads = 32
 idle = 60
 socktimeout = 300.0
 "@
