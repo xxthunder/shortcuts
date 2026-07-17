@@ -231,6 +231,13 @@ function Merge-WslConfig {
     .PARAMETER Defaults
         An ordered dictionary of key/value pairs that must be present in [wsl2].
 
+    .PARAMETER OverwriteKeys
+        Keys whose existing value must be forced to the default rather than
+        preserved. Use for settings that actively conflict with project
+        requirements (e.g. 'autoProxy', which injects the corporate proxy into
+        WSL and breaks the px workflow — see SC-042). Keys not listed here keep
+        the default "never overwrite user values" behaviour.
+
     .OUTPUTS
         A hashtable with:
           Lines   - The updated content as a string array.
@@ -242,7 +249,8 @@ function Merge-WslConfig {
     #>
     param(
         [string[]]$Lines,
-        [System.Collections.Specialized.OrderedDictionary]$Defaults
+        [System.Collections.Specialized.OrderedDictionary]$Defaults,
+        [string[]]$OverwriteKeys = @()
     )
 
     $result = [System.Collections.Generic.List[string]]::new()
@@ -295,6 +303,12 @@ function Merge-WslConfig {
                     continue
                 }
             }
+            # Forced keys: replace an existing value that differs from the default
+            elseif ($OverwriteKeys -contains $key -and $Defaults.Contains($key) -and $value -ne $Defaults[$key]) {
+                $result.Add("$key = $($Defaults[$key])")
+                $changed = $true
+                continue
+            }
         }
 
         $result.Add($line)
@@ -340,7 +354,13 @@ function Invoke-ConfigureWsl {
         kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
         networkingMode    = mirrored
         dnsTunneling      = true
-        autoProxy         = true
+        autoProxy         = false
+
+        'autoProxy' is force-overwritten (not merely added when missing): WSL's
+        autoProxy injects the corporate proxy into every WSL shell's environment,
+        which bypasses the local px proxy and breaks credential-free access
+        (SC-042). It is set to false so WSL uses the px endpoint written by
+        setup-proxy instead.
 
         For 'kernelCommandLine', missing parameters are appended to any existing value.
         A timestamped backup is created before any modification.
@@ -364,8 +384,12 @@ function Invoke-ConfigureWsl {
         kernelCommandLine = "cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1"
         networkingMode    = "mirrored"
         dnsTunneling      = "true"
-        autoProxy         = "true"
+        autoProxy         = "false"
     }
+
+    # autoProxy is forced to the default: an existing autoProxy=true must be
+    # flipped, because it injects the corporate proxy into WSL and breaks px (SC-042).
+    $overwriteKeys = @('autoProxy')
 
     # Read existing content
     $existingLines = @()
@@ -374,7 +398,7 @@ function Invoke-ConfigureWsl {
     }
 
     # Merge defaults
-    $mergeResult = Merge-WslConfig -Lines $existingLines -Defaults $defaults
+    $mergeResult = Merge-WslConfig -Lines $existingLines -Defaults $defaults -OverwriteKeys $overwriteKeys
 
     if (-not $mergeResult.Changed) {
         Write-Output ".wslconfig already has all required defaults. No changes needed."

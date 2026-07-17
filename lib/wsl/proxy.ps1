@@ -28,7 +28,7 @@ function Install-WslProxy {
         This function is idempotent - safe to run multiple times (overwrites config).
 
         Configured targets:
-        - ~/.profile (managed block with http_proxy, https_proxy, no_proxy)
+        - /etc/profile.d/wsl-manager-proxy.sh (proxy exports, sourced from /etc/zsh/zshenv for zsh)
         - /etc/apt/apt.conf.d/99proxy
         - ~/.docker/config.json (proxies.default)
         - ~/.config/containers/containers.conf ([engine] env)
@@ -278,12 +278,12 @@ Then run setup-proxy again.
                 }
                 Write-Information ""
                 Write-Information "Affected targets:"
-                Write-Information "  - ~/.profile (environment variables)"
+                Write-Information "  - /etc/profile.d/wsl-manager-proxy.sh (+ /etc/zsh/zshenv for zsh)"
                 Write-Information "  - /etc/apt/apt.conf.d/99proxy"
                 Write-Information "  - ~/.docker/config.json"
                 Write-Information "  - ~/.config/containers/containers.conf"
 
-                # Auto-terminate so a fresh shell loads the updated ~/.profile.
+                # Auto-terminate so a fresh session picks up the updated proxy exports.
                 # Wrapped: a termination failure here must not be reported as a
                 # proxy-configuration failure — the proxy was applied successfully.
                 try {

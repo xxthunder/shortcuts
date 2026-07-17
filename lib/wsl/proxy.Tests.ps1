@@ -586,6 +586,31 @@ Describe "Install-WslProxy" {
             $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
             $script | Should -Match 'rm -f.*MODE_MARKER_FILE'
         }
+
+        It "setup-proxy.sh writes proxy exports to /etc/profile.d (SC-042)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match 'PROFILE_D_FILE="/etc/profile.d/wsl-manager-proxy.sh"'
+            $script | Should -Match 'tee "\$PROFILE_D_FILE"'
+            $script | Should -Match 'export HTTP_PROXY="\$PROXY_URL"'
+        }
+
+        It "setup-proxy.sh sources the exports from /etc/zsh/zshenv for zsh (SC-042)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match 'ZSHENV_FILE="/etc/zsh/zshenv"'
+            $script | Should -Match '\. \$PROFILE_D_FILE'
+        }
+
+        It "setup-proxy.sh removes the proxy exports on --remove (SC-042)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match 'rm -f "\$PROFILE_D_FILE"'
+            $script | Should -Match 'sudo sed -i.*ZSHENV_FILE'
+        }
+
+        It "setup-proxy.sh migrates away the legacy ~/.profile and /etc/environment blocks (SC-042)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match '/etc/environment'
+            $script | Should -Match 'legacy proxy block from \$PROFILE'
+        }
     }
 
     Context "Script invocation" {

@@ -16,6 +16,7 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
+- [SC-042 — WSL ambient proxy env bypasses px (autoProxy override + zsh profile gap)](sc-042.md)
 
 ### Open
 
