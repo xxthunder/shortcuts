@@ -16,7 +16,6 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
 - [SC-040 — Add Windows-side px authenticating proxy tool](sc-040.md)
-- [SC-044 — Give px headroom for Claude Code connection bursts (workers/threads)](sc-044.md)
 
 ### Open
 
@@ -44,6 +43,7 @@
 - [SC-036f — Auto proxy setup detects a running Windows px](sc-036f.md)
 - [SC-042 — WSL ambient proxy env bypasses px (autoProxy override + zsh profile gap)](sc-042.md)
 - [SC-043 — Trust the corporate TLS-inspection CA for tools with bundled cert stores (uv)](sc-043.md)
+- [SC-044 — Give px headroom for Claude Code connection bursts (workers/threads)](sc-044.md)
 - [SC-041 — Move tool-specific documentation into docs/runbooks/](sc-041.md)
 - [SC-039 — Refresh @claude model aliases to current 4.x family](sc-039.md)
 - [SC-038 — Repoint claude.yml shared-skills plugin to renamed xxthunder-agentic-skills repo](sc-038.md)
