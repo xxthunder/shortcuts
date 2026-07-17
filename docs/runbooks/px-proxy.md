@@ -14,10 +14,11 @@
 
 ## Prerequisites
 
-- Windows with your normal corporate domain logon (px reuses this session for SSPI).
-- [Scoop](https://scoop.sh) installed (`px` comes from the `main` bucket).
-- The corporate root CA trusted in the Windows certificate store (px does not manage certificates).
-- **For WSL reachability:** `networkingMode=mirrored` in `.wslconfig` (Windows 11 22H2+). Under default NAT mode, `127.0.0.1` from WSL does not reach the Windows px; that scenario is out of scope.
+You probably have everything already:
+
+- Your usual corporate Windows sign-in. px uses it to log in to the proxy for you, so you never type a password.
+- [Scoop](https://scoop.sh) installed. `px-proxy install` gets px from it.
+- The corporate root certificate trusted in Windows, so HTTPS sites work. px does not touch any certificates itself.
 
 ---
 
