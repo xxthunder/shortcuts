@@ -220,6 +220,8 @@ Describe "Write-PxConfig" {
         $content | Should -Match 'log = 3'
         $content | Should -Match 'idle = 60'
         $content | Should -Match 'socktimeout = 300\.0'
+        $content | Should -Match 'workers = 8'
+        $content | Should -Match 'threads = 32'
     }
 
     It "overwrites an existing config on each call" {
