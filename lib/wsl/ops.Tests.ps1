@@ -789,6 +789,39 @@ Describe "Merge-WslConfig" {
         }
     }
 
+    Context "OverwriteKeys handling (forced keys)" {
+        It "Should overwrite a forced key when the existing value differs from the default" {
+            $lines = @("[wsl2]", "autoProxy = true")
+            $defaults = [ordered]@{ autoProxy = "false" }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults -OverwriteKeys @('autoProxy')
+
+            $result.Changed | Should -Be $true
+            $result.Lines | Should -Contain "autoProxy = false"
+            $result.Lines | Should -Not -Contain "autoProxy = true"
+        }
+
+        It "Should not change a forced key already at the default value" {
+            $lines = @("[wsl2]", "autoProxy = false")
+            $defaults = [ordered]@{ autoProxy = "false" }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults -OverwriteKeys @('autoProxy')
+
+            $result.Changed | Should -Be $false
+        }
+
+        It "Should overwrite only forced keys, leaving non-forced custom values untouched" {
+            $lines = @("[wsl2]", "networkingMode = nat", "autoProxy = true")
+            $defaults = [ordered]@{ networkingMode = "mirrored"; autoProxy = "false" }
+
+            $result = Merge-WslConfig -Lines $lines -Defaults $defaults -OverwriteKeys @('autoProxy')
+
+            $result.Changed | Should -Be $true
+            $result.Lines | Should -Contain "networkingMode = nat"
+            $result.Lines | Should -Contain "autoProxy = false"
+        }
+    }
+
     Context "kernelCommandLine special handling" {
         It "Should append missing parameters to existing kernelCommandLine" {
             $lines = @("[wsl2]", "kernelCommandLine = cgroup_no_v1=all")
@@ -894,7 +927,7 @@ Describe "Invoke-ConfigureWsl" {
                 "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
                 "networkingMode = mirrored",
                 "dnsTunneling = true",
-                "autoProxy = true"
+                "autoProxy = false"
             )
             Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
             Mock Get-Content { $existingContent }
@@ -910,7 +943,7 @@ Describe "Invoke-ConfigureWsl" {
                 "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
                 "networkingMode = mirrored",
                 "dnsTunneling = true",
-                "autoProxy = true"
+                "autoProxy = false"
             )
             Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
             Mock Get-Content { $existingContent }
@@ -920,6 +953,24 @@ Describe "Invoke-ConfigureWsl" {
             Should -Invoke Write-Output -ParameterFilter {
                 $InputObject -like "*already has all required defaults*"
             }
+        }
+    }
+
+    Context "When .wslconfig has autoProxy=true (px conflict migration)" {
+        It "Should overwrite autoProxy to false and write the file" {
+            $existingContent = @(
+                "[wsl2]",
+                "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
+                "networkingMode = mirrored",
+                "dnsTunneling = true",
+                "autoProxy = true"
+            )
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
+            Mock Get-Content { $existingContent }
+
+            Invoke-ConfigureWsl -Confirm:$false
+
+            Should -Invoke Set-Content -Times 1
         }
     }
 
@@ -964,7 +1015,7 @@ Describe "Invoke-ConfigureWsl" {
                 "kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1",
                 "networkingMode = mirrored",
                 "dnsTunneling = true",
-                "autoProxy = true"
+                "autoProxy = false"
             )
             Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:wslConfigPath }
             Mock Get-Content { $existingContent }

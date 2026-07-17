@@ -65,11 +65,21 @@ Force the behavior either way:
 
 `setProxy.ps1` sets `HTTP_PROXY`/`HTTPS_PROXY` (and `DefaultWebProxy`) for the current session only; open a new shell and re-run it if needed.
 
-From WSL (mirrored networking):
+### Using px from WSL
+
+WSL reaches px on `127.0.0.1:3128` because wsl-manager sets `networkingMode=mirrored`. Two one-time setup steps make WSL tools use it automatically:
+
+1. `configure-wsl` (wsl-manager) writes `autoProxy=false` to `.wslconfig`. This matters: Windows' `autoProxy` otherwise injects the **corporate** proxy into every WSL shell, which needs a login WSL can't do (`407`). Turning it off lets WSL use px instead.
+2. `setup-proxy` (wsl-manager, choose the local px proxy) writes the px endpoint where both bash and zsh read it on startup (`/etc/profile.d`, plus `/etc/zsh/zshenv` for zsh), so every shell inherits it.
+
+After that, tools just work with no `-x` and no password:
 
 ```bash
-curl -x http://127.0.0.1:3128 https://www.google.com
+curl https://www.google.com          # succeeds through px
+env | grep -i proxy                  # http_proxy=http://127.0.0.1:3128
 ```
+
+To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
 ---
 
