@@ -4,7 +4,9 @@
 
 ## Overview
 
-`px-proxy` runs [px](https://github.com/genotrance/px) as a local authenticating proxy on `http://127.0.0.1:3128`. px authenticates to your corporate upstream proxy using your current Windows logon session (SSPI: NTLM or Negotiate/Kerberos) and exposes a plain, credential-free local endpoint. Point native Windows CLI tools (git, pip, node, curl, Claude Code) and WSL distros at that endpoint and they reach the internet without storing any password.
+`px-proxy` runs [px](https://github.com/genotrance/px) as a local authenticating proxy on `http://127.0.0.1:3128`. px authenticates to your corporate upstream proxy using your current Windows logon session, then exposes a plain, credential-free local endpoint. Point native Windows CLI tools (git, pip, node, curl, Claude Code) and WSL distros at that endpoint and they reach the internet without storing any password.
+
+Logging in with your existing Windows session is handled by the Security Support Provider Interface (SSPI, the Windows facility that lets a program prove who you are from your sign-in without ever asking for a password). It does this over one of two protocols: Kerberos (the modern, ticket-based one) or NT LAN Manager (NTLM, the older challenge-response one); px picks whichever your proxy accepts. You do not need to know which: the terms only matter when reading logs or troubleshooting below.
 
 **Why this exists:** `setProxy.ps1` wires the corporate proxy into `[System.Net.WebRequest]::DefaultWebProxy`, which only covers .NET. Native CLI tools cannot perform SSPI themselves and get `407 Proxy Authentication Required` when pointed straight at the corporate proxy. px closes that gap.
 
