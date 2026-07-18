@@ -44,7 +44,7 @@ Run from Keypirinha (type `px-proxy`) or from a terminal:
 
 ### Manual upstream override
 
-If auto-discovery cannot resolve the proxy (PAC returns DIRECT and no Kerberos SPN is present), pass the host explicitly:
+If auto-discovery cannot resolve the proxy (the network's Proxy Auto-Config (PAC, the script your company publishes to tell clients which proxy to use) returns `DIRECT`, meaning "go direct, no proxy", and no Kerberos ticket for the proxy is present), pass the host explicitly:
 
 ```powershell
 .\tools\proxy\px-proxy.ps1 start -ProxyHost "proxy.corp.example:8080"
@@ -83,14 +83,14 @@ env | grep -i proxy                  # http_proxy=http://127.0.0.1:3128
 
 To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
-`setup-proxy` also points tools that ship their own certificate store (uv, Node, pip, Go) at the system trust store, so they accept the corporate TLS-inspection certificate instead of failing with `UnknownIssuer`. This assumes the corporate root CA is already trusted system-wide (`curl`/`wget` working through px confirms it).
+`setup-proxy` also points tools that ship their own certificate store (uv, Node, pip, Go) at the system trust store, so they accept the corporate Transport Layer Security (TLS, the encryption behind HTTPS) inspection certificate instead of failing with `UnknownIssuer`. This assumes the corporate root certificate authority (CA) is already trusted system-wide (`curl`/`wget` working through px confirms it).
 
 ---
 
 ## How discovery works
 
 1. **`-ProxyHost` override** (if provided) wins.
-2. **PAC evaluation**: reuses `setProxy.ps1`'s `Get-ProxyFromPac`, which runs the PAC's `FindProxyForURL` via `GetSystemWebProxy().GetProxy()` and returns the **real upstream proxy** (the host carrying the Kerberos SPN), not the PAC-distribution host.
+2. **PAC evaluation**: reuses `setProxy.ps1`'s `Get-ProxyFromPac`, which runs the PAC's `FindProxyForURL` via `GetSystemWebProxy().GetProxy()` and returns the **real upstream proxy** (the host carrying the Kerberos Service Principal Name (SPN), the identity Kerberos hands out a ticket against), not the PAC-distribution host.
 3. **Kerberos SPN fallback**: parses an `HTTP/<host>` service ticket from `klist` and appends the default port `8080`.
 4. **Manual prompt**: interactive sessions only.
 
@@ -120,7 +120,7 @@ Look for a `Server: HTTP/<host>` ticket. A working Kerberos exchange sends a lar
 
 ### TLS revocation check failed (`curl --ssl-no-revoke` scenario)
 
-Behind TLS inspection, Schannel's hard revocation check can fail when the revocation endpoint of the inspected certificate is unreachable. This is often benign. `px-proxy test` surfaces it as a distinct diagnostic. Ensure the corporate root CA is trusted; for `curl`, `--ssl-no-revoke` bypasses the check.
+Behind TLS inspection, Schannel (Windows' built-in secure-connection layer) runs a hard revocation check that can fail when the inspected certificate's revocation server is unreachable. This is often benign. `px-proxy test` surfaces it as a distinct diagnostic. Ensure the corporate root CA is trusted; for `curl`, `--ssl-no-revoke` bypasses the check.
 
 ### TLS / certificate errors
 
