@@ -32,6 +32,8 @@ Run from Keypirinha (type `px-proxy`) or from a terminal:
 .\tools\proxy\px-proxy.ps1 <action>
 ```
 
+**Passing an action from Keypirinha:** type `px-proxy`, then press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the script with no action, which runs the default (`start`).
+
 | Action    | What it does |
 |-----------|--------------|
 | `install` | Installs px via Scoop (only if not already present) and creates the px data directory. Does **not** resolve the proxy or write config. |
