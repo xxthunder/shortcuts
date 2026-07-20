@@ -31,7 +31,7 @@ Describe "Install-WslProxy" {
         Mock Test-PxProxyAvailable { $false }
         # Default prompt answers — filtered mocks take precedence, so tests only
         # override the prompts they care about.
-        Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "A" }
+        Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Auto" }
         Mock Get-UserConfirmation -MockWith { $true }
         # Auth method defaults to Basic; credentials are empty unless a test asks.
         Mock Get-UserChoice -ParameterFilter { $message -like "*Auth method*" } -MockWith { 'Basic' }
@@ -49,7 +49,7 @@ Describe "Install-WslProxy" {
         }
 
         It "Should terminate the distribution on Remove teardown success" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Remove" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -286,9 +286,26 @@ Describe "Install-WslProxy" {
         }
     }
 
+    Context "Mode prompt — Enter defaults to Auto" {
+        It "Should present Auto/Manual/Remove via Get-UserChoice with Auto as the Enter default" {
+            Mock Get-InternetSettingsFromRegistry { [PSCustomObject]@{ AutoConfigURL = "http://pac.corp.com/proxy.pac" } }
+            Mock Get-ProxyFromPac { @{ ProxyUrl = "http://proxy.corp.com:8080"; IsDirect = $false } }
+
+            Install-WslProxy -DistroName "Debian" -Confirm:$false
+
+            Should -Invoke Get-UserChoice -Times 1 -ParameterFilter {
+                $message -like "*Proxy setup*" -and
+                $defaultOption -eq 'Auto' -and
+                ($options -contains 'Auto') -and
+                ($options -contains 'Manual') -and
+                ($options -contains 'Remove')
+            }
+        }
+    }
+
     Context "Manual — user enters host:port" {
         It "Should use manually entered proxy URL and not probe PAC or px" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "M" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Manual" }
             Mock Read-Host -ParameterFilter { $Prompt -like "*host:port*" } -MockWith { "myproxy.com:8080" }
             Mock Get-ProxyFromPac { throw "PAC must not be probed on Manual path" }
 
@@ -314,7 +331,7 @@ Describe "Install-WslProxy" {
         }
 
         It "Should throw when host:port is empty" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "M" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Manual" }
             Mock Read-Host -ParameterFilter { $Prompt -like "*host:port*" } -MockWith { "" }
 
             { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*host:port*"
@@ -324,7 +341,7 @@ Describe "Install-WslProxy" {
 
     Context "Remove — dispatches teardown" {
         It "Should call setup-proxy.sh with --remove flag" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Remove" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -335,7 +352,7 @@ Describe "Install-WslProxy" {
         }
 
         It "Should skip auth method and credentials prompts" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Remove" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
@@ -344,22 +361,13 @@ Describe "Install-WslProxy" {
         }
 
         It "Should not run PAC or px detection" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "R" }
+            Mock Get-UserChoice -ParameterFilter { $message -like "*Proxy setup*" } -MockWith { "Remove" }
             Mock Get-ProxyFromPac { throw "PAC must not be probed on Remove path" }
 
             Install-WslProxy -DistroName "Debian" -Confirm:$false
 
             Should -Invoke Get-ProxyFromPac -Times 0
             Should -Invoke Test-PxProxyAvailable -Times 0
-        }
-    }
-
-    Context "Invalid mode choice" {
-        It "Should throw on unrecognized input" {
-            Mock Read-Host -ParameterFilter { $Prompt -like "*Proxy setup*" } -MockWith { "X" }
-
-            { Install-WslProxy -DistroName "Debian" -Confirm:$false } | Should -Throw "*Invalid choice*"
-            Should -Invoke Invoke-WslDistroScript -Times 0
         }
     }
 
