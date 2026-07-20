@@ -78,9 +78,9 @@ function Install-WslProxy {
     $isDirect = $false
     $authMode = $null
 
-    $modeChoice = Read-Host "Proxy setup: [A]uto / [M]anual / [R]emove"
-    switch -Regex ($modeChoice) {
-        '^\s*[Aa]' {
+    $modeChoice = Get-UserChoice -message "Proxy setup" -options @('Auto', 'Manual', 'Remove') -defaultOption 'Auto'
+    switch ($modeChoice) {
+        'Auto' {
             # Auto: detect BOTH sources up front, report the findings in one place,
             # then present a single selection. Detection output is never interleaved
             # with the prompt, and the resolved values are shown before the user
@@ -166,7 +166,7 @@ function Install-WslProxy {
             }
             break
         }
-        '^\s*[Mm]' {
+        'Manual' {
             $manualEntry = Read-Host "Enter proxy host:port (e.g. proxy.corp.com:8080)"
             if ([string]::IsNullOrWhiteSpace($manualEntry)) {
                 throw "No proxy host:port provided."
@@ -174,12 +174,9 @@ function Install-WslProxy {
             $ProxyUrl = "http://$manualEntry"
             break
         }
-        '^\s*[Rr]' {
+        'Remove' {
             $isDirect = $true
             break
-        }
-        default {
-            throw "Invalid choice '$modeChoice'. Expected [A]uto, [M]anual, or [R]emove."
         }
     }
 

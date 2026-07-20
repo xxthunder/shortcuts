@@ -702,7 +702,7 @@ Configure corporate proxy settings with automatic detection. Auto-detects proxy 
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
 
 This command:
-- Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down)
+- Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down); pressing Enter selects Auto
 - Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
 - Auto → DIRECT collapses to Remove (no proxy needed on this network)
 - Auto mode also probes for a running local **px** proxy (see [px Proxy runbook](runbooks/px-proxy.md)). When px is up, you choose between the px endpoint (`http://127.0.0.1:3128`, reachable from WSL via mirrored networking — px authenticates to the corporate proxy via SSPI on the Windows host, so no credentials are stored) and the PAC-detected corporate proxy
