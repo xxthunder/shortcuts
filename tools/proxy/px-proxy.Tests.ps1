@@ -204,20 +204,119 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 }
 
+Describe "Get-PxUserConfigPath" {
+    It "returns px-user.ini inside the data directory" {
+        Mock Get-PxDataDir { 'C:\fake\px' }
+        Get-PxUserConfigPath | Should -Be 'C:\fake\px\px-user.ini'
+    }
+}
+
+Describe "Get-PxUserSetting" {
+    BeforeEach {
+        Mock Get-PxDataDir { $script:TestDataDir }
+        New-Item -ItemType Directory -Path $script:TestDataDir -Force | Out-Null
+        Remove-Item (Join-Path $script:TestDataDir 'px-user.ini') -ErrorAction SilentlyContinue
+    }
+
+    It "returns an empty map when the user file is absent" {
+        (Get-PxUserSetting).Count | Should -Be 0
+    }
+
+    It "parses [settings] keys and ignores comments and blank lines" {
+        $userConfig = @'
+# a leading comment
+[settings]
+log = 3
+; semicolon comment
+workers = 12
+
+threads = 40
+'@
+        Set-Content -Path (Get-PxUserConfigPath) -Value $userConfig -Encoding ascii
+
+        $settings = Get-PxUserSetting
+        $settings.Count | Should -Be 3
+        $settings['log'] | Should -Be '3'
+        $settings['workers'] | Should -Be '12'
+        $settings['threads'] | Should -Be '40'
+    }
+
+    It "strips inline comments from values" {
+        $userConfig = @'
+[settings]
+log = 0   # inline note
+workers = 12 ; another
+'@
+        Set-Content -Path (Get-PxUserConfigPath) -Value $userConfig -Encoding ascii
+
+        $settings = Get-PxUserSetting
+        $settings['log'] | Should -Be '0'
+        $settings['workers'] | Should -Be '12'
+    }
+
+    It "ignores keys outside the [settings] section" {
+        $userConfig = @'
+[proxy]
+server = evil.corp:1234
+listen = 0.0.0.0
+
+[settings]
+log = 3
+'@
+        Set-Content -Path (Get-PxUserConfigPath) -Value $userConfig -Encoding ascii
+
+        $settings = Get-PxUserSetting
+        $settings.ContainsKey('server') | Should -BeFalse
+        $settings.ContainsKey('listen') | Should -BeFalse
+        $settings['log'] | Should -Be '3'
+    }
+}
+
+Describe "New-PxUserConfigTemplate" {
+    BeforeEach {
+        Mock Get-PxDataDir { $script:TestDataDir }
+        Mock New-Directory { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
+        New-Item -ItemType Directory -Path $script:TestDataDir -Force | Out-Null
+        Remove-Item (Join-Path $script:TestDataDir 'px-user.ini') -ErrorAction SilentlyContinue
+    }
+
+    It "seeds a fully commented template when the file is absent" {
+        New-PxUserConfigTemplate
+        $path = Get-PxUserConfigPath
+        Test-Path $path | Should -BeTrue
+        $content = Get-Content -Raw $path
+        $content | Should -Match '\[settings\]'
+        # Every overridable key ships commented out so an untouched template
+        # behaves exactly like no file (pure defaults).
+        $content | Should -Match '(?m)^#\s*log\b'
+        $content | Should -Match '(?m)^#\s*workers\b'
+        (Get-PxUserSetting).Count | Should -Be 0
+    }
+
+    It "never overwrites an existing user file" {
+        Set-Content -Path (Get-PxUserConfigPath) -Value 'MINE' -Encoding ascii
+        New-PxUserConfigTemplate
+        Get-Content -Raw (Get-PxUserConfigPath) | Should -Match 'MINE'
+    }
+}
+
 Describe "Write-PxConfig" {
     BeforeEach {
         Mock Get-PxDataDir { $script:TestDataDir }
         Mock New-Directory { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
+        New-Item -ItemType Directory -Path $script:TestDataDir -Force | Out-Null
+        Remove-Item (Join-Path $script:TestDataDir 'px-user.ini') -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $script:TestDataDir 'px.ini') -ErrorAction SilentlyContinue
     }
 
-    It "writes a px.ini containing the resolved upstream proxy and logging" {
+    It "writes a px.ini with the resolved upstream proxy and default settings (log off)" {
         $path = Write-PxConfig -UpstreamProxy 'up.corp:8080'
         $path | Should -Be (Join-Path $script:TestDataDir 'px.ini')
         $content = Get-Content -Raw $path
         $content | Should -Match 'server = up\.corp:8080'
         $content | Should -Match 'listen = 127\.0\.0\.1'
         $content | Should -Match 'port = 3128'
-        $content | Should -Match 'log = 3'
+        $content | Should -Match 'log = 0'
         $content | Should -Match 'idle = 60'
         $content | Should -Match 'socktimeout = 300\.0'
         $content | Should -Match 'workers = 8'
@@ -230,6 +329,49 @@ Describe "Write-PxConfig" {
         $content = Get-Content -Raw $path
         $content | Should -Match 'server = second\.corp:8080'
         $content | Should -Not -Match 'first\.corp'
+    }
+
+    It "applies user [settings] overrides over the built-in defaults" {
+        $userConfig = @'
+[settings]
+log = 3
+workers = 12
+'@
+        Set-Content -Path (Get-PxUserConfigPath) -Value $userConfig -Encoding ascii
+
+        $content = Get-Content -Raw (Write-PxConfig -UpstreamProxy 'up.corp:8080')
+        $content | Should -Match 'log = 3'
+        $content | Should -Match 'workers = 12'
+        # Untouched keys keep their defaults.
+        $content | Should -Match 'threads = 32'
+        $content | Should -Match 'idle = 60'
+        $content | Should -Match 'socktimeout = 300\.0'
+    }
+
+    It "keeps managed [proxy] keys even when the user file tries to set them" {
+        $userConfig = @'
+[settings]
+server = evil.corp:1234
+listen = 0.0.0.0
+port = 9999
+log = 3
+'@
+        Set-Content -Path (Get-PxUserConfigPath) -Value $userConfig -Encoding ascii
+
+        $content = Get-Content -Raw (Write-PxConfig -UpstreamProxy 'up.corp:8080')
+        $content | Should -Match 'server = up\.corp:8080'
+        $content | Should -Match 'listen = 127\.0\.0\.1'
+        $content | Should -Match 'port = 3128'
+        $content | Should -Not -Match '0\.0\.0\.0'
+        $content | Should -Not -Match '9999'
+        $content | Should -Not -Match 'evil'
+        # A legitimate [settings] override still applies.
+        $content | Should -Match 'log = 3'
+    }
+
+    It "seeds the user template when it is absent" {
+        Write-PxConfig -UpstreamProxy 'up.corp:8080' | Out-Null
+        Test-Path (Get-PxUserConfigPath) | Should -BeTrue
     }
 }
 
@@ -251,6 +393,13 @@ Describe "Install-PxProxy" {
         Mock Test-PxInstalled { $true }
         Install-PxProxy
         Should -Invoke Invoke-CommandLine -Times 0
+    }
+
+    It "seeds the px-user.ini template" {
+        Mock Test-PxInstalled { $true }
+        Remove-Item (Get-PxUserConfigPath) -ErrorAction SilentlyContinue
+        Install-PxProxy
+        Test-Path (Get-PxUserConfigPath) | Should -BeTrue
     }
 }
 
@@ -472,6 +621,15 @@ Describe "Remove-PxProxy" {
         Set-Content -Path (Get-PxConfigPath) -Value 'stale'
         Remove-PxProxy
         Test-Path (Get-PxConfigPath) | Should -BeFalse
+    }
+
+    It "preserves the user config file so tuning survives a reinstall" {
+        Set-Content -Path (Get-PxUserConfigPath) -Value 'MINE' -Encoding ascii
+        Set-Content -Path (Get-PxConfigPath) -Value 'stale'
+        Remove-PxProxy
+        Test-Path (Get-PxConfigPath) | Should -BeFalse
+        Test-Path (Get-PxUserConfigPath) | Should -BeTrue
+        Get-Content -Raw (Get-PxUserConfigPath) | Should -Match 'MINE'
     }
 }
 
