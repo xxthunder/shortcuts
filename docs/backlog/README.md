@@ -15,7 +15,6 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-046 — Make px `[settings]` user-configurable via px-user.ini](sc-046.md)
 
 ### Open
 
@@ -39,6 +38,7 @@
 
 ### Done
 
+- [SC-046 — Make px `[settings]` user-configurable via px-user.ini](sc-046.md)
 - [SC-045 — Setup-proxy mode prompt: Enter defaults to Auto](sc-045.md)
 - [SC-036 — Corporate proxy for WSL without stored credentials](sc-036.md)
 - [SC-036f — Auto proxy setup detects a running Windows px](sc-036f.md)
