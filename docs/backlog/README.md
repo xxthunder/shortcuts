@@ -15,6 +15,7 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-046 — Make px `[settings]` user-configurable via px-user.ini](sc-046.md)
 
 ### Open
 
