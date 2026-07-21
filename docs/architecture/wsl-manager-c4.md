@@ -50,7 +50,7 @@ C4Container
 
     System_Boundary(wslManagerSystem, "WSL Manager System") {
         Container(entryPoint, "wsl-manager.ps1", "PowerShell Script", "CLI entry point; parses parameters and delegates to the manager orchestrator")
-        Container(tuiLayer, "TUI Layer (manager.ps1)", "PowerShell + PwshSpectreConsole", "Interactive menu with arrow-key navigation, rich tables, and confirmation dialogs; planned SC-016 modernization")
+        Container(tuiLayer, "TUI Layer (manager.ps1)", "PowerShell + PwshSpectreConsole", "Interactive menu with arrow-key navigation, rich tables, and confirmation dialogs; SC-016 modernization (menu and table shipped, distro picker and confirmations planned)")
         Container(dispatcher, "Command Dispatcher (commands.ps1)", "PowerShell Script", "Routes commands to action functions; contains all Invoke-* workflow handlers and distro selection logic")
         Container(wslLib, "WSL Library (lib/wsl/)", "PowerShell Modules", "Core WSL operations: distro lifecycle, exec, user, wsl.conf, Docker, Podman, DevPod, proxy")
         Container(bashScripts, "Bash Install Scripts", "Shell Scripts", "Executed inside WSL distros for Docker, Podman, DevPod installation, and proxy configuration")
@@ -87,10 +87,10 @@ C4Component
     title WSL Manager — Component Diagram (WSL Library)
 
     Container_Boundary(tuiContainer, "TUI Layer") {
-        Component(showMenu, "Show-WslMenu", "Planned SC-016", "Arrow-key menu using Read-SpectreSelection; replaces Read-Host letter input")
-        Component(showTable, "Show-WslDistroTable", "Planned SC-016", "Rich distro table using Format-SpectreTable with colored status columns")
-        Component(selectDistro, "Select-WslDistro", "Planned SC-016", "Distro picker using Read-SpectreSelection; replaces numbered Read-Host input")
-        Component(confirmAction, "Confirm-DestructiveAction", "Planned SC-016", "Read-SpectreConfirm for remove, terminate, shutdown operations")
+        Component(showMenu, "Show-WslMenu", "Shipped SC-016b", "Arrow-key menu using Read-SpectreSelection; replaces Read-Host letter input")
+        Component(showTable, "Show-WslDistroTable", "Shipped SC-016c", "Rich distro table using Format-SpectreTable with colored status columns")
+        Component(selectDistro, "Select-WslDistro", "Planned SC-016d", "Distro picker using Read-SpectreSelection; replaces numbered Read-Host input")
+        Component(confirmAction, "Confirm-DestructiveAction", "Planned SC-016e", "Read-SpectreConfirm for remove, terminate, shutdown operations")
     }
 
     Container_Boundary(dispatcherContainer, "Command Dispatcher (commands.ps1)") {
@@ -165,16 +165,16 @@ C4Component
 
 ## SC-016 Change Impact Summary
 
-The following table maps the planned SC-016 changes to the affected components:
+The following table maps the SC-016 changes to the affected components and their current status:
 
-| SC-016 Change | Current Implementation | Planned Implementation | Affected Components |
-|---|---|---|---|
-| Menu selection | `Read-Host` letter input | `Read-SpectreSelection` arrow-key navigation | `manager.ps1` → `Show-WslMenu` (new) |
-| Distro table | `Write-Host` with basic colors | `Format-SpectreTable` with borders and colored status | `commands.ps1` → `Show-WslDistroTable` (new) |
-| Distro picker | `Read-Host` numbered input | `Read-SpectreSelection` for distro lists | `commands.ps1` → `Select-WslDistro` (modified) |
-| Destructive confirmations | Implicit (no confirmation in TUI) | `Read-SpectreConfirm` for remove, terminate, shutdown | `commands.ps1` → `Confirm-DestructiveAction` (new) |
-| Status coloring | `Write-Host -ForegroundColor` | Spectre markup: `[green]Running[/]`, `[red]Stopped[/]` | `Show-WslDistroTable` |
-| Module dependency | None | `PwshSpectreConsole` v2 from PSGallery | Setup process / `Install-Module` |
+| SC-016 Change | Current Implementation | Planned Implementation | Affected Components | Status |
+|---|---|---|---|---|
+| Menu selection | `Read-Host` letter input | `Read-SpectreSelection` arrow-key navigation | `manager.ps1` → `Show-WslMenu` (new) | Done (SC-016b) |
+| Distro table | `Write-Host` with basic colors | `Format-SpectreTable` with borders and colored status | `commands.ps1` → `Show-WslDistroTable` (new) | Done (SC-016c) |
+| Distro picker | `Read-Host` numbered input | `Read-SpectreSelection` for distro lists | `commands.ps1` → `Select-WslDistro` (modified) | Open (SC-016d) |
+| Destructive confirmations | Implicit (no confirmation in TUI) | `Read-SpectreConfirm` for remove, terminate, shutdown | `commands.ps1` → `Confirm-DestructiveAction` (new) | Open (SC-016e) |
+| Status coloring | `Write-Host -ForegroundColor` | Spectre markup: `[green]Running[/]`, `[red]Stopped[/]` | `Show-WslDistroTable` | Done (SC-016c) |
+| Module dependency | None | `PwshSpectreConsole` v2 from PSGallery | Setup process / `Install-Module` | Done (SC-016a) |
 
 ### Key architectural principle
 
