@@ -36,11 +36,11 @@ Run from Keypirinha (type `px-proxy`) or from a terminal:
 
 | Action    | What it does |
 |-----------|--------------|
-| `install` | Installs px via Scoop (only if not already present) and creates the px data directory. Does **not** resolve the proxy or write config. |
-| `start`   | Resolves the upstream proxy fresh, (re)writes the px config, and always (re)starts px. Exactly one `pxw.exe` instance results. |
+| `install` | Installs px via Scoop (only if not already present), creates the px data directory, and seeds a `px-user.ini` settings template. Does **not** resolve the proxy or write config. |
+| `start`   | Resolves the upstream proxy fresh, (re)writes the px config (merging your `px-user.ini` overrides), and always (re)starts px. Exactly one `pxw.exe` instance results. |
 | `stop`    | Stops any running px cleanly. |
 | `test`    | Sends an HTTPS request through `127.0.0.1:3128` and reports a clear diagnostic. |
-| `remove`  | Stops px, uninstalls it (only if this tool installed it), and deletes the config and log files. |
+| `remove`  | Stops px, uninstalls it (only if this tool installed it), and deletes `px.ini` and the log files. Your `px-user.ini` is preserved. |
 
 `start` is the default action when none is given.
 
@@ -103,8 +103,35 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 ## Files and logs
 
 - **Data directory:** `%USERPROFILE%\.config\px`
-- **Config:** `%USERPROFILE%\.config\px\px.ini` (regenerated on every `start`)
-- **Log:** `%USERPROFILE%\.config\px\debug-*.log` (`[settings] log = 3` writes a unique log in px's working directory, which `start` sets to the data dir; `remove` deletes these)
+- **Generated config:** `%USERPROFILE%\.config\px\px.ini` (regenerated on every `start`; do not hand-edit, your changes are overwritten)
+- **User settings:** `%USERPROFILE%\.config\px\px-user.ini` (your overrides; never overwritten by the tool and preserved on `remove`; see [Customizing settings](#customizing-settings))
+- **Log:** `%USERPROFILE%\.config\px\debug-*.log` (off by default; set `log = 3` in `px-user.ini` to write a unique log in px's working directory, which `start` sets to the data dir; `remove` deletes these)
+
+---
+
+## Customizing settings
+
+`px.ini` is regenerated on every `start`, so it is not the place for your own changes. Put overrides in `%USERPROFILE%\.config\px\px-user.ini` instead: the tool merges them over its defaults and never overwrites the file. `install` (and the first `start`) seed a commented template listing every key.
+
+Only the `[settings]` block is read; the `[proxy]` block (`server`, `listen`, `port`) stays tool-managed, so nothing here can move the `127.0.0.1:3128` endpoint or the resolved upstream. Overridable keys and their defaults:
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `log` | `0` | Log level. `0` = off; `3` = verbose `debug-*.log` for troubleshooting. |
+| `workers` | `8` | Connection worker processes. |
+| `threads` | `32` | Threads per worker. |
+| `idle` | `60` | Seconds an idle upstream connection is kept. |
+| `socktimeout` | `300.0` | Socket timeout (seconds) for long-running requests. |
+
+Example `px-user.ini` that turns logging on and enlarges the pool:
+
+```ini
+[settings]
+log = 3
+workers = 12
+```
+
+Run `start` to apply. Delete `px-user.ini` (or a single line) to return to defaults.
 
 ---
 
@@ -136,7 +163,7 @@ Confirm px is running and reachable:
 .\tools\proxy\px-proxy.ps1 test
 ```
 
-Then read the px log at `%USERPROFILE%\.config\px\debug-*.log`. Re-run `start` to regenerate the config and restart px.
+Logging is off by default; set `log = 3` in `px-user.ini` (see [Customizing settings](#customizing-settings)) and re-run `start`, then read the px log at `%USERPROFILE%\.config\px\debug-*.log`. Re-running `start` also regenerates the config and restarts px.
 
 ---
 

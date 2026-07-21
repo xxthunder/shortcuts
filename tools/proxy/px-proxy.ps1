@@ -107,13 +107,30 @@ function Get-PxDataDir {
 function Get-PxConfigPath {
     <#
     .SYNOPSIS
-        Returns the full path to the px config file (px.ini).
+        Returns the full path to the generated px config file (px.ini).
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param()
 
     return (Join-Path (Get-PxDataDir) 'px.ini')
+}
+
+function Get-PxUserConfigPath {
+    <#
+    .SYNOPSIS
+        Returns the full path to the user-owned override file (px-user.ini).
+
+    .DESCRIPTION
+        px-user.ini holds a '[settings]' block whose keys are merged over the
+        built-in defaults when px.ini is generated. Unlike px.ini it is never
+        overwritten by the tool, so user tuning survives every 'start' (SC-046).
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    return (Join-Path (Get-PxDataDir) 'px-user.ini')
 }
 
 function Get-PxInstalledMarkerPath {
@@ -306,19 +323,143 @@ function Resolve-PxUpstreamProxy {
 }
 
 # --- px config ------------------------------------------------------------
+
+# Keys the tool owns; a user cannot override these from px-user.ini because the
+# WSL/native-tool contract (127.0.0.1:3128) and the resolved upstream depend on
+# them. Compared case-insensitively.
+$script:PxManagedSettingKeys = @('server', 'listen', 'port', 'auth')
+
+# Built-in [settings] defaults, in emission order. log defaults to 0 (quiet):
+# set log = 3 in px-user.ini to capture a debug log when troubleshooting.
+# idle/socktimeout sit above px's defaults so long AI-agent requests (Claude
+# Code, Copilot CLI) are not dropped; workers/threads sit above px's low
+# defaults (2/5) so parallel connection bursts are not refused (SC-044).
+function Get-PxDefaultSetting {
+    <#
+    .SYNOPSIS
+        Returns the built-in px '[settings]' defaults as an ordered map.
+    #>
+    [CmdletBinding()]
+    [OutputType([System.Collections.Specialized.OrderedDictionary])]
+    param()
+
+    return [ordered]@{
+        log         = '0'
+        workers     = '8'
+        threads     = '32'
+        idle        = '60'
+        socktimeout = '300.0'
+    }
+}
+
+function Get-PxUserSetting {
+    <#
+    .SYNOPSIS
+        Parses the '[settings]' block of px-user.ini into a hashtable.
+
+    .DESCRIPTION
+        Reads px-user.ini (if present) and returns the key/value pairs under its
+        '[settings]' section. Blank lines and '#'/';' comments are ignored, and
+        only the '[settings]' section is read: keys in any other section (e.g. a
+        stray '[proxy]') are dropped so they can never affect the generated
+        config. Returns an empty map when the file is absent.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    $settings = @{}
+
+    $path = Get-PxUserConfigPath
+    if (-not (Test-Path $path)) {
+        return $settings
+    }
+
+    $inSettings = $false
+    foreach ($raw in (Get-Content -Path $path)) {
+        $line = $raw.Trim()
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($line.StartsWith('#') -or $line.StartsWith(';')) { continue }
+
+        if ($line -match '^\[(?<section>.+)\]$') {
+            $inSettings = ($Matches['section'].Trim() -eq 'settings')
+            continue
+        }
+
+        if (-not $inSettings) { continue }
+
+        $idx = $line.IndexOf('=')
+        if ($idx -lt 1) { continue }
+
+        $key = $line.Substring(0, $idx).Trim()
+        $value = $line.Substring($idx + 1).Trim()
+        # Strip an inline comment (whitespace then '#' or ';'). px's configparser
+        # would otherwise treat it as part of the value and fail to parse.
+        $value = ($value -split '\s[#;]', 2)[0].Trim()
+        if (-not [string]::IsNullOrWhiteSpace($key)) {
+            $settings[$key] = $value
+        }
+    }
+
+    return $settings
+}
+
+function New-PxUserConfigTemplate {
+    <#
+    .SYNOPSIS
+        Seeds a commented px-user.ini template when the file is absent.
+
+    .DESCRIPTION
+        Writes a self-documenting template listing every overridable key,
+        commented out and set to its default, so an untouched template behaves
+        exactly like no file. Never overwrites an existing px-user.ini.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    $path = Get-PxUserConfigPath
+    if (Test-Path $path) {
+        return
+    }
+
+    New-Directory -Path (Get-PxDataDir)
+
+    $content = @"
+# px-proxy user settings (SC-046) -- overrides the generated px.ini.
+# Only the [settings] block below is read; [proxy] (server/listen/port) stays
+# managed by the tool. Uncomment a key to change it; delete this file to reset
+# to defaults. px-proxy never overwrites this file.
+[settings]
+# Log level: 0 = off (default); 3 = verbose debug-<pid>.log for troubleshooting.
+# log = 0
+# Connection worker processes.
+# workers = 8
+# Threads per worker.
+# threads = 32
+# Seconds an idle upstream connection is kept.
+# idle = 60
+# Socket timeout (seconds) for long-running requests.
+# socktimeout = 300.0
+"@
+
+    if ($PSCmdlet.ShouldProcess($path, "Write px-user.ini template")) {
+        Set-Content -Path $path -Value $content -Encoding ascii
+    }
+}
+
 function Write-PxConfig {
     <#
     .SYNOPSIS
-        (Re)writes the px config from the resolved upstream proxy.
+        (Re)writes the px config from the resolved upstream proxy and user overrides.
 
     .DESCRIPTION
-        Overwrites px.ini every call. Enables logging (log = 3: unique
-        debug-<pid>.log in px's working directory, which start sets to the px
-        data directory). Raises idle/socktimeout above px's defaults so long
-        AI agent requests (e.g. Copilot CLI, Claude Code) don't get dropped
-        mid-response, and raises workers/threads above px's low defaults
-        (2/5) so parallel connection bursts from those tools aren't refused
-        when the pool or listen backlog overflows (SC-044).
+        Overwrites px.ini every call. The '[proxy]' block is tool-managed
+        (server resolved fresh; listen/port fixed). The '[settings]' block is
+        the built-in defaults (Get-PxDefaultSettings) with any user overrides
+        from px-user.ini's '[settings]' merged on top (user wins). Managed keys
+        are stripped from the user overrides so nothing in px-user.ini can move
+        the listen endpoint or upstream. Also seeds the px-user.ini template
+        when absent so the overridable keys are discoverable (SC-046).
 
     .PARAMETER UpstreamProxy
         The upstream proxy 'host:port' px authenticates to.
@@ -334,7 +475,23 @@ function Write-PxConfig {
     $dir = Get-PxDataDir
     New-Directory -Path $dir
 
+    # Make the override file discoverable on first use.
+    New-PxUserConfigTemplate
+
     $configPath = Get-PxConfigPath
+
+    # Merge user [settings] over the defaults, then append any extra user keys.
+    # Managed keys are dropped up front so they can never leak into px.ini.
+    $merged = Get-PxDefaultSetting
+    $userSettings = Get-PxUserSetting
+    foreach ($managed in $script:PxManagedSettingKeys) {
+        $userSettings.Remove($managed)
+    }
+    foreach ($key in $userSettings.Keys) {
+        $merged[$key] = $userSettings[$key]
+    }
+
+    $settingsBlock = ($merged.Keys | ForEach-Object { "$_ = $($merged[$_])" }) -join "`n"
 
     $content = @"
 [proxy]
@@ -344,11 +501,7 @@ port = $script:PxPort
 auth =
 
 [settings]
-log = 3
-workers = 8
-threads = 32
-idle = 60
-socktimeout = 300.0
+$settingsBlock
 "@
 
     if ($PSCmdlet.ShouldProcess($configPath, "Write px config")) {
@@ -368,6 +521,7 @@ function Install-PxProxy {
     param()
 
     New-Directory -Path (Get-PxDataDir)
+    New-PxUserConfigTemplate
 
     if (Test-PxInstalled) {
         Write-Information "px is already installed; skipping Scoop install."
@@ -448,7 +602,7 @@ function Start-PxProxy {
     $dir = Get-PxDataDir
     Start-Process -FilePath $exe -ArgumentList "--config=`"$configPath`"" -WorkingDirectory $dir -WindowStyle Hidden | Out-Null
 
-    Write-Information "px started (upstream $upstream). Listening on $script:PxEndpoint. Log: $dir\debug-*.log"
+    Write-Information "px started (upstream $upstream). Listening on $script:PxEndpoint. Tune settings in $(Get-PxUserConfigPath); logging is off unless you set log = 3 there (then logs land in $dir\debug-*.log)."
 }
 
 function Test-PxProxy {
@@ -466,7 +620,7 @@ function Test-PxProxy {
         [string]$Url = 'https://www.google.com'
     )
 
-    $logHint = "px log: $(Get-PxDataDir)\debug-*.log"
+    $logHint = "For a px log, set log = 3 in $(Get-PxUserConfigPath), re-run start, then read $(Get-PxDataDir)\debug-*.log."
 
     try {
         $response = Invoke-WebRequest -Uri $Url -Proxy $script:PxEndpoint -UseBasicParsing -TimeoutSec 20
