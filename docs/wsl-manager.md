@@ -851,28 +851,34 @@ This command:
 
 ```
 tools/wsl-manager/
-├── wsl-manager.ps1            # Entry point (params + bootstrapping)
-├── wsl-manager.bat            # Batch wrapper for Keypirinha
-├── wsl.Integration.Tests.ps1
-├── manager.docker.Integration.Tests.ps1
-└── manager.podman.Integration.Tests.ps1
+├── wsl-manager.ps1            # Entry point (params + bootstrapping); sources lib/wsl/manager.ps1
+└── wsl-manager.bat            # Batch wrapper for Keypirinha
 
 lib/wsl/
-├── wsl.ps1                    # Main library (dot-sources all modules)
-├── commands.ps1               # CLI dispatch, TUI menu & workflows
-├── core.ps1                   # List, get distro info, type detection
-├── docker.ps1                 # Docker installation & verification
-├── exec.ps1                   # Script execution in WSL
-├── install.ps1                # Clone, remove operations
-├── ops.ps1                    # Update, state, terminate operations
-├── podman.ps1                 # Podman installation & verification
-├── proxy.ps1                  # Proxy configuration
+├── wsl.ps1                    # Library facade (dot-sources all feature modules below)
+├── manager.ps1                # Orchestration: CLI dispatch + TUI menu
+├── commands.ps1               # Action functions for each command
+├── spectre.ps1                # PwshSpectreConsole loader for the TUI
+├── core.ps1                   # WSL/distro checks: list, state, type detection, terminate
+├── install.ps1                # Discover available distros, install new instances
+├── ops.ps1                    # Remove, copy, update, shutdown, .wslconfig defaults
+├── wsl-conf.ps1               # Per-distro /etc/wsl.conf read/merge/write
 ├── user.ps1                   # User account creation & configuration
+├── exec.ps1                   # Script execution in WSL
+├── docker.ps1                 # Docker installation & verification
+├── podman.ps1                 # Podman installation & verification
+├── devpod.ps1                 # DevPod CLI installation & checks
+├── ssh.ps1                    # SSH key/config sync between Windows and WSL
+├── proxy.ps1                  # Proxy configuration
 └── scripts/
     ├── install-docker.sh          # Docker Engine installation script
     ├── install-podman.sh          # Rootless Podman installation script
-    └── setup-proxy.sh             # Proxy configuration script (env, apt, Docker, Podman)
+    ├── install-devpod.sh          # DevPod CLI installation script
+    ├── setup-proxy.sh             # Proxy configuration (env, apt, Docker, Podman)
+    └── sync-ssh-config.sh         # SSH config sync between Windows host and WSL
 ```
+
+Each module has a co-located `*.Tests.ps1` unit test (omitted above). Integration tests (`wsl.Integration.Tests.ps1`, `manager.docker.Integration.Tests.ps1`, `manager.podman.Integration.Tests.ps1`) live alongside the modules in `lib/wsl/`.
 
 ### Library Usage
 
