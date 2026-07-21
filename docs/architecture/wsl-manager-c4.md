@@ -112,14 +112,14 @@ C4Component
         Component(docker, "docker.ps1", "PowerShell", "Docker Engine lifecycle: Test-WslDockerInstalled, Install-WslDockerEngine")
         Component(podman, "podman.ps1", "PowerShell", "Rootless Podman lifecycle: Test-WslPodmanInstalled, Install-WslPodman")
         Component(devpod, "devpod.ps1", "PowerShell", "DevPod CLI lifecycle: Test-WslDevPodInstalled, Install-WslDevPod")
-        Component(proxy, "proxy.ps1", "PowerShell", "Proxy configuration: Install-WslProxy — auto-detects PAC/registry, configures .profile, apt, Docker, Podman")
+        Component(proxy, "proxy.ps1", "PowerShell", "Proxy configuration: Install-WslProxy auto-detects PAC/registry/px, configures profile.d + zshenv env, apt, Docker, Podman")
     }
 
     Container_Boundary(scriptContainer, "Bash Install Scripts (lib/wsl/scripts/)") {
         Component(dockerSh, "install-docker.sh", "Bash", "Installs Docker CE, Docker Compose; configures binfmt.d; adds user to docker group")
         Component(podmanSh, "install-podman.sh", "Bash", "Installs Podman rootless; configures subuid/subgid and registries")
         Component(devpodSh, "install-devpod.sh", "Bash", "Downloads DevPod CLI binary; configures container provider (docker/podman)")
-        Component(proxySh, "setup-proxy.sh", "Bash", "Writes proxy env vars to .profile, apt.conf, Docker config, Podman config")
+        Component(proxySh, "setup-proxy.sh", "Bash", "Writes proxy env vars to /etc/profile.d (sourced from zshenv), apt.conf, Docker config, Podman config")
     }
 
     Rel(showMenu, invokeWslCmd, "Selected command")
