@@ -707,7 +707,8 @@ This command:
 - Auto → DIRECT collapses to Remove (no proxy needed on this network)
 - Auto mode also probes for a running local **px** proxy (see [px Proxy runbook](runbooks/px-proxy.md)). When px is up, you choose between the px endpoint (`http://127.0.0.1:3128`, reachable from WSL via mirrored networking — px authenticates to the corporate proxy via SSPI on the Windows host, so no credentials are stored) and the PAC-detected corporate proxy
 - After a corporate proxy URL is resolved, prompts for auth method: `[A]nonymous` (no credentials) or `[B]asic` (username/password embedded in the URL, prefilled with your Windows username)
-- Configures `~/.profile` managed block with `http_proxy`, `https_proxy`, `no_proxy` exports
+- Writes proxy exports (`http_proxy`, `https_proxy`, `no_proxy`, and their uppercase variants) to a managed file `/etc/profile.d/wsl-manager-proxy.sh`, and sources it from `/etc/zsh/zshenv` so both bash and zsh pick them up on a normal WSL launch; legacy `~/.profile`, `~/.bashrc`, and `/etc/environment` blocks are migrated away
+- Points tools that ship their own CA bundle (uv, Node, pip/requests, Go) at the system trust store via `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, and `PIP_CERT` so corporate TLS inspection works
 - Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
 - Configures `~/.docker/config.json` proxy settings
 - Configures `~/.config/containers/containers.conf` for Podman
