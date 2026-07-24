@@ -118,9 +118,9 @@ Only the `[settings]` block is read; the `[proxy]` block (`server`, `listen`, `p
 | Key | Default | Purpose |
 |-----|---------|---------|
 | `log` | `0` | Log level. `0` = off; `3` = verbose `debug-*.log` for troubleshooting. |
-| `workers` | `8` | Connection worker processes. |
+| `workers` | `1` | Connection worker processes. |
 | `threads` | `32` | Threads per worker. |
-| `idle` | `60` | Seconds an idle upstream connection is kept. |
+| `idle` | `300` | Seconds an idle upstream connection is kept. |
 | `socktimeout` | `300.0` | Socket timeout (seconds) for long-running requests. |
 
 Example `px-user.ini` that turns logging on and enlarges the pool:

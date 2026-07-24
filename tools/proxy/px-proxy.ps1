@@ -332,8 +332,9 @@ $script:PxManagedSettingKeys = @('server', 'listen', 'port', 'auth')
 # Built-in [settings] defaults, in emission order. log defaults to 0 (quiet):
 # set log = 3 in px-user.ini to capture a debug log when troubleshooting.
 # idle/socktimeout sit above px's defaults so long AI-agent requests (Claude
-# Code, Copilot CLI) are not dropped; workers/threads sit above px's low
-# defaults (2/5) so parallel connection bursts are not refused (SC-044).
+# Code, Copilot CLI) are not dropped. workers defaults to 1 and idle to 300 for
+# a stable baseline suitable for sharing with colleagues (SC-048); raise workers
+# in px-user.ini if you need more parallelism.
 function Get-PxDefaultSetting {
     <#
     .SYNOPSIS
@@ -345,9 +346,9 @@ function Get-PxDefaultSetting {
 
     return [ordered]@{
         log         = '0'
-        workers     = '8'
+        workers     = '1'
         threads     = '32'
-        idle        = '60'
+        idle        = '300'
         socktimeout = '300.0'
     }
 }
@@ -433,11 +434,11 @@ function New-PxUserConfigTemplate {
 # Log level: 0 = off (default); 3 = verbose debug-<pid>.log for troubleshooting.
 # log = 0
 # Connection worker processes.
-# workers = 8
+# workers = 1
 # Threads per worker.
 # threads = 32
 # Seconds an idle upstream connection is kept.
-# idle = 60
+# idle = 300
 # Socket timeout (seconds) for long-running requests.
 # socktimeout = 300.0
 "@
