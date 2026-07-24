@@ -317,9 +317,9 @@ Describe "Write-PxConfig" {
         $content | Should -Match 'listen = 127\.0\.0\.1'
         $content | Should -Match 'port = 3128'
         $content | Should -Match 'log = 0'
-        $content | Should -Match 'idle = 60'
+        $content | Should -Match 'idle = 300'
         $content | Should -Match 'socktimeout = 300\.0'
-        $content | Should -Match 'workers = 8'
+        $content | Should -Match 'workers = 1'
         $content | Should -Match 'threads = 32'
     }
 
@@ -344,7 +344,7 @@ workers = 12
         $content | Should -Match 'workers = 12'
         # Untouched keys keep their defaults.
         $content | Should -Match 'threads = 32'
-        $content | Should -Match 'idle = 60'
+        $content | Should -Match 'idle = 300'
         $content | Should -Match 'socktimeout = 300\.0'
     }
 
