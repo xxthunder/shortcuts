@@ -103,6 +103,7 @@ This document defines the core principles for developing the Shortcuts project. 
 
 **All code changes MUST follow this workflow:**
 
+0. **Create Backlog Item (if none exists)**: A backlog item is the single canonical artifact for a unit of work and MUST exist before any design or implementation. If none exists, create it first (next `SC-###`, added to the README index) and capture the design *in the item itself* (Summary, Description, Scope Decisions, Acceptance Criteria, UAT). Do NOT create a separate spec/design document that duplicates the item.
 1. **Update Backlog (Start)**: Move the backlog item to IN PROGRESS and check off any acceptance criteria that are already met
 2. **Research**: Check if functionality exists in `lib/` or other scripts
 3. **Design**: Plan the script structure and identify reusable components
