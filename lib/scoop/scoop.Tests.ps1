@@ -118,8 +118,9 @@ Describe 'Show-ScoopUpdatableApp' {
     }
 }
 
-Describe 'Select-ScoopApp' {
+Describe 'Read-ScoopMenuChoice' {
     BeforeEach {
+        Mock Write-WarningMsg {}
         $script:testApps = @(
             [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
             [PSCustomObject]@{ Name = 'git'; InstalledVersion = '2.46.0'; LatestVersion = '2.47.0' }
@@ -127,86 +128,177 @@ Describe 'Select-ScoopApp' {
         )
     }
 
-    Context 'In CI environment' {
-        It 'returns all app names' {
-            Mock Test-RunningInCIorTestEnvironment { return $true }
+    It 'returns update-all when user enters A' {
+        Mock Read-Host { return 'A' }
 
-            $result = @(Select-ScoopApp -Apps $script:testApps)
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
 
-            $result.Count | Should -Be 3
-            $result | Should -Contain '7zip'
-            $result | Should -Contain 'git'
-            $result | Should -Contain 'pwsh'
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 3
+    }
+
+    It 'returns update-all when user enters lowercase a' {
+        Mock Read-Host { return 'a' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 3
+    }
+
+    It 'returns selected apps by comma-separated numbers' {
+        Mock Read-Host { return '1,3' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 2
+        $result.Apps | Should -Contain '7zip'
+        $result.Apps | Should -Contain 'pwsh'
+    }
+
+    It 'returns refresh when user enters R' {
+        Mock Read-Host { return 'R' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'refresh'
+    }
+
+    It 'returns refresh when user enters lowercase r' {
+        Mock Read-Host { return 'r' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'refresh'
+    }
+
+    It 'returns quit when user enters Q' {
+        Mock Read-Host { return 'Q' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'quit'
+    }
+
+    It 'returns quit when user enters lowercase q' {
+        Mock Read-Host { return 'q' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'quit'
+    }
+
+    It 'returns refresh even when no apps are updatable' {
+        Mock Read-Host { return 'R' }
+
+        $result = Read-ScoopMenuChoice -Apps @()
+
+        $result.Action | Should -Be 'refresh'
+    }
+
+    It 'warns on out-of-range number and returns update with no apps' {
+        Mock Read-Host { return '5' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 0
+        Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid number*' }
+    }
+
+    It 'warns on non-numeric input and returns update with no apps' {
+        Mock Read-Host { return 'xyz' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 0
+        Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid input*' }
+    }
+
+    It 'handles mixed valid and invalid input' {
+        Mock Read-Host { return '1,abc,99' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 1
+        $result.Apps | Should -Contain '7zip'
+        Should -Invoke Write-WarningMsg -Times 2
+    }
+
+    It 'returns update with no apps on empty input' {
+        Mock Read-Host { return '' }
+
+        $result = Read-ScoopMenuChoice -Apps $script:testApps
+
+        $result.Action | Should -Be 'update'
+        @($result.Apps).Count | Should -Be 0
+    }
+}
+
+Describe 'Get-ScoopHostRawUi' {
+    It 'returns the raw UI of the current host' {
+        Get-ScoopHostRawUi | Should -Be $Host.UI.RawUI
+    }
+}
+
+Describe 'Wait-ScoopKeyPress' {
+    BeforeAll {
+        # Stub raw UI: records the ReadKey call on itself ($this), so no real
+        # console read happens and the test never blocks.
+        function Get-StubRawUi {
+            param([switch]$FailOnRead)
+
+            $stub = [PSCustomObject]@{
+                ReadKeyCalls   = 0
+                ReadKeyOptions = $null
+                FailOnRead     = [bool]$FailOnRead
+            }
+            $stub | Add-Member -MemberType ScriptMethod -Name ReadKey -Value {
+                param($Options)
+                $this.ReadKeyCalls++
+                $this.ReadKeyOptions = $Options
+                if ($this.FailOnRead) { throw 'The method or operation is not implemented.' }
+                return $null
+            }
+            return $stub
         }
     }
 
-    Context 'In interactive environment' {
-        BeforeEach {
-            Mock Test-RunningInCIorTestEnvironment { return $false }
-            Mock Write-WarningMsg {}
-        }
+    BeforeEach {
+        Mock Write-Host {}
+        # Default: interactive (not CI). CI-specific test overrides this.
+        Mock Test-RunningInCIorTestEnvironment { return $false }
+        $script:stubRawUi = Get-StubRawUi
+        Mock Get-ScoopHostRawUi { return $script:stubRawUi }
+    }
 
-        It 'returns all apps when user enters A' {
-            Mock Read-Host { return 'A' }
+    It 'prompts and reads a single key without echo when interactive' {
+        Wait-ScoopKeyPress
 
-            $result = @(Select-ScoopApp -Apps $script:testApps)
+        Should -Invoke Get-ScoopHostRawUi -Times 1
+        $script:stubRawUi.ReadKeyCalls | Should -Be 1
+        $script:stubRawUi.ReadKeyOptions | Should -Be 'NoEcho,IncludeKeyDown'
+        Should -Invoke Write-Host -ParameterFilter { $Object -eq 'Press any key to continue...' } -Times 1
+    }
 
-            $result.Count | Should -Be 3
-        }
+    It 'skips the key read in CI/test environments' {
+        Mock Test-RunningInCIorTestEnvironment { return $true }
 
-        It 'returns all apps when user enters lowercase a' {
-            Mock Read-Host { return 'a' }
+        Wait-ScoopKeyPress
 
-            $result = @(Select-ScoopApp -Apps $script:testApps)
+        Should -Invoke Get-ScoopHostRawUi -Times 0
+        Should -Invoke Write-Host -Times 0
+        $script:stubRawUi.ReadKeyCalls | Should -Be 0
+    }
 
-            $result.Count | Should -Be 3
-        }
+    It 'does not throw when the host has no interactive console' {
+        $script:stubRawUi = Get-StubRawUi -FailOnRead
 
-        It 'returns selected apps by comma-separated numbers' {
-            Mock Read-Host { return '1,3' }
-
-            $result = @(Select-ScoopApp -Apps $script:testApps)
-
-            $result.Count | Should -Be 2
-            $result | Should -Contain '7zip'
-            $result | Should -Contain 'pwsh'
-        }
-
-        It 'warns on out-of-range number' {
-            Mock Read-Host { return '5' }
-
-            $result = @(Select-ScoopApp -Apps $script:testApps)
-
-            $result.Count | Should -Be 0
-            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid number*' }
-        }
-
-        It 'warns on non-numeric input' {
-            Mock Read-Host { return 'xyz' }
-
-            $result = @(Select-ScoopApp -Apps $script:testApps)
-
-            $result.Count | Should -Be 0
-            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid input*' }
-        }
-
-        It 'handles mixed valid and invalid input' {
-            Mock Read-Host { return '1,abc,99' }
-
-            $result = @(Select-ScoopApp -Apps $script:testApps)
-
-            $result.Count | Should -Be 1
-            $result | Should -Contain '7zip'
-            Should -Invoke Write-WarningMsg -Times 2
-        }
-
-        It 'returns empty array on empty input' {
-            Mock Read-Host { return '' }
-
-            $result = @(Select-ScoopApp -Apps $script:testApps)
-
-            $result.Count | Should -Be 0
-        }
+        { Wait-ScoopKeyPress } | Should -Not -Throw
+        $script:stubRawUi.ReadKeyCalls | Should -Be 1
     }
 }
 
@@ -259,6 +351,14 @@ Describe 'Invoke-ScoopUpdate' {
         Mock Write-ErrorMsg {}
         Mock Invoke-CommandLine {}
         Mock Get-Command { return $true }
+        Mock Show-ScoopUpdatableApp {}
+        Mock Update-ScoopApp {}
+        Mock Wait-ScoopKeyPress {}
+        # Default: interactive (not CI). CI-specific test overrides this.
+        Mock Test-RunningInCIorTestEnvironment { return $false }
+        $script:oneApp = @(
+            [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
+        )
     }
 
     It 'shows error when scoop is not installed' {
@@ -269,48 +369,106 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like '*Scoop is not installed*' } -Times 1
     }
 
-    It 'refreshes scoop before checking for updates' {
+    It 'refreshes scoop exactly once at startup before the loop' {
         Mock Get-ScoopUpdatableApp { return @() }
+        Mock Read-ScoopMenuChoice { return @{ Action = 'quit'; Apps = @() } }
 
         Invoke-ScoopUpdate
 
         Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq 'scoop update' } -Times 1
     }
 
-    It 'shows up-to-date message when no updates available' {
+    It 'shows up-to-date message when no updates available then quits' {
         Mock Get-ScoopUpdatableApp { return @() }
+        Mock Read-ScoopMenuChoice { return @{ Action = 'quit'; Apps = @() } }
 
         Invoke-ScoopUpdate
 
         Should -Invoke Write-Success -ParameterFilter { $Message -like '*up to date*' } -Times 1
     }
 
-    It 'runs full update flow when apps are updatable' {
-        $apps = @(
-            [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
-        )
-        Mock Get-ScoopUpdatableApp { return $apps }
-        Mock Show-ScoopUpdatableApp {}
-        Mock Select-ScoopApp { return @('7zip') }
-        Mock Update-ScoopApp {}
+    It 'updates selected apps, pauses for a keypress, then loops until quit' {
+        Mock Get-ScoopUpdatableApp { return $script:oneApp }
+        $script:menuCalls = 0
+        Mock Read-ScoopMenuChoice {
+            $script:menuCalls++
+            if ($script:menuCalls -eq 1) { return @{ Action = 'update'; Apps = @('7zip') } }
+            return @{ Action = 'quit'; Apps = @() }
+        }
 
         Invoke-ScoopUpdate
 
-        Should -Invoke Show-ScoopUpdatableApp -Times 1
-        Should -Invoke Select-ScoopApp -Times 1
-        Should -Invoke Update-ScoopApp -Times 1
+        Should -Invoke Show-ScoopUpdatableApp -Times 2   # once per loop iteration (update, then quit)
+        Should -Invoke Update-ScoopApp -ParameterFilter { $AppNames -contains '7zip' } -Times 1
+        Should -Invoke Wait-ScoopKeyPress -Times 1
     }
 
-    It 'shows warning when no apps selected' {
-        $apps = @(
-            [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
-        )
-        Mock Get-ScoopUpdatableApp { return $apps }
-        Mock Show-ScoopUpdatableApp {}
-        Mock Select-ScoopApp { return @() }
+    It 'refresh action re-runs the bucket refresh' {
+        Mock Get-ScoopUpdatableApp { return @() }
+        $script:menuCalls = 0
+        Mock Read-ScoopMenuChoice {
+            $script:menuCalls++
+            if ($script:menuCalls -eq 1) { return @{ Action = 'refresh'; Apps = @() } }
+            return @{ Action = 'quit'; Apps = @() }
+        }
+
+        Invoke-ScoopUpdate
+
+        # startup refresh + one explicit refresh
+        Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq 'scoop update' } -Times 2
+    }
+
+    It 'warns when update chosen with no apps selected' {
+        Mock Get-ScoopUpdatableApp { return $script:oneApp }
+        $script:menuCalls = 0
+        Mock Read-ScoopMenuChoice {
+            $script:menuCalls++
+            if ($script:menuCalls -eq 1) { return @{ Action = 'update'; Apps = @() } }
+            return @{ Action = 'quit'; Apps = @() }
+        }
 
         Invoke-ScoopUpdate
 
         Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*No apps selected*' } -Times 1
+        Should -Invoke Update-ScoopApp -Times 0
+    }
+
+    It 'catches an error inside an iteration and continues the loop' {
+        $script:statusCalls = 0
+        Mock Get-ScoopUpdatableApp {
+            $script:statusCalls++
+            if ($script:statusCalls -eq 1) { throw 'scoop exploded' }
+            return @()
+        }
+        Mock Read-ScoopMenuChoice { return @{ Action = 'quit'; Apps = @() } }
+
+        { Invoke-ScoopUpdate } | Should -Not -Throw
+        Should -Invoke Write-ErrorMsg -Times 1
+    }
+
+    Context 'In CI environment' {
+        It 'does exactly one update-all pass and never calls Read-Host' {
+            Mock Test-RunningInCIorTestEnvironment { return $true }
+            Mock Get-ScoopUpdatableApp { return $script:oneApp }
+            Mock Read-Host { return 'Q' }
+
+            Invoke-ScoopUpdate
+
+            Should -Invoke Update-ScoopApp -ParameterFilter { $AppNames -contains '7zip' } -Times 1
+            Should -Invoke Read-Host -Times 0
+        }
+
+        It 'reports everything up to date and returns without updating' {
+            Mock Test-RunningInCIorTestEnvironment { return $true }
+            Mock Get-ScoopUpdatableApp { return @() }
+            Mock Read-Host { return 'Q' }
+
+            Invoke-ScoopUpdate
+
+            Should -Invoke Write-Success -ParameterFilter { $Message -like '*up to date*' } -Times 1
+            Should -Invoke Show-ScoopUpdatableApp -Times 0
+            Should -Invoke Update-ScoopApp -Times 0
+            Should -Invoke Read-Host -Times 0
+        }
     }
 }

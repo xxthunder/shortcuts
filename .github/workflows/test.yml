@@ -42,6 +42,11 @@ jobs:
           Write-Host "==> Debug: GITHUB_ENV content:"
           Get-Content $Env:GITHUB_ENV -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
 
+      - name: Scoop lib 5.1 smoke guard
+        shell: powershell # Windows PowerShell 5.1 - enforces ADR 0001 (scoop/utils lib stay 5.1-compatible)
+        run: |
+          Set-Location $Env:SHORTCUTS_DIR; .\test\bin\smoke-ps51.ps1
+
       - name: Install test dependencies
         shell: pwsh
         run: |
