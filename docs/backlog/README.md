@@ -15,6 +15,7 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-047 — Resilient, looping, 5.1-compatible Scoop update helper](sc-047.md)
 
 ### Open
 
