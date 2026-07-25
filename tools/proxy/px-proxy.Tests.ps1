@@ -404,23 +404,42 @@ Describe "Install-PxProxy" {
 }
 
 Describe "Stop-PxProxy" {
+    BeforeEach {
+        # Safety net (SC-049): never let a unit test reach a real px process.
+        # Stop-PxProxy force-kills via Get-Process | Stop-Process when px ignores
+        # --quit; mocking both here guarantees no test can terminate a running px.
+        Mock Get-Process { }
+        Mock Stop-Process { }
+    }
+
     It "does nothing when px is not running" {
         Mock Test-PxRunning { $false }
         Mock Invoke-CommandLine { }
         Stop-PxProxy
         Should -Invoke Invoke-CommandLine -Times 0
+        Should -Invoke Stop-Process -Times 0
     }
 
-    It "asks px to quit when running" {
-        Mock Test-PxRunning { $true } -ParameterFilter { $true }
+    It "asks px to quit when running and does not force-kill once it exits" {
         Mock Get-PxExecutable { 'C:\scoop\shims\px.exe' }
         Mock Invoke-CommandLine { }
         Mock Start-Sleep { }
-        # After quit, no longer running
+        # Running before --quit, gone after: the stateful mock alone governs.
         $script:quitCalled = $false
         Mock Test-PxRunning { if ($script:quitCalled) { $false } else { $script:quitCalled = $true; $true } }
         Stop-PxProxy
         Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter { $CommandLine -match '^& ".*" --quit$' }
+        Should -Invoke Stop-Process -Times 0
+    }
+
+    It "force-kills px when it ignores --quit" {
+        Mock Get-PxExecutable { 'C:\scoop\shims\px.exe' }
+        Mock Invoke-CommandLine { }
+        Mock Start-Sleep { }
+        Mock Test-PxRunning { $true }   # still running after --quit
+        Mock Get-Process { @([pscustomobject]@{ Id = 4242 }) }
+        Stop-PxProxy
+        Should -Invoke Stop-Process -Times 1 -ParameterFilter { $Id -eq 4242 }
     }
 }
 
