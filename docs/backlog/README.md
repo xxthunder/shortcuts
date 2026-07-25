@@ -15,7 +15,6 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-047 — Resilient, looping, 5.1-compatible Scoop update helper](sc-047.md)
 
 ### Open
 
@@ -41,6 +40,7 @@
 
 - [SC-049 — px unit tests must never kill a real px process](sc-049.md)
 - [SC-048 — Stable px defaults for sharing (workers = 1, idle = 300)](sc-048.md)
+- [SC-047 — Resilient, looping, 5.1-compatible Scoop update helper](sc-047.md)
 - [SC-046 — Make px `[settings]` user-configurable via px-user.ini](sc-046.md)
 - [SC-045 — Setup-proxy mode prompt: Enter defaults to Auto](sc-045.md)
 - [SC-036 — Corporate proxy for WSL without stored credentials](sc-036.md)

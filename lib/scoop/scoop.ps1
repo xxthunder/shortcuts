@@ -105,42 +105,56 @@ function Show-ScoopUpdatableApp {
     Write-Host ""
 }
 
-function Select-ScoopApp {
+function Read-ScoopMenuChoice {
     <#
     .SYNOPSIS
-        Prompts the user to select apps to update.
+        Prompts for a menu choice and returns a structured action.
 
     .DESCRIPTION
-        Displays a selection prompt. User can enter 'A' for all, or
-        comma-separated numbers to select specific apps.
+        Reads a single interactive menu line and maps it to an action:
+        'update' (with the list of selected app names), 'refresh', or 'quit'.
+        Number(s) and 'A' are only meaningful when apps are updatable; when the
+        app list is empty only [R]efresh and [Q]uit are offered.
 
     .PARAMETER Apps
-        Array of app objects from Get-ScoopUpdatableApp.
+        Array of updatable app objects from Get-ScoopUpdatableApp. May be empty.
 
     .OUTPUTS
-        Array of app names selected for update.
+        Hashtable with keys:
+          Action - one of 'update', 'refresh', 'quit'
+          Apps   - array of selected app names (empty unless Action is 'update')
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [PSCustomObject[]]$Apps
     )
 
-    if (Test-RunningInCIorTestEnvironment) {
-        # In CI, update all by default
-        return @($Apps | ForEach-Object { $_.Name })
+    if ($Apps.Count -gt 0) {
+        $prompt = "Enter number(s) comma-separated, [A]ll, [R]efresh, [Q]uit"
+    }
+    else {
+        $prompt = "[R]efresh, [Q]uit"
     }
 
-    $selection = Read-Host "Enter app number(s) comma-separated, or [A] for all"
+    $selection = Read-Host $prompt
 
+    if ($selection -match '^[Qq]$') {
+        return @{ Action = 'quit'; Apps = @() }
+    }
+    if ($selection -match '^[Rr]$') {
+        return @{ Action = 'refresh'; Apps = @() }
+    }
     if ($selection -match '^[Aa]$') {
-        return @($Apps | ForEach-Object { $_.Name })
+        return @{ Action = 'update'; Apps = @($Apps | ForEach-Object { $_.Name }) }
     }
 
     $indices = $selection -split ',' | ForEach-Object { $_.Trim() }
     $selectedApps = @()
 
     foreach ($idx in $indices) {
+        if ([string]::IsNullOrWhiteSpace($idx)) { continue }
         if ($idx -match '^\d+$') {
             $num = [int]$idx
             if ($num -ge 1 -and $num -le $Apps.Count) {
@@ -151,11 +165,73 @@ function Select-ScoopApp {
             }
         }
         else {
-            Write-WarningMsg "Invalid input: '$idx' (enter numbers or 'A')"
+            Write-WarningMsg "Invalid input: '$idx' (enter numbers, 'A', 'R', or 'Q')"
         }
     }
 
-    return $selectedApps
+    return @{ Action = 'update'; Apps = $selectedApps }
+}
+
+function Get-ScoopHostRawUi {
+    <#
+    .SYNOPSIS
+        Returns the raw UI of the current host (thin, mockable console seam).
+
+    .DESCRIPTION
+        $Host is a read-only automatic variable and cannot be shadowed, so the
+        lookup is isolated here: tests mock this function to hand back a stub
+        raw UI and therefore never block on a real key press.
+    #>
+    [CmdletBinding()]
+    param()
+
+    return $Host.UI.RawUI
+}
+
+function Wait-ScoopKeyPress {
+    <#
+    .SYNOPSIS
+        Pauses until the user presses a key so command output can be read
+        before the menu is redrawn.
+
+    .DESCRIPTION
+        Skipped in CI/test environments (there is nothing to wait on, and a
+        blocking read would hang the build) and tolerant of hosts with no
+        interactive console: the read is best-effort, never fatal.
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (Test-RunningInCIorTestEnvironment) {
+        return
+    }
+
+    Write-Host ""
+    Write-Host "Press any key to continue..."
+    try {
+        $null = (Get-ScoopHostRawUi).ReadKey("NoEcho,IncludeKeyDown")
+    }
+    catch {
+        # No interactive console (redirected input, non-interactive host):
+        # there is nothing to wait on, so continue without failing.
+        Write-Verbose "Key read skipped: $_"
+    }
+}
+
+function Invoke-ScoopBucketRefresh {
+    <#
+    .SYNOPSIS
+        Refreshes Scoop and its bucket metadata ('scoop update').
+
+    .DESCRIPTION
+        Non-fatal: a failure is logged and control continues, so the helper
+        never exits because a refresh failed.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-Status "Refreshing Scoop..."
+    Invoke-CommandLine -CommandLine "scoop update" -StopAtError $false -PrintCommand $false
 }
 
 function Update-ScoopApp {
@@ -193,8 +269,15 @@ function Invoke-ScoopUpdate {
         Main entry point for the interactive Scoop update helper.
 
     .DESCRIPTION
-        Refreshes Scoop, checks for updatable apps, displays a numbered list,
-        and lets the user select which apps to update.
+        Refreshes Scoop once at startup, then loops: lists updatable apps and
+        lets the user select apps to update, refresh the buckets ('R'), or quit
+        ('Q'). Each iteration is resilient: a Scoop failure is printed and
+        control returns to the menu, so the session never exits on error. This
+        lets the user close a locked application (e.g. Windows Terminal or pwsh),
+        press 'R', and retry within the same session.
+
+        In CI / test environments (Test-RunningInCIorTestEnvironment) it performs
+        exactly one update-all pass and returns, so it never blocks on input.
     #>
     [CmdletBinding()]
     param()
@@ -210,36 +293,60 @@ function Invoke-ScoopUpdate {
         return
     }
 
-    # Refresh Scoop and bucket info
-    Write-Status "Refreshing Scoop..."
-    Invoke-CommandLine -CommandLine "scoop update" -StopAtError $false -PrintCommand $false
+    # Refresh Scoop and bucket info once at startup
+    Invoke-ScoopBucketRefresh
 
-    # Get updatable apps
-    $apps = @(Get-ScoopUpdatableApp)
-
-    if ($apps.Count -eq 0) {
-        Write-Success "All apps are up to date!"
+    if (Test-RunningInCIorTestEnvironment) {
+        # Non-interactive: single update-all pass, no prompts, no loop
+        $apps = @(Get-ScoopUpdatableApp)
+        if ($apps.Count -eq 0) {
+            Write-Success "All apps are up to date!"
+            return
+        }
+        Show-ScoopUpdatableApp -Apps $apps
+        Update-ScoopApp -AppNames @($apps | ForEach-Object { $_.Name })
+        Write-Success "Update complete!"
         return
     }
 
-    # Display updatable apps
-    Show-ScoopUpdatableApp -Apps $apps
+    # Interactive loop until the user quits
+    while ($true) {
+        try {
+            $apps = @(Get-ScoopUpdatableApp)
+            if ($apps.Count -eq 0) {
+                Write-Success "All apps are up to date!"
+            }
+            else {
+                Show-ScoopUpdatableApp -Apps $apps
+            }
 
-    # Select apps to update
-    $selectedApps = @(Select-ScoopApp -Apps $apps)
+            $choice = Read-ScoopMenuChoice -Apps $apps
 
-    if ($selectedApps.Count -eq 0) {
-        Write-WarningMsg "No apps selected for update."
-        return
+            switch ($choice.Action) {
+                'quit' {
+                    return
+                }
+                'refresh' {
+                    Invoke-ScoopBucketRefresh
+                }
+                'update' {
+                    if (@($choice.Apps).Count -eq 0) {
+                        Write-WarningMsg "No apps selected for update."
+                    }
+                    else {
+                        Write-Host ""
+                        Write-Status "Updating $(@($choice.Apps).Count) app(s)..."
+                        Write-Host ""
+                        Update-ScoopApp -AppNames $choice.Apps
+                        Write-Host ""
+                        Write-Success "Update complete!"
+                        Wait-ScoopKeyPress
+                    }
+                }
+            }
+        }
+        catch {
+            Write-ErrorMsg "Error: $_"
+        }
     }
-
-    Write-Host ""
-    Write-Status "Updating $($selectedApps.Count) app(s)..."
-    Write-Host ""
-
-    # Update selected apps
-    Update-ScoopApp -AppNames $selectedApps
-
-    Write-Host ""
-    Write-Success "Update complete!"
 }
