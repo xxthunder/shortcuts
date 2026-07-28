@@ -1,23 +1,21 @@
 {
   "cleanupPeriodDays": 30,
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
       "Bash",
       "Read",
       "Edit",
       "Write",
-      "Create",
-      "Delete",
       "WebSearch",
       "WebFetch"
     ],
     "deny": [
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~/*)",
       "Bash(sudo rm:*)",
+      "Bash(sudo dd:*)",
+      "Bash(sudo mkfs:*)",
       "Bash(dd:*)",
-      "Bash(mkfs:*)",
-      "Bash(format:*)"
+      "Bash(mkfs:*)"
     ]
   }
 }
