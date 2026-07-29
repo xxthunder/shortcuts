@@ -38,6 +38,7 @@
 
 ### Done
 
+- [SC-050 — Trim AGENTS.md duplication, point to powershell-dev skill](sc-050.md)
 - [SC-049 — px unit tests must never kill a real px process](sc-049.md)
 - [SC-048 — Stable px defaults for sharing (workers = 1, idle = 300)](sc-048.md)
 - [SC-047 — Resilient, looping, 5.1-compatible Scoop update helper](sc-047.md)

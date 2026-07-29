@@ -105,47 +105,9 @@ When starting work on a backlog item, update its status to **In Progress** and m
 
 When working with PowerShell code in this project, follow these guidelines:
 
-#### 1. Use Existing Library Functions
+#### 1-2, 4, 7, 9. Script structure, library usage, error handling, environment awareness, external commands
 
-**Before writing any new code, ALWAYS check `lib/` for existing utilities.**
-
-To discover available functions:
-
-1. **Read the library files** in `lib/utils/` and `lib/wsl/` (e.g., `utils.ps1`, `wsl.ps1`)
-2. **Check function documentation** - Each function has synopsis and examples
-3. **Look at test files** (`*.Tests.ps1`) to see usage patterns
-4. **Use Get-Help** after sourcing the library: `Get-Help Invoke-CommandLine -Full`
-
-**Key utilities include:**
-
-- External command execution (use `Invoke-CommandLine`)
-- File/directory operations (check before reimplementing)
-- User interaction in CI/interactive contexts
-- WSL management functions
-
-**Example:**
-
-```powershell
-# Source the library
-. "$PSScriptRoot\lib\utils\utils.ps1"
-
-# Use library functions
-Invoke-CommandLine -Command "scoop install nodejs" -StopAtError
-New-Directory -Path "C:\Tools\MyApp"
-```
-
-> **Important:** If you need functionality that seems common (file operations, command execution, user prompts), it likely already exists in lib/. Check first!
-
-#### 2. Error Handling
-
-Always implement robust error handling with:
-
-- `Set-StrictMode -Version Latest`
-- `$ErrorActionPreference = "Stop"`
-- `$InformationPreference = "Continue"`
-- Try/catch blocks for main logic
-
-See "Script Structure" section below for the complete template.
+For PowerShell script structure, library discovery (`lib/`), error handling, CI/interactive awareness, and external-command execution (`Invoke-CommandLine`), see the `powershell-dev` skill (`.claude/skills/powershell-dev/`).
 
 #### 3. File Encoding
 
@@ -170,98 +132,13 @@ $content = $content -replace "`r`n", "`n"
 [System.IO.File]::WriteAllText('path/to/script.sh', $content, [System.Text.UTF8Encoding]::new($false))
 ```
 
-#### 4. Environment Awareness
-
-Scripts must work in both interactive and CI environments using `Test-RunningInCIorTestEnvironment` from `lib/utils/utils.ps1`:
-
-```powershell
-if (Test-RunningInCIorTestEnvironment) {
-    # Non-interactive path
-    $confirm = $true
-} else {
-    # Interactive path
-    $confirm = Get-UserConfirmation "Proceed with installation?"
-}
-```
-
-**CI/Test Detection:** This function automatically detects:
-
-- CI environment variables (`CI`, `GITHUB_ACTIONS`, etc.)
-- Pester test context (via `PesterPreference` or call stack)
-
-**Manual Testing:** Set `CI=true` to simulate non-interactive behavior when manually testing interactive scripts. DO NOT set `CI` when running the Pester test suite - the test framework handles this automatically.
-
 #### 5. Path Handling
 
-Use proper path resolution and validation:
-
-```powershell
-# Resolve relative paths
-$scriptRoot = $PSScriptRoot
-$targetPath = Join-Path $scriptRoot "config\settings.json"
-
-# Validate existence
-if (-not (Test-Path $targetPath)) {
-    Write-Error "Required file not found: $targetPath"
-    exit 1
-}
-```
+Resolve paths via `$PSScriptRoot`/`Join-Path` and validate with `Test-Path` before use.
 
 #### 6. Output and Logging
 
-Provide clear, user-friendly output:
-
-```powershell
-function Write-Status {
-    param([string]$Message)
-    Write-Host "==> $Message" -ForegroundColor Cyan
-}
-
-function Write-Success {
-    param([string]$Message)
-    Write-Host "✓ $Message" -ForegroundColor Green
-}
-
-function Write-ErrorMsg {
-    param([string]$Message)
-    Write-Host "✗ $Message" -ForegroundColor Red
-}
-
-# Usage
-Write-Status "Installing Node.js..."
-Write-Success "Installation complete"
-```
-
-#### 7. External Commands
-
-**Always use `Invoke-CommandLine` from lib for executing external commands.** This ensures consistent error handling and proper output capture.
-
-```powershell
-# Source the library first
-. "$PSScriptRoot\lib\utils\utils.ps1"
-
-# Check if command exists
-if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-    Write-Error "Scoop is not installed"
-    exit 1
-}
-
-# Execute with Invoke-CommandLine
-Invoke-CommandLine -Command "scoop list" -StopAtError
-
-# For commands that may fail gracefully
-$result = Invoke-CommandLine -Command "scoop list nodejs"
-if (-not $result) {
-    Write-Information "nodejs not installed, proceeding with installation"
-}
-```
-
-**Key benefits of using `Invoke-CommandLine`:**
-
-- Consistent error handling across all scripts
-- Proper exit code checking
-- Standardized output capture
-- Integration with CI/test environments
+Use the `Write-Status`/`Write-Success`/`Write-ErrorMsg` helpers already defined in `lib/utils/utils.ps1` for user-facing output.
 
 #### 8. PowerShell Command Execution from Bash
 
@@ -305,75 +182,7 @@ powershell -File script.ps1 | grep "foo"
 
 **Reason**: When a script is dot-sourced (`. .\script.ps1`), `Set-StrictMode` persists in the caller's scope and affects all subsequent code in that PowerShell session. This can break other scripts that weren't written to handle strict mode, especially when sourced into PowerShell profiles.
 
-**Standalone Executable Script Structure:**
-
-```powershell
-#Requires -Version 7.4
-
-<#
-.SYNOPSIS
-    Brief description
-
-.DESCRIPTION
-    Detailed description
-
-.EXAMPLE
-    .\script.ps1
-#>
-
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory = $false)]
-    [string]$Option = "default"
-)
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-# Source dependencies
-. "$PSScriptRoot\lib\utils\utils.ps1"
-
-# Helper functions
-function Private-Helper {
-    # Implementation
-}
-
-# Main logic
-try {
-    # Implementation
-} catch {
-    Write-Error "Error: $_"
-    exit 1
-}
-```
-
-**Dot-Sourced Library File Structure:**
-
-```powershell
-#Requires -Version 7.4
-
-<#
-.DESCRIPTION
-    Utility functions for common tasks.
-    This file is meant to be dot-sourced into other scripts.
-#>
-
-# DO NOT use Set-StrictMode in dot-sourced files
-$InformationPreference = 'Continue'  # Optional, for logging
-$ErrorActionPreference = 'Stop'
-
-function Public-Function {
-    <#
-    .SYNOPSIS
-        Brief description
-    #>
-    [CmdletBinding()]
-    param()
-
-    # Implementation
-}
-```
-```
+For the standalone and dot-sourced file templates, see the `powershell-dev` skill.
 
 ### Testing Requirements
 
@@ -441,15 +250,6 @@ AfterAll {
 See `lib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations
-
-#### Directory Structure
-
-- `bin/`: Installation and update scripts
-- `config/`: Configuration files
-- `lib/`: Shared PowerShell library
-- `tools/`: Tool-specific utilities and installers
-- `links/`: Keypirinha link definitions
-- `test/`: Test files and test utilities
 
 #### Scoop Integration
 
@@ -582,58 +382,17 @@ Agent: *uses EnterPlanMode to explore architecture, understand relationships,
 
 **Enforcement**: When in doubt, ALWAYS prefer planning over immediate implementation. Use EnterPlanMode proactively to avoid architectural misalignment.
 
-#### When Implementing New Functionality
+#### When Implementing or Modifying PowerShell Functionality
 
-1. **Research**: Check if similar functionality exists in `lib/` or other scripts
-2. **Design**: Plan the script structure and identify reusable components
-3. **Test First**: Write Pester tests before implementation (TDD)
-4. **Implement**: Write the PowerShell script following guidelines
-5. **Test**: Run Pester tests and manual testing
-6. **Document**: Add comments and help documentation
-7. **Integration**: Ensure Keypirinha can discover new shortcuts if applicable
+For the step-by-step new-functionality and modify-existing-function workflows, see the `powershell-dev` skill.
 
 > **Backlog tracking is mandatory**: see Development Workflow in `docs/development-principles.md` for the full start/finish protocol.
 
-#### When Modifying Existing Functions
-
-**CRITICAL: Never modify implementation without updating tests!**
-
-1. **Read Tests First**: Understand what the current tests verify
-2. **Update Tests**: Modify tests to expect new behavior (Red phase)
-3. **Run Tests**: Confirm tests fail with current implementation
-4. **Modify Implementation**: Update the function (Green phase)
-5. **Run Tests Again**: Verify all tests pass
-6. **Commit Together**: Tests and implementation must be in the same commit
-
-**Example of the correct workflow:**
-
-```bash
-# 1. Modify the test to expect new behavior
-Edit lib/wsl/wsl.Tests.ps1  # Update parameter filter
-
-# 2. Run tests - should FAIL
-pwsh -File ".\test\bin\testrunner.ps1" -Unit  # Expected: 1 failure
-
-# 3. Update implementation
-Edit lib/wsl/wsl.ps1  # Change the command
-
-# 4. Run tests - should PASS
-pwsh -File ".\test\bin\testrunner.ps1" -Unit  # Expected: all pass
-
-# 5. Commit both together
-git add lib/wsl/wsl.ps1 lib/wsl/wsl.Tests.ps1
-git commit -m "refactor: update Get-WslDistroType command"
-```
+**CRITICAL: Never modify implementation without updating tests, and never commit tests separately from the implementation they cover.**
 
 #### Mandatory Pre-Commit Checks
 
-**Before every commit, you MUST:**
-
-1. **Run unit tests**: `pwsh -File ".\test\bin\testrunner.ps1" -Unit`
-   - All tests must pass
-   - If any fail, fix them before committing
-2. **Run integration tests** (if you modified integration points): `pwsh -File ".\test\bin\testrunner.ps1" -Integration`
-3. **Run linter**: Tests include PSScriptAnalyzer checks automatically
+**Before every commit, you MUST run unit tests (and integration tests if you touched integration points) via the `powershell-test-exec` skill, and PSScriptAnalyzer must be clean.**
 
 **Never commit if:**
 
