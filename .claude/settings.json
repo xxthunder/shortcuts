@@ -1,7 +1,7 @@
 {
   "cleanupPeriodDays": 30,
   "permissions": {
-    "defaultMode": "acceptEdits",
+    "defaultMode": "auto",
     "allow": [
       "Bash",
       "Read",
