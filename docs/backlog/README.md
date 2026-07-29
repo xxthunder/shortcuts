@@ -38,6 +38,7 @@
 
 ### Done
 
+- [SC-051 — px-proxy runbook: fix Keypirinha invocation, document manual start and VPN ordering](sc-051.md)
 - [SC-050 — Trim AGENTS.md duplication, point to powershell-dev skill](sc-050.md)
 - [SC-049 — px unit tests must never kill a real px process](sc-049.md)
 - [SC-048 — Stable px defaults for sharing (workers = 1, idle = 300)](sc-048.md)

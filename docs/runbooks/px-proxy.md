@@ -26,13 +26,13 @@ You probably have everything already:
 
 ## Usage
 
-Run from Keypirinha (type `px-proxy`) or from a terminal:
+**From Keypirinha:** search for `px-proxy`. Keypirinha's file catalog only indexes `.url`, `.lnk`, `.cmd`, `.bat`, and `.exe` files (not `.ps1`), so it finds and runs `tools\proxy\px-proxy.bat`, the `.bat` wrapper around the script (see the PowerShell Script Wrapper Convention in `AGENTS.md`) — never the `.ps1` file directly. Press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the wrapper with no action, which runs the default (`start`).
+
+**From a terminal:**
 
 ```powershell
 .\tools\proxy\px-proxy.ps1 <action>
 ```
-
-**Passing an action from Keypirinha:** type `px-proxy`, then press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the script with no action, which runs the default (`start`).
 
 | Action    | What it does |
 |-----------|--------------|
@@ -43,6 +43,10 @@ Run from Keypirinha (type `px-proxy`) or from a terminal:
 | `remove`  | Stops px, uninstalls it (only if this tool installed it), and deletes `px.ini` and the log files. Your `px-user.ini` is preserved. |
 
 `start` is the default action when none is given.
+
+> **px does not start itself.** There is currently no persistent installation, scheduled task, or other automation that launches px for you — after every reboot or logon, run `start` yourself (from Keypirinha or a terminal) before you need proxied tools.
+>
+> **If your network requires a VPN** (for example, working from a home office), connect the VPN **first**, then run `start`. Both proxy discovery (PAC evaluation) and the Kerberos ticket lookup need the corporate network to be reachable; starting px before the VPN is up resolves against the wrong, unreachable path.
 
 ### Manual upstream override
 
