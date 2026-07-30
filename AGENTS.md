@@ -313,6 +313,22 @@ git log develop..HEAD   # Review ALL commits on branch
 # Even cosmetic changes to test files can break things
 ```
 
+#### Docs-Only Changes May Land Directly on `develop`
+
+**Context**: `develop` is a protected ref (PR required, 2 status checks). The repository owner has bypass rights and uses them intentionally for documentation-only changes.
+
+A change is **docs-only** when every file in the diff is a `.md` file under `docs/` or the repository root. Anything else - `.ps1`, `.psm1`, `.psd1`, `.bat`, `.cmd`, `.sh`, `.yml`, `.json`, `.gitattributes` - disqualifies it, however small the edit.
+
+For a docs-only change:
+
+- Commit and push straight to `develop`; no feature branch, no PR.
+- The unit-test suite and PSScriptAnalyzer may be skipped: no file in their input changed. Say so explicitly in the report rather than implying they passed.
+- CI still runs (`test.yml` triggers on `push` to `main` and `develop`), so a docs-only push is still covered; it just is not gated pre-merge.
+
+The push prints `Cannot update this protected ref` alongside a successful ref update. That is expected for the owner. **Verify the push landed** (`git fetch origin develop`, then compare `origin/develop` to `HEAD`) instead of reading the push output, which is ambiguous.
+
+Contributors without bypass rights must use a pull request for documentation too.
+
 #### GitHub Actions Shell
 
 The CI workflow no longer uses a matrix (only one shell: `pwsh`). Steps use `shell: pwsh` directly, except the "Remote install" step which uses `shell: powershell` to simulate a fresh machine running `install.ps1` under Windows PowerShell 5.1.
