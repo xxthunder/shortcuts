@@ -19,6 +19,7 @@
 ### Open
 
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
+- [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-016d — Replace distro selection with Read-SpectreSelection](sc-016d.md)
 - [SC-016e — Add Read-SpectreConfirm for destructive operations](sc-016e.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
