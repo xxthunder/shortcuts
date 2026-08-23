@@ -62,9 +62,7 @@ tools/wsl-manager/
 
 ## Backlog Lifecycle
 
-**A backlog item is the single canonical artifact for a unit of work, and it MUST exist before any design or implementation begins.** If work is requested for which no backlog item exists, create the item first (next `SC-###`, status **Open** or **In Progress**, added to the README index) and capture the design *in that item* (Summary, Description, Scope Decisions, Acceptance Criteria, UAT Procedure). Do NOT create a separate design/spec document that duplicates the backlog item; the backlog item is the design of record. Reserve standalone design docs (e.g. under `docs/architecture/`) for genuinely large, multi-item efforts (epics), and link them from the item rather than duplicating its acceptance criteria.
-
-When starting work on a backlog item, update its status to **In Progress** and move it in the README index before committing implementation changes. When a subtask or the full item is completed, update status accordingly per the closing checklist in `docs/backlog/README.md`. Backlog updates are part of the implementation commit, not a separate afterthought.
+**A backlog item is the single canonical artifact for a unit of work, and it MUST exist before any design or implementation begins.** If work is requested for which no backlog item exists, create the item first.
 
 ## Coding Guidelines
 
@@ -351,13 +349,6 @@ The CI workflow no longer uses a matrix (only one shell: `pwsh`). Steps use `she
 - Read the CI workflow and setup scripts before claiming anything about the CI environment
 - When CI results contradict your mental model, trust the data
 - Say "I don't know" rather than fabricate an explanation
-
-#### Backlog Conventions
-
-Backlog structure and format are defined by the `refinement` skill (from the `xxthunder-dev-skills` plugin). See `docs/backlog/README.md` for the TOC and notes.
-
-- **No unrelated files in feature commits**: keep commits scoped to the feature; unrelated additions get their own commit.
-- **Always update backlog with every commit**: move item to IN PROGRESS at start, check off acceptance criteria as they're completed, move to DONE when finished. Backlog updates go in the same commit as the code.
 
 #### Communication
 
