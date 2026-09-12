@@ -15,6 +15,7 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-016e — Add Read-SpectreConfirm for destructive operations](sc-016e.md)
 
 ### Open
 
@@ -24,7 +25,6 @@
 - [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
 - [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
-- [SC-016e — Add Read-SpectreConfirm for destructive operations](sc-016e.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)

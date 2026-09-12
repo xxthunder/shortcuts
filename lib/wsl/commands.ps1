@@ -24,10 +24,11 @@ $ErrorActionPreference = "Stop"
 # Explicit choice because Ctrl+C under the .bat wrapper is intercepted by cmd.exe.
 $WslPickerBackChoice = "Back to main menu"
 
-# Raised by the pickers when the user chose $WslPickerBackChoice, so the TUI loop
-# (Start-InteractiveMode) can skip its "Press Enter to continue" pause. The loop
-# resets it before every command; action functions never touch it.
-$script:WslPickerWentBack = $false
+# Raised when a command ends without output worth reading (the user chose
+# $WslPickerBackChoice in a picker, or answered No to a confirmation), so the TUI
+# loop (Start-InteractiveMode) can skip its "Press Enter to continue" pause.
+# The loop resets it before every command.
+$script:WslSkipContinuePause = $false
 
 #region Functions
 
@@ -132,7 +133,7 @@ function Select-WslDistro {
         $Selection = Read-SpectreSelection -Message "Select distribution" -Choices $choices -PageSize 15 -EnableSearch
 
         if ($Selection -eq $WslPickerBackChoice) {
-            $script:WslPickerWentBack = $true
+            $script:WslSkipContinuePause = $true
             return $null
         }
 
@@ -165,6 +166,37 @@ function Select-WslDistro {
     return $Selection
 }
 
+function Confirm-DestructiveAction {
+    <#
+    .SYNOPSIS
+        Asks the user to confirm a destructive TUI action.
+
+    .DESCRIPTION
+        Shows a Read-SpectreConfirm prompt defaulting to No, so a bare Enter cancels.
+        Returns $true only on an explicit yes. In CI/test environments no prompt is
+        shown and $true is returned (the non-interactive path).
+
+    .PARAMETER Action
+        Plain-text description of what is about to happen, e.g. "Remove distribution 'Ubuntu'."
+        Not Spectre markup: distribution names are user data.
+
+    .OUTPUTS
+        [bool] $true to proceed, $false to cancel.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Action
+    )
+
+    if (Test-RunningInCIorTestEnvironment) {
+        return $true
+    }
+
+    $answer = Read-SpectreConfirm -Message "$Action Continue?" -DefaultAnswer "n"
+    return $answer -eq $true
+}
+
 function Invoke-CreateDistro {
     <#
     .SYNOPSIS
@@ -193,7 +225,7 @@ function Invoke-CreateDistro {
         $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices $choices -PageSize 15 -EnableSearch
 
         if ($Name -eq $WslPickerBackChoice) {
-            $script:WslPickerWentBack = $true
+            $script:WslSkipContinuePause = $true
             return
         }
 
@@ -238,8 +270,17 @@ function Invoke-RemoveDistro {
         [PSCustomObject[]]$Distros = $null
     )
 
+    $interactive = [string]::IsNullOrWhiteSpace($Name)
+
     $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
     if ($null -eq $selectedName) { return }
+
+    # A name given on the CLI is trusted; only a picked name is confirmed
+    if ($interactive -and -not (Confirm-DestructiveAction -Action "Remove distribution '$selectedName' and all its data.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
 
     Remove-WslDistro -Name $selectedName -Confirm:$false
 }
@@ -321,6 +362,12 @@ function Invoke-TerminateDistro {
     }
     if ($selectedDistro.State -ne "Running") {
         Write-ErrorMsg "Distribution '$selectedName' is not in the list of running distributions."
+        return
+    }
+
+    if (-not (Confirm-DestructiveAction -Action "Terminate distribution '$selectedName'.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
         return
     }
 
@@ -674,21 +721,27 @@ function Invoke-ShutdownWsl {
     .SYNOPSIS
         Handles the WSL shutdown workflow.
     .DESCRIPTION
-        Warns the user about running distributions and shuts down the entire WSL subsystem.
+        Asks for confirmation, naming the running distributions that will be stopped,
+        then shuts down the entire WSL subsystem. Shutdown has no -Name to mark a
+        scripted call, so it confirms from the CLI too; CI/test skips the prompt.
     #>
     [CmdletBinding()]
     param()
 
-    # List running distributions as a warning
     $allDistros = @(Get-WslDistroList -Detailed)
     $runningDistros = @($allDistros | Where-Object { $_.State -eq "Running" })
 
-    if ($runningDistros.Count -gt 0) {
-        Write-Host ""
-        Write-Host "Warning: The following distributions are currently running and will be stopped:" -ForegroundColor Yellow
-        foreach ($distro in $runningDistros) {
-            Write-Host "  - $($distro.Name)" -ForegroundColor Yellow
-        }
+    $action = if ($runningDistros.Count -gt 0) {
+        "Shut down WSL. Running distributions that will be stopped: $($runningDistros.Name -join ', ')."
+    }
+    else {
+        "Shut down WSL. No distributions are running."
+    }
+
+    if (-not (Confirm-DestructiveAction -Action $action)) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
     }
 
     Stop-WslSubsystem -Confirm:$false
