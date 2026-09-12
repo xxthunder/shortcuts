@@ -24,6 +24,11 @@ $ErrorActionPreference = "Stop"
 # Explicit choice because Ctrl+C under the .bat wrapper is intercepted by cmd.exe.
 $WslPickerBackChoice = "Back to main menu"
 
+# Raised by the pickers when the user chose $WslPickerBackChoice, so the TUI loop
+# (Start-InteractiveMode) can skip its "Press Enter to continue" pause. The loop
+# resets it before every command; action functions never touch it.
+$script:WslPickerWentBack = $false
+
 #region Functions
 
 function Show-WslDistroTable {
@@ -127,6 +132,7 @@ function Select-WslDistro {
         $Selection = Read-SpectreSelection -Message "Select distribution" -Choices $choices -PageSize 15 -EnableSearch
 
         if ($Selection -eq $WslPickerBackChoice) {
+            $script:WslPickerWentBack = $true
             return $null
         }
 
@@ -187,6 +193,7 @@ function Invoke-CreateDistro {
         $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices $choices -PageSize 15 -EnableSearch
 
         if ($Name -eq $WslPickerBackChoice) {
+            $script:WslPickerWentBack = $true
             return
         }
 
