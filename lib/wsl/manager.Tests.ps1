@@ -409,7 +409,7 @@ Describe "Invoke-WslManager" {
             Invoke-WslManager -Command "install"
 
             Should -Invoke Read-SpectreSelection -ParameterFilter {
-                $Choices.Count -eq 4 -and $Choices -contains "kali-linux"
+                $Choices.Count -eq 5 -and $Choices -contains "kali-linux"
             }
         }
 
