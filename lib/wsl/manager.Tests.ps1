@@ -145,6 +145,55 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Get-WslManagerPanel -Times 1
         }
 
+        It "Should pause for Enter after a command completes" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            $script:callCount = 0
+            Mock Show-WslMenu {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "update" }
+                else { "quit" }
+            }
+            Mock Invoke-WslCommand {}
+
+            Start-InteractiveMode
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Press Enter*" } -Times 1
+        }
+
+        It "Should return straight to the menu when the picker went back" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            $script:callCount = 0
+            Mock Show-WslMenu {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "update" }
+                else { "quit" }
+            }
+            Mock Invoke-WslCommand { $script:WslPickerWentBack = $true }
+
+            Start-InteractiveMode
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Press Enter*" } -Times 0
+        }
+
+        It "Should reset the went-back flag before each command" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            $script:WslPickerWentBack = $true
+            $script:callCount = 0
+            Mock Show-WslMenu {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "update" }
+                else { "quit" }
+            }
+            Mock Invoke-WslCommand {}
+
+            Start-InteractiveMode
+
+            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Press Enter*" } -Times 1
+        }
+
         It "Should dispatch to Invoke-WslCommand with 'setup-podman'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {

@@ -132,6 +132,25 @@ Describe "Select-WslDistro" {
             Should -Invoke Write-Status -Times 0
         }
 
+        It "Should raise the went-back flag when 'Back to main menu' is chosen" {
+            $script:WslPickerWentBack = $false
+            Mock Read-SpectreSelection { "Back to main menu" }
+
+            Select-WslDistro -Distros $script:twoDistros
+
+            $script:WslPickerWentBack | Should -BeTrue
+        }
+
+        It "Should leave the went-back flag down on a normal selection" {
+            $script:WslPickerWentBack = $false
+            Mock Write-Status {}
+            Mock Read-SpectreSelection { "Debian" }
+
+            Select-WslDistro -Distros $script:twoDistros
+
+            $script:WslPickerWentBack | Should -BeFalse
+        }
+
         It "Should return the selected distro name" {
             Mock Read-SpectreSelection { "Ubuntu" }
 
@@ -486,6 +505,15 @@ Describe "Invoke-CreateDistro" {
             Should -Invoke New-WslDistro -Times 0
             Should -Invoke Write-Status -Times 0
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" } -Times 0
+        }
+
+        It "Should raise the went-back flag when 'Back to main menu' is chosen" {
+            $script:WslPickerWentBack = $false
+            Mock Read-SpectreSelection { "Back to main menu" }
+
+            Invoke-CreateDistro
+
+            $script:WslPickerWentBack | Should -BeTrue
         }
 
         It "Should install the selected distribution" {
