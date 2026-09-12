@@ -126,6 +126,8 @@ function Select-WslDistro {
             return $null
         }
 
+        # Spectre clears the prompt on selection; echo the choice so the user sees it while the action runs
+        Write-Status "Selected distribution: $Selection"
         return $Selection
     }
 
@@ -178,6 +180,9 @@ function Invoke-CreateDistro {
             Write-WarningMsg "No selection provided. Cancelling."
             return
         }
+
+        # Spectre clears the prompt on selection; echo the choice so the user sees it while the install runs
+        Write-Status "Selected distribution: $Name"
     }
 
     # Validate the distribution name

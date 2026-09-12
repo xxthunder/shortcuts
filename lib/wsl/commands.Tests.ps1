@@ -120,6 +120,15 @@ Describe "Select-WslDistro" {
             $result | Should -Be "Ubuntu"
         }
 
+        It "Should echo the selected distro name after the prompt closes" {
+            Mock Write-Status {}
+            Mock Read-SpectreSelection { "Ubuntu" }
+
+            Select-WslDistro -Distros $script:twoDistros
+
+            Should -Invoke Write-Status -Times 1 -ParameterFilter { $Message -like "*Selected*Ubuntu*" }
+        }
+
         It "Should return null and warn when the prompt is cancelled" {
             Mock Read-SpectreSelection { $null }
 
@@ -444,6 +453,15 @@ Describe "Invoke-CreateDistro" {
             Invoke-CreateDistro
 
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Ubuntu" -and $Confirm -eq $false }
+        }
+
+        It "Should echo the selected distribution after the prompt closes" {
+            Mock Write-Status {}
+            Mock Read-SpectreSelection { "Ubuntu" }
+
+            Invoke-CreateDistro
+
+            Should -Invoke Write-Status -Times 1 -ParameterFilter { $Message -like "*Selected*Ubuntu*" }
         }
 
         It "Should cancel when the prompt is cancelled" {
