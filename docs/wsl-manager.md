@@ -804,14 +804,14 @@ This command:
 
 ### Remove Distribution
 
-Unregister a distribution (with confirmation prompt in TUI mode).
+Unregister a distribution. The TUI asks for confirmation; the CLI form with a name does not.
 
 - **TUI**: select **Remove distribution**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
 
 This command:
 - Validates the distribution exists; auto-terminates it if running
-- Prompts for confirmation before proceeding (TUI shows a Y/N prompt)
+- TUI: asks `Remove distribution <name> and all its data. Continue? [y/n]` with **No** as the default; Enter or `n` cancels and returns to the menu. CLI with `<distro>`: no prompt, so scripts stay non-interactive
 - Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
 - This operation cannot be undone
 
@@ -824,6 +824,7 @@ Gracefully shut down a running distribution.
 
 This command:
 - Shows only running distributions for selection (TUI) or validates the named distribution is running (CLI)
+- TUI: asks `Terminate distribution <name>. Continue? [y/n]` with **No** as the default; CLI with `<distro>`: no prompt
 - Executes `wsl.exe --terminate <name>` to stop the distribution
 - Polls `wsl.exe --list --verbose` with retries to verify termination
 - Warns if no distributions are currently running
@@ -836,8 +837,7 @@ Shut down the entire WSL subsystem including all running distributions and the W
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
 
 This command:
-- Lists any running distributions before shutting down (so you know what will be stopped)
-- Prompts for confirmation before proceeding
+- Asks for confirmation, naming the running distributions that will be stopped, with **No** as the default. Because `shutdown` takes no distribution name, the CLI form asks too; only CI/test environments skip the prompt
 - Executes `wsl.exe --shutdown` to stop all distributions and the WSL2 lightweight VM
 - Polls to verify all distributions have stopped
 - Is idempotent - safe to run when no distributions are running

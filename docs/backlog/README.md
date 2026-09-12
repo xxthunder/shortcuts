@@ -15,6 +15,7 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
+- [SC-016e — Add Read-SpectreConfirm for destructive operations](sc-016e.md)
 
 ### Open
 
@@ -22,7 +23,6 @@
 - [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-054 — Podman and user unit tests must not reach the real wsl.exe](sc-054.md)
 - [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
-- [SC-016e — Add Read-SpectreConfirm for destructive operations](sc-016e.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
