@@ -15,7 +15,6 @@
 
 - [SC-001 — Backlog refinement](sc-001.md)
 - [SC-016 — Modernize WSL Manager TUI with PwshSpectreConsole](sc-016.md)
-- [SC-016d — Replace distro selection with Read-SpectreSelection](sc-016d.md)
 
 ### Open
 
@@ -59,6 +58,7 @@
 - [SC-017 — Auto-terminate distros instead of prompting the user](sc-017.md)
 - [SC-036a — Add setup-proxy mode/auth prompts and mode marker](sc-036a.md)
 - [SC-035 — Add sync-ssh-config command for Windows DevPod access](sc-035.md)
+- [SC-016d — Replace distro selection with Read-SpectreSelection](sc-016d.md)
 - [SC-016c — Replace distro table with Format-SpectreTable](sc-016c.md)
 - [SC-033 — Tool-level dependency declaration and installation](sc-033.md)
 - [SC-016b — Replace main menu with Read-SpectreSelection](sc-016b.md)
