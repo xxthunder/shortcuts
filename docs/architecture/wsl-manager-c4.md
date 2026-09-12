@@ -89,7 +89,7 @@ C4Component
     Container_Boundary(tuiContainer, "TUI Layer") {
         Component(showMenu, "Show-WslMenu", "Shipped SC-016b", "Arrow-key menu using Read-SpectreSelection; replaces Read-Host letter input")
         Component(showTable, "Show-WslDistroTable", "Shipped SC-016c", "Rich distro table using Format-SpectreTable with colored status columns")
-        Component(selectDistro, "Select-WslDistro", "Shipped SC-016d", "Arrow-key distro picker using Read-SpectreSelection (Ctrl+C cancels); number/name resolution kept for the CLI -Name path")
+        Component(selectDistro, "Select-WslDistro", "Shipped SC-016d", "Arrow-key distro picker using Read-SpectreSelection with a Back to main menu entry; number/name resolution kept for the CLI -Name path")
         Component(confirmAction, "Confirm-DestructiveAction", "Planned SC-016e", "Read-SpectreConfirm for remove, terminate, shutdown operations")
     }
 

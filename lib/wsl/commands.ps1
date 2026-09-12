@@ -20,6 +20,10 @@ $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\spectre.ps1"
 
+# Last entry of every distro picker; choosing it cancels the prompt (returns $null).
+# Explicit choice because Ctrl+C under the .bat wrapper is intercepted by cmd.exe.
+$WslPickerBackChoice = "Back to main menu"
+
 #region Functions
 
 function Show-WslDistroTable {
@@ -118,8 +122,13 @@ function Select-WslDistro {
             return $null
         }
 
+        $choices = @($Distros.Name) + $WslPickerBackChoice
         # Ctrl+C returns $null, which the [string] parameter coerces to ""
-        $Selection = Read-SpectreSelection -Message "Select distribution" -Choices @($Distros.Name) -PageSize 15 -EnableSearch
+        $Selection = Read-SpectreSelection -Message "Select distribution" -Choices $choices -PageSize 15 -EnableSearch
+
+        if ($Selection -eq $WslPickerBackChoice) {
+            return $null
+        }
 
         if ([string]::IsNullOrWhiteSpace($Selection)) {
             Write-WarningMsg "No selection provided. Cancelling."
@@ -173,8 +182,13 @@ function Invoke-CreateDistro {
             return
         }
 
+        $choices = @($availableDistros) + $WslPickerBackChoice
         # Ctrl+C returns $null, which the [string] parameter coerces to ""
-        $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices @($availableDistros) -PageSize 15 -EnableSearch
+        $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices $choices -PageSize 15 -EnableSearch
+
+        if ($Name -eq $WslPickerBackChoice) {
+            return
+        }
 
         if ([string]::IsNullOrWhiteSpace($Name)) {
             Write-WarningMsg "No selection provided. Cancelling."

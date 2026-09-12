@@ -651,7 +651,7 @@ Install a new WSL distribution from Microsoft Store or the web.
 
 This command:
 - Fetches available distributions from `wsl.exe --list --online`
-- Prompts to pick a distribution from an arrow-key list with type-to-search (TUI; Ctrl+C cancels) or uses the provided name (CLI)
+- Prompts to pick a distribution from an arrow-key list with type-to-search (TUI; the last entry, **Back to main menu**, cancels) or uses the provided name (CLI)
 - Validates the distribution does not already exist locally
 - Installs the distribution via `wsl.exe --install --distribution <name> --no-launch`
 

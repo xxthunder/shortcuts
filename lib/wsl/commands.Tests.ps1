@@ -108,8 +108,28 @@ Describe "Select-WslDistro" {
             Select-WslDistro -Distros $script:twoDistros
 
             Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
-                $Choices.Count -eq 2 -and $Choices[0] -eq "Debian" -and $Choices[1] -eq "Ubuntu" -and $EnableSearch -eq $true
+                $Choices.Count -eq 3 -and $Choices[0] -eq "Debian" -and $Choices[1] -eq "Ubuntu" -and $EnableSearch -eq $true
             }
+        }
+
+        It "Should offer 'Back to main menu' as the last choice" {
+            Mock Read-SpectreSelection { "Debian" }
+
+            Select-WslDistro -Distros $script:twoDistros
+
+            Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
+                $Choices[-1] -eq "Back to main menu"
+            }
+        }
+
+        It "Should return null without echoing when 'Back to main menu' is chosen" {
+            Mock Write-Status {}
+            Mock Read-SpectreSelection { "Back to main menu" }
+
+            $result = Select-WslDistro -Distros $script:twoDistros
+
+            $result | Should -BeNullOrEmpty
+            Should -Invoke Write-Status -Times 0
         }
 
         It "Should return the selected distro name" {
@@ -443,8 +463,29 @@ Describe "Invoke-CreateDistro" {
             Invoke-CreateDistro
 
             Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
-                $Choices.Count -eq 2 -and $Choices[0] -eq "Debian" -and $Choices[1] -eq "Ubuntu" -and $EnableSearch -eq $true
+                $Choices.Count -eq 3 -and $Choices[0] -eq "Debian" -and $Choices[1] -eq "Ubuntu" -and $EnableSearch -eq $true
             }
+        }
+
+        It "Should offer 'Back to main menu' as the last choice" {
+            Mock Read-SpectreSelection { "Debian" }
+
+            Invoke-CreateDistro
+
+            Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
+                $Choices[-1] -eq "Back to main menu"
+            }
+        }
+
+        It "Should not install when 'Back to main menu' is chosen" {
+            Mock Write-Status {}
+            Mock Read-SpectreSelection { "Back to main menu" }
+
+            Invoke-CreateDistro
+
+            Should -Invoke New-WslDistro -Times 0
+            Should -Invoke Write-Status -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" } -Times 0
         }
 
         It "Should install the selected distribution" {
@@ -677,7 +718,7 @@ Describe "Invoke-TerminateDistro" {
 
             Invoke-TerminateDistro
 
-            Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter { $Choices.Count -eq 3 }
+            Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter { $Choices.Count -eq 4 }
         }
 
         It "Should terminate the selected running distribution" {
@@ -738,7 +779,7 @@ Describe "Invoke-TerminateDistro" {
 
             Invoke-TerminateDistro -Distros $distros
 
-            Should -Invoke Read-SpectreSelection -ParameterFilter { $Choices.Count -eq 3 }
+            Should -Invoke Read-SpectreSelection -ParameterFilter { $Choices.Count -eq 4 }
             Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Fedora" }
         }
 
