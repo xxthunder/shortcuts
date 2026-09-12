@@ -126,7 +126,7 @@ function Start-InteractiveMode {
         }
         else {
             if ($PSCmdlet.ShouldProcess($command, "Execute WSL command")) {
-                $script:WslPickerWentBack = $false
+                $script:WslSkipContinuePause = $false
                 try {
                     Invoke-WslCommand -Command $command -Distros $menuDistros
                 }
@@ -134,7 +134,7 @@ function Start-InteractiveMode {
                     Write-ErrorMsg "$_"
                 }
                 # No pause when the user backed out of a distro picker: there is no output to read
-                if (-not $script:WslPickerWentBack) {
+                if (-not $script:WslSkipContinuePause) {
                     Read-Host -Prompt "Press Enter to continue"
                 }
             }

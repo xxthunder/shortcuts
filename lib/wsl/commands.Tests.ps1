@@ -12,6 +12,7 @@ BeforeAll {
     # Stub PwshSpectreConsole commands used by commands.ps1
     function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
+    function Read-SpectreConfirm { param($Message, $DefaultAnswer) $null = $Message, $DefaultAnswer }
 
     . "$PSScriptRoot\commands.ps1"
 }
@@ -133,22 +134,22 @@ Describe "Select-WslDistro" {
         }
 
         It "Should raise the went-back flag when 'Back to main menu' is chosen" {
-            $script:WslPickerWentBack = $false
+            $script:WslSkipContinuePause = $false
             Mock Read-SpectreSelection { "Back to main menu" }
 
             Select-WslDistro -Distros $script:twoDistros
 
-            $script:WslPickerWentBack | Should -BeTrue
+            $script:WslSkipContinuePause | Should -BeTrue
         }
 
         It "Should leave the went-back flag down on a normal selection" {
-            $script:WslPickerWentBack = $false
+            $script:WslSkipContinuePause = $false
             Mock Write-Status {}
             Mock Read-SpectreSelection { "Debian" }
 
             Select-WslDistro -Distros $script:twoDistros
 
-            $script:WslPickerWentBack | Should -BeFalse
+            $script:WslSkipContinuePause | Should -BeFalse
         }
 
         It "Should return the selected distro name" {
@@ -300,6 +301,52 @@ Describe "Select-WslDistro" {
             Select-WslDistro -Distros $script:twoDistros
 
             Should -Invoke Get-WslDistroList -Times 0
+        }
+    }
+}
+
+Describe "Confirm-DestructiveAction" {
+    Context "When prompting interactively" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+        }
+
+        It "Should ask with the action text and default to No" {
+            Mock Read-SpectreConfirm { $true }
+
+            Confirm-DestructiveAction -Action "Remove distribution 'Ubuntu'."
+
+            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter {
+                $Message -like "Remove distribution 'Ubuntu'.*" -and $DefaultAnswer -eq "n"
+            }
+        }
+
+        It "Should return true on yes" {
+            Mock Read-SpectreConfirm { $true }
+
+            Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeTrue
+        }
+
+        It "Should return false on no" {
+            Mock Read-SpectreConfirm { $false }
+
+            Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeFalse
+        }
+
+        It "Should return false when the prompt is cancelled" {
+            Mock Read-SpectreConfirm { $null }
+
+            Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeFalse
+        }
+    }
+
+    Context "When in CI" {
+        It "Should return true without prompting" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-SpectreConfirm { $false }
+
+            Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeTrue
+            Should -Invoke Read-SpectreConfirm -Times 0
         }
     }
 }
@@ -508,12 +555,12 @@ Describe "Invoke-CreateDistro" {
         }
 
         It "Should raise the went-back flag when 'Back to main menu' is chosen" {
-            $script:WslPickerWentBack = $false
+            $script:WslSkipContinuePause = $false
             Mock Read-SpectreSelection { "Back to main menu" }
 
             Invoke-CreateDistro
 
-            $script:WslPickerWentBack | Should -BeTrue
+            $script:WslSkipContinuePause | Should -BeTrue
         }
 
         It "Should install the selected distribution" {
@@ -573,6 +620,10 @@ Describe "Invoke-CreateDistro" {
 
 Describe "Invoke-RemoveDistro" {
     Context "When Name is provided" {
+        BeforeEach {
+            Mock Confirm-DestructiveAction { $false }
+        }
+
         It "Should dispatch to Remove-WslDistro with selected name" {
             Mock Select-WslDistro { "Debian" }
             Mock Remove-WslDistro {}
@@ -582,9 +633,22 @@ Describe "Invoke-RemoveDistro" {
             Should -Invoke Select-WslDistro -ParameterFilter { $Selection -eq "Debian" }
             Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
         }
+
+        It "Should not ask for confirmation" {
+            Mock Select-WslDistro { "Debian" }
+            Mock Remove-WslDistro {}
+
+            Invoke-RemoveDistro -Name "Debian"
+
+            Should -Invoke Confirm-DestructiveAction -Times 0
+        }
     }
 
     Context "When Name is not provided" {
+        BeforeEach {
+            Mock Confirm-DestructiveAction { $true }
+        }
+
         It "Should prompt via Select-WslDistro and remove selected distro" {
             Mock Select-WslDistro { "Ubuntu" }
             Mock Remove-WslDistro {}
@@ -595,13 +659,47 @@ Describe "Invoke-RemoveDistro" {
             Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
         }
 
+        It "Should ask for confirmation naming the distribution" {
+            Mock Select-WslDistro { "Ubuntu" }
+            Mock Remove-WslDistro {}
+
+            Invoke-RemoveDistro
+
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter { $Action -like "*Remove*'Ubuntu'*" }
+        }
+
         It "Should return early when selection is cancelled" {
             Mock Select-WslDistro { $null }
             Mock Remove-WslDistro {}
 
             Invoke-RemoveDistro
 
+            Should -Invoke Confirm-DestructiveAction -Times 0
             Should -Invoke Remove-WslDistro -Times 0
+        }
+    }
+
+    Context "When confirmation is denied" {
+        BeforeEach {
+            Mock Select-WslDistro { "Ubuntu" }
+            Mock Remove-WslDistro {}
+            Mock Confirm-DestructiveAction { $false }
+            Mock Write-Status {}
+        }
+
+        It "Should not remove" {
+            Invoke-RemoveDistro
+
+            Should -Invoke Remove-WslDistro -Times 0
+        }
+
+        It "Should report the cancellation and skip the continue pause" {
+            $script:WslSkipContinuePause = $false
+
+            Invoke-RemoveDistro
+
+            Should -Invoke Write-Status -ParameterFilter { $Message -like "Cancelled*" }
+            $script:WslSkipContinuePause | Should -BeTrue
         }
     }
 
@@ -611,6 +709,7 @@ Describe "Invoke-RemoveDistro" {
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
             Mock Select-WslDistro { "Debian" }
+            Mock Confirm-DestructiveAction { $true }
             Mock Remove-WslDistro {}
 
             Invoke-RemoveDistro -Distros $distros
@@ -712,8 +811,74 @@ Describe "Invoke-TerminateDistro" {
         }
     }
 
+    Context "When Name is provided interactively" {
+        It "Should not ask for confirmation" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList {
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            } -ParameterFilter { $Detailed }
+            Mock Confirm-DestructiveAction { $false }
+            Mock Stop-WslDistro { }
+
+            Invoke-TerminateDistro -Name "Debian"
+
+            Should -Invoke Confirm-DestructiveAction -Times 0
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+    }
+
+    Context "When confirmation is denied" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList {
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            } -ParameterFilter { $Detailed }
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Confirm-DestructiveAction { $false }
+            Mock Write-Host {}
+            Mock Write-Status {}
+            Mock Stop-WslDistro {}
+        }
+
+        It "Should ask after the running-state check, naming the distribution" {
+            Invoke-TerminateDistro
+
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter { $Action -like "*Terminate*'Debian'*" }
+        }
+
+        It "Should not terminate" {
+            Invoke-TerminateDistro
+
+            Should -Invoke Stop-WslDistro -Times 0
+        }
+
+        It "Should report the cancellation and skip the continue pause" {
+            $script:WslSkipContinuePause = $false
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Write-Status -ParameterFilter { $Message -like "Cancelled*" }
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+
+        It "Should not ask when the picked distribution is not running" {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Read-SpectreSelection { "Alpine" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Confirm-DestructiveAction -Times 0
+        }
+    }
+
     Context "When distributions are running" {
         BeforeEach {
+            Mock Confirm-DestructiveAction { $true }
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @(
@@ -778,6 +943,7 @@ Describe "Invoke-TerminateDistro" {
 
     Context "When called with pre-fetched Distros" {
         BeforeEach {
+            Mock Confirm-DestructiveAction { $true }
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
             Mock Stop-WslDistro {}
@@ -1347,18 +1513,41 @@ Describe "Invoke-ShutdownWsl" {
             Mock Write-Host { }
         }
 
-        It "Should warn about running distributions" {
+        It "Should ask for confirmation naming the running distributions" {
+            Mock Confirm-DestructiveAction { $true }
+
             Invoke-ShutdownWsl
 
-            Should -Invoke Write-Host -ParameterFilter {
-                $Object -like "*Debian*" -and $ForegroundColor -eq "Yellow"
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter {
+                $Action -like "*Debian*" -and $Action -notlike "*Ubuntu*"
             }
         }
 
-        It "Should call Stop-WslSubsystem" {
+        It "Should call Stop-WslSubsystem when confirmed" {
+            Mock Confirm-DestructiveAction { $true }
+
             Invoke-ShutdownWsl
 
             Should -Invoke Stop-WslSubsystem -Times 1
+        }
+
+        It "Should not shut down when denied" {
+            Mock Confirm-DestructiveAction { $false }
+
+            Invoke-ShutdownWsl
+
+            Should -Invoke Stop-WslSubsystem -Times 0
+        }
+
+        It "Should report the cancellation and skip the continue pause when denied" {
+            $script:WslSkipContinuePause = $false
+            Mock Confirm-DestructiveAction { $false }
+            Mock Write-Status { }
+
+            Invoke-ShutdownWsl
+
+            Should -Invoke Write-Status -ParameterFilter { $Message -like "Cancelled*" }
+            $script:WslSkipContinuePause | Should -BeTrue
         }
     }
 
@@ -1371,15 +1560,19 @@ Describe "Invoke-ShutdownWsl" {
             Mock Write-Host { }
         }
 
-        It "Should not display warning" {
+        It "Should ask for confirmation stating that nothing is running" {
+            Mock Confirm-DestructiveAction { $true }
+
             Invoke-ShutdownWsl
 
-            Should -Invoke Write-Host -ParameterFilter {
-                $ForegroundColor -eq "Yellow" -and $Object -like "*will be stopped*"
-            } -Times 0
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter {
+                $Action -like "*No distributions are running*" -and $Action -notlike "*Debian*"
+            }
         }
 
-        It "Should still call Stop-WslSubsystem" {
+        It "Should still call Stop-WslSubsystem when confirmed" {
+            Mock Confirm-DestructiveAction { $true }
+
             Invoke-ShutdownWsl
 
             Should -Invoke Stop-WslSubsystem -Times 1
@@ -1393,7 +1586,9 @@ Describe "Invoke-ShutdownWsl" {
             Mock Write-Host { }
         }
 
-        It "Should call Stop-WslSubsystem" {
+        It "Should call Stop-WslSubsystem when confirmed" {
+            Mock Confirm-DestructiveAction { $true }
+
             Invoke-ShutdownWsl
 
             Should -Invoke Stop-WslSubsystem -Times 1

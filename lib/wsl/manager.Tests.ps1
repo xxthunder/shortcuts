@@ -18,6 +18,7 @@ BeforeAll {
     # Note: Format-SpectreColumns and Format-SpectreRows use plural nouns to match
     # the real PwshSpectreConsole cmdlet names; renaming is not possible.
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
+    function Read-SpectreConfirm { param($Message, $DefaultAnswer) $null = $Message, $DefaultAnswer }
     function Format-SpectrePanel { param($Header, $Border, $Color, [switch]$Expand) process { $null = $Header, $Border, $Color, $Expand; $_ } }
     function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
     function Format-SpectreColumns {
@@ -170,7 +171,7 @@ Describe "Start-InteractiveMode" {
                 if ($script:callCount -eq 1) { "update" }
                 else { "quit" }
             }
-            Mock Invoke-WslCommand { $script:WslPickerWentBack = $true }
+            Mock Invoke-WslCommand { $script:WslSkipContinuePause = $true }
 
             Start-InteractiveMode
 
@@ -180,7 +181,7 @@ Describe "Start-InteractiveMode" {
         It "Should reset the went-back flag before each command" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            $script:WslPickerWentBack = $true
+            $script:WslSkipContinuePause = $true
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
@@ -357,6 +358,7 @@ Describe "Invoke-WslManager" {
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Remove-WslDistro {}
+            Mock Read-SpectreConfirm { $true }
         }
 
         It "Should prompt for distribution selection" {
@@ -366,6 +368,37 @@ Describe "Invoke-WslManager" {
             Invoke-WslManager -Command "remove"
 
             Should -Invoke Read-SpectreSelection -Times 1
+            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should ask for confirmation defaulting to No before removing" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Debian" }
+
+            Invoke-WslManager -Command "remove"
+
+            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter {
+                $Message -like "*Debian*" -and $DefaultAnswer -eq "n"
+            }
+        }
+
+        It "Should not remove when confirmation is denied" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Read-SpectreConfirm { $false }
+
+            Invoke-WslManager -Command "remove"
+
+            Should -Invoke Remove-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Cancelled*" }
+        }
+
+        It "Should not ask for confirmation when the name is given" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+
+            Invoke-WslManager -Command "remove" -Name "Debian"
+
+            Should -Invoke Read-SpectreConfirm -Times 0
             Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
@@ -1137,6 +1170,7 @@ Describe "Invoke-WslManager" {
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Stop-WslDistro {}
+            Mock Read-SpectreConfirm { $true }
         }
 
         It "Should prompt for distribution selection when Name is not provided" {
@@ -1145,6 +1179,33 @@ Describe "Invoke-WslManager" {
             Invoke-WslManager -Command "terminate"
 
             Should -Invoke Read-SpectreSelection -Times 1
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should ask for confirmation defaulting to No before terminating" {
+            Mock Read-SpectreSelection { "Debian" }
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter {
+                $Message -like "*Debian*" -and $DefaultAnswer -eq "n"
+            }
+        }
+
+        It "Should not terminate when confirmation is denied" {
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Read-SpectreConfirm { $false }
+
+            Invoke-WslManager -Command "terminate"
+
+            Should -Invoke Stop-WslDistro -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Cancelled*" }
+        }
+
+        It "Should not ask for confirmation when the name is given" {
+            Invoke-WslManager -Command "terminate" -Name "Debian"
+
+            Should -Invoke Read-SpectreConfirm -Times 0
             Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
@@ -1192,6 +1253,51 @@ Describe "Invoke-WslManager" {
             Mock Stop-WslDistro { throw "Failed to terminate distribution" }
 
             { Invoke-WslManager -Command "terminate" } | Should -Throw "*Failed to terminate*"
+        }
+    }
+
+    Context "When called with 'shutdown' argument" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Stop-WslSubsystem {}
+        }
+
+        It "Should ask for confirmation naming the running distributions" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreConfirm { $true }
+
+            Invoke-WslManager -Command "shutdown"
+
+            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter {
+                $Message -like "*Debian*" -and $Message -notlike "*Ubuntu*" -and $DefaultAnswer -eq "n"
+            }
+            Should -Invoke Stop-WslSubsystem -Times 1
+        }
+
+        It "Should not shut down when confirmation is denied" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreConfirm { $false }
+
+            Invoke-WslManager -Command "shutdown"
+
+            Should -Invoke Stop-WslSubsystem -Times 0
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Cancelled*" }
+        }
+
+        It "Should shut down without prompting in CI" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-SpectreConfirm { $false }
+
+            Invoke-WslManager -Command "shutdown"
+
+            Should -Invoke Read-SpectreConfirm -Times 0
+            Should -Invoke Stop-WslSubsystem -Times 1
         }
     }
 }
