@@ -299,25 +299,7 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'remove' argument" {
-        It "Should prompt for distribution selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Read-Host { "Debian" }
-            Mock Remove-WslDistro {}
-
-            Invoke-WslManager -Command "remove"
-
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
-            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Debian" }
-        }
-
-        It "Should display available distributions" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
@@ -325,92 +307,75 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Show-WslDistroTable {}
-            Mock Read-Host { "Debian" }
             Mock Remove-WslDistro {}
+        }
+
+        It "Should prompt for distribution selection" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Debian" }
+
+            Invoke-WslManager -Command "remove"
+
+            Should -Invoke Read-SpectreSelection -Times 1
+            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should display available distributions" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Show-WslDistroTable {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "remove"
 
             Should -Invoke Show-WslDistroTable -Times 1
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Remove-WslDistro {}
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { $null }
 
             Invoke-WslManager -Command "remove"
 
-            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke Remove-WslDistro -Times 0
         }
 
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Remove-WslDistro {}
+        It "Should warn and skip in CI when no name is provided" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Write-WarningMsg {}
 
             Invoke-WslManager -Command "remove"
 
-            Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Remove-WslDistro {}
-
-            Invoke-WslManager -Command "remove"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*CI*" -and $Message -like "*-Name*" }
+            Should -Invoke Read-SpectreSelection -Times 0
             Should -Invoke Remove-WslDistro -Times 0
         }
 
         It "Should remove using provided selection without prompting" {
-
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "debian-test"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host {}
-            Mock Remove-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "remove" -Name "debian-test"
 
-            Should -Invoke Read-Host -Times 0
+            Should -Invoke Read-SpectreSelection -Times 0
             Should -Invoke Remove-WslDistro -ParameterFilter { $Name -eq "debian-test" -and $Confirm -eq $false }
         }
     }
 
     Context "When called with 'create' argument" {
+        BeforeEach {
+            Mock Write-Host {}
+            Mock New-WslDistro {}
+        }
+
         It "Should create distribution when name is provided" {
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
-            Mock New-WslDistro {}
 
             Invoke-WslManager -Command "install" -Name "Debian"
 
@@ -419,7 +384,6 @@ Describe "Invoke-WslManager" {
 
         It "Should support any available distribution" {
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
-            Mock New-WslDistro {}
 
             Invoke-WslManager -Command "install" -Name "Ubuntu-22.04"
 
@@ -427,67 +391,58 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should prompt for distribution when name not provided" {
-
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" }
-            Mock New-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "install"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04") }
-            Mock Write-Host {}
-            Mock Read-Host { "1" }
-            Mock New-WslDistro {}
-
-            Invoke-WslManager -Command "install"
-
-            Should -Invoke New-WslDistro -ParameterFilter { $Name -eq "Debian" }
-        }
-
-        It "Should display available distributions dynamically" {
-
+        It "Should offer available distributions dynamically" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu", "Ubuntu-22.04", "kali-linux") }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" }
-            Mock New-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "install"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Debian*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Ubuntu-22.04*" }
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*kali-linux*" }
+            Should -Invoke Read-SpectreSelection -ParameterFilter {
+                $Choices.Count -eq 4 -and $Choices -contains "kali-linux"
+            }
+        }
+
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Read-SpectreSelection { $null }
+
+            Invoke-WslManager -Command "install"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
+            Should -Invoke New-WslDistro -Times 0
+        }
+
+        It "Should warn and skip in CI when no name is provided" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Write-WarningMsg {}
+
+            Invoke-WslManager -Command "install"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*CI*" -and $Message -like "*-Name*" }
+            Should -Invoke Read-SpectreSelection -Times 0
+            Should -Invoke New-WslDistro -Times 0
         }
 
         It "Should reject distribution not in available list" {
-
             Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
-            Mock Write-Host {}
-            Mock New-WslDistro {}
 
             Invoke-WslManager -Command "install" -Name "InvalidDistro"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*not available*" }
-            Should -Invoke New-WslDistro -Times 0
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslAvailableDistro { @("Debian", "Ubuntu") }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock New-WslDistro {}
-
-            Invoke-WslManager -Command "install"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
             Should -Invoke New-WslDistro -Times 0
         }
     }
@@ -503,54 +458,44 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'clone' argument" {
-        It "Should clone distribution when both names are provided" {
-
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
             Mock Copy-WslDistro {}
+        }
+
+        It "Should clone distribution when both names are provided" {
+            Mock Read-SpectreSelection { "Ubuntu" }
+            Mock Read-Host { "Other" }
 
             Invoke-WslManager -Command "clone" -Name "Debian" -TargetName "MyDebian"
 
+            Should -Invoke Read-SpectreSelection -Times 0
+            Should -Invoke Read-Host -Times 0
             Should -Invoke Copy-WslDistro -ParameterFilter {
                 $SourceName -eq "Debian" -and $TargetName -eq "MyDebian"
             }
         }
 
         It "Should prompt for source when only target name provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
-            Mock Copy-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "clone" -Name "" -TargetName "MyProject"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Copy-WslDistro -ParameterFilter {
                 $SourceName -eq "Debian" -and $TargetName -eq "MyProject"
             }
         }
 
         It "Should prompt for target name when only source provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone" -Name "Debian" -TargetName ""
 
@@ -561,96 +506,27 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should prompt for both names when neither provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Read-Host { "MyDebian" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone" -Name "" -TargetName ""
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*target*" }
         }
 
         It "Should display installed distributions when prompting for source" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslDistroTable {}
-            Mock Read-Host { "1" } -ParameterFilter { $Prompt -like "*number or name*" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"
 
             Should -Invoke Show-WslDistroTable -Times 1
         }
 
-        It "Should support selection by number for source" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "2" } -ParameterFilter { $Prompt -like "*number or name*" }
-            Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
-
-            Invoke-WslManager -Command "clone"
-
-            Should -Invoke Copy-WslDistro -ParameterFilter {
-                $SourceName -eq "Ubuntu" -and $TargetName -eq "MyProject"
-            }
-        }
-
-        It "Should support selection by name for source" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" } -ParameterFilter { $Prompt -like "*number or name*" }
-            Mock Read-Host { "MyProject" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
-
-            Invoke-WslManager -Command "clone"
-
-            Should -Invoke Copy-WslDistro -ParameterFilter {
-                $SourceName -eq "Alpine" -and $TargetName -eq "MyProject"
-            }
-        }
-
-        It "Should cancel when no source selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*number or name*" }
-            Mock Copy-WslDistro {}
+        It "Should cancel when source selection is cancelled" {
+            Mock Read-SpectreSelection { $null }
 
             Invoke-WslManager -Command "clone"
 
@@ -659,45 +535,18 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should cancel when no target name provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" } -ParameterFilter { $Prompt -like "*number or name*" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Read-Host { "" } -ParameterFilter { $Prompt -like "*target*" }
-            Mock Copy-WslDistro {}
 
             Invoke-WslManager -Command "clone"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Copy-WslDistro -Times 0
         }
-
-        It "Should reject invalid number selection for source" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" } -ParameterFilter { $Prompt -like "*number or name*" }
-            Mock Copy-WslDistro {}
-
-            Invoke-WslManager -Command "clone"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Copy-WslDistro -Times 0
-        }
     }
 
     Context "When called with 'update' argument" {
-        It "Should prompt for distribution selection" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
@@ -705,97 +554,32 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
             Mock Update-WslDistro {}
+        }
+
+        It "Should prompt for distribution selection" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "update"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should display available distributions" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Show-WslDistroTable {}
-            Mock Read-Host { "Debian" }
-            Mock Update-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "update"
 
             Should -Invoke Show-WslDistroTable -Times 1
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Update-WslDistro {}
-
-            Invoke-WslManager -Command "update"
-
-            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Update-WslDistro {}
-
-            Invoke-WslManager -Command "update"
-
-            Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Update-WslDistro {}
-
-            Invoke-WslManager -Command "update"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Update-WslDistro -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
-            Mock Update-WslDistro {}
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { $null }
 
             Invoke-WslManager -Command "update"
 
@@ -804,10 +588,7 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should warn when no distributions exist" {
-
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Update-WslDistro {}
 
             Invoke-WslManager -Command "update"
 
@@ -816,34 +597,24 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should handle Update-WslDistro errors gracefully" {
-
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Arch"; State = "Running"; Version = 2; IsDefault = $true }
                 )
             } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Arch" }
+            Mock Read-SpectreSelection { "Arch" }
             Mock Update-WslDistro { throw "Distribution 'Arch' is not a Debian/Ubuntu distribution" }
 
             { Invoke-WslManager -Command "update" } | Should -Throw "*not a Debian/Ubuntu*"
         }
 
         It "Should update using provided selection without prompting" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host {}
-            Mock Update-WslDistro {}
+            Mock Read-SpectreSelection { "Ubuntu" }
 
             Invoke-WslManager -Command "update" -Name "Debian"
 
-            Should -Invoke Read-Host -Times 0
+            Should -Invoke Read-SpectreSelection -Times 0
             Should -Invoke Update-WslDistro -ParameterFilter { $Name -eq "Debian" -and $Confirm -eq $false }
         }
     }
@@ -916,21 +687,24 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'setup-docker' argument" {
-        It "Should prompt for distribution when Name is not provided" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Install-WslDockerEngine { $true }
 
             Invoke-WslManager -Command "setup-docker"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Debian" }
         }
 
@@ -978,70 +752,10 @@ Describe "Invoke-WslManager" {
             { Invoke-WslManager -Command "setup-docker" -Name "Debian" } | Should -Throw "*default user*"
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Install-WslDockerEngine { $true }
-
-            Invoke-WslManager -Command "setup-docker"
-
-            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Install-WslDockerEngine { $true }
-
-            Invoke-WslManager -Command "setup-docker"
-
-            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Install-WslDockerEngine { $true }
-
-            Invoke-WslManager -Command "setup-docker"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Install-WslDockerEngine -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
+            Mock Read-SpectreSelection { $null }
             Mock Install-WslDockerEngine { $true }
 
             Invoke-WslManager -Command "setup-docker"
@@ -1052,21 +766,24 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'setup-podman' argument" {
-        It "Should prompt for distribution when Name is not provided" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Install-WslPodman { $true }
 
             Invoke-WslManager -Command "setup-podman"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Debian" }
         }
 
@@ -1108,70 +825,10 @@ Describe "Invoke-WslManager" {
             { Invoke-WslManager -Command "setup-podman" -Name "Debian" } | Should -Throw "*default user*"
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman"
-
-            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman"
-
-            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Install-WslPodman -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
+            Mock Read-SpectreSelection { $null }
             Mock Install-WslPodman { $true }
 
             Invoke-WslManager -Command "setup-podman"
@@ -1182,21 +839,24 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'setup-devpod' argument" {
-        It "Should prompt for distribution when Name is not provided" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Install-WslDevPod { $true }
 
             Invoke-WslManager -Command "setup-devpod"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Debian" }
         }
 
@@ -1232,52 +892,10 @@ Describe "Invoke-WslManager" {
             { Invoke-WslManager -Command "setup-devpod" -Name "Debian" } | Should -Throw "*default user*"
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod"
-
-            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod"
-
-            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Alpine" }
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
+            Mock Read-SpectreSelection { $null }
             Mock Install-WslDevPod { $true }
 
             Invoke-WslManager -Command "setup-devpod"
@@ -1288,6 +906,15 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'sync-ssh-config' argument" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+        }
+
         It "Should call Invoke-WslSyncSshConfig when Name is provided" {
             Mock Invoke-WslSyncSshConfig { $true }
 
@@ -1309,32 +936,21 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should prompt for distribution when Name is not provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Invoke-WslSyncSshConfig { $true }
 
             Invoke-WslManager -Command "sync-ssh-config"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Invoke-WslSyncSshConfig -ParameterFilter { $DistroName -eq "Debian" }
         }
 
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "" }
+            Mock Read-SpectreSelection { $null }
             Mock Invoke-WslSyncSshConfig { $true }
 
             Invoke-WslManager -Command "sync-ssh-config"
@@ -1345,21 +961,24 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'setup-proxy' argument" {
-        It "Should prompt for distribution when Name is not provided" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                     [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                 )
             } -ParameterFilter { $Detailed }
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Install-WslProxy { $true }
 
             Invoke-WslManager -Command "setup-proxy"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Debian" }
         }
 
@@ -1391,70 +1010,10 @@ Describe "Invoke-WslManager" {
             { Invoke-WslManager -Command "setup-proxy" -Name "Debian" } | Should -Throw "*Prerequisite check failed*"
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Install-WslProxy { $true }
-
-            Invoke-WslManager -Command "setup-proxy"
-
-            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Install-WslProxy { $true }
-
-            Invoke-WslManager -Command "setup-proxy"
-
-            Should -Invoke Install-WslProxy -ParameterFilter { $DistroName -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Install-WslProxy { $true }
-
-            Invoke-WslManager -Command "setup-proxy"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Install-WslProxy -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
+            Mock Read-SpectreSelection { $null }
             Mock Install-WslProxy { $true }
 
             Invoke-WslManager -Command "setup-proxy"
@@ -1465,8 +1024,7 @@ Describe "Invoke-WslManager" {
     }
 
     Context "When called with 'repair-interop' argument" {
-        It "Should prompt for distribution when Name is not provided" {
-
+        BeforeEach {
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
@@ -1474,22 +1032,23 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
-            Mock Test-WslInteropConfigured { $false }
             Mock Set-WslConf {}
             Mock Stop-WslDistro {}
+        }
+
+        It "Should prompt for distribution when Name is not provided" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Debian" }
+            Mock Test-WslInteropConfigured { $false }
 
             Invoke-WslManager -Command "repair-interop"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Debian" }
         }
 
         It "Should call repair when Name is provided" {
-            Mock Write-Host {}
             Mock Test-WslInteropConfigured { $false }
-            Mock Set-WslConf {}
-            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop" -Name "Debian"
 
@@ -1497,10 +1056,7 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should skip when interop is already configured" {
-            Mock Write-Host {}
             Mock Test-WslInteropConfigured { $true }
-            Mock Set-WslConf {}
-            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop" -Name "Debian"
 
@@ -1508,59 +1064,10 @@ Describe "Invoke-WslManager" {
             Should -Invoke Set-WslConf -Times 0
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "2" }
+        It "Should cancel when selection is cancelled" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { $null }
             Mock Test-WslInteropConfigured { $false }
-            Mock Set-WslConf {}
-            Mock Stop-WslDistro {}
-
-            Invoke-WslManager -Command "repair-interop"
-
-            Should -Invoke Set-WslConf -ParameterFilter { $DistroName -eq "Ubuntu" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Test-WslInteropConfigured { $false }
-            Mock Set-WslConf {}
-            Mock Stop-WslDistro {}
-
-            Invoke-WslManager -Command "repair-interop"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Set-WslConf -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
-            Mock Test-WslInteropConfigured { $false }
-            Mock Set-WslConf {}
-            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "repair-interop"
 
@@ -1573,10 +1080,6 @@ Describe "Invoke-WslManager" {
         BeforeEach {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Test-WslDistroRunning { $true }
-        }
-
-        It "Should prompt for distribution selection when Name is not provided" {
-
             Mock Get-WslDistroList {
                 @(
                     [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
@@ -1584,27 +1087,21 @@ Describe "Invoke-WslManager" {
                 )
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
-            Mock Read-Host { "Debian" }
             Mock Stop-WslDistro {}
+        }
+
+        It "Should prompt for distribution selection when Name is not provided" {
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "terminate"
 
-            Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*number or name*" }
+            Should -Invoke Read-SpectreSelection -Times 1
             Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should display available distributions" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Show-WslDistroTable {}
-            Mock Read-Host { "Debian" }
-            Mock Stop-WslDistro {}
+            Mock Read-SpectreSelection { "Debian" }
 
             Invoke-WslManager -Command "terminate"
 
@@ -1612,87 +1109,18 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should call Stop-WslDistro when Name is provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Stop-WslDistro {}
+            Mock Read-SpectreSelection { "Ubuntu" }
 
             Invoke-WslManager -Command "terminate" -Name "Debian"
 
+            Should -Invoke Read-SpectreSelection -Times 0
             Should -Invoke Stop-WslDistro -ParameterFilter {
                 $Name -eq "Debian" -and $Confirm -eq $false
             }
         }
 
-        It "Should support selection by number" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "2" }
-            Mock Stop-WslDistro {}
-
-            Invoke-WslManager -Command "terminate"
-
-            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Ubuntu" }
-        }
-
-        It "Should support selection by name" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Alpine" }
-            Mock Stop-WslDistro {}
-
-            Invoke-WslManager -Command "terminate"
-
-            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Alpine" }
-        }
-
-        It "Should reject invalid number selection" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "99" }
-            Mock Stop-WslDistro {}
-
-            Invoke-WslManager -Command "terminate"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Invalid selection*" }
-            Should -Invoke Stop-WslDistro -Times 0
-        }
-
-        It "Should cancel when no selection provided" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Running"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "" }
-            Mock Stop-WslDistro {}
+        It "Should cancel when selection is cancelled" {
+            Mock Read-SpectreSelection { $null }
 
             Invoke-WslManager -Command "terminate"
 
@@ -1701,11 +1129,8 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should warn when no distributions exist" {
-
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
             Mock Write-WarningMsg {}
-            Mock Stop-WslDistro {}
 
             Invoke-WslManager -Command "terminate"
 
@@ -1714,18 +1139,10 @@ Describe "Invoke-WslManager" {
         }
 
         It "Should handle terminate errors gracefully" {
-
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Read-Host { "Debian" }
+            Mock Read-SpectreSelection { "Debian" }
             Mock Stop-WslDistro { throw "Failed to terminate distribution" }
 
             { Invoke-WslManager -Command "terminate" } | Should -Throw "*Failed to terminate*"
         }
     }
 }
-

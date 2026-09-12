@@ -80,17 +80,18 @@ function Show-WslDistroTable {
 function Select-WslDistro {
     <#
     .SYNOPSIS
-        Interactive distro selection helper. Shows a numbered list and resolves user input.
+        Distro selection helper. Resolves a pre-provided selection or prompts with an arrow-key picker.
 
     .PARAMETER Selection
         Pre-provided selection (number or name). If provided, skips the prompt.
+        Required in CI/test environments, where no prompt is shown.
 
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If not provided, fetches from WSL and shows the table.
         When provided (e.g. from the TUI), the table is assumed already visible.
 
     .OUTPUTS
-        The selected distribution name, or $null on cancellation/error.
+        The selected distribution name, or $null on cancellation (Ctrl+C), in CI without -Selection, or on error.
     #>
     param(
         [string]$Selection = "",
@@ -112,12 +113,20 @@ function Select-WslDistro {
     }
 
     if ([string]::IsNullOrWhiteSpace($Selection)) {
-        $Selection = Read-Host "Enter number or name of the distribution"
-    }
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive selection is not available in CI/test environment. Provide -Name."
+            return $null
+        }
 
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
-        Write-WarningMsg "No selection provided. Cancelling."
-        return $null
+        # Ctrl+C returns $null, which the [string] parameter coerces to ""
+        $Selection = Read-SpectreSelection -Message "Select distribution" -Choices @($Distros.Name) -PageSize 15 -EnableSearch
+
+        if ([string]::IsNullOrWhiteSpace($Selection)) {
+            Write-WarningMsg "No selection provided. Cancelling."
+            return $null
+        }
+
+        return $Selection
     }
 
     if ($Selection -match '^\d+$') {
@@ -144,7 +153,8 @@ function Invoke-CreateDistro {
     .SYNOPSIS
         Handles the create distribution workflow.
     .PARAMETER Name
-        The name of the distribution to create. If empty, prompts the user.
+        The name of the distribution to create. If empty, prompts the user with an arrow-key picker.
+        Required in CI/test environments, where no prompt is shown.
     #>
     [CmdletBinding()]
     param(
@@ -156,37 +166,17 @@ function Invoke-CreateDistro {
 
     # If Name is not provided, prompt for it
     if ([string]::IsNullOrWhiteSpace($Name)) {
-        Write-Host ""
-        Write-Host "Available distributions:" -ForegroundColor Cyan
-
-        # Show available distributions with numbers
-        $index = 1
-        foreach ($distro in $availableDistros) {
-            Write-Host "  $index. $distro" -ForegroundColor White
-            $index++
-        }
-        Write-Host ""
-
-        $selection = Read-Host "Enter number or name of the distribution to create"
-
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            Write-WarningMsg "No selection provided. Cancelling."
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive selection is not available in CI/test environment. Provide -Name."
             return
         }
 
-        # Check if selection is a number
-        if ($selection -match '^\d+$') {
-            $selectionNum = [int]$selection
-            if ($selectionNum -ge 1 -and $selectionNum -le $availableDistros.Count) {
-                $Name = $availableDistros[$selectionNum - 1]
-            }
-            else {
-                Write-ErrorMsg "Invalid selection number. Must be between 1 and $($availableDistros.Count)."
-                return
-            }
-        }
-        else {
-            $Name = $selection
+        # Ctrl+C returns $null, which the [string] parameter coerces to ""
+        $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices @($availableDistros) -PageSize 15 -EnableSearch
+
+        if ([string]::IsNullOrWhiteSpace($Name)) {
+            Write-WarningMsg "No selection provided. Cancelling."
+            return
         }
     }
 
