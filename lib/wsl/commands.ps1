@@ -178,7 +178,8 @@ function Confirm-DestructiveAction {
 
     .PARAMETER Action
         Plain-text description of what is about to happen, e.g. "Remove distribution 'Ubuntu'."
-        Not Spectre markup: distribution names are user data.
+        Treated as plain text, not Spectre markup: distribution names are user data, so
+        any [brackets] are escaped before the prompt renders them.
 
     .OUTPUTS
         [bool] $true to proceed, $false to cancel.
@@ -193,7 +194,8 @@ function Confirm-DestructiveAction {
         return $true
     }
 
-    $answer = Read-SpectreConfirm -Message "$Action Continue?" -DefaultAnswer "n"
+    $message = Get-SpectreEscapedText -Text "$Action Continue?"
+    $answer = Read-SpectreConfirm -Message $message -DefaultAnswer "n"
     return $answer -eq $true
 }
 

@@ -13,6 +13,7 @@ BeforeAll {
     function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
     function Read-SpectreConfirm { param($Message, $DefaultAnswer) $null = $Message, $DefaultAnswer }
+    function Get-SpectreEscapedText { param($Text) $Text }
 
     . "$PSScriptRoot\commands.ps1"
 }
@@ -321,6 +322,15 @@ Describe "Confirm-DestructiveAction" {
             }
         }
 
+        It "Should escape Spectre markup in the action text" {
+            Mock Get-SpectreEscapedText { "ESCAPED" }
+            Mock Read-SpectreConfirm { $true }
+
+            Confirm-DestructiveAction -Action "Remove distribution x[red]y[/]."
+
+            Should -Invoke Get-SpectreEscapedText -Times 1 -ParameterFilter { $Text -like "*x[[]red[]]y*" }
+            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter { $Message -eq "ESCAPED" }
+        }
         It "Should return true on yes" {
             Mock Read-SpectreConfirm { $true }
 
@@ -860,20 +870,6 @@ Describe "Invoke-TerminateDistro" {
             Should -Invoke Write-Status -ParameterFilter { $Message -like "Cancelled*" }
             $script:WslSkipContinuePause | Should -BeTrue
         }
-
-        It "Should not ask when the picked distribution is not running" {
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Alpine"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-            Mock Read-SpectreSelection { "Alpine" }
-
-            Invoke-TerminateDistro
-
-            Should -Invoke Confirm-DestructiveAction -Times 0
-        }
     }
 
     Context "When distributions are running" {
@@ -895,6 +891,15 @@ Describe "Invoke-TerminateDistro" {
             }
             Mock Write-Host {}
             Mock Stop-WslDistro {}
+        }
+
+        It "Should not ask for confirmation when the picked distribution is not running" {
+            Mock Read-SpectreSelection { "Alpine" }
+
+            Invoke-TerminateDistro
+
+            Should -Invoke Confirm-DestructiveAction -Times 0
+            Should -Invoke Stop-WslDistro -Times 0
         }
 
         It "Should list all distributions (not just running)" {
