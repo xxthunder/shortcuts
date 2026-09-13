@@ -14,7 +14,6 @@
 ### In Progress
 
 - [SC-001 — Backlog refinement](sc-001.md)
-- [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
 
 ### Open
 
@@ -41,6 +40,7 @@
 
 ### Done
 
+- [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
 - [SC-051 — px-proxy runbook: fix Keypirinha invocation, document manual start and VPN ordering](sc-051.md)
 - [SC-050 — Trim AGENTS.md duplication, point to powershell-dev skill](sc-050.md)
 - [SC-049 — px unit tests must never kill a real px process](sc-049.md)
