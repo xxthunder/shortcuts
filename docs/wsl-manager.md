@@ -655,6 +655,19 @@ This command:
 - Validates the distribution does not already exist locally
 - Installs the distribution via `wsl.exe --install --distribution <name> --no-launch`
 
+### Open Terminal in Distribution
+
+Open an interactive shell in an installed distribution, next to the manager rather than in place of it.
+
+- **TUI**: select **Open terminal in distribution**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shell <distro>`
+
+This command:
+- Prompts to pick a distribution (TUI) or uses the provided name (CLI); the manager returns to the menu immediately, without a "Press Enter to continue" pause
+- Inside Windows Terminal (`WT_SESSION` is set): opens a new tab in the same window via `wt.exe -w 0 new-tab`
+- Elsewhere (a classic console, or a script): opens a new console window via `Start-Process wsl.exe`
+- The shell runs as the distribution's default user in its home directory (`wsl.exe --distribution <name> --cd ~`); a stopped distribution is started on the way
+- The command returns as soon as the tab or window is spawned; it does not wait for the shell to exit
 ### Clone Distribution
 
 Export and re-import a distribution under a new name. The source must be stopped.

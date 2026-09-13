@@ -193,7 +193,7 @@ Then run setup-devpod again.
                 Write-Information ""
                 Write-Information "Next steps:"
                 Write-Information "  1. Start the distribution:"
-                Write-Information "       wsl.exe --distribution $DistroName"
+                Write-Information "       wsl.exe --distribution $DistroName  (or: wsl-manager shell $DistroName)"
                 Write-Information "  2. Test DevPod:"
                 Write-Information "       devpod provider list"
                 Write-Information "       devpod up <repository-url>"

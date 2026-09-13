@@ -467,6 +467,14 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-TerminateDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
+        It "Should dispatch 'shell' with Name" {
+            Mock Invoke-OpenDistroShell {}
+
+            Invoke-WslCommand -Command "shell" -Name "Debian"
+
+            Should -Invoke Invoke-OpenDistroShell -ParameterFilter { $Name -eq "Debian" }
+        }
+
         It "Should dispatch 'shutdown'" {
             Mock Invoke-ShutdownWsl {}
 
@@ -725,6 +733,74 @@ Describe "Invoke-RemoveDistro" {
             Invoke-RemoveDistro -Distros $distros
 
             Should -Invoke Select-WslDistro -ParameterFilter { $null -ne $Distros }
+        }
+    }
+}
+
+Describe "Invoke-OpenDistroShell" {
+    BeforeEach {
+        Mock Open-WslDistroShell {}
+        Mock Write-Status {}
+    }
+
+    Context "When Name is provided" {
+        It "Should pass the name to Select-WslDistro and open the resolved distribution" {
+            Mock Select-WslDistro { "Debian" }
+
+            Invoke-OpenDistroShell -Name "Debian"
+
+            Should -Invoke Select-WslDistro -ParameterFilter { $Selection -eq "Debian" }
+            Should -Invoke Open-WslDistroShell -ParameterFilter { $Name -eq "Debian" }
+        }
+    }
+
+    Context "When Name is not provided" {
+        It "Should open the picked distribution" {
+            Mock Select-WslDistro { "Ubuntu" }
+
+            Invoke-OpenDistroShell
+
+            Should -Invoke Open-WslDistroShell -ParameterFilter { $Name -eq "Ubuntu" }
+        }
+
+        It "Should pass pre-fetched Distros to the picker" {
+            $distros = @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            Mock Select-WslDistro { "Debian" }
+
+            Invoke-OpenDistroShell -Distros $distros
+
+            Should -Invoke Select-WslDistro -ParameterFilter { $null -ne $Distros }
+        }
+
+        It "Should do nothing when the picker returns null" {
+            $script:WslSkipContinuePause = $false
+            Mock Select-WslDistro { $null }
+
+            Invoke-OpenDistroShell
+
+            Should -Invoke Open-WslDistroShell -Times 0
+            Should -Invoke Write-Status -Times 0
+            $script:WslSkipContinuePause | Should -BeFalse
+        }
+    }
+
+    Context "After a successful launch" {
+        BeforeEach {
+            Mock Select-WslDistro { "Debian" }
+        }
+
+        It "Should report which terminal was opened" {
+            Invoke-OpenDistroShell
+
+            Should -Invoke Write-Status -ParameterFilter { $Message -like "*Opened terminal*Debian*" }
+        }
+
+        It "Should skip the continue pause" {
+            $script:WslSkipContinuePause = $false
+
+            Invoke-OpenDistroShell
+
+            $script:WslSkipContinuePause | Should -BeTrue
         }
     }
 }

@@ -79,6 +79,15 @@ Describe "Show-WslMenu" {
         $result | Should -Be "setup-podman"
     }
 
+    It "Should offer 'Open terminal in distribution' as the first entry and map it to 'shell'" {
+        Mock Read-SpectreSelection { "Open terminal in distribution" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "shell"
+        Should -Invoke Read-SpectreSelection -ParameterFilter { $Choices[0] -eq "Open terminal in distribution" }
+    }
+
     It "Should return 'quit' when Quit is selected" {
         Mock Read-SpectreSelection { "Quit" }
 
@@ -1254,6 +1263,61 @@ Describe "Invoke-WslManager" {
             Mock Stop-WslDistro { throw "Failed to terminate distribution" }
 
             { Invoke-WslManager -Command "terminate" } | Should -Throw "*Failed to terminate*"
+        }
+    }
+
+    Context "When called with 'shell' argument" {
+        BeforeEach {
+            Mock Get-WslDistroList {
+                @(
+                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
+                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
+                )
+            } -ParameterFilter { $Detailed }
+            Mock Write-Host {}
+            Mock Open-WslDistroShell {}
+        }
+
+        It "Should open the named distribution without prompting" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Ubuntu" }
+
+            Invoke-WslManager -Command "shell" -Name "Debian"
+
+            Should -Invoke Read-SpectreSelection -Times 0
+            Should -Invoke Open-WslDistroShell -ParameterFilter { $Name -eq "Debian" }
+        }
+
+        It "Should prompt for a distribution and open it" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Ubuntu" }
+
+            Invoke-WslManager -Command "shell"
+
+            Should -Invoke Read-SpectreSelection -Times 1
+            Should -Invoke Open-WslDistroShell -ParameterFilter { $Name -eq "Ubuntu" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Opened terminal*Ubuntu*" }
+        }
+
+        It "Should open nothing when the picker goes back" {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Back to main menu" }
+
+            Invoke-WslManager -Command "shell"
+
+            Should -Invoke Open-WslDistroShell -Times 0
+        }
+
+        It "Should warn and open nothing in CI without a name" {
+            Mock Test-RunningInCIorTestEnvironment { $true }
+            Mock Read-SpectreSelection { "Ubuntu" }
+            Mock Write-WarningMsg {}
+
+            Invoke-WslManager -Command "shell"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*-Name*" }
+            Should -Invoke Read-SpectreSelection -Times 0
+            Should -Invoke Open-WslDistroShell -Times 0
         }
     }
 

@@ -96,6 +96,7 @@ C4Component
     Container_Boundary(dispatcherContainer, "Command Dispatcher (commands.ps1)") {
         Component(invokeWslCmd, "Invoke-WslCommand", "PowerShell", "Central dispatch: routes command string to the matching Invoke-* handler")
         Component(invokeCreate, "Invoke-CreateDistro", "PowerShell", "Install workflow: lists available distros, prompts for selection, calls New-WslDistro")
+        Component(invokeShell, "Invoke-OpenDistroShell", "PowerShell", "Shell workflow (SC-055): select distro, calls Open-WslDistroShell, returns to the menu without pausing")
         Component(invokeClone, "Invoke-CloneDistro", "PowerShell", "Clone workflow: select source distro, prompt target name, calls Copy-WslDistro")
         Component(invokeRemove, "Invoke-RemoveDistro", "PowerShell", "Remove workflow: select distro, calls Remove-WslDistro")
         Component(invokeSetup, "Invoke-Setup* Handlers", "PowerShell", "Setup workflows: User, Docker, Podman, DevPod, Proxy — each delegates to lib functions")
@@ -105,7 +106,7 @@ C4Component
     Container_Boundary(wslLibContainer, "WSL Library (lib/wsl/)") {
         Component(core, "core.ps1", "PowerShell", "WSL status checks: Test-WslInstalled, Assert-Wsl2Installed, Get-WslDistroList, Get-WslDistroState, Get-WslDistroType, Stop-WslDistro")
         Component(install, "install.ps1", "PowerShell", "Distribution provisioning: Get-WslAvailableDistro, New-WslDistro")
-        Component(ops, "ops.ps1", "PowerShell", "Distribution operations: Remove-WslDistro, Copy-WslDistro, Update-WslDistro, Stop-WslSubsystem, Merge-WslConfig, Invoke-ConfigureWsl")
+        Component(ops, "ops.ps1", "PowerShell", "Distribution operations: Remove-WslDistro, Copy-WslDistro, Open-WslDistroShell, Update-WslDistro, Stop-WslSubsystem, Merge-WslConfig, Invoke-ConfigureWsl")
         Component(exec, "exec.ps1", "PowerShell", "Command execution bridge: Invoke-WslDistroCommand, Invoke-WslDistroScript — runs bash inside WSL distros")
         Component(wslConf, "wsl-conf.ps1", "PowerShell", "Per-distro configuration: Set-WslConf, Test-WslSystemdConfigured, Test-WslInteropConfigured, Test-WslAutomountConfigured")
         Component(userMgmt, "user.ps1", "PowerShell", "User management: New-WslUser, Get-WslDefaultUser")
@@ -128,12 +129,14 @@ C4Component
     Rel(confirmAction, invokeOps, "Confirmed destructive action")
 
     Rel(invokeWslCmd, invokeCreate, "install")
+    Rel(invokeWslCmd, invokeShell, "shell")
     Rel(invokeWslCmd, invokeClone, "clone")
     Rel(invokeWslCmd, invokeRemove, "remove")
     Rel(invokeWslCmd, invokeSetup, "setup-*")
     Rel(invokeWslCmd, invokeOps, "terminate / shutdown")
 
     Rel(invokeCreate, install, "New-WslDistro")
+    Rel(invokeShell, ops, "Open-WslDistroShell")
     Rel(invokeClone, ops, "Copy-WslDistro")
     Rel(invokeRemove, ops, "Remove-WslDistro")
     Rel(invokeSetup, docker, "Install-WslDockerEngine")

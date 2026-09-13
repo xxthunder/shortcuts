@@ -287,6 +287,33 @@ function Invoke-RemoveDistro {
     Remove-WslDistro -Name $selectedName -Confirm:$false
 }
 
+function Invoke-OpenDistroShell {
+    <#
+    .SYNOPSIS
+        Handles the open-terminal workflow.
+    .DESCRIPTION
+        Opens a shell in the chosen distribution next to the manager (new Windows Terminal
+        tab, or a new console window) and returns to the menu without pausing.
+    .PARAMETER Name
+        The name or number of the distribution. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Name = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
+    if ($null -eq $selectedName) { return }
+
+    Open-WslDistroShell -Name $selectedName
+    Write-Status "Opened terminal for $selectedName"
+    # The shell lives in its own tab or window; nothing here to read before returning to the menu
+    $script:WslSkipContinuePause = $true
+}
+
 function Invoke-UpdateDistro {
     <#
     .SYNOPSIS
@@ -775,7 +802,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl")]
         [string]$Command,
 
         [string]$Name = "",
@@ -791,6 +818,9 @@ function Invoke-WslCommand {
         }
         "install" {
             Invoke-CreateDistro -Name $Name
+        }
+        "shell" {
+            Invoke-OpenDistroShell -Name $Name -Distros $Distros
         }
         "clone" {
             Invoke-CloneDistro -SourceName $Name -TargetName $TargetName -Distros $Distros
