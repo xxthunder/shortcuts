@@ -19,6 +19,7 @@ BeforeAll {
     # the real PwshSpectreConsole cmdlet names; renaming is not possible.
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
     function Read-SpectreConfirm { param($Message, $DefaultAnswer) $null = $Message, $DefaultAnswer }
+    function Get-SpectreEscapedText { param($Text) $Text }
     function Format-SpectrePanel { param($Header, $Border, $Color, [switch]$Expand) process { $null = $Header, $Border, $Color, $Expand; $_ } }
     function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
     function Format-SpectreColumns {
