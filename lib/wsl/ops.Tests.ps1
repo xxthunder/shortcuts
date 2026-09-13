@@ -1036,3 +1036,80 @@ Describe "Invoke-ConfigureWsl" {
         }
     }
 }
+
+Describe "Open-WslDistroShell" {
+    BeforeEach {
+        $script:savedWtSession = $env:WT_SESSION
+        Mock Assert-WslDistroExists { }
+        Mock Invoke-CommandLine { }
+        Mock Start-Process { }
+    }
+
+    AfterEach {
+        if ($null -eq $script:savedWtSession) { Remove-Item Env:WT_SESSION -ErrorAction SilentlyContinue }
+        else { $env:WT_SESSION = $script:savedWtSession }
+    }
+
+    Context "When the distribution does not exist" {
+        It "Should throw and launch nothing" {
+            Mock Assert-WslDistroExists { throw "Distribution Nope does not exist. Installed distributions: Ubuntu" }
+
+            { Open-WslDistroShell -Name "Nope" } | Should -Throw "*does not exist*"
+
+            Should -Invoke Invoke-CommandLine -Times 0
+            Should -Invoke Start-Process -Times 0
+        }
+    }
+
+    Context "When running inside Windows Terminal" {
+        BeforeEach {
+            $env:WT_SESSION = "test-session"
+        }
+
+        It "Should open a new tab in the current window with the distro shell in its home directory" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter {
+                $CommandLine -eq "wt.exe -w 0 new-tab wsl.exe --distribution Debian --cd ~"
+            }
+        }
+
+        It "Should not spawn a separate window" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Start-Process -Times 0
+        }
+
+        It "Should not echo the wt.exe command line" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Invoke-CommandLine -ParameterFilter { $PrintCommand -eq $false }
+        }
+    }
+
+    Context "When running outside Windows Terminal" {
+        BeforeEach {
+            Remove-Item Env:WT_SESSION -ErrorAction SilentlyContinue
+        }
+
+        It "Should spawn a new console window with the distro shell in its home directory" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Start-Process -Times 1 -ParameterFilter {
+                $FilePath -eq "wsl.exe" -and $ArgumentList -eq "--distribution Debian --cd ~"
+            }
+        }
+
+        It "Should not run wsl.exe inline" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Invoke-CommandLine -Times 0
+        }
+
+        It "Should not wait for the shell to exit" {
+            Open-WslDistroShell -Name "Debian"
+
+            Should -Invoke Start-Process -ParameterFilter { -not $Wait } -Times 1
+        }
+    }
+}

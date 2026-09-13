@@ -136,6 +136,6 @@ function New-WslDistro {
         Invoke-CommandLine -CommandLine "wsl.exe --install --distribution $Name --no-launch"
         Write-Output "Successfully created '$Name'."
         Write-Output ""
-        Write-Output "To start: wsl.exe --distribution $Name"
+        Write-Output "To start: wsl.exe --distribution $Name  (or: wsl-manager shell $Name)"
     }
 }

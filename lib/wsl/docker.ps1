@@ -293,7 +293,7 @@ Then run setup-docker again.
                 Write-Information ""
                 Write-Information "Next steps:"
                 Write-Information "  1. Start the distribution:"
-                Write-Information "       wsl.exe --distribution $DistroName"
+                Write-Information "       wsl.exe --distribution $DistroName  (or: wsl-manager shell $DistroName)"
                 Write-Information "  2. Test Docker (should work without sudo):"
                 Write-Information "       docker ps"
                 Write-Information "       docker run hello-world"

@@ -55,6 +55,7 @@ function Show-WslMenu {
 
     # Menu choices: label -> command mapping
     $menuChoices = [ordered]@{
+        "Open terminal in distribution" = "shell"
         "Install new distribution"      = "install"
         "Clone distribution"            = "clone"
         "Update distribution"           = "update"
@@ -154,7 +155,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]

@@ -10,6 +10,7 @@
     Commands:
       list             List installed distributions with state and version
       install          Install a new distribution from the online catalog
+      shell            Open a terminal in a distribution (new Windows Terminal tab, or a new window)
       clone            Clone (export/import) an existing distribution
       remove           Unregister and delete a distribution
       update           Update packages in a distribution
@@ -17,6 +18,8 @@
       setup-proxy      Configure corporate proxy settings
       setup-docker     Install Docker Engine (includes systemd and interop setup)
       setup-podman     Install Podman rootless (includes systemd and interop setup)
+      setup-devpod     Install the DevPod CLI and configure its container provider
+      sync-ssh-config  Copy DevPod SSH config blocks to the Windows SSH config
       repair-interop   Repair Windows interop configuration in wsl.conf
       terminate        Stop a running distribution
       shutdown         Shut down the entire WSL subsystem
@@ -25,11 +28,11 @@
     When called without a command, enters an interactive menu.
 
 .PARAMETER Command
-    The command to execute: list, install, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, repair-interop, terminate, shutdown.
+    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, configure-wsl.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
-    The name of the distribution (used with install and clone commands).
+    The name of the distribution (used with install, shell, clone and the per-distribution commands).
     For install: supports any distribution available from 'wsl.exe --list --online'.
     For clone: the source distribution name to clone from.
     Examples: Debian, Ubuntu, Ubuntu-22.04, Ubuntu-24.04, kali-linux.
@@ -52,6 +55,10 @@
 .EXAMPLE
     .\wsl-manager.ps1 install Ubuntu-22.04
     Installs an Ubuntu 22.04 LTS distribution.
+
+.EXAMPLE
+    .\wsl-manager.ps1 shell Debian
+    Opens a shell in Debian: a new Windows Terminal tab when run inside Windows Terminal, otherwise a new console window.
 
 .PARAMETER Username
     The username to create (used with setup-user command).
@@ -80,7 +87,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]

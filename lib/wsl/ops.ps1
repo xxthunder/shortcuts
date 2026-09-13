@@ -53,6 +53,45 @@ function Remove-WslDistro {
     }
 }
 
+function Open-WslDistroShell {
+    <#
+    .SYNOPSIS
+        Opens an interactive shell in a WSL distribution next to the current console.
+
+    .DESCRIPTION
+        Launches 'wsl.exe --distribution <name> --cd ~' as the distribution's default
+        user, in its home directory, without taking over the calling console:
+        inside Windows Terminal ($env:WT_SESSION set) as a new tab in the current
+        window, otherwise as a new console window. Returns as soon as the tab or
+        window is spawned; a stopped distribution is started by wsl.exe itself.
+
+    .PARAMETER Name
+        The name of the distribution to open a shell in.
+
+    .EXAMPLE
+        Open-WslDistroShell -Name "Debian"
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    Assert-WslDistroExists -DistroName $Name
+
+    $wslArgs = "--distribution $Name --cd ~"
+
+    if ($env:WT_SESSION) {
+        # -w 0 targets the window this console lives in; wt.exe returns once the tab is dispatched
+        Invoke-CommandLine -CommandLine "wt.exe -w 0 new-tab wsl.exe $wslArgs" -PrintCommand $false
+    }
+    else {
+        # Not inline: wsl.exe would take over this console until the shell exits
+        Start-Process -FilePath "wsl.exe" -ArgumentList $wslArgs | Out-Null
+    }
+}
+
 function Copy-WslDistro {
     <#
     .SYNOPSIS
@@ -139,7 +178,7 @@ function Copy-WslDistro {
 
             Write-Output "Successfully cloned '$SourceName' to '$TargetName'."
             Write-Output ""
-            Write-Output "To start: wsl.exe --distribution $TargetName"
+            Write-Output "To start: wsl.exe --distribution $TargetName  (or: wsl-manager shell $TargetName)"
         }
         finally {
             # Clean up temp file
