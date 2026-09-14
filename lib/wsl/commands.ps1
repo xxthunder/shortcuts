@@ -316,6 +316,10 @@ function Invoke-OpenDistroShell {
 
     Open-WslDistroShell -Name $selectedName
     Write-Status "Opened terminal for $selectedName"
+    # Give wsl.exe a moment to bring the distribution up, so the menu's next redraw already
+    # shows it as Running in the common case. Best effort: "Refresh list" is the way to be sure.
+    $startupGraceSeconds = 1
+    Start-Sleep -Seconds $startupGraceSeconds
     # The shell lives in its own tab or window; nothing here to read before returning to the menu
     $script:WslSkipContinuePause = $true
 }
@@ -808,7 +812,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "refresh")]
         [string]$Command,
 
         [string]$Name = "",
@@ -866,6 +870,11 @@ function Invoke-WslCommand {
         }
         "configure-wsl" {
             Invoke-ConfigureWslDefault
+        }
+        "refresh" {
+            # TUI only: the menu loop re-fetches the list on its next iteration, so all
+            # this has to do is return without the "Press Enter to continue" pause.
+            $script:WslSkipContinuePause = $true
         }
     }
 }

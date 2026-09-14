@@ -56,8 +56,9 @@ function Show-WslMenu {
     # Menu choices: label -> command mapping
     # Labels: sentence case; "Start"/"Stop" rather than "Open terminal"/"Terminate" so the
     # two do not collide when the user types "term" into the search.
-    # Order: distribution lifecycle first, then setup, then WSL-wide. The Commands
-    # Reference in docs/wsl-manager.md follows the same order with the same headings.
+    # Order: distribution lifecycle first, then setup, then WSL-wide, then the menu's own
+    # "Refresh list" right before Quit. The Commands Reference in docs/wsl-manager.md
+    # follows the same order with the same headings.
     $menuChoices = [ordered]@{
         "Start distribution"            = "shell"
         "Stop distribution"             = "terminate"
@@ -73,10 +74,12 @@ function Show-WslMenu {
         "Setup proxy (corporate)"       = "setup-proxy"
         "Shutdown WSL"                  = "shutdown"
         "Configure .wslconfig defaults" = "configure-wsl"
+        "Refresh list"                  = "refresh"
         "Quit"                          = "quit"
     }
 
-    $selection = Read-SpectreSelection -Message "Select command" -Choices $menuChoices.Keys -PageSize 15 -EnableSearch
+    # Page size equals the entry count so the whole menu, Quit included, is visible without scrolling
+    $selection = Read-SpectreSelection -Message "Select command" -Choices $menuChoices.Keys -PageSize $menuChoices.Count -EnableSearch
 
     if ($null -eq $selection) {
         return $null
