@@ -54,8 +54,11 @@ function Show-WslMenu {
     param()
 
     # Menu choices: label -> command mapping
+    # Labels: sentence case; "Start"/"Stop" rather than "Open terminal"/"Terminate" so the
+    # two do not collide when the user types "term" into the search.
     $menuChoices = [ordered]@{
-        "Open terminal in distribution" = "shell"
+        "Start distribution"            = "shell"
+        "Stop distribution"             = "terminate"
         "Install new distribution"      = "install"
         "Clone distribution"            = "clone"
         "Update distribution"           = "update"
@@ -63,10 +66,9 @@ function Show-WslMenu {
         "Setup Docker"                  = "setup-docker"
         "Setup Podman"                  = "setup-podman"
         "Setup DevPod"                  = "setup-devpod"
-        "Sync SSH Config"               = "sync-ssh-config"
+        "Sync SSH config"               = "sync-ssh-config"
         "Setup proxy (corporate)"       = "setup-proxy"
         "Remove distribution"           = "remove"
-        "Terminate distribution"        = "terminate"
         "Shutdown WSL"                  = "shutdown"
         "Configure .wslconfig defaults" = "configure-wsl"
         "Quit"                          = "quit"

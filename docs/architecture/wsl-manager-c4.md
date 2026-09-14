@@ -90,7 +90,7 @@ C4Component
         Component(showMenu, "Show-WslMenu", "Shipped SC-016b", "Arrow-key menu using Read-SpectreSelection; replaces Read-Host letter input")
         Component(showTable, "Show-WslDistroTable", "Shipped SC-016c", "Rich distro table using Format-SpectreTable with colored status columns")
         Component(selectDistro, "Select-WslDistro", "Shipped SC-016d", "Arrow-key distro picker using Read-SpectreSelection with a Back to main menu entry; number/name resolution kept for the CLI -Name path")
-        Component(confirmAction, "Confirm-DestructiveAction", "Shipped SC-016e", "Read-SpectreConfirm (default No) for remove, terminate, shutdown; CLI -Name and CI skip it")
+        Component(confirmAction, "Confirm-DestructiveAction", "Shipped SC-016e", "Spectre [y/N] prompt (Read-SpectreText) for remove, terminate, shutdown; CLI -Name and CI skip it")
     }
 
     Container_Boundary(dispatcherContainer, "Command Dispatcher (commands.ps1)") {
@@ -175,7 +175,7 @@ The following table maps the SC-016 changes to the affected components and their
 | Menu selection | `Read-Host` letter input | `Read-SpectreSelection` arrow-key navigation | `manager.ps1` → `Show-WslMenu` (new) | Done (SC-016b) |
 | Distro table | `Write-Host` with basic colors | `Format-SpectreTable` with borders and colored status | `commands.ps1` → `Show-WslDistroTable` (new) | Done (SC-016c) |
 | Distro picker | `Read-Host` numbered input | `Read-SpectreSelection` for distro lists | `commands.ps1` → `Select-WslDistro` (modified) | Done (SC-016d) |
-| Destructive confirmations | Implicit (no confirmation in TUI) | `Read-SpectreConfirm` for remove, terminate, shutdown | `commands.ps1` → `Confirm-DestructiveAction` (new) | Done (SC-016e) |
+| Destructive confirmations | Implicit (no confirmation in TUI) | Spectre `[y/N]` prompt (`Read-SpectreText`) for remove, terminate, shutdown | `commands.ps1` → `Confirm-DestructiveAction` (new) | Done (SC-016e) |
 | Status coloring | `Write-Host -ForegroundColor` | Spectre markup: `[green]Running[/]`, `[red]Stopped[/]` | `Show-WslDistroTable` | Done (SC-016c) |
 | Module dependency | None | `PwshSpectreConsole` v2 from PSGallery | Setup process / `Install-Module` | Done (SC-016a) |
 
