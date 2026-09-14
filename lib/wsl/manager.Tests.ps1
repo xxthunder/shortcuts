@@ -82,13 +82,21 @@ Describe "Show-WslMenu" {
         $result | Should -Be "setup-podman"
     }
 
-    It "Should offer 'Start distribution' first and 'Stop distribution' second, mapping the first to 'shell'" {
+    It "Should group the distribution entries first, in the documented order, mapping 'Start distribution' to 'shell'" {
         Mock Read-SpectreSelection { "Start distribution" }
 
         $result = Show-WslMenu
 
         $result | Should -Be "shell"
-        Should -Invoke Read-SpectreSelection -ParameterFilter { $Choices[0] -eq "Start distribution" -and $Choices[1] -eq "Stop distribution" }
+        Should -Invoke Read-SpectreSelection -ParameterFilter {
+            $Choices[0] -eq "Start distribution" -and
+            $Choices[1] -eq "Stop distribution" -and
+            $Choices[2] -eq "Install new distribution" -and
+            $Choices[3] -eq "Clone distribution" -and
+            $Choices[4] -eq "Update distribution" -and
+            $Choices[5] -eq "Remove distribution" -and
+            $Choices[6] -eq "Setup user account"
+        }
     }
 
     It "Should return 'quit' when Quit is selected" {

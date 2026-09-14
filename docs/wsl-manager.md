@@ -27,19 +27,20 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Performance Tips](#performance-tips)
   - [Troubleshooting](#troubleshooting)
 - [Commands Reference](#commands-reference)
-  - [Install New Distribution](#install-new-distribution)
-  - [Clone Distribution](#clone-distribution)
-  - [Update Distribution](#update-distribution)
-  - [Setup User Account](#setup-user-account)
-  - [Setup Proxy](#setup-proxy)
+  - [Start distribution](#start-distribution)
+  - [Stop distribution](#stop-distribution)
+  - [Install new distribution](#install-new-distribution)
+  - [Clone distribution](#clone-distribution)
+  - [Update distribution](#update-distribution)
+  - [Remove distribution](#remove-distribution)
+  - [Setup user account](#setup-user-account)
   - [Setup Docker](#setup-docker)
   - [Setup Podman](#setup-podman)
   - [Setup DevPod](#setup-devpod)
-  - [Sync SSH Config](#sync-ssh-config)
-  - [Configure .wslconfig Defaults](#configure-wslconfig-defaults)
-  - [Remove Distribution](#remove-distribution)
-  - [Terminate Distribution](#terminate-distribution)
+  - [Sync SSH config](#sync-ssh-config)
+  - [Setup proxy (corporate)](#setup-proxy-corporate)
   - [Shutdown WSL](#shutdown-wsl)
+  - [Configure .wslconfig defaults](#configure-wslconfig-defaults)
 - [Technical Reference](#technical-reference)
   - [Module Structure](#module-structure)
   - [Library Usage](#library-usage)
@@ -122,7 +123,7 @@ Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig` (pure cgroup
 - **TUI**: select **Configure .wslconfig defaults**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 configure-wsl`
 
-→ [Configure .wslconfig Defaults](#configure-wslconfig-defaults)
+→ [Configure .wslconfig defaults](#configure-wslconfig-defaults)
 
 ### Step 2: Install WSL Distribution
 
@@ -131,7 +132,7 @@ Ubuntu 24.04 LTS is recommended; long-term support, excellent WSL compatibility,
 - **TUI**: select **Install new distribution** → select `Ubuntu-24.04` from the list
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install Ubuntu-24.04`
 
-→ [Install New Distribution](#install-new-distribution)
+→ [Install new distribution](#install-new-distribution)
 
 ### Step 3: Setup User Account
 
@@ -142,7 +143,7 @@ Create a non-root user with sudo privileges (required for both Docker and Podman
 - **TUI**: select **Setup user account** → select `Ubuntu-24.04`, enter username and password when prompted
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser`
 
-→ [Setup User Account](#setup-user-account)
+→ [Setup user account](#setup-user-account)
 
 ### Step 4: Configure Proxy (Corporate Networks)
 
@@ -151,7 +152,7 @@ If you're behind a corporate proxy, configure proxy settings before updating or 
 - **TUI**: select **Setup proxy (corporate)** → select `Ubuntu-24.04`, follow proxy detection prompts
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04`
 
-→ [Setup Proxy](#setup-proxy)
+→ [Setup proxy (corporate)](#setup-proxy-corporate)
 
 ### Step 5: Update Distribution
 
@@ -160,7 +161,7 @@ Update all packages to latest versions.
 - **TUI**: select **Update distribution** → select `Ubuntu-24.04`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 update Ubuntu-24.04`
 
-→ [Update Distribution](#update-distribution)
+→ [Update distribution](#update-distribution)
 
 ### Step 6: Windows SSH Agent Setup
 
@@ -223,7 +224,7 @@ Keep a clean base Ubuntu-24.04 and create a dedicated dev container distribution
 - **TUI**: select **Clone distribution** → select `Ubuntu-24.04`, enter target name `ubuntu-devcon`
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 clone Ubuntu-24.04 ubuntu-devcon`
 
-→ [Clone Distribution](#clone-distribution)
+→ [Clone distribution](#clone-distribution)
 
 ### Step 9: Install Container Runtime
 
@@ -331,7 +332,7 @@ Syncs SSH configuration between Windows and the WSL distribution — copying key
 - **TUI**: select **Sync SSH config** → select distribution
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 sync-ssh-config <distro>`
 
-→ [Sync SSH Config](#sync-ssh-config)
+→ [Sync SSH config](#sync-ssh-config)
 
 ### Validation
 
@@ -642,20 +643,7 @@ If missing, re-run `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <DistroName
 
 ## Commands Reference
 
-### Install New Distribution
-
-Install a new WSL distribution from Microsoft Store or the web.
-
-- **TUI**: select **Install new distribution**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install <distro>`
-
-This command:
-- Fetches available distributions from `wsl.exe --list --online`
-- Prompts to pick a distribution from an arrow-key list with type-to-search (TUI; the last entry, **Back to main menu**, cancels) or uses the provided name (CLI)
-- Validates the distribution does not already exist locally
-- Installs the distribution via `wsl.exe --install --distribution <name> --no-launch`
-
-### Open Terminal in Distribution
+### Start distribution
 
 Open an interactive shell in an installed distribution, next to the manager rather than in place of it.
 
@@ -668,7 +656,35 @@ This command:
 - Elsewhere (a classic console, or a script): opens a new console window via `Start-Process wsl.exe`
 - The shell runs as the distribution's default user in its home directory (`wsl.exe --distribution <name> --cd ~`); a stopped distribution is started on the way
 - The command returns as soon as the tab or window is spawned; it does not wait for the shell to exit
-### Clone Distribution
+
+### Stop distribution
+
+Gracefully shut down a running distribution.
+
+- **TUI**: select **Stop distribution**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 terminate <distro>`
+
+This command:
+- Shows only running distributions for selection (TUI) or validates the named distribution is running (CLI)
+- TUI: asks `Terminate distribution '<name>'. Continue? [y/N]` with **No** as the Enter default; CLI with `<distro>`: no prompt
+- Executes `wsl.exe --terminate <name>` to stop the distribution
+- Polls `wsl.exe --list --verbose` with retries to verify termination
+- Warns if no distributions are currently running
+
+### Install new distribution
+
+Install a new WSL distribution from Microsoft Store or the web.
+
+- **TUI**: select **Install new distribution**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 install <distro>`
+
+This command:
+- Fetches available distributions from `wsl.exe --list --online`
+- Prompts to pick a distribution from an arrow-key list with type-to-search (TUI; the last entry, **Back to main menu**, cancels) or uses the provided name (CLI)
+- Validates the distribution does not already exist locally
+- Installs the distribution via `wsl.exe --install --distribution <name> --no-launch`
+
+### Clone distribution
 
 Export and re-import a distribution under a new name. The source must be stopped.
 
@@ -681,7 +697,7 @@ This command:
 - Cleans up the temporary tar file
 - Prompts for the target name (TUI) or accepts it as a second argument (CLI)
 
-### Update Distribution
+### Update distribution
 
 Update all packages to latest versions (apt-based distributions).
 
@@ -693,7 +709,20 @@ This command:
 - Runs `apt-get update && apt-get upgrade -y` inside the distribution
 - Runs `apt-get autoremove -y && apt-get autoclean` to free disk space
 
-### Setup User Account
+### Remove distribution
+
+Unregister a distribution. The TUI asks for confirmation; the CLI form with a name does not.
+
+- **TUI**: select **Remove distribution**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
+
+This command:
+- Validates the distribution exists; auto-terminates it if running
+- TUI: asks `Remove distribution '<name>' and all its data. Continue? [y/N]` (capital = Enter default, as everywhere in this repo); Enter or `n` cancels and returns to the menu. CLI with `<distro>`: no prompt, so scripts stay non-interactive
+- Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
+- This operation cannot be undone
+
+### Setup user account
 
 Create a non-root user with sudo privileges and set as default user.
 
@@ -706,28 +735,6 @@ This command:
 - Creates the user with a home directory
 - Adds the user to the sudo group with NOPASSWD
 - Configures `/etc/wsl.conf` to set as default user
-
-### Setup Proxy
-
-Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
-
-- **TUI**: select **Setup proxy (corporate)**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
-
-This command:
-- Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down); pressing Enter selects Auto
-- Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
-- Auto → DIRECT collapses to Remove (no proxy needed on this network)
-- Auto mode also probes for a running local **px** proxy (see [px Proxy runbook](runbooks/px-proxy.md)). When px is up, you choose between the px endpoint (`http://127.0.0.1:3128`, reachable from WSL via mirrored networking — px authenticates to the corporate proxy via SSPI on the Windows host, so no credentials are stored) and the PAC-detected corporate proxy
-- After a corporate proxy URL is resolved, prompts for auth method: `[A]nonymous` (no credentials) or `[B]asic` (username/password embedded in the URL, prefilled with your Windows username)
-- Writes proxy exports (`http_proxy`, `https_proxy`, `no_proxy`, and their uppercase variants) to a managed file `/etc/profile.d/wsl-manager-proxy.sh`, and sources it from `/etc/zsh/zshenv` so both bash and zsh pick them up on a normal WSL launch; legacy `~/.profile`, `~/.bashrc`, and `/etc/environment` blocks are migrated away
-- Points tools that ship their own CA bundle (uv, Node, pip/requests, Go) at the system trust store via `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, and `PIP_CERT` so corporate TLS inspection works
-- Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
-- Configures `~/.docker/config.json` proxy settings
-- Configures `~/.config/containers/containers.conf` for Podman
-- Writes `/etc/wsl-manager/proxy-mode` (`basic`) for mode-aware teardown
-- Remove mode deletes all managed proxy configurations and the mode marker
-- Is idempotent - safe to run multiple times (overwrites configuration)
 
 ### Setup Docker
 
@@ -779,7 +786,7 @@ This command:
 - Restarts the distribution to apply changes
 - Is idempotent - safe to re-run
 
-### Sync SSH Config
+### Sync SSH config
 
 Sync SSH configuration between Windows and a WSL distribution: copies keys and known_hosts, syncs non-DevPod config from Windows into WSL, and (if DevPod is installed) syncs DevPod SSH config blocks to Windows with adapted ProxyCommand for Windows-side editor access.
 
@@ -796,7 +803,45 @@ This command:
 - Creates timestamped backups before modifying any config file
 - Is idempotent - safe to re-run after adding new keys or DevPod workspaces
 
-### Configure .wslconfig Defaults
+### Setup proxy (corporate)
+
+Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
+
+- **TUI**: select **Setup proxy (corporate)**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy <distro>`
+
+This command:
+- Prompts upfront for setup mode: `[A]uto` (PAC detection), `[M]anual` (enter host:port), or `[R]emove` (tear down); pressing Enter selects Auto
+- Auto mode reads `AutoConfigURL` from Windows Internet Settings and asks for confirmation before proceeding
+- Auto → DIRECT collapses to Remove (no proxy needed on this network)
+- Auto mode also probes for a running local **px** proxy (see [px Proxy runbook](runbooks/px-proxy.md)). When px is up, you choose between the px endpoint (`http://127.0.0.1:3128`, reachable from WSL via mirrored networking — px authenticates to the corporate proxy via SSPI on the Windows host, so no credentials are stored) and the PAC-detected corporate proxy
+- After a corporate proxy URL is resolved, prompts for auth method: `[A]nonymous` (no credentials) or `[B]asic` (username/password embedded in the URL, prefilled with your Windows username)
+- Writes proxy exports (`http_proxy`, `https_proxy`, `no_proxy`, and their uppercase variants) to a managed file `/etc/profile.d/wsl-manager-proxy.sh`, and sources it from `/etc/zsh/zshenv` so both bash and zsh pick them up on a normal WSL launch; legacy `~/.profile`, `~/.bashrc`, and `/etc/environment` blocks are migrated away
+- Points tools that ship their own CA bundle (uv, Node, pip/requests, Go) at the system trust store via `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, and `PIP_CERT` so corporate TLS inspection works
+- Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
+- Configures `~/.docker/config.json` proxy settings
+- Configures `~/.config/containers/containers.conf` for Podman
+- Writes `/etc/wsl-manager/proxy-mode` (`basic`) for mode-aware teardown
+- Remove mode deletes all managed proxy configurations and the mode marker
+- Is idempotent - safe to run multiple times (overwrites configuration)
+
+### Shutdown WSL
+
+Shut down the entire WSL subsystem including all running distributions and the WSL2 VM. Use this to apply changes to `%USERPROFILE%\.wslconfig`.
+
+- **TUI**: select **Shutdown WSL**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
+
+This command:
+- Asks for confirmation, naming the running distributions that will be stopped, with **No** as the default. Because `shutdown` takes no distribution name, the CLI form asks too; only CI/test environments skip the prompt
+- Executes `wsl.exe --shutdown` to stop all distributions and the WSL2 lightweight VM
+- Polls to verify all distributions have stopped
+- Is idempotent - safe to run when no distributions are running
+
+
+---
+
+### Configure .wslconfig defaults
 
 Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig`.
 
@@ -814,49 +859,6 @@ This command:
 - Creates a timestamped backup of the existing file before writing
 - Auto-shuts down the WSL subsystem after changes so the new global settings take effect. **This terminates all running distributions, not just one** — `.wslconfig` is a global VM-level setting and a full `wsl --shutdown` is the only way to apply it. Running distributions are listed in a warning before the shutdown.
 - Is idempotent - safe to run multiple times (skips the shutdown when nothing changed)
-
-### Remove Distribution
-
-Unregister a distribution. The TUI asks for confirmation; the CLI form with a name does not.
-
-- **TUI**: select **Remove distribution**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 remove <distro>`
-
-This command:
-- Validates the distribution exists; auto-terminates it if running
-- TUI: asks `Remove distribution '<name>' and all its data. Continue? [y/N]` (capital = Enter default, as everywhere in this repo); Enter or `n` cancels and returns to the menu. CLI with `<distro>`: no prompt, so scripts stay non-interactive
-- Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
-- This operation cannot be undone
-
-### Terminate Distribution
-
-Gracefully shut down a running distribution.
-
-- **TUI**: select **Stop distribution**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 terminate <distro>`
-
-This command:
-- Shows only running distributions for selection (TUI) or validates the named distribution is running (CLI)
-- TUI: asks `Terminate distribution '<name>'. Continue? [y/N]` with **No** as the Enter default; CLI with `<distro>`: no prompt
-- Executes `wsl.exe --terminate <name>` to stop the distribution
-- Polls `wsl.exe --list --verbose` with retries to verify termination
-- Warns if no distributions are currently running
-
-### Shutdown WSL
-
-Shut down the entire WSL subsystem including all running distributions and the WSL2 VM. Use this to apply changes to `%USERPROFILE%\.wslconfig`.
-
-- **TUI**: select **Shutdown WSL**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shutdown`
-
-This command:
-- Asks for confirmation, naming the running distributions that will be stopped, with **No** as the default. Because `shutdown` takes no distribution name, the CLI form asks too; only CI/test environments skip the prompt
-- Executes `wsl.exe --shutdown` to stop all distributions and the WSL2 lightweight VM
-- Polls to verify all distributions have stopped
-- Is idempotent - safe to run when no distributions are running
-
-
----
 
 ## Technical Reference
 

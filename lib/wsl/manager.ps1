@@ -56,19 +56,21 @@ function Show-WslMenu {
     # Menu choices: label -> command mapping
     # Labels: sentence case; "Start"/"Stop" rather than "Open terminal"/"Terminate" so the
     # two do not collide when the user types "term" into the search.
+    # Order: distribution lifecycle first, then setup, then WSL-wide. The Commands
+    # Reference in docs/wsl-manager.md follows the same order with the same headings.
     $menuChoices = [ordered]@{
         "Start distribution"            = "shell"
         "Stop distribution"             = "terminate"
         "Install new distribution"      = "install"
         "Clone distribution"            = "clone"
         "Update distribution"           = "update"
+        "Remove distribution"           = "remove"
         "Setup user account"            = "setup-user"
         "Setup Docker"                  = "setup-docker"
         "Setup Podman"                  = "setup-podman"
         "Setup DevPod"                  = "setup-devpod"
         "Sync SSH config"               = "sync-ssh-config"
         "Setup proxy (corporate)"       = "setup-proxy"
-        "Remove distribution"           = "remove"
         "Shutdown WSL"                  = "shutdown"
         "Configure .wslconfig defaults" = "configure-wsl"
         "Quit"                          = "quit"
