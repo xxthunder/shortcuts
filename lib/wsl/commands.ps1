@@ -172,9 +172,13 @@ function Confirm-DestructiveAction {
         Asks the user to confirm a destructive TUI action.
 
     .DESCRIPTION
-        Shows a Read-SpectreConfirm prompt defaulting to No, so a bare Enter cancels.
-        Returns $true only on an explicit yes. In CI/test environments no prompt is
-        shown and $true is returned (the non-interactive path).
+        Shows a Spectre "[y/N]" prompt: No is the Enter default and, following the
+        Get-UserConfirmation convention, the default is the capital letter. Returns
+        $true only on an explicit yes. In CI/test environments no prompt is shown and
+        $true is returned (the non-interactive path).
+
+        Read-SpectreText is used rather than Read-SpectreConfirm because the latter
+        hard-codes lowercase y/n choices and cannot render the capital default.
 
     .PARAMETER Action
         Plain-text description of what is about to happen, e.g. "Remove distribution 'Ubuntu'."
@@ -195,8 +199,10 @@ function Confirm-DestructiveAction {
     }
 
     $message = Get-SpectreEscapedText -Text "$Action Continue?"
-    $answer = Read-SpectreConfirm -Message $message -DefaultAnswer "n"
-    return $answer -eq $true
+    # Choices are matched case-insensitively; the returned text is what the user typed
+    # ("N" for a bare Enter, $null on Ctrl+C), so anything but a y is a No.
+    $answer = Read-SpectreText -Message $message -Choices @("y", "N") -DefaultAnswer "N"
+    return $answer -ieq "y"
 }
 
 function Invoke-CreateDistro {

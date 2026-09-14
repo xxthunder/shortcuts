@@ -12,7 +12,7 @@ BeforeAll {
     # Stub PwshSpectreConsole commands used by commands.ps1
     function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
-    function Read-SpectreConfirm { param($Message, $DefaultAnswer) $null = $Message, $DefaultAnswer }
+    function Read-SpectreText { param($Message, $DefaultAnswer, $Choices) $null = $Message, $DefaultAnswer, $Choices }
     function Get-SpectreEscapedText { param($Text) $Text }
 
     . "$PSScriptRoot\commands.ps1"
@@ -312,39 +312,44 @@ Describe "Confirm-DestructiveAction" {
             Mock Test-RunningInCIorTestEnvironment { $false }
         }
 
-        It "Should ask with the action text and default to No" {
-            Mock Read-SpectreConfirm { $true }
+        It "Should ask with the action text and offer y/N with No as the Enter default" {
+            Mock Read-SpectreText { "y" }
 
-            Confirm-DestructiveAction -Action "Remove distribution 'Ubuntu'."
+            Confirm-DestructiveAction -Action "Remove distribution Ubuntu."
 
-            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter {
-                $Message -like "Remove distribution 'Ubuntu'.*" -and $DefaultAnswer -eq "n"
+            Should -Invoke Read-SpectreText -Times 1 -ParameterFilter {
+                $Message -like "Remove distribution Ubuntu.*" -and
+                $Choices.Count -eq 2 -and $Choices[0] -ceq "y" -and $Choices[1] -ceq "N" -and
+                $DefaultAnswer -ceq "N"
             }
         }
 
         It "Should escape Spectre markup in the action text" {
             Mock Get-SpectreEscapedText { "ESCAPED" }
-            Mock Read-SpectreConfirm { $true }
+            Mock Read-SpectreText { "y" }
 
             Confirm-DestructiveAction -Action "Remove distribution x[red]y[/]."
 
             Should -Invoke Get-SpectreEscapedText -Times 1 -ParameterFilter { $Text -like "*x[[]red[]]y*" }
-            Should -Invoke Read-SpectreConfirm -Times 1 -ParameterFilter { $Message -eq "ESCAPED" }
+            Should -Invoke Read-SpectreText -Times 1 -ParameterFilter { $Message -eq "ESCAPED" }
         }
-        It "Should return true on yes" {
-            Mock Read-SpectreConfirm { $true }
+
+        It "Should return true on y in either case" -ForEach @("y", "Y") {
+            $script:typedAnswer = $_
+            Mock Read-SpectreText { $script:typedAnswer }
 
             Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeTrue
         }
 
-        It "Should return false on no" {
-            Mock Read-SpectreConfirm { $false }
+        It "Should return false on n in either case" -ForEach @("n", "N") {
+            $script:typedAnswer = $_
+            Mock Read-SpectreText { $script:typedAnswer }
 
             Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeFalse
         }
 
         It "Should return false when the prompt is cancelled" {
-            Mock Read-SpectreConfirm { $null }
+            Mock Read-SpectreText { $null }
 
             Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeFalse
         }
@@ -353,10 +358,10 @@ Describe "Confirm-DestructiveAction" {
     Context "When in CI" {
         It "Should return true without prompting" {
             Mock Test-RunningInCIorTestEnvironment { $true }
-            Mock Read-SpectreConfirm { $false }
+            Mock Read-SpectreText { "n" }
 
             Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeTrue
-            Should -Invoke Read-SpectreConfirm -Times 0
+            Should -Invoke Read-SpectreText -Times 0
         }
     }
 }

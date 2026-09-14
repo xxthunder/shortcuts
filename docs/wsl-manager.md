@@ -328,7 +328,7 @@ For rootless Podman, also add `--userns=keep-id` to your `devcontainer.json` to 
 
 Syncs SSH configuration between Windows and the WSL distribution — copying keys, known_hosts, and SSH config in both directions. If DevPod is installed, it also syncs DevPod SSH config blocks so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
 
-- **TUI**: select **Sync SSH Config** → select distribution
+- **TUI**: select **Sync SSH config** → select distribution
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 sync-ssh-config <distro>`
 
 → [Sync SSH Config](#sync-ssh-config)
@@ -659,7 +659,7 @@ This command:
 
 Open an interactive shell in an installed distribution, next to the manager rather than in place of it.
 
-- **TUI**: select **Open terminal in distribution**
+- **TUI**: select **Start distribution**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 shell <distro>`
 
 This command:
@@ -783,7 +783,7 @@ This command:
 
 Sync SSH configuration between Windows and a WSL distribution: copies keys and known_hosts, syncs non-DevPod config from Windows into WSL, and (if DevPod is installed) syncs DevPod SSH config blocks to Windows with adapted ProxyCommand for Windows-side editor access.
 
-- **TUI**: select **Sync SSH Config**
+- **TUI**: select **Sync SSH config**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 sync-ssh-config <distro>`
 
 This command:
@@ -824,7 +824,7 @@ Unregister a distribution. The TUI asks for confirmation; the CLI form with a na
 
 This command:
 - Validates the distribution exists; auto-terminates it if running
-- TUI: asks `Remove distribution <name> and all its data. Continue? [y/n]` with **No** as the default; Enter or `n` cancels and returns to the menu. CLI with `<distro>`: no prompt, so scripts stay non-interactive
+- TUI: asks `Remove distribution '<name>' and all its data. Continue? [y/N]` (capital = Enter default, as everywhere in this repo); Enter or `n` cancels and returns to the menu. CLI with `<distro>`: no prompt, so scripts stay non-interactive
 - Unregisters the distribution via `wsl.exe --unregister`, permanently deleting all data
 - This operation cannot be undone
 
@@ -832,12 +832,12 @@ This command:
 
 Gracefully shut down a running distribution.
 
-- **TUI**: select **Terminate distribution**
+- **TUI**: select **Stop distribution**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 terminate <distro>`
 
 This command:
 - Shows only running distributions for selection (TUI) or validates the named distribution is running (CLI)
-- TUI: asks `Terminate distribution <name>. Continue? [y/n]` with **No** as the default; CLI with `<distro>`: no prompt
+- TUI: asks `Terminate distribution '<name>'. Continue? [y/N]` with **No** as the Enter default; CLI with `<distro>`: no prompt
 - Executes `wsl.exe --terminate <name>` to stop the distribution
 - Polls `wsl.exe --list --verbose` with retries to verify termination
 - Warns if no distributions are currently running
