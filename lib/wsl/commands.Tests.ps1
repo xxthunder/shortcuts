@@ -480,6 +480,16 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-OpenDistroShell -ParameterFilter { $Name -eq "Debian" }
         }
 
+        It "Should accept 'refresh', skip the continue pause and fetch nothing" {
+            $script:WslSkipContinuePause = $false
+            Mock Get-WslDistroList {}
+
+            Invoke-WslCommand -Command "refresh"
+
+            $script:WslSkipContinuePause | Should -BeTrue
+            Should -Invoke Get-WslDistroList -Times 0
+        }
+
         It "Should dispatch 'shutdown'" {
             Mock Invoke-ShutdownWsl {}
 
@@ -746,6 +756,7 @@ Describe "Invoke-OpenDistroShell" {
     BeforeEach {
         Mock Open-WslDistroShell {}
         Mock Write-Status {}
+        Mock Start-Sleep {}
     }
 
     Context "When Name is provided" {
@@ -785,6 +796,7 @@ Describe "Invoke-OpenDistroShell" {
 
             Should -Invoke Open-WslDistroShell -Times 0
             Should -Invoke Write-Status -Times 0
+            Should -Invoke Start-Sleep -Times 0
             $script:WslSkipContinuePause | Should -BeFalse
         }
     }
@@ -806,6 +818,12 @@ Describe "Invoke-OpenDistroShell" {
             Invoke-OpenDistroShell
 
             $script:WslSkipContinuePause | Should -BeTrue
+        }
+
+        It "Should wait briefly for the distribution to come up before returning" {
+            Invoke-OpenDistroShell
+
+            Should -Invoke Start-Sleep -Times 1 -Exactly -ParameterFilter { $Seconds -gt 0 }
         }
     }
 }

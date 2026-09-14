@@ -20,7 +20,6 @@
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
 - [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
-- [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
 - [SC-028 — Improve WSL manager console output handling](sc-028.md)
 - [SC-030 — Add progress indicators and status feedback with PwshSpectreConsole](sc-030.md)
 - [SC-031 — Redesign menu layout with grouped commands and contextual help](sc-031.md)
@@ -39,6 +38,7 @@
 
 ### Done
 
+- [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
 - [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
 - [SC-054 — Podman and user unit tests must not reach the real wsl.exe](sc-054.md)
 - [SC-051 — px-proxy runbook: fix Keypirinha invocation, document manual start and VPN ordering](sc-051.md)

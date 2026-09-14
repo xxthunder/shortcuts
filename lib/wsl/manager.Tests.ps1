@@ -99,6 +99,26 @@ Describe "Show-WslMenu" {
         }
     }
 
+    It "Should offer 'Refresh list' immediately before 'Quit', mapped to 'refresh'" {
+        Mock Read-SpectreSelection { "Refresh list" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "refresh"
+        Should -Invoke Read-SpectreSelection -ParameterFilter {
+            @($Choices)[-2] -eq "Refresh list" -and
+            @($Choices)[-1] -eq "Quit"
+        }
+    }
+
+    It "Should show every entry on one page" {
+        Mock Read-SpectreSelection { "Quit" }
+
+        Show-WslMenu
+
+        Should -Invoke Read-SpectreSelection -ParameterFilter { $PageSize -ge @($Choices).Count }
+    }
+
     It "Should return 'quit' when Quit is selected" {
         Mock Read-SpectreSelection { "Quit" }
 
@@ -1287,6 +1307,7 @@ Describe "Invoke-WslManager" {
             } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Open-WslDistroShell {}
+            Mock Start-Sleep {}
         }
 
         It "Should open the named distribution without prompting" {
@@ -1329,6 +1350,33 @@ Describe "Invoke-WslManager" {
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*-Name*" }
             Should -Invoke Read-SpectreSelection -Times 0
             Should -Invoke Open-WslDistroShell -Times 0
+        }
+    }
+
+    Context "When the TUI selects 'Refresh list'" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList {
+                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
+            } -ParameterFilter { $Detailed }
+            Mock Clear-Host {}
+            Mock Read-Host {}
+            Mock Show-WslDistroTable { "mocked-table" }
+            Mock Get-WslManagerPanel {}
+            $script:callCount = 0
+            Mock Show-WslMenu {
+                $script:callCount++
+                if ($script:callCount -eq 1) { "refresh" }
+                else { "quit" }
+            }
+        }
+
+        It "Should redraw with a freshly fetched list and no continue pause" {
+            Invoke-WslManager
+
+            Should -Invoke Get-WslDistroList -Times 2 -Exactly
+            Should -Invoke Get-WslManagerPanel -Times 2 -Exactly
+            Should -Invoke Read-Host -Times 0
         }
     }
 

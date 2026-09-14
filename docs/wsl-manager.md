@@ -41,6 +41,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup proxy (corporate)](#setup-proxy-corporate)
   - [Shutdown WSL](#shutdown-wsl)
   - [Configure .wslconfig defaults](#configure-wslconfig-defaults)
+  - [Refresh list](#refresh-list)
 - [Technical Reference](#technical-reference)
   - [Module Structure](#module-structure)
   - [Library Usage](#library-usage)
@@ -655,7 +656,7 @@ This command:
 - Inside Windows Terminal (`WT_SESSION` is set): opens a new tab in the same window via `wt.exe -w 0 new-tab`
 - Elsewhere (a classic console, or a script): opens a new console window via `Start-Process wsl.exe`
 - The shell runs as the distribution's default user in its home directory (`wsl.exe --distribution <name> --cd ~`); a stopped distribution is started on the way
-- The command returns as soon as the tab or window is spawned; it does not wait for the shell to exit
+- The command does not wait for the shell to exit. It waits about one second after spawning the tab or window so that the menu's next redraw usually already shows the distribution as `Running`; if it still shows `Stopped`, use [Refresh list](#refresh-list)
 
 ### Stop distribution
 
@@ -859,6 +860,17 @@ This command:
 - Creates a timestamped backup of the existing file before writing
 - Auto-shuts down the WSL subsystem after changes so the new global settings take effect. **This terminates all running distributions, not just one** — `.wslconfig` is a global VM-level setting and a full `wsl --shutdown` is the only way to apply it. Running distributions are listed in a warning before the shutdown.
 - Is idempotent - safe to run multiple times (skips the shutdown when nothing changed)
+
+---
+
+### Refresh list
+
+Redraw the distribution table above the menu with the current state.
+
+- **TUI**: select **Refresh list**
+- **CLI**: not needed; `.\tools\wsl-manager\wsl-manager.ps1 list` always fetches fresh data
+
+The table is fetched once each time the menu is drawn and is not updated while the menu waits for your choice, so it can lag behind reality: a distribution started from the menu may still show `Stopped` for a moment, and anything that changes state outside the manager (exiting a distribution's shell, `wsl --shutdown` in another terminal, WSL's idle timeout) is not reflected until the next redraw. **Refresh list** redraws immediately, without the "Press Enter to continue" pause.
 
 ## Technical Reference
 
