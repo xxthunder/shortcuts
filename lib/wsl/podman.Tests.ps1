@@ -141,12 +141,36 @@ Describe "Install-WslPodman" {
             Mock Test-WslPodmanInstalled { $false }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
+            Mock Stop-WslDistro { }
             Mock Start-Sleep { }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
 
             # Should not throw for Debian
             { Install-WslPodman -DistroName "Debian" -Confirm:$false -WhatIf } | Should -Not -Throw
+        }
+
+        It "Should restart the installed distribution via Stop-WslDistro" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Test-Wsl2Version { $true }
+            Mock Test-WslSystemdConfigured { $true }
+            Mock Test-WslInteropConfigured { $true }
+            Mock Test-WslAutomountConfigured { $true }
+            Mock Get-WslDistroType { "debian" }
+            Mock Get-WslDefaultUser { "developer" }
+            Mock Test-WslDockerInstalled { $false }
+            Mock Test-WslPodmanInstalled { $false }
+            Mock Set-WslConf { }
+            Mock Invoke-CommandLine { }
+            Mock Stop-WslDistro { }
+            Mock Start-Sleep { }
+            Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
+            Mock Invoke-WslDistroCommand { }
+
+            Install-WslPodman -DistroName "Debian" -Confirm:$false -WhatIf
+
+            Should -Invoke Stop-WslDistro -ParameterFilter { $Name -eq "Debian" }
         }
 
         It "Should accept Ubuntu distribution" {
@@ -205,6 +229,7 @@ Describe "Install-WslPodman" {
             Mock Test-WslPodmanInstalled { $false }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
+            Mock Stop-WslDistro { }
             Mock Start-Sleep { }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }
@@ -226,6 +251,7 @@ Describe "Install-WslPodman" {
             Mock Test-WslPodmanInstalled { $false }
             Mock Set-WslConf { }
             Mock Invoke-CommandLine { }
+            Mock Stop-WslDistro { }
             Mock Start-Sleep { }
             Mock Invoke-WslDistroCommand { "debian`nbookworm`namd64" } -ParameterFilter { $Command -like "*. /etc/os-release*echo*VERSION_CODENAME*dpkg --print-architecture*" }
             Mock Invoke-WslDistroCommand { }

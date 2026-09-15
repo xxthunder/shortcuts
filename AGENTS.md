@@ -245,6 +245,11 @@ AfterAll {
 }
 ```
 
+`Start-SutIsolation` also shims `wsl.exe` (and `wsl`) for unit test files, so an unmocked call fails with
+`Unit test reached the real wsl.exe (<arguments>)` instead of depending on which distributions the machine has.
+Fix such a failure by mocking the function the SUT calls (for example `Stop-WslDistro`), not `wsl` itself.
+Integration test files (`*.Integration.Tests.ps1`) get no shim.
+
 See `lib/AGENTS.md` for additional testing guidelines
 
 ### Project-Specific Considerations
