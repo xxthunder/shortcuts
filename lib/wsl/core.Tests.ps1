@@ -259,6 +259,13 @@ Use 'wsl --list --online' to list available distributions.
 }
 
 Describe "Get-WslDistroType" {
+    BeforeEach {
+        # Get-WslDistroType runs "echo warmup" in the distribution before reading os-release.
+        # The os-release mocks below are filtered, so this default catches the warmup call;
+        # without it that call reaches the real wsl.exe
+        Mock Invoke-WslDistroCommand { }
+    }
+
     Context "When distribution does not exist" {
         It "Should throw an error" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }

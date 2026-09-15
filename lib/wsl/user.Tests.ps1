@@ -17,6 +17,12 @@ AfterAll {
 }
 
 Describe "New-WslUser" {
+    BeforeEach {
+        # New-WslUser ends by restarting the distribution; without this mock the call chain
+        # (Stop-WslDistro -> Test-WslDistroRunning -> Get-WslDistroList) reaches the real wsl.exe
+        Mock Stop-WslDistro { }
+    }
+
     Context "When distribution does not exist" {
         It "Should throw an error" {
             Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
