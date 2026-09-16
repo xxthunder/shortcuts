@@ -38,6 +38,7 @@
 
 ### Done
 
+- [SC-058 — Redraw the WSL Manager panel at the live console width after a resize](sc-058.md)
 - [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
 - [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
 - [SC-054 — Podman and user unit tests must not reach the real wsl.exe](sc-054.md)
