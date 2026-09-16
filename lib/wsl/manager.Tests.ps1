@@ -21,7 +21,8 @@ BeforeAll {
     function Read-SpectreText { param($Message, $DefaultAnswer, $Choices) $null = $Message, $DefaultAnswer, $Choices }
     function Get-SpectreEscapedText { param($Text) $Text }
     function Format-SpectrePanel { param($Header, $Border, $Color, [switch]$Expand) process { $null = $Header, $Border, $Color, $Expand; $_ } }
-    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup) process { $null = $Border, $Color, $AllowMarkup; $_ } }
+    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
+    function Out-SpectreHost { param([Parameter(ValueFromPipeline)]$Data) process { $null = $Data } }
     function Format-SpectreColumns {
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
         param() process { $_ }
@@ -45,7 +46,7 @@ Describe "Get-WslManagerPanel" {
         Mock Format-SpectrePanel { "mocked-panel" }
     }
 
-    It "Should wrap content in a panel with WSL Manager header, dark blue border and full width" {
+    It "Should wrap content in an expanded panel with WSL Manager header and dark blue border" {
         Get-WslManagerPanel -DistroContent "mocked-table"
 
         Should -Invoke Format-SpectrePanel -Times 1 -ParameterFilter {
@@ -185,6 +186,20 @@ Describe "Start-InteractiveMode" {
             Start-InteractiveMode
 
             Should -Invoke Get-WslManagerPanel -Times 1
+        }
+
+        It "Should write the panel through Out-SpectreHost so every redraw uses the live console width" {
+            # Emitting the renderable to the pipeline lets the formatting engine cache the
+            # console width from the first draw for the whole session (SC-058)
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
+            Mock Show-WslMenu { "quit" }
+            Mock Get-WslManagerPanel { "mocked-panel" }
+            Mock Out-SpectreHost {}
+
+            Start-InteractiveMode
+
+            Should -Invoke Out-SpectreHost -Times 1 -Exactly -ParameterFilter { $Data -eq "mocked-panel" }
         }
 
         It "Should pause for Enter after a command completes" {

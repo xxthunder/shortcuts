@@ -20,18 +20,19 @@ function Get-WslManagerPanel {
         Builds the WSL Manager panel with the distro table inside.
 
     .DESCRIPTION
-        Wraps the distribution table content in a full-width Spectre.Console panel
-        with a dark blue rounded border and "WSL Manager" as the header text.
+        Wraps the distribution table content in a Spectre.Console panel with a dark blue
+        rounded border and "WSL Manager" as the header text.
 
     .PARAMETER DistroContent
         A Spectre renderable or markup string for the distribution table.
 
     .OUTPUTS
-        A Spectre renderable panel written to the host.
+        A Spectre renderable panel. Write it with Out-SpectreHost, not by emitting it to the
+        pipeline: see Start-InteractiveMode.
 
     .EXAMPLE
         $table = Show-WslDistroTable -Distros $distros
-        Get-WslManagerPanel -DistroContent $table
+        Get-WslManagerPanel -DistroContent $table | Out-SpectreHost
     #>
     [CmdletBinding()]
     param(
@@ -125,7 +126,11 @@ function Start-InteractiveMode {
         } else {
             "[yellow]Could not load distributions.[/]"
         }
-        Get-WslManagerPanel -DistroContent $distroContent
+        # Out-SpectreHost renders at the live console width. Emitting the renderable to the
+        # pipeline instead would hand it to PowerShell's formatting engine, which opens one
+        # format group for the whole script and keeps the console width it saw at the first
+        # draw, so every redraw after a widening would wrap at the old width (SC-058).
+        Get-WslManagerPanel -DistroContent $distroContent | Out-SpectreHost
 
         $command = Show-WslMenu
 

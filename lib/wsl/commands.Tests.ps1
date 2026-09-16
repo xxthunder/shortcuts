@@ -28,7 +28,7 @@ Describe "Show-WslDistroTable" {
             Mock Format-SpectreTable { "mocked-table" }
         }
 
-        It "Should call Format-SpectreTable with Rounded border and AllowMarkup" {
+        It "Should call Format-SpectreTable with Rounded border, AllowMarkup and Expand" {
             $distros = @(
                 [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
             )
