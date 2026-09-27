@@ -17,6 +17,7 @@
 
 ### Open
 
+- [SC-059 — WSL Manager docs claim `configure-wsl` writes `autoProxy = true`](sc-059.md)
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
 - [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
