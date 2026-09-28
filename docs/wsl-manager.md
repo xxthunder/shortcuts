@@ -119,7 +119,7 @@ Each step shows equivalent **TUI** and **CLI** instructions; pick whichever you 
 
 ### Step 1: Configure WSL Global Settings
 
-Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig` (pure cgroups v2, mirrored networking, DNS tunneling, auto proxy). The WSL subsystem is automatically shut down after the changes are applied so the new global settings take effect.
+Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig` (pure cgroups v2, mirrored networking, DNS tunneling, `autoProxy` turned off). The WSL subsystem is automatically shut down after the changes are applied so the new global settings take effect.
 
 - **TUI**: select **Configure .wslconfig defaults**
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 configure-wsl`
@@ -851,11 +851,11 @@ Apply recommended global WSL settings to `%USERPROFILE%\.wslconfig`.
 
 This command:
 - Reads existing `%USERPROFILE%\.wslconfig` (if present)
-- Merges in recommended defaults without overwriting existing user values:
+- Merges in recommended defaults: missing keys are added and existing user values are kept, except `autoProxy`, which is always overwritten with `false`:
   - `[wsl2] kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` (pure cgroups v2)
   - `[wsl2] networkingMode = mirrored` (mirrors Windows network interfaces)
   - `[wsl2] dnsTunneling = true` (routes DNS through Windows)
-  - `[wsl2] autoProxy = true` (applies Windows proxy settings)
+  - `[wsl2] autoProxy = false` (Windows' `autoProxy` would inject the corporate proxy into every WSL shell and bypass px, so tools fail with `407`; see [Using px from WSL](runbooks/px-proxy.md#using-px-from-wsl))
 - For `kernelCommandLine`, appends missing parameters rather than replacing the whole value
 - Creates a timestamped backup of the existing file before writing
 - Auto-shuts down the WSL subsystem after changes so the new global settings take effect. **This terminates all running distributions, not just one** — `.wslconfig` is a global VM-level setting and a full `wsl --shutdown` is the only way to apply it. Running distributions are listed in a warning before the shutdown.

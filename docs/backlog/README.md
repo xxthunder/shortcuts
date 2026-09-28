@@ -18,7 +18,6 @@
 ### Open
 
 - [SC-060 — Install the corporate root CA into a WSL distribution](sc-060.md)
-- [SC-059 — WSL Manager docs claim `configure-wsl` writes `autoProxy = true`](sc-059.md)
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
 - [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
@@ -40,6 +39,7 @@
 
 ### Done
 
+- [SC-059 — WSL Manager docs claim `configure-wsl` writes `autoProxy = true`](sc-059.md)
 - [SC-058 — Redraw the WSL Manager panel at the live console width after a resize](sc-058.md)
 - [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
 - [SC-055 — Open a terminal in an installed distribution from wsl-manager](sc-055.md)
