@@ -1,0 +1,2175 @@
+{
+  "configuration" : { },
+  "description" : "Keyboard-driven launcher and automation toolkit for Windows. Single source of the architecture diagrams (SC-062).",
+  "documentation" : { },
+  "id" : 1,
+  "lastModifiedDate" : "2026-10-01T20:11:28Z",
+  "model" : {
+    "people" : [ {
+      "description" : "Works on a Windows machine and starts tools and links from the keyboard.",
+      "id" : "1",
+      "name" : "Developer",
+      "properties" : {
+        "structurizr.dsl.identifier" : "developer"
+      },
+      "relationships" : [ {
+        "description" : "Launches tools and links by name",
+        "destinationId" : "45",
+        "id" : "58",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches links by name (optional)",
+        "destinationId" : "46",
+        "id" : "59",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Presses global hotkeys",
+        "destinationId" : "6",
+        "id" : "60",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Presses global hotkeys",
+        "destinationId" : "2",
+        "id" : "61",
+        "linkedRelationshipId" : "60",
+        "sourceId" : "1"
+      }, {
+        "description" : "Installs and updates Shortcuts",
+        "destinationId" : "3",
+        "id" : "62",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Runs commands or uses the menu",
+        "destinationId" : "11",
+        "id" : "63",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Runs commands or uses the menu",
+        "destinationId" : "10",
+        "id" : "64",
+        "linkedRelationshipId" : "63",
+        "sourceId" : "1"
+      }, {
+        "description" : "Commits changes; Git runs the hooks",
+        "destinationId" : "43",
+        "id" : "65",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    } ],
+    "softwareSystems" : [ {
+      "containers" : [ {
+        "description" : "Bootstraps Scoop and git, clones the repository, installs the mandatory and optional tools and PwshSpectreConsole, copies the Keypirinha profile and creates the hotkeys startup shortcut. bin/install.ps1, bin/update.bat.",
+        "documentation" : { },
+        "id" : "3",
+        "name" : "Installer and updater",
+        "properties" : {
+          "structurizr.dsl.identifier" : "installer"
+        },
+        "relationships" : [ {
+          "description" : "Clones and pulls the repository",
+          "destinationId" : "48",
+          "id" : "76",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Installs Scoop, git and the tool sets",
+          "destinationId" : "47",
+          "id" : "78",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Installs PwshSpectreConsole",
+          "destinationId" : "49",
+          "id" : "80",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Copies the profile and starts it",
+          "destinationId" : "45",
+          "id" : "82",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Creates the startup shortcut",
+          "destinationId" : "6",
+          "id" : "84",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Windows PowerShell 5.1"
+      }, {
+        "description" : "Internet shortcuts to web apps and tools that the launchers index. links/*.url.",
+        "documentation" : { },
+        "id" : "4",
+        "name" : "Launcher catalog",
+        "properties" : {
+          "structurizr.dsl.identifier" : "launcherCatalog"
+        },
+        "tags" : "Element,Container,Data store",
+        "technology" : "Internet shortcut files"
+      }, {
+        "description" : "Small commands launched by name: rdp.cmd opens a Remote Desktop session, getUserInfo.ps1 shows a domain user's details. bin/.",
+        "documentation" : { },
+        "id" : "5",
+        "name" : "Helper commands",
+        "properties" : {
+          "structurizr.dsl.identifier" : "helperCommands"
+        },
+        "tags" : "Element,Container",
+        "technology" : "cmd, PowerShell"
+      }, {
+        "description" : "Global hotkeys, started at login through a startup shortcut. tools/AutoHotKey.",
+        "documentation" : { },
+        "id" : "6",
+        "name" : "Hotkeys",
+        "properties" : {
+          "structurizr.dsl.identifier" : "hotkeys"
+        },
+        "tags" : "Element,Container",
+        "technology" : "AutoHotkey script"
+      }, {
+        "description" : "Lists the Scoop apps with updates and updates the selected ones; runs in a classic console so pwsh and Windows Terminal can be updated. tools/scoop, lib/scoop/scoop.ps1.",
+        "documentation" : { },
+        "id" : "7",
+        "name" : "Scoop update helper",
+        "properties" : {
+          "structurizr.dsl.identifier" : "scoopHelper"
+        },
+        "relationships" : [ {
+          "description" : "Updates apps and buckets",
+          "destinationId" : "47",
+          "id" : "85",
+          "sourceId" : "7",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Windows PowerShell 5.1"
+      }, {
+        "description" : "Installs or updates Node.js through Scoop and a global npm package. lib/install/install-npm-global.ps1.",
+        "documentation" : { },
+        "id" : "8",
+        "name" : "npm package installer",
+        "properties" : {
+          "structurizr.dsl.identifier" : "npmInstaller"
+        },
+        "relationships" : [ {
+          "description" : "Installs Node.js",
+          "destinationId" : "47",
+          "id" : "86",
+          "sourceId" : "8",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "PowerShell 7"
+      }, {
+        "description" : "px-proxy.ps1 installs, configures, starts and tests px; setProxy.ps1 sets the session proxy from the PAC file. tools/proxy.",
+        "documentation" : { },
+        "id" : "9",
+        "name" : "Proxy tools",
+        "properties" : {
+          "structurizr.dsl.identifier" : "proxyTools"
+        },
+        "relationships" : [ {
+          "description" : "Installs px",
+          "destinationId" : "47",
+          "id" : "87",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Configures, starts, stops and tests",
+          "destinationId" : "52",
+          "id" : "88",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Reads the PAC URL from Internet Settings",
+          "destinationId" : "50",
+          "id" : "90",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "PowerShell 7"
+      }, {
+        "components" : [ {
+          "description" : "Parses the CLI command or runs the interactive menu above the distribution table. wsl-manager.ps1, manager.ps1: Invoke-WslManager, Start-InteractiveMode, Show-WslMenu.",
+          "documentation" : { },
+          "id" : "11",
+          "name" : "Menu and entry point",
+          "properties" : {
+            "structurizr.dsl.identifier" : "menu"
+          },
+          "relationships" : [ {
+            "description" : "Loads PwshSpectreConsole",
+            "destinationId" : "12",
+            "id" : "101",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Shows the distributions",
+            "destinationId" : "13",
+            "id" : "102",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs the selected command",
+            "destinationId" : "16",
+            "id" : "103",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Imports PwshSpectreConsole and offers to install it when it is missing. spectre.ps1.",
+          "documentation" : { },
+          "id" : "12",
+          "name" : "Spectre loader",
+          "properties" : {
+            "structurizr.dsl.identifier" : "spectre"
+          },
+          "relationships" : [ {
+            "description" : "Installs PwshSpectreConsole when missing",
+            "destinationId" : "49",
+            "id" : "104",
+            "sourceId" : "12",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Renders the distributions with their state. commands.ps1: Show-WslDistroTable.",
+          "documentation" : { },
+          "id" : "13",
+          "name" : "Distribution table",
+          "properties" : {
+            "structurizr.dsl.identifier" : "table"
+          },
+          "relationships" : [ {
+            "description" : "Get-WslDistroList -Detailed",
+            "destinationId" : "20",
+            "id" : "106",
+            "sourceId" : "13",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Arrow-key picker with a Back entry; resolves names and numbers for the CLI. commands.ps1: Select-WslDistro.",
+          "documentation" : { },
+          "id" : "14",
+          "name" : "Distribution picker",
+          "properties" : {
+            "structurizr.dsl.identifier" : "picker"
+          },
+          "relationships" : [ {
+            "description" : "Get-WslDistroList -Detailed",
+            "destinationId" : "20",
+            "id" : "107",
+            "sourceId" : "14",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "[y/N] prompt before destructive actions; skipped for CLI arguments and in CI. commands.ps1: Confirm-DestructiveAction.",
+          "documentation" : { },
+          "id" : "15",
+          "name" : "Confirmation",
+          "properties" : {
+            "structurizr.dsl.identifier" : "confirm"
+          },
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Routes a command to its handler for TUI and CLI alike. commands.ps1: Invoke-WslCommand.",
+          "documentation" : { },
+          "id" : "16",
+          "name" : "Command dispatcher",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dispatcher"
+          },
+          "relationships" : [ {
+            "description" : "install, shell, terminate, clone, update, remove",
+            "destinationId" : "17",
+            "id" : "108",
+            "sourceId" : "16",
+            "tags" : "Relationship"
+          }, {
+            "description" : "setup-user, setup-ca, setup-proxy, setup-docker, setup-podman, setup-devpod, sync-ssh-config",
+            "destinationId" : "18",
+            "id" : "109",
+            "sourceId" : "16",
+            "tags" : "Relationship"
+          }, {
+            "description" : "configure-wsl, shutdown, repair-interop",
+            "destinationId" : "19",
+            "id" : "110",
+            "sourceId" : "16",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Install, start, stop, clone, update and remove a distribution. commands.ps1: Invoke-CreateDistro, Invoke-OpenDistroShell, Invoke-TerminateDistro, Invoke-CloneDistro, Invoke-UpdateDistro, Invoke-RemoveDistro.",
+          "documentation" : { },
+          "id" : "17",
+          "name" : "Lifecycle handlers",
+          "properties" : {
+            "structurizr.dsl.identifier" : "lifecycleHandlers"
+          },
+          "relationships" : [ {
+            "description" : "Selects a distribution",
+            "destinationId" : "14",
+            "id" : "111",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Confirms remove and stop",
+            "destinationId" : "15",
+            "id" : "112",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          }, {
+            "description" : "New-WslDistro",
+            "destinationId" : "21",
+            "id" : "113",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Copy-, Update-, Remove-WslDistro, Open-WslDistroShell",
+            "destinationId" : "22",
+            "id" : "114",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Stop-WslDistro",
+            "destinationId" : "20",
+            "id" : "115",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Prepare a distribution for dev containers. commands.ps1: Invoke-SetupUser, Invoke-SetupCa, Invoke-SetupProxy, Invoke-SetupDocker, Invoke-SetupPodman, Invoke-SetupDevPod, Invoke-SyncSshConfig.",
+          "documentation" : { },
+          "id" : "18",
+          "name" : "Setup handlers",
+          "properties" : {
+            "structurizr.dsl.identifier" : "setupHandlers"
+          },
+          "relationships" : [ {
+            "description" : "Selects a distribution",
+            "destinationId" : "14",
+            "id" : "116",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "New-WslUser",
+            "destinationId" : "24",
+            "id" : "117",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Install-WslDockerEngine",
+            "destinationId" : "26",
+            "id" : "118",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Install-WslPodman",
+            "destinationId" : "27",
+            "id" : "119",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Install-WslDevPod",
+            "destinationId" : "28",
+            "id" : "120",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Install-WslCaCertificate, Remove-WslCaCertificate",
+            "destinationId" : "31",
+            "id" : "121",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Install-WslProxy",
+            "destinationId" : "30",
+            "id" : "122",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Invoke-WslSyncSshConfig",
+            "destinationId" : "29",
+            "id" : "123",
+            "sourceId" : "18",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Configure WSL as a whole and repair interop. commands.ps1: Invoke-ConfigureWslDefault, Invoke-ShutdownWsl, Invoke-RepairInterop.",
+          "documentation" : { },
+          "id" : "19",
+          "name" : "WSL-wide handlers",
+          "properties" : {
+            "structurizr.dsl.identifier" : "wslWideHandlers"
+          },
+          "relationships" : [ {
+            "description" : "Confirms shutdown",
+            "destinationId" : "15",
+            "id" : "124",
+            "sourceId" : "19",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Invoke-ConfigureWsl, Stop-WslSubsystem",
+            "destinationId" : "22",
+            "id" : "125",
+            "sourceId" : "19",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Set-WslConf for interop",
+            "destinationId" : "23",
+            "id" : "126",
+            "sourceId" : "19",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Lists distributions and their state, checks WSL 2 and systemd, stops a distribution. core.ps1.",
+          "documentation" : { },
+          "id" : "20",
+          "name" : "Status checks",
+          "properties" : {
+            "structurizr.dsl.identifier" : "core"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroCommand",
+            "destinationId" : "25",
+            "id" : "142",
+            "sourceId" : "20",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Lists and stops distributions",
+            "destinationId" : "51",
+            "id" : "144",
+            "sourceId" : "20",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Lists the online catalog and installs a distribution. install.ps1.",
+          "documentation" : { },
+          "id" : "21",
+          "name" : "Provisioning",
+          "properties" : {
+            "structurizr.dsl.identifier" : "install"
+          },
+          "relationships" : [ {
+            "description" : "Installs from the online catalog",
+            "destinationId" : "51",
+            "id" : "147",
+            "sourceId" : "21",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Removes, clones and updates a distribution, opens a shell, shuts WSL down, merges the .wslconfig defaults. ops.ps1.",
+          "documentation" : { },
+          "id" : "22",
+          "name" : "Operations",
+          "properties" : {
+            "structurizr.dsl.identifier" : "ops"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroCommand",
+            "destinationId" : "25",
+            "id" : "141",
+            "sourceId" : "22",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Exports, imports, unregisters, shuts down",
+            "destinationId" : "51",
+            "id" : "148",
+            "sourceId" : "22",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Reads, merges and checks a distribution's /etc/wsl.conf. wsl-conf.ps1.",
+          "documentation" : { },
+          "id" : "23",
+          "name" : "wsl.conf",
+          "properties" : {
+            "structurizr.dsl.identifier" : "wslConf"
+          },
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Creates the default user with sudo. user.ps1.",
+          "documentation" : { },
+          "id" : "24",
+          "name" : "Users",
+          "properties" : {
+            "structurizr.dsl.identifier" : "userMgmt"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroCommand",
+            "destinationId" : "25",
+            "id" : "139",
+            "sourceId" : "24",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Set-WslConf",
+            "destinationId" : "23",
+            "id" : "140",
+            "sourceId" : "24",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Runs commands and Bash scripts inside a distribution through wsl.exe. exec.ps1.",
+          "documentation" : { },
+          "id" : "25",
+          "name" : "Execution bridge",
+          "properties" : {
+            "structurizr.dsl.identifier" : "exec"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-CommandLine",
+            "destinationId" : "32",
+            "id" : "143",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs commands inside a distribution",
+            "destinationId" : "51",
+            "id" : "149",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "34",
+            "id" : "150",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "33",
+            "id" : "151",
+            "linkedRelationshipId" : "150",
+            "sourceId" : "25"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "35",
+            "id" : "154",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "36",
+            "id" : "156",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "38",
+            "id" : "158",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "37",
+            "id" : "160",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Runs",
+            "destinationId" : "39",
+            "id" : "162",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Installs Docker Engine in a distribution. docker.ps1: Install-WslDockerEngine.",
+          "documentation" : { },
+          "id" : "26",
+          "name" : "Docker setup",
+          "properties" : {
+            "structurizr.dsl.identifier" : "docker"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "127",
+            "sourceId" : "26",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Set-WslConf, Test-*Configured",
+            "destinationId" : "23",
+            "id" : "128",
+            "sourceId" : "26",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Installs rootless Podman in a distribution. podman.ps1: Install-WslPodman.",
+          "documentation" : { },
+          "id" : "27",
+          "name" : "Podman setup",
+          "properties" : {
+            "structurizr.dsl.identifier" : "podman"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "129",
+            "sourceId" : "27",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Set-WslConf, Test-*Configured",
+            "destinationId" : "23",
+            "id" : "130",
+            "sourceId" : "27",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Installs the DevPod CLI and its provider. devpod.ps1: Install-WslDevPod.",
+          "documentation" : { },
+          "id" : "28",
+          "name" : "DevPod setup",
+          "properties" : {
+            "structurizr.dsl.identifier" : "devpod"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "131",
+            "sourceId" : "28",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Syncs SSH keys and config between Windows and a distribution. ssh.ps1: Invoke-WslSyncSshConfig.",
+          "documentation" : { },
+          "id" : "29",
+          "name" : "SSH sync",
+          "properties" : {
+            "structurizr.dsl.identifier" : "ssh"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "138",
+            "sourceId" : "29",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Detects px or the PAC proxy and configures a distribution for it. proxy.ps1: Install-WslProxy.",
+          "documentation" : { },
+          "id" : "30",
+          "name" : "Proxy setup",
+          "properties" : {
+            "structurizr.dsl.identifier" : "proxy"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "135",
+            "sourceId" : "30",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Uses the PAC and px detection of setProxy.ps1",
+            "destinationId" : "9",
+            "id" : "136",
+            "sourceId" : "30",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Selects the corporate root CAs from the Windows root store, by subject pattern or as the root of an HTTPS site's certificate chain, and installs or removes them in a distribution. ca.ps1: Get-CorporateRootCertificate, Get-UrlRootCertificate, Install-WslCaCertificate, Remove-WslCaCertificate.",
+          "documentation" : { },
+          "id" : "31",
+          "name" : "Root CA setup",
+          "properties" : {
+            "structurizr.dsl.identifier" : "ca"
+          },
+          "relationships" : [ {
+            "description" : "Invoke-WslDistroScript",
+            "destinationId" : "25",
+            "id" : "132",
+            "sourceId" : "31",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Reads the root certificate store",
+            "destinationId" : "50",
+            "id" : "133",
+            "sourceId" : "31",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        }, {
+          "description" : "Shared helpers: Invoke-CommandLine, console output, CI detection. lib/utils/utils.ps1.",
+          "documentation" : { },
+          "id" : "32",
+          "name" : "Utilities",
+          "properties" : {
+            "structurizr.dsl.identifier" : "utils"
+          },
+          "tags" : "Element,Component",
+          "technology" : "PowerShell"
+        } ],
+        "description" : "Installs, clones, updates and removes WSL distributions and prepares them for dev containers, as a TUI and a CLI. tools/wsl-manager, lib/wsl loaded through wsl.ps1.",
+        "documentation" : { },
+        "id" : "10",
+        "name" : "WSL Manager",
+        "properties" : {
+          "structurizr.dsl.identifier" : "wslManager"
+        },
+        "relationships" : [ {
+          "description" : "Installs PwshSpectreConsole when missing",
+          "destinationId" : "49",
+          "id" : "105",
+          "linkedRelationshipId" : "104",
+          "sourceId" : "10"
+        }, {
+          "description" : "Reads the root certificate store",
+          "destinationId" : "50",
+          "id" : "134",
+          "linkedRelationshipId" : "133",
+          "sourceId" : "10"
+        }, {
+          "description" : "Uses the PAC and px detection of setProxy.ps1",
+          "destinationId" : "9",
+          "id" : "137",
+          "linkedRelationshipId" : "136",
+          "sourceId" : "10"
+        }, {
+          "description" : "Lists and stops distributions",
+          "destinationId" : "51",
+          "id" : "145",
+          "linkedRelationshipId" : "144",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "34",
+          "id" : "152",
+          "linkedRelationshipId" : "150",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "33",
+          "id" : "153",
+          "linkedRelationshipId" : "150",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "35",
+          "id" : "155",
+          "linkedRelationshipId" : "154",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "36",
+          "id" : "157",
+          "linkedRelationshipId" : "156",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "38",
+          "id" : "159",
+          "linkedRelationshipId" : "158",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "37",
+          "id" : "161",
+          "linkedRelationshipId" : "160",
+          "sourceId" : "10"
+        }, {
+          "description" : "Runs",
+          "destinationId" : "39",
+          "id" : "163",
+          "linkedRelationshipId" : "162",
+          "sourceId" : "10"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "PowerShell 7, PwshSpectreConsole"
+      }, {
+        "components" : [ {
+          "description" : "Installs Docker CE and Compose, configures binfmt, adds the user to the docker group.",
+          "documentation" : { },
+          "id" : "34",
+          "name" : "install-docker.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "installDockerSh"
+          },
+          "relationships" : [ {
+            "description" : "Installs Docker CE",
+            "destinationId" : "54",
+            "id" : "164",
+            "sourceId" : "34",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        }, {
+          "description" : "Installs rootless Podman from the distribution's packages, enables linger and the user's Podman socket, and points DOCKER_HOST at it.",
+          "documentation" : { },
+          "id" : "35",
+          "name" : "install-podman.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "installPodmanSh"
+          },
+          "relationships" : [ {
+            "description" : "Installs Podman",
+            "destinationId" : "54",
+            "id" : "167",
+            "sourceId" : "35",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        }, {
+          "description" : "Downloads the DevPod CLI and configures its provider.",
+          "documentation" : { },
+          "id" : "36",
+          "name" : "install-devpod.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "installDevpodSh"
+          },
+          "relationships" : [ {
+            "description" : "Downloads the DevPod CLI",
+            "destinationId" : "55",
+            "id" : "168",
+            "sourceId" : "36",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        }, {
+          "description" : "Writes the proxy settings for shells, apt, Docker and Podman.",
+          "documentation" : { },
+          "id" : "37",
+          "name" : "setup-proxy.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "setupProxySh"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        }, {
+          "description" : "Writes wsl-manager-*.crt to /usr/local/share/ca-certificates and runs update-ca-certificates.",
+          "documentation" : { },
+          "id" : "38",
+          "name" : "setup-ca.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "setupCaSh"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        }, {
+          "description" : "Copies SSH keys into the distribution and syncs DevPod entries back to Windows.",
+          "documentation" : { },
+          "id" : "39",
+          "name" : "sync-ssh-config.sh",
+          "properties" : {
+            "structurizr.dsl.identifier" : "syncSshConfigSh"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Bash"
+        } ],
+        "description" : "Bash scripts that WSL Manager runs inside a distribution; they escalate with sudo themselves. lib/wsl/scripts.",
+        "documentation" : { },
+        "id" : "33",
+        "name" : "Distribution scripts",
+        "properties" : {
+          "structurizr.dsl.identifier" : "distroScripts"
+        },
+        "relationships" : [ {
+          "description" : "Installs Docker CE",
+          "destinationId" : "54",
+          "id" : "165",
+          "linkedRelationshipId" : "164",
+          "sourceId" : "33"
+        }, {
+          "description" : "Downloads the DevPod CLI",
+          "destinationId" : "55",
+          "id" : "169",
+          "linkedRelationshipId" : "168",
+          "sourceId" : "33"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Bash inside a WSL distribution"
+      }, {
+        "description" : "Installs or updates the Claude Code CLI with the native installer. tools/claude-code.",
+        "documentation" : { },
+        "id" : "40",
+        "name" : "Claude Code installer",
+        "properties" : {
+          "structurizr.dsl.identifier" : "claudeCodeInstaller"
+        },
+        "relationships" : [ {
+          "description" : "Downloads and runs",
+          "destinationId" : "56",
+          "id" : "93",
+          "sourceId" : "40",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "PowerShell"
+      }, {
+        "description" : "Installs Flow Launcher as an optional launcher and configures its Program plugin to index .url files. tools/flow-launcher.",
+        "documentation" : { },
+        "id" : "41",
+        "name" : "Flow Launcher setup",
+        "properties" : {
+          "structurizr.dsl.identifier" : "flowLauncherSetup"
+        },
+        "relationships" : [ {
+          "description" : "Installs Flow Launcher",
+          "destinationId" : "47",
+          "id" : "95",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Configures the Program plugin",
+          "destinationId" : "46",
+          "id" : "96",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "PowerShell"
+      }, {
+        "description" : "Disables Caps Lock, the screen saver and more through registry files. tools/windows.",
+        "documentation" : { },
+        "id" : "42",
+        "name" : "Windows tweaks",
+        "properties" : {
+          "structurizr.dsl.identifier" : "windowsTweaks"
+        },
+        "relationships" : [ {
+          "description" : "Imports registry settings",
+          "destinationId" : "50",
+          "id" : "98",
+          "sourceId" : "42",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "cmd, registry files"
+      }, {
+        "description" : "pre-commit checks BOM and PSScriptAnalyzer on staged .ps1 files, commit-msg checks the conventional-commit subject with its backlog item; installed by install-hooks.ps1. tools/githooks.",
+        "documentation" : { },
+        "id" : "43",
+        "name" : "Git hooks",
+        "properties" : {
+          "structurizr.dsl.identifier" : "gitHooks"
+        },
+        "tags" : "Element,Container",
+        "technology" : "POSIX shell, run by Git"
+      }, {
+        "description" : "Starts Structurizr local on this model. tools/structurizr.",
+        "documentation" : { },
+        "id" : "44",
+        "name" : "Architecture viewer",
+        "properties" : {
+          "structurizr.dsl.identifier" : "architectureViewer"
+        },
+        "relationships" : [ {
+          "description" : "Runs on docs/architecture",
+          "destinationId" : "57",
+          "id" : "99",
+          "sourceId" : "44",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Bash, PowerShell"
+      } ],
+      "description" : "Installs a keyboard-driven toolset on Windows and manages WSL distributions for development.",
+      "documentation" : { },
+      "id" : "2",
+      "name" : "Shortcuts",
+      "properties" : {
+        "structurizr.dsl.identifier" : "shortcuts"
+      },
+      "relationships" : [ {
+        "description" : "Clones and pulls the repository",
+        "destinationId" : "48",
+        "id" : "77",
+        "linkedRelationshipId" : "76",
+        "sourceId" : "2"
+      }, {
+        "description" : "Installs Scoop, git and the tool sets",
+        "destinationId" : "47",
+        "id" : "79",
+        "linkedRelationshipId" : "78",
+        "sourceId" : "2"
+      }, {
+        "description" : "Installs PwshSpectreConsole",
+        "destinationId" : "49",
+        "id" : "81",
+        "linkedRelationshipId" : "80",
+        "sourceId" : "2"
+      }, {
+        "description" : "Copies the profile and starts it",
+        "destinationId" : "45",
+        "id" : "83",
+        "linkedRelationshipId" : "82",
+        "sourceId" : "2"
+      }, {
+        "description" : "Configures, starts, stops and tests",
+        "destinationId" : "52",
+        "id" : "89",
+        "linkedRelationshipId" : "88",
+        "sourceId" : "2"
+      }, {
+        "description" : "Reads the PAC URL from Internet Settings",
+        "destinationId" : "50",
+        "id" : "91",
+        "linkedRelationshipId" : "90",
+        "sourceId" : "2"
+      }, {
+        "description" : "Downloads and runs",
+        "destinationId" : "56",
+        "id" : "94",
+        "linkedRelationshipId" : "93",
+        "sourceId" : "2"
+      }, {
+        "description" : "Configures the Program plugin",
+        "destinationId" : "46",
+        "id" : "97",
+        "linkedRelationshipId" : "96",
+        "sourceId" : "2"
+      }, {
+        "description" : "Runs on docs/architecture",
+        "destinationId" : "57",
+        "id" : "100",
+        "linkedRelationshipId" : "99",
+        "sourceId" : "2"
+      }, {
+        "description" : "Lists and stops distributions",
+        "destinationId" : "51",
+        "id" : "146",
+        "linkedRelationshipId" : "144",
+        "sourceId" : "2"
+      }, {
+        "description" : "Installs Docker CE",
+        "destinationId" : "54",
+        "id" : "166",
+        "linkedRelationshipId" : "164",
+        "sourceId" : "2"
+      }, {
+        "description" : "Downloads the DevPod CLI",
+        "destinationId" : "55",
+        "id" : "170",
+        "linkedRelationshipId" : "168",
+        "sourceId" : "2"
+      } ],
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Keyboard launcher; indexes the shortcuts folder and shortcuts_private.",
+      "documentation" : { },
+      "id" : "45",
+      "name" : "Keypirinha",
+      "properties" : {
+        "structurizr.dsl.identifier" : "keypirinha"
+      },
+      "relationships" : [ {
+        "description" : "Indexes and opens",
+        "destinationId" : "4",
+        "id" : "66",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Indexes and opens",
+        "destinationId" : "2",
+        "id" : "67",
+        "linkedRelationshipId" : "66",
+        "sourceId" : "45"
+      }, {
+        "description" : "Launches",
+        "destinationId" : "5",
+        "id" : "68",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches wsl-manager.bat",
+        "destinationId" : "10",
+        "id" : "69",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches update-scoop.bat",
+        "destinationId" : "7",
+        "id" : "70",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches px-proxy.bat",
+        "destinationId" : "9",
+        "id" : "71",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches update.bat",
+        "destinationId" : "3",
+        "id" : "72",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Launches structurizr-local.bat",
+        "destinationId" : "44",
+        "id" : "73",
+        "sourceId" : "45",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Optional keyboard launcher.",
+      "documentation" : { },
+      "id" : "46",
+      "name" : "Flow Launcher",
+      "properties" : {
+        "structurizr.dsl.identifier" : "flowLauncher"
+      },
+      "relationships" : [ {
+        "description" : "Indexes .url files",
+        "destinationId" : "4",
+        "id" : "74",
+        "sourceId" : "46",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Indexes .url files",
+        "destinationId" : "2",
+        "id" : "75",
+        "linkedRelationshipId" : "74",
+        "sourceId" : "46"
+      } ],
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Command-line installer for Windows with its buckets.",
+      "documentation" : { },
+      "id" : "47",
+      "name" : "Scoop",
+      "properties" : {
+        "structurizr.dsl.identifier" : "scoop"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Hosts the shortcuts repository.",
+      "documentation" : { },
+      "id" : "48",
+      "name" : "GitHub",
+      "properties" : {
+        "structurizr.dsl.identifier" : "github"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Source of the PwshSpectreConsole module.",
+      "documentation" : { },
+      "id" : "49",
+      "name" : "PowerShell Gallery",
+      "properties" : {
+        "structurizr.dsl.identifier" : "psGallery"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Registry, Internet Settings including the PAC URL, and the certificate store.",
+      "documentation" : { },
+      "id" : "50",
+      "name" : "Windows",
+      "properties" : {
+        "structurizr.dsl.identifier" : "windows"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "wsl.exe and the WSL 2 distributions.",
+      "documentation" : { },
+      "id" : "51",
+      "name" : "Windows Subsystem for Linux",
+      "properties" : {
+        "structurizr.dsl.identifier" : "wsl"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Local authenticating proxy on localhost:3128, installed through Scoop.",
+      "documentation" : { },
+      "id" : "52",
+      "name" : "px",
+      "properties" : {
+        "structurizr.dsl.identifier" : "px"
+      },
+      "relationships" : [ {
+        "description" : "Authenticates upstream",
+        "destinationId" : "53",
+        "id" : "92",
+        "sourceId" : "52",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Found through the PAC file; px authenticates to it.",
+      "documentation" : { },
+      "id" : "53",
+      "name" : "Corporate proxy",
+      "properties" : {
+        "structurizr.dsl.identifier" : "corpProxy"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "APT repositories for the container engines.",
+      "documentation" : { },
+      "id" : "54",
+      "name" : "Docker and Podman package repositories",
+      "properties" : {
+        "structurizr.dsl.identifier" : "packageRepos"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Download location of the DevPod CLI.",
+      "documentation" : { },
+      "id" : "55",
+      "name" : "DevPod releases",
+      "properties" : {
+        "structurizr.dsl.identifier" : "devpodReleases"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Native installer at claude.ai.",
+      "documentation" : { },
+      "id" : "56",
+      "name" : "Claude Code installer script",
+      "properties" : {
+        "structurizr.dsl.identifier" : "claudeInstall"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "The structurizr/structurizr container image, run with docker or podman.",
+      "documentation" : { },
+      "id" : "57",
+      "name" : "Structurizr local",
+      "properties" : {
+        "structurizr.dsl.identifier" : "structurizrLocal"
+      },
+      "tags" : "Element,Software System,External"
+    } ]
+  },
+  "name" : "Shortcuts",
+  "properties" : {
+    "structurizr.inspection.error" : "117",
+    "structurizr.dsl" : "d29ya3NwYWNlICJTaG9ydGN1dHMiICJLZXlib2FyZC1kcml2ZW4gbGF1bmNoZXIgYW5kIGF1dG9tYXRpb24gdG9vbGtpdCBmb3IgV2luZG93cy4gU2luZ2xlIHNvdXJjZSBvZiB0aGUgYXJjaGl0ZWN0dXJlIGRpYWdyYW1zIChTQy0wNjIpLiIgewoKICAgICFpZGVudGlmaWVycyBmbGF0CgogICAgbW9kZWwgewogICAgICAgIGRldmVsb3BlciA9IHBlcnNvbiAiRGV2ZWxvcGVyIiAiV29ya3Mgb24gYSBXaW5kb3dzIG1hY2hpbmUgYW5kIHN0YXJ0cyB0b29scyBhbmQgbGlua3MgZnJvbSB0aGUga2V5Ym9hcmQuIgoKICAgICAgICBzaG9ydGN1dHMgPSBzb2Z0d2FyZVN5c3RlbSAiU2hvcnRjdXRzIiAiSW5zdGFsbHMgYSBrZXlib2FyZC1kcml2ZW4gdG9vbHNldCBvbiBXaW5kb3dzIGFuZCBtYW5hZ2VzIFdTTCBkaXN0cmlidXRpb25zIGZvciBkZXZlbG9wbWVudC4iIHsKICAgICAgICAgICAgaW5zdGFsbGVyID0gY29udGFpbmVyICJJbnN0YWxsZXIgYW5kIHVwZGF0ZXIiICJCb290c3RyYXBzIFNjb29wIGFuZCBnaXQsIGNsb25lcyB0aGUgcmVwb3NpdG9yeSwgaW5zdGFsbHMgdGhlIG1hbmRhdG9yeSBhbmQgb3B0aW9uYWwgdG9vbHMgYW5kIFB3c2hTcGVjdHJlQ29uc29sZSwgY29waWVzIHRoZSBLZXlwaXJpbmhhIHByb2ZpbGUgYW5kIGNyZWF0ZXMgdGhlIGhvdGtleXMgc3RhcnR1cCBzaG9ydGN1dC4gYmluL2luc3RhbGwucHMxLCBiaW4vdXBkYXRlLmJhdC4iICJXaW5kb3dzIFBvd2VyU2hlbGwgNS4xIgogICAgICAgICAgICBsYXVuY2hlckNhdGFsb2cgPSBjb250YWluZXIgIkxhdW5jaGVyIGNhdGFsb2ciICJJbnRlcm5ldCBzaG9ydGN1dHMgdG8gd2ViIGFwcHMgYW5kIHRvb2xzIHRoYXQgdGhlIGxhdW5jaGVycyBpbmRleC4gbGlua3MvKi51cmwuIiAiSW50ZXJuZXQgc2hvcnRjdXQgZmlsZXMiICJEYXRhIHN0b3JlIgogICAgICAgICAgICBoZWxwZXJDb21tYW5kcyA9IGNvbnRhaW5lciAiSGVscGVyIGNvbW1hbmRzIiAiU21hbGwgY29tbWFuZHMgbGF1bmNoZWQgYnkgbmFtZTogcmRwLmNtZCBvcGVucyBhIFJlbW90ZSBEZXNrdG9wIHNlc3Npb24sIGdldFVzZXJJbmZvLnBzMSBzaG93cyBhIGRvbWFpbiB1c2VyJ3MgZGV0YWlscy4gYmluLy4iICJjbWQsIFBvd2VyU2hlbGwiCiAgICAgICAgICAgIGhvdGtleXMgPSBjb250YWluZXIgIkhvdGtleXMiICJHbG9iYWwgaG90a2V5cywgc3RhcnRlZCBhdCBsb2dpbiB0aHJvdWdoIGEgc3RhcnR1cCBzaG9ydGN1dC4gdG9vbHMvQXV0b0hvdEtleS4iICJBdXRvSG90a2V5IHNjcmlwdCIKICAgICAgICAgICAgc2Nvb3BIZWxwZXIgPSBjb250YWluZXIgIlNjb29wIHVwZGF0ZSBoZWxwZXIiICJMaXN0cyB0aGUgU2Nvb3AgYXBwcyB3aXRoIHVwZGF0ZXMgYW5kIHVwZGF0ZXMgdGhlIHNlbGVjdGVkIG9uZXM7IHJ1bnMgaW4gYSBjbGFzc2ljIGNvbnNvbGUgc28gcHdzaCBhbmQgV2luZG93cyBUZXJtaW5hbCBjYW4gYmUgdXBkYXRlZC4gdG9vbHMvc2Nvb3AsIGxpYi9zY29vcC9zY29vcC5wczEuIiAiV2luZG93cyBQb3dlclNoZWxsIDUuMSIKICAgICAgICAgICAgbnBtSW5zdGFsbGVyID0gY29udGFpbmVyICJucG0gcGFja2FnZSBpbnN0YWxsZXIiICJJbnN0YWxscyBvciB1cGRhdGVzIE5vZGUuanMgdGhyb3VnaCBTY29vcCBhbmQgYSBnbG9iYWwgbnBtIHBhY2thZ2UuIGxpYi9pbnN0YWxsL2luc3RhbGwtbnBtLWdsb2JhbC5wczEuIiAiUG93ZXJTaGVsbCA3IgogICAgICAgICAgICBwcm94eVRvb2xzID0gY29udGFpbmVyICJQcm94eSB0b29scyIgInB4LXByb3h5LnBzMSBpbnN0YWxscywgY29uZmlndXJlcywgc3RhcnRzIGFuZCB0ZXN0cyBweDsgc2V0UHJveHkucHMxIHNldHMgdGhlIHNlc3Npb24gcHJveHkgZnJvbSB0aGUgUEFDIGZpbGUuIHRvb2xzL3Byb3h5LiIgIlBvd2VyU2hlbGwgNyIKICAgICAgICAgICAgd3NsTWFuYWdlciA9IGNvbnRhaW5lciAiV1NMIE1hbmFnZXIiICJJbnN0YWxscywgY2xvbmVzLCB1cGRhdGVzIGFuZCByZW1vdmVzIFdTTCBkaXN0cmlidXRpb25zIGFuZCBwcmVwYXJlcyB0aGVtIGZvciBkZXYgY29udGFpbmVycywgYXMgYSBUVUkgYW5kIGEgQ0xJLiB0b29scy93c2wtbWFuYWdlciwgbGliL3dzbCBsb2FkZWQgdGhyb3VnaCB3c2wucHMxLiIgIlBvd2VyU2hlbGwgNywgUHdzaFNwZWN0cmVDb25zb2xlIiB7CiAgICAgICAgICAgICAgICBtZW51ID0gY29tcG9uZW50ICJNZW51IGFuZCBlbnRyeSBwb2ludCIgIlBhcnNlcyB0aGUgQ0xJIGNvbW1hbmQgb3IgcnVucyB0aGUgaW50ZXJhY3RpdmUgbWVudSBhYm92ZSB0aGUgZGlzdHJpYnV0aW9uIHRhYmxlLiB3c2wtbWFuYWdlci5wczEsIG1hbmFnZXIucHMxOiBJbnZva2UtV3NsTWFuYWdlciwgU3RhcnQtSW50ZXJhY3RpdmVNb2RlLCBTaG93LVdzbE1lbnUuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHNwZWN0cmUgPSBjb21wb25lbnQgIlNwZWN0cmUgbG9hZGVyIiAiSW1wb3J0cyBQd3NoU3BlY3RyZUNvbnNvbGUgYW5kIG9mZmVycyB0byBpbnN0YWxsIGl0IHdoZW4gaXQgaXMgbWlzc2luZy4gc3BlY3RyZS5wczEuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHRhYmxlID0gY29tcG9uZW50ICJEaXN0cmlidXRpb24gdGFibGUiICJSZW5kZXJzIHRoZSBkaXN0cmlidXRpb25zIHdpdGggdGhlaXIgc3RhdGUuIGNvbW1hbmRzLnBzMTogU2hvdy1Xc2xEaXN0cm9UYWJsZS4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgcGlja2VyID0gY29tcG9uZW50ICJEaXN0cmlidXRpb24gcGlja2VyIiAiQXJyb3cta2V5IHBpY2tlciB3aXRoIGEgQmFjayBlbnRyeTsgcmVzb2x2ZXMgbmFtZXMgYW5kIG51bWJlcnMgZm9yIHRoZSBDTEkuIGNvbW1hbmRzLnBzMTogU2VsZWN0LVdzbERpc3Ryby4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgY29uZmlybSA9IGNvbXBvbmVudCAiQ29uZmlybWF0aW9uIiAiW3kvTl0gcHJvbXB0IGJlZm9yZSBkZXN0cnVjdGl2ZSBhY3Rpb25zOyBza2lwcGVkIGZvciBDTEkgYXJndW1lbnRzIGFuZCBpbiBDSS4gY29tbWFuZHMucHMxOiBDb25maXJtLURlc3RydWN0aXZlQWN0aW9uLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgICAgICBkaXNwYXRjaGVyID0gY29tcG9uZW50ICJDb21tYW5kIGRpc3BhdGNoZXIiICJSb3V0ZXMgYSBjb21tYW5kIHRvIGl0cyBoYW5kbGVyIGZvciBUVUkgYW5kIENMSSBhbGlrZS4gY29tbWFuZHMucHMxOiBJbnZva2UtV3NsQ29tbWFuZC4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgbGlmZWN5Y2xlSGFuZGxlcnMgPSBjb21wb25lbnQgIkxpZmVjeWNsZSBoYW5kbGVycyIgIkluc3RhbGwsIHN0YXJ0LCBzdG9wLCBjbG9uZSwgdXBkYXRlIGFuZCByZW1vdmUgYSBkaXN0cmlidXRpb24uIGNvbW1hbmRzLnBzMTogSW52b2tlLUNyZWF0ZURpc3RybywgSW52b2tlLU9wZW5EaXN0cm9TaGVsbCwgSW52b2tlLVRlcm1pbmF0ZURpc3RybywgSW52b2tlLUNsb25lRGlzdHJvLCBJbnZva2UtVXBkYXRlRGlzdHJvLCBJbnZva2UtUmVtb3ZlRGlzdHJvLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgICAgICBzZXR1cEhhbmRsZXJzID0gY29tcG9uZW50ICJTZXR1cCBoYW5kbGVycyIgIlByZXBhcmUgYSBkaXN0cmlidXRpb24gZm9yIGRldiBjb250YWluZXJzLiBjb21tYW5kcy5wczE6IEludm9rZS1TZXR1cFVzZXIsIEludm9rZS1TZXR1cENhLCBJbnZva2UtU2V0dXBQcm94eSwgSW52b2tlLVNldHVwRG9ja2VyLCBJbnZva2UtU2V0dXBQb2RtYW4sIEludm9rZS1TZXR1cERldlBvZCwgSW52b2tlLVN5bmNTc2hDb25maWcuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHdzbFdpZGVIYW5kbGVycyA9IGNvbXBvbmVudCAiV1NMLXdpZGUgaGFuZGxlcnMiICJDb25maWd1cmUgV1NMIGFzIGEgd2hvbGUgYW5kIHJlcGFpciBpbnRlcm9wLiBjb21tYW5kcy5wczE6IEludm9rZS1Db25maWd1cmVXc2xEZWZhdWx0LCBJbnZva2UtU2h1dGRvd25Xc2wsIEludm9rZS1SZXBhaXJJbnRlcm9wLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgICAgICBjb3JlID0gY29tcG9uZW50ICJTdGF0dXMgY2hlY2tzIiAiTGlzdHMgZGlzdHJpYnV0aW9ucyBhbmQgdGhlaXIgc3RhdGUsIGNoZWNrcyBXU0wgMiBhbmQgc3lzdGVtZCwgc3RvcHMgYSBkaXN0cmlidXRpb24uIGNvcmUucHMxLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgICAgICBpbnN0YWxsID0gY29tcG9uZW50ICJQcm92aXNpb25pbmciICJMaXN0cyB0aGUgb25saW5lIGNhdGFsb2cgYW5kIGluc3RhbGxzIGEgZGlzdHJpYnV0aW9uLiBpbnN0YWxsLnBzMS4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgb3BzID0gY29tcG9uZW50ICJPcGVyYXRpb25zIiAiUmVtb3ZlcywgY2xvbmVzIGFuZCB1cGRhdGVzIGEgZGlzdHJpYnV0aW9uLCBvcGVucyBhIHNoZWxsLCBzaHV0cyBXU0wgZG93biwgbWVyZ2VzIHRoZSAud3NsY29uZmlnIGRlZmF1bHRzLiBvcHMucHMxLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgICAgICB3c2xDb25mID0gY29tcG9uZW50ICJ3c2wuY29uZiIgIlJlYWRzLCBtZXJnZXMgYW5kIGNoZWNrcyBhIGRpc3RyaWJ1dGlvbidzIC9ldGMvd3NsLmNvbmYuIHdzbC1jb25mLnBzMS4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgdXNlck1nbXQgPSBjb21wb25lbnQgIlVzZXJzIiAiQ3JlYXRlcyB0aGUgZGVmYXVsdCB1c2VyIHdpdGggc3Vkby4gdXNlci5wczEuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIGV4ZWMgPSBjb21wb25lbnQgIkV4ZWN1dGlvbiBicmlkZ2UiICJSdW5zIGNvbW1hbmRzIGFuZCBCYXNoIHNjcmlwdHMgaW5zaWRlIGEgZGlzdHJpYnV0aW9uIHRocm91Z2ggd3NsLmV4ZS4gZXhlYy5wczEuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIGRvY2tlciA9IGNvbXBvbmVudCAiRG9ja2VyIHNldHVwIiAiSW5zdGFsbHMgRG9ja2VyIEVuZ2luZSBpbiBhIGRpc3RyaWJ1dGlvbi4gZG9ja2VyLnBzMTogSW5zdGFsbC1Xc2xEb2NrZXJFbmdpbmUuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHBvZG1hbiA9IGNvbXBvbmVudCAiUG9kbWFuIHNldHVwIiAiSW5zdGFsbHMgcm9vdGxlc3MgUG9kbWFuIGluIGEgZGlzdHJpYnV0aW9uLiBwb2RtYW4ucHMxOiBJbnN0YWxsLVdzbFBvZG1hbi4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgZGV2cG9kID0gY29tcG9uZW50ICJEZXZQb2Qgc2V0dXAiICJJbnN0YWxscyB0aGUgRGV2UG9kIENMSSBhbmQgaXRzIHByb3ZpZGVyLiBkZXZwb2QucHMxOiBJbnN0YWxsLVdzbERldlBvZC4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgc3NoID0gY29tcG9uZW50ICJTU0ggc3luYyIgIlN5bmNzIFNTSCBrZXlzIGFuZCBjb25maWcgYmV0d2VlbiBXaW5kb3dzIGFuZCBhIGRpc3RyaWJ1dGlvbi4gc3NoLnBzMTogSW52b2tlLVdzbFN5bmNTc2hDb25maWcuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHByb3h5ID0gY29tcG9uZW50ICJQcm94eSBzZXR1cCIgIkRldGVjdHMgcHggb3IgdGhlIFBBQyBwcm94eSBhbmQgY29uZmlndXJlcyBhIGRpc3RyaWJ1dGlvbiBmb3IgaXQuIHByb3h5LnBzMTogSW5zdGFsbC1Xc2xQcm94eS4iICJQb3dlclNoZWxsIgogICAgICAgICAgICAgICAgY2EgPSBjb21wb25lbnQgIlJvb3QgQ0Egc2V0dXAiICJTZWxlY3RzIHRoZSBjb3Jwb3JhdGUgcm9vdCBDQXMgZnJvbSB0aGUgV2luZG93cyByb290IHN0b3JlLCBieSBzdWJqZWN0IHBhdHRlcm4gb3IgYXMgdGhlIHJvb3Qgb2YgYW4gSFRUUFMgc2l0ZSdzIGNlcnRpZmljYXRlIGNoYWluLCBhbmQgaW5zdGFsbHMgb3IgcmVtb3ZlcyB0aGVtIGluIGEgZGlzdHJpYnV0aW9uLiBjYS5wczE6IEdldC1Db3Jwb3JhdGVSb290Q2VydGlmaWNhdGUsIEdldC1VcmxSb290Q2VydGlmaWNhdGUsIEluc3RhbGwtV3NsQ2FDZXJ0aWZpY2F0ZSwgUmVtb3ZlLVdzbENhQ2VydGlmaWNhdGUuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgICAgIHV0aWxzID0gY29tcG9uZW50ICJVdGlsaXRpZXMiICJTaGFyZWQgaGVscGVyczogSW52b2tlLUNvbW1hbmRMaW5lLCBjb25zb2xlIG91dHB1dCwgQ0kgZGV0ZWN0aW9uLiBsaWIvdXRpbHMvdXRpbHMucHMxLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZGlzdHJvU2NyaXB0cyA9IGNvbnRhaW5lciAiRGlzdHJpYnV0aW9uIHNjcmlwdHMiICJCYXNoIHNjcmlwdHMgdGhhdCBXU0wgTWFuYWdlciBydW5zIGluc2lkZSBhIGRpc3RyaWJ1dGlvbjsgdGhleSBlc2NhbGF0ZSB3aXRoIHN1ZG8gdGhlbXNlbHZlcy4gbGliL3dzbC9zY3JpcHRzLiIgIkJhc2ggaW5zaWRlIGEgV1NMIGRpc3RyaWJ1dGlvbiIgewogICAgICAgICAgICAgICAgaW5zdGFsbERvY2tlclNoID0gY29tcG9uZW50ICJpbnN0YWxsLWRvY2tlci5zaCIgIkluc3RhbGxzIERvY2tlciBDRSBhbmQgQ29tcG9zZSwgY29uZmlndXJlcyBiaW5mbXQsIGFkZHMgdGhlIHVzZXIgdG8gdGhlIGRvY2tlciBncm91cC4iICJCYXNoIgogICAgICAgICAgICAgICAgaW5zdGFsbFBvZG1hblNoID0gY29tcG9uZW50ICJpbnN0YWxsLXBvZG1hbi5zaCIgIkluc3RhbGxzIHJvb3RsZXNzIFBvZG1hbiBmcm9tIHRoZSBkaXN0cmlidXRpb24ncyBwYWNrYWdlcywgZW5hYmxlcyBsaW5nZXIgYW5kIHRoZSB1c2VyJ3MgUG9kbWFuIHNvY2tldCwgYW5kIHBvaW50cyBET0NLRVJfSE9TVCBhdCBpdC4iICJCYXNoIgogICAgICAgICAgICAgICAgaW5zdGFsbERldnBvZFNoID0gY29tcG9uZW50ICJpbnN0YWxsLWRldnBvZC5zaCIgIkRvd25sb2FkcyB0aGUgRGV2UG9kIENMSSBhbmQgY29uZmlndXJlcyBpdHMgcHJvdmlkZXIuIiAiQmFzaCIKICAgICAgICAgICAgICAgIHNldHVwUHJveHlTaCA9IGNvbXBvbmVudCAic2V0dXAtcHJveHkuc2giICJXcml0ZXMgdGhlIHByb3h5IHNldHRpbmdzIGZvciBzaGVsbHMsIGFwdCwgRG9ja2VyIGFuZCBQb2RtYW4uIiAiQmFzaCIKICAgICAgICAgICAgICAgIHNldHVwQ2FTaCA9IGNvbXBvbmVudCAic2V0dXAtY2Euc2giICJXcml0ZXMgd3NsLW1hbmFnZXItKi5jcnQgdG8gL3Vzci9sb2NhbC9zaGFyZS9jYS1jZXJ0aWZpY2F0ZXMgYW5kIHJ1bnMgdXBkYXRlLWNhLWNlcnRpZmljYXRlcy4iICJCYXNoIgogICAgICAgICAgICAgICAgc3luY1NzaENvbmZpZ1NoID0gY29tcG9uZW50ICJzeW5jLXNzaC1jb25maWcuc2giICJDb3BpZXMgU1NIIGtleXMgaW50byB0aGUgZGlzdHJpYnV0aW9uIGFuZCBzeW5jcyBEZXZQb2QgZW50cmllcyBiYWNrIHRvIFdpbmRvd3MuIiAiQmFzaCIKICAgICAgICAgICAgfQogICAgICAgICAgICBjbGF1ZGVDb2RlSW5zdGFsbGVyID0gY29udGFpbmVyICJDbGF1ZGUgQ29kZSBpbnN0YWxsZXIiICJJbnN0YWxscyBvciB1cGRhdGVzIHRoZSBDbGF1ZGUgQ29kZSBDTEkgd2l0aCB0aGUgbmF0aXZlIGluc3RhbGxlci4gdG9vbHMvY2xhdWRlLWNvZGUuIiAiUG93ZXJTaGVsbCIKICAgICAgICAgICAgZmxvd0xhdW5jaGVyU2V0dXAgPSBjb250YWluZXIgIkZsb3cgTGF1bmNoZXIgc2V0dXAiICJJbnN0YWxscyBGbG93IExhdW5jaGVyIGFzIGFuIG9wdGlvbmFsIGxhdW5jaGVyIGFuZCBjb25maWd1cmVzIGl0cyBQcm9ncmFtIHBsdWdpbiB0byBpbmRleCAudXJsIGZpbGVzLiB0b29scy9mbG93LWxhdW5jaGVyLiIgIlBvd2VyU2hlbGwiCiAgICAgICAgICAgIHdpbmRvd3NUd2Vha3MgPSBjb250YWluZXIgIldpbmRvd3MgdHdlYWtzIiAiRGlzYWJsZXMgQ2FwcyBMb2NrLCB0aGUgc2NyZWVuIHNhdmVyIGFuZCBtb3JlIHRocm91Z2ggcmVnaXN0cnkgZmlsZXMuIHRvb2xzL3dpbmRvd3MuIiAiY21kLCByZWdpc3RyeSBmaWxlcyIKICAgICAgICAgICAgZ2l0SG9va3MgPSBjb250YWluZXIgIkdpdCBob29rcyIgInByZS1jb21taXQgY2hlY2tzIEJPTSBhbmQgUFNTY3JpcHRBbmFseXplciBvbiBzdGFnZWQgLnBzMSBmaWxlcywgY29tbWl0LW1zZyBjaGVja3MgdGhlIGNvbnZlbnRpb25hbC1jb21taXQgc3ViamVjdCB3aXRoIGl0cyBiYWNrbG9nIGl0ZW07IGluc3RhbGxlZCBieSBpbnN0YWxsLWhvb2tzLnBzMS4gdG9vbHMvZ2l0aG9va3MuIiAiUE9TSVggc2hlbGwsIHJ1biBieSBHaXQiCiAgICAgICAgICAgIGFyY2hpdGVjdHVyZVZpZXdlciA9IGNvbnRhaW5lciAiQXJjaGl0ZWN0dXJlIHZpZXdlciIgIlN0YXJ0cyBTdHJ1Y3R1cml6ciBsb2NhbCBvbiB0aGlzIG1vZGVsLiB0b29scy9zdHJ1Y3R1cml6ci4iICJCYXNoLCBQb3dlclNoZWxsIgogICAgICAgIH0KCiAgICAgICAga2V5cGlyaW5oYSA9IHNvZnR3YXJlU3lzdGVtICJLZXlwaXJpbmhhIiAiS2V5Ym9hcmQgbGF1bmNoZXI7IGluZGV4ZXMgdGhlIHNob3J0Y3V0cyBmb2xkZXIgYW5kIHNob3J0Y3V0c19wcml2YXRlLiIgIkV4dGVybmFsIgogICAgICAgIGZsb3dMYXVuY2hlciA9IHNvZnR3YXJlU3lzdGVtICJGbG93IExhdW5jaGVyIiAiT3B0aW9uYWwga2V5Ym9hcmQgbGF1bmNoZXIuIiAiRXh0ZXJuYWwiCiAgICAgICAgc2Nvb3AgPSBzb2Z0d2FyZVN5c3RlbSAiU2Nvb3AiICJDb21tYW5kLWxpbmUgaW5zdGFsbGVyIGZvciBXaW5kb3dzIHdpdGggaXRzIGJ1Y2tldHMuIiAiRXh0ZXJuYWwiCiAgICAgICAgZ2l0aHViID0gc29mdHdhcmVTeXN0ZW0gIkdpdEh1YiIgIkhvc3RzIHRoZSBzaG9ydGN1dHMgcmVwb3NpdG9yeS4iICJFeHRlcm5hbCIKICAgICAgICBwc0dhbGxlcnkgPSBzb2Z0d2FyZVN5c3RlbSAiUG93ZXJTaGVsbCBHYWxsZXJ5IiAiU291cmNlIG9mIHRoZSBQd3NoU3BlY3RyZUNvbnNvbGUgbW9kdWxlLiIgIkV4dGVybmFsIgogICAgICAgIHdpbmRvd3MgPSBzb2Z0d2FyZVN5c3RlbSAiV2luZG93cyIgIlJlZ2lzdHJ5LCBJbnRlcm5ldCBTZXR0aW5ncyBpbmNsdWRpbmcgdGhlIFBBQyBVUkwsIGFuZCB0aGUgY2VydGlmaWNhdGUgc3RvcmUuIiAiRXh0ZXJuYWwiCiAgICAgICAgd3NsID0gc29mdHdhcmVTeXN0ZW0gIldpbmRvd3MgU3Vic3lzdGVtIGZvciBMaW51eCIgIndzbC5leGUgYW5kIHRoZSBXU0wgMiBkaXN0cmlidXRpb25zLiIgIkV4dGVybmFsIgogICAgICAgIHB4ID0gc29mdHdhcmVTeXN0ZW0gInB4IiAiTG9jYWwgYXV0aGVudGljYXRpbmcgcHJveHkgb24gbG9jYWxob3N0OjMxMjgsIGluc3RhbGxlZCB0aHJvdWdoIFNjb29wLiIgIkV4dGVybmFsIgogICAgICAgIGNvcnBQcm94eSA9IHNvZnR3YXJlU3lzdGVtICJDb3Jwb3JhdGUgcHJveHkiICJGb3VuZCB0aHJvdWdoIHRoZSBQQUMgZmlsZTsgcHggYXV0aGVudGljYXRlcyB0byBpdC4iICJFeHRlcm5hbCIKICAgICAgICBwYWNrYWdlUmVwb3MgPSBzb2Z0d2FyZVN5c3RlbSAiRG9ja2VyIGFuZCBQb2RtYW4gcGFja2FnZSByZXBvc2l0b3JpZXMiICJBUFQgcmVwb3NpdG9yaWVzIGZvciB0aGUgY29udGFpbmVyIGVuZ2luZXMuIiAiRXh0ZXJuYWwiCiAgICAgICAgZGV2cG9kUmVsZWFzZXMgPSBzb2Z0d2FyZVN5c3RlbSAiRGV2UG9kIHJlbGVhc2VzIiAiRG93bmxvYWQgbG9jYXRpb24gb2YgdGhlIERldlBvZCBDTEkuIiAiRXh0ZXJuYWwiCiAgICAgICAgY2xhdWRlSW5zdGFsbCA9IHNvZnR3YXJlU3lzdGVtICJDbGF1ZGUgQ29kZSBpbnN0YWxsZXIgc2NyaXB0IiAiTmF0aXZlIGluc3RhbGxlciBhdCBjbGF1ZGUuYWkuIiAiRXh0ZXJuYWwiCiAgICAgICAgc3RydWN0dXJpenJMb2NhbCA9IHNvZnR3YXJlU3lzdGVtICJTdHJ1Y3R1cml6ciBsb2NhbCIgIlRoZSBzdHJ1Y3R1cml6ci9zdHJ1Y3R1cml6ciBjb250YWluZXIgaW1hZ2UsIHJ1biB3aXRoIGRvY2tlciBvciBwb2RtYW4uIiAiRXh0ZXJuYWwiCgogICAgICAgIGRldmVsb3BlciAtPiBrZXlwaXJpbmhhICJMYXVuY2hlcyB0b29scyBhbmQgbGlua3MgYnkgbmFtZSIKICAgICAgICBkZXZlbG9wZXIgLT4gZmxvd0xhdW5jaGVyICJMYXVuY2hlcyBsaW5rcyBieSBuYW1lIChvcHRpb25hbCkiCiAgICAgICAgZGV2ZWxvcGVyIC0+IGhvdGtleXMgIlByZXNzZXMgZ2xvYmFsIGhvdGtleXMiCiAgICAgICAgZGV2ZWxvcGVyIC0+IGluc3RhbGxlciAiSW5zdGFsbHMgYW5kIHVwZGF0ZXMgU2hvcnRjdXRzIgogICAgICAgIGRldmVsb3BlciAtPiBtZW51ICJSdW5zIGNvbW1hbmRzIG9yIHVzZXMgdGhlIG1lbnUiCiAgICAgICAgZGV2ZWxvcGVyIC0+IGdpdEhvb2tzICJDb21taXRzIGNoYW5nZXM7IEdpdCBydW5zIHRoZSBob29rcyIKICAgICAgICBrZXlwaXJpbmhhIC0+IGxhdW5jaGVyQ2F0YWxvZyAiSW5kZXhlcyBhbmQgb3BlbnMiCiAgICAgICAga2V5cGlyaW5oYSAtPiBoZWxwZXJDb21tYW5kcyAiTGF1bmNoZXMiCiAgICAgICAga2V5cGlyaW5oYSAtPiB3c2xNYW5hZ2VyICJMYXVuY2hlcyB3c2wtbWFuYWdlci5iYXQiCiAgICAgICAga2V5cGlyaW5oYSAtPiBzY29vcEhlbHBlciAiTGF1bmNoZXMgdXBkYXRlLXNjb29wLmJhdCIKICAgICAgICBrZXlwaXJpbmhhIC0+IHByb3h5VG9vbHMgIkxhdW5jaGVzIHB4LXByb3h5LmJhdCIKICAgICAgICBrZXlwaXJpbmhhIC0+IGluc3RhbGxlciAiTGF1bmNoZXMgdXBkYXRlLmJhdCIKICAgICAgICBrZXlwaXJpbmhhIC0+IGFyY2hpdGVjdHVyZVZpZXdlciAiTGF1bmNoZXMgc3RydWN0dXJpenItbG9jYWwuYmF0IgogICAgICAgIGZsb3dMYXVuY2hlciAtPiBsYXVuY2hlckNhdGFsb2cgIkluZGV4ZXMgLnVybCBmaWxlcyIKCiAgICAgICAgaW5zdGFsbGVyIC0+IGdpdGh1YiAiQ2xvbmVzIGFuZCBwdWxscyB0aGUgcmVwb3NpdG9yeSIKICAgICAgICBpbnN0YWxsZXIgLT4gc2Nvb3AgIkluc3RhbGxzIFNjb29wLCBnaXQgYW5kIHRoZSB0b29sIHNldHMiCiAgICAgICAgaW5zdGFsbGVyIC0+IHBzR2FsbGVyeSAiSW5zdGFsbHMgUHdzaFNwZWN0cmVDb25zb2xlIgogICAgICAgIGluc3RhbGxlciAtPiBrZXlwaXJpbmhhICJDb3BpZXMgdGhlIHByb2ZpbGUgYW5kIHN0YXJ0cyBpdCIKICAgICAgICBpbnN0YWxsZXIgLT4gaG90a2V5cyAiQ3JlYXRlcyB0aGUgc3RhcnR1cCBzaG9ydGN1dCIKICAgICAgICBzY29vcEhlbHBlciAtPiBzY29vcCAiVXBkYXRlcyBhcHBzIGFuZCBidWNrZXRzIgogICAgICAgIG5wbUluc3RhbGxlciAtPiBzY29vcCAiSW5zdGFsbHMgTm9kZS5qcyIKICAgICAgICBwcm94eVRvb2xzIC0+IHNjb29wICJJbnN0YWxscyBweCIKICAgICAgICBwcm94eVRvb2xzIC0+IHB4ICJDb25maWd1cmVzLCBzdGFydHMsIHN0b3BzIGFuZCB0ZXN0cyIKICAgICAgICBwcm94eVRvb2xzIC0+IHdpbmRvd3MgIlJlYWRzIHRoZSBQQUMgVVJMIGZyb20gSW50ZXJuZXQgU2V0dGluZ3MiCiAgICAgICAgcHggLT4gY29ycFByb3h5ICJBdXRoZW50aWNhdGVzIHVwc3RyZWFtIgogICAgICAgIGNsYXVkZUNvZGVJbnN0YWxsZXIgLT4gY2xhdWRlSW5zdGFsbCAiRG93bmxvYWRzIGFuZCBydW5zIgogICAgICAgIGZsb3dMYXVuY2hlclNldHVwIC0+IHNjb29wICJJbnN0YWxscyBGbG93IExhdW5jaGVyIgogICAgICAgIGZsb3dMYXVuY2hlclNldHVwIC0+IGZsb3dMYXVuY2hlciAiQ29uZmlndXJlcyB0aGUgUHJvZ3JhbSBwbHVnaW4iCiAgICAgICAgd2luZG93c1R3ZWFrcyAtPiB3aW5kb3dzICJJbXBvcnRzIHJlZ2lzdHJ5IHNldHRpbmdzIgogICAgICAgIGFyY2hpdGVjdHVyZVZpZXdlciAtPiBzdHJ1Y3R1cml6ckxvY2FsICJSdW5zIG9uIGRvY3MvYXJjaGl0ZWN0dXJlIgoKICAgICAgICBtZW51IC0+IHNwZWN0cmUgIkxvYWRzIFB3c2hTcGVjdHJlQ29uc29sZSIKICAgICAgICBtZW51IC0+IHRhYmxlICJTaG93cyB0aGUgZGlzdHJpYnV0aW9ucyIKICAgICAgICBtZW51IC0+IGRpc3BhdGNoZXIgIlJ1bnMgdGhlIHNlbGVjdGVkIGNvbW1hbmQiCiAgICAgICAgc3BlY3RyZSAtPiBwc0dhbGxlcnkgIkluc3RhbGxzIFB3c2hTcGVjdHJlQ29uc29sZSB3aGVuIG1pc3NpbmciCiAgICAgICAgdGFibGUgLT4gY29yZSAiR2V0LVdzbERpc3Ryb0xpc3QgLURldGFpbGVkIgogICAgICAgIHBpY2tlciAtPiBjb3JlICJHZXQtV3NsRGlzdHJvTGlzdCAtRGV0YWlsZWQiCiAgICAgICAgZGlzcGF0Y2hlciAtPiBsaWZlY3ljbGVIYW5kbGVycyAiaW5zdGFsbCwgc2hlbGwsIHRlcm1pbmF0ZSwgY2xvbmUsIHVwZGF0ZSwgcmVtb3ZlIgogICAgICAgIGRpc3BhdGNoZXIgLT4gc2V0dXBIYW5kbGVycyAic2V0dXAtdXNlciwgc2V0dXAtY2EsIHNldHVwLXByb3h5LCBzZXR1cC1kb2NrZXIsIHNldHVwLXBvZG1hbiwgc2V0dXAtZGV2cG9kLCBzeW5jLXNzaC1jb25maWciCiAgICAgICAgZGlzcGF0Y2hlciAtPiB3c2xXaWRlSGFuZGxlcnMgImNvbmZpZ3VyZS13c2wsIHNodXRkb3duLCByZXBhaXItaW50ZXJvcCIKICAgICAgICBsaWZlY3ljbGVIYW5kbGVycyAtPiBwaWNrZXIgIlNlbGVjdHMgYSBkaXN0cmlidXRpb24iCiAgICAgICAgbGlmZWN5Y2xlSGFuZGxlcnMgLT4gY29uZmlybSAiQ29uZmlybXMgcmVtb3ZlIGFuZCBzdG9wIgogICAgICAgIGxpZmVjeWNsZUhhbmRsZXJzIC0+IGluc3RhbGwgIk5ldy1Xc2xEaXN0cm8iCiAgICAgICAgbGlmZWN5Y2xlSGFuZGxlcnMgLT4gb3BzICJDb3B5LSwgVXBkYXRlLSwgUmVtb3ZlLVdzbERpc3RybywgT3Blbi1Xc2xEaXN0cm9TaGVsbCIKICAgICAgICBsaWZlY3ljbGVIYW5kbGVycyAtPiBjb3JlICJTdG9wLVdzbERpc3RybyIKICAgICAgICBzZXR1cEhhbmRsZXJzIC0+IHBpY2tlciAiU2VsZWN0cyBhIGRpc3RyaWJ1dGlvbiIKICAgICAgICBzZXR1cEhhbmRsZXJzIC0+IHVzZXJNZ210ICJOZXctV3NsVXNlciIKICAgICAgICBzZXR1cEhhbmRsZXJzIC0+IGRvY2tlciAiSW5zdGFsbC1Xc2xEb2NrZXJFbmdpbmUiCiAgICAgICAgc2V0dXBIYW5kbGVycyAtPiBwb2RtYW4gIkluc3RhbGwtV3NsUG9kbWFuIgogICAgICAgIHNldHVwSGFuZGxlcnMgLT4gZGV2cG9kICJJbnN0YWxsLVdzbERldlBvZCIKICAgICAgICBzZXR1cEhhbmRsZXJzIC0+IGNhICJJbnN0YWxsLVdzbENhQ2VydGlmaWNhdGUsIFJlbW92ZS1Xc2xDYUNlcnRpZmljYXRlIgogICAgICAgIHNldHVwSGFuZGxlcnMgLT4gcHJveHkgIkluc3RhbGwtV3NsUHJveHkiCiAgICAgICAgc2V0dXBIYW5kbGVycyAtPiBzc2ggIkludm9rZS1Xc2xTeW5jU3NoQ29uZmlnIgogICAgICAgIHdzbFdpZGVIYW5kbGVycyAtPiBjb25maXJtICJDb25maXJtcyBzaHV0ZG93biIKICAgICAgICB3c2xXaWRlSGFuZGxlcnMgLT4gb3BzICJJbnZva2UtQ29uZmlndXJlV3NsLCBTdG9wLVdzbFN1YnN5c3RlbSIKICAgICAgICB3c2xXaWRlSGFuZGxlcnMgLT4gd3NsQ29uZiAiU2V0LVdzbENvbmYgZm9yIGludGVyb3AiCiAgICAgICAgZG9ja2VyIC0+IGV4ZWMgIkludm9rZS1Xc2xEaXN0cm9TY3JpcHQiCiAgICAgICAgZG9ja2VyIC0+IHdzbENvbmYgIlNldC1Xc2xDb25mLCBUZXN0LSpDb25maWd1cmVkIgogICAgICAgIHBvZG1hbiAtPiBleGVjICJJbnZva2UtV3NsRGlzdHJvU2NyaXB0IgogICAgICAgIHBvZG1hbiAtPiB3c2xDb25mICJTZXQtV3NsQ29uZiwgVGVzdC0qQ29uZmlndXJlZCIKICAgICAgICBkZXZwb2QgLT4gZXhlYyAiSW52b2tlLVdzbERpc3Ryb1NjcmlwdCIKICAgICAgICBjYSAtPiBleGVjICJJbnZva2UtV3NsRGlzdHJvU2NyaXB0IgogICAgICAgIGNhIC0+IHdpbmRvd3MgIlJlYWRzIHRoZSByb290IGNlcnRpZmljYXRlIHN0b3JlIgogICAgICAgIHByb3h5IC0+IGV4ZWMgIkludm9rZS1Xc2xEaXN0cm9TY3JpcHQiCiAgICAgICAgcHJveHkgLT4gcHJveHlUb29scyAiVXNlcyB0aGUgUEFDIGFuZCBweCBkZXRlY3Rpb24gb2Ygc2V0UHJveHkucHMxIgogICAgICAgIHNzaCAtPiBleGVjICJJbnZva2UtV3NsRGlzdHJvU2NyaXB0IgogICAgICAgIHVzZXJNZ210IC0+IGV4ZWMgIkludm9rZS1Xc2xEaXN0cm9Db21tYW5kIgogICAgICAgIHVzZXJNZ210IC0+IHdzbENvbmYgIlNldC1Xc2xDb25mIgogICAgICAgIG9wcyAtPiBleGVjICJJbnZva2UtV3NsRGlzdHJvQ29tbWFuZCIKICAgICAgICBjb3JlIC0+IGV4ZWMgIkludm9rZS1Xc2xEaXN0cm9Db21tYW5kIgogICAgICAgIGV4ZWMgLT4gdXRpbHMgIkludm9rZS1Db21tYW5kTGluZSIKICAgICAgICBjb3JlIC0+IHdzbCAiTGlzdHMgYW5kIHN0b3BzIGRpc3RyaWJ1dGlvbnMiCiAgICAgICAgaW5zdGFsbCAtPiB3c2wgIkluc3RhbGxzIGZyb20gdGhlIG9ubGluZSBjYXRhbG9nIgogICAgICAgIG9wcyAtPiB3c2wgIkV4cG9ydHMsIGltcG9ydHMsIHVucmVnaXN0ZXJzLCBzaHV0cyBkb3duIgogICAgICAgIGV4ZWMgLT4gd3NsICJSdW5zIGNvbW1hbmRzIGluc2lkZSBhIGRpc3RyaWJ1dGlvbiIKICAgICAgICBleGVjIC0+IGluc3RhbGxEb2NrZXJTaCAiUnVucyIKICAgICAgICBleGVjIC0+IGluc3RhbGxQb2RtYW5TaCAiUnVucyIKICAgICAgICBleGVjIC0+IGluc3RhbGxEZXZwb2RTaCAiUnVucyIKICAgICAgICBleGVjIC0+IHNldHVwQ2FTaCAiUnVucyIKICAgICAgICBleGVjIC0+IHNldHVwUHJveHlTaCAiUnVucyIKICAgICAgICBleGVjIC0+IHN5bmNTc2hDb25maWdTaCAiUnVucyIKICAgICAgICBpbnN0YWxsRG9ja2VyU2ggLT4gcGFja2FnZVJlcG9zICJJbnN0YWxscyBEb2NrZXIgQ0UiCiAgICAgICAgaW5zdGFsbFBvZG1hblNoIC0+IHBhY2thZ2VSZXBvcyAiSW5zdGFsbHMgUG9kbWFuIgogICAgICAgIGluc3RhbGxEZXZwb2RTaCAtPiBkZXZwb2RSZWxlYXNlcyAiRG93bmxvYWRzIHRoZSBEZXZQb2QgQ0xJIgogICAgfQoKICAgIHZpZXdzIHsKICAgICAgICBzeXN0ZW1Db250ZXh0IHNob3J0Y3V0cyAiU3lzdGVtQ29udGV4dCIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICB9CgogICAgICAgIGNvbnRhaW5lciBzaG9ydGN1dHMgIkNvbnRhaW5lcnMiIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgfQoKICAgICAgICBjb21wb25lbnQgd3NsTWFuYWdlciAiV3NsTWFuYWdlci1PdmVydmlldyIgIkFsbCBjb21wb25lbnRzIG9mIFdTTCBNYW5hZ2VyLiIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICB9CgogICAgICAgIGNvbXBvbmVudCB3c2xNYW5hZ2VyICJXc2xNYW5hZ2VyLU1hbmFnZURpc3RyaWJ1dGlvbnMiICJVc2VyIGdvYWw6IG1hbmFnZSBkaXN0cmlidXRpb25zIChpbnN0YWxsLCBzdGFydCwgc3RvcCwgY2xvbmUsIHVwZGF0ZSwgcmVtb3ZlKS4iIHsKICAgICAgICAgICAgaW5jbHVkZSBkZXZlbG9wZXIgbWVudSB0YWJsZSBkaXNwYXRjaGVyIGxpZmVjeWNsZUhhbmRsZXJzIHBpY2tlciBjb25maXJtIGNvcmUgaW5zdGFsbCBvcHMgZXhlYyB3c2wKICAgICAgICB9CgogICAgICAgIGNvbXBvbmVudCB3c2xNYW5hZ2VyICJXc2xNYW5hZ2VyLVByZXBhcmVEaXN0cmlidXRpb24iICJVc2VyIGdvYWw6IHByZXBhcmUgYSBkaXN0cmlidXRpb24gZm9yIGRldiBjb250YWluZXJzLiIgewogICAgICAgICAgICBpbmNsdWRlIGRldmVsb3BlciBtZW51IGRpc3BhdGNoZXIgc2V0dXBIYW5kbGVycyBwaWNrZXIgdXNlck1nbXQgZG9ja2VyIHBvZG1hbiBkZXZwb2QgY2EgcHJveHkgc3NoIHdzbENvbmYgZXhlYyBkaXN0cm9TY3JpcHRzIHByb3h5VG9vbHMgd2luZG93cyBwYWNrYWdlUmVwb3MgZGV2cG9kUmVsZWFzZXMKICAgICAgICB9CgogICAgICAgIGNvbXBvbmVudCB3c2xNYW5hZ2VyICJXc2xNYW5hZ2VyLUNvbmZpZ3VyZVdzbCIgIlVzZXIgZ29hbDogY29uZmlndXJlIFdTTCBhcyBhIHdob2xlLiIgewogICAgICAgICAgICBpbmNsdWRlIGRldmVsb3BlciBtZW51IGRpc3BhdGNoZXIgd3NsV2lkZUhhbmRsZXJzIGNvbmZpcm0gb3BzIHdzbENvbmYgd3NsCiAgICAgICAgfQoKICAgICAgICBjb21wb25lbnQgZGlzdHJvU2NyaXB0cyAiRGlzdHJpYnV0aW9uU2NyaXB0cyIgIlRoZSBCYXNoIHNjcmlwdHMgV1NMIE1hbmFnZXIgcnVucyBpbnNpZGUgYSBkaXN0cmlidXRpb24uIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgIH0KCiAgICAgICAgc3R5bGVzIHsKICAgICAgICAgICAgZWxlbWVudCAiUGVyc29uIiB7CiAgICAgICAgICAgICAgICBzaGFwZSBQZXJzb24KICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzA4NDI3YgogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIlNvZnR3YXJlIFN5c3RlbSIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMTE2OGJkCiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiQ29udGFpbmVyIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM0MzhkZDUKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJDb21wb25lbnQiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzg1YmJmMAogICAgICAgICAgICAgICAgY29sb3IgIzAwMDAwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkV4dGVybmFsIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM5OTk5OTkKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJEYXRhIHN0b3JlIiB7CiAgICAgICAgICAgICAgICBzaGFwZSBGb2xkZXIKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQ==",
+    "structurizr.inspection.info" : "0",
+    "structurizr.inspection.ignore" : "0",
+    "structurizr.inspection.warning" : "0"
+  },
+  "views" : {
+    "componentViews" : [ {
+      "containerId" : "10",
+      "description" : "All components of WSL Manager.",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "12",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "13",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "14",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "17",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "18",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "19",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "20",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "21",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "23",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "24",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "25",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "26",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "27",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "28",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "29",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "30",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "31",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "32",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "33",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "49",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "50",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "51",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "WslManager-Overview",
+      "name" : "Component View: Shortcuts - WSL Manager",
+      "order" : 3,
+      "relationships" : [ {
+        "id" : "101"
+      }, {
+        "id" : "102"
+      }, {
+        "id" : "103"
+      }, {
+        "id" : "104"
+      }, {
+        "id" : "106"
+      }, {
+        "id" : "107"
+      }, {
+        "id" : "108"
+      }, {
+        "id" : "109"
+      }, {
+        "id" : "110"
+      }, {
+        "id" : "111"
+      }, {
+        "id" : "112"
+      }, {
+        "id" : "113"
+      }, {
+        "id" : "114"
+      }, {
+        "id" : "115"
+      }, {
+        "id" : "116"
+      }, {
+        "id" : "117"
+      }, {
+        "id" : "118"
+      }, {
+        "id" : "119"
+      }, {
+        "id" : "120"
+      }, {
+        "id" : "121"
+      }, {
+        "id" : "122"
+      }, {
+        "id" : "123"
+      }, {
+        "id" : "124"
+      }, {
+        "id" : "125"
+      }, {
+        "id" : "126"
+      }, {
+        "id" : "127"
+      }, {
+        "id" : "128"
+      }, {
+        "id" : "129"
+      }, {
+        "id" : "130"
+      }, {
+        "id" : "131"
+      }, {
+        "id" : "132"
+      }, {
+        "id" : "133"
+      }, {
+        "id" : "135"
+      }, {
+        "id" : "136"
+      }, {
+        "id" : "138"
+      }, {
+        "id" : "139"
+      }, {
+        "id" : "140"
+      }, {
+        "id" : "141"
+      }, {
+        "id" : "142"
+      }, {
+        "id" : "143"
+      }, {
+        "id" : "144"
+      }, {
+        "id" : "147"
+      }, {
+        "id" : "148"
+      }, {
+        "id" : "149"
+      }, {
+        "id" : "151"
+      }, {
+        "id" : "63"
+      }, {
+        "id" : "90"
+      } ]
+    }, {
+      "containerId" : "10",
+      "description" : "User goal: manage distributions (install, start, stop, clone, update, remove).",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "13",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "14",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "17",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "20",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "21",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "25",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "51",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "WslManager-ManageDistributions",
+      "name" : "Component View: Shortcuts - WSL Manager",
+      "order" : 4,
+      "relationships" : [ {
+        "id" : "102"
+      }, {
+        "id" : "103"
+      }, {
+        "id" : "106"
+      }, {
+        "id" : "107"
+      }, {
+        "id" : "108"
+      }, {
+        "id" : "111"
+      }, {
+        "id" : "112"
+      }, {
+        "id" : "113"
+      }, {
+        "id" : "114"
+      }, {
+        "id" : "115"
+      }, {
+        "id" : "141"
+      }, {
+        "id" : "142"
+      }, {
+        "id" : "144"
+      }, {
+        "id" : "147"
+      }, {
+        "id" : "148"
+      }, {
+        "id" : "149"
+      }, {
+        "id" : "63"
+      } ]
+    }, {
+      "containerId" : "10",
+      "description" : "User goal: prepare a distribution for dev containers.",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "14",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "18",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "23",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "24",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "25",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "26",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "27",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "28",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "29",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "30",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "31",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "33",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "50",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "54",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "55",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "WslManager-PrepareDistribution",
+      "name" : "Component View: Shortcuts - WSL Manager",
+      "order" : 5,
+      "relationships" : [ {
+        "id" : "103"
+      }, {
+        "id" : "109"
+      }, {
+        "id" : "116"
+      }, {
+        "id" : "117"
+      }, {
+        "id" : "118"
+      }, {
+        "id" : "119"
+      }, {
+        "id" : "120"
+      }, {
+        "id" : "121"
+      }, {
+        "id" : "122"
+      }, {
+        "id" : "123"
+      }, {
+        "id" : "127"
+      }, {
+        "id" : "128"
+      }, {
+        "id" : "129"
+      }, {
+        "id" : "130"
+      }, {
+        "id" : "131"
+      }, {
+        "id" : "132"
+      }, {
+        "id" : "133"
+      }, {
+        "id" : "135"
+      }, {
+        "id" : "136"
+      }, {
+        "id" : "138"
+      }, {
+        "id" : "139"
+      }, {
+        "id" : "140"
+      }, {
+        "id" : "151"
+      }, {
+        "id" : "165"
+      }, {
+        "id" : "169"
+      }, {
+        "id" : "63"
+      }, {
+        "id" : "90"
+      } ]
+    }, {
+      "containerId" : "10",
+      "description" : "User goal: configure WSL as a whole.",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "19",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "23",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "51",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "WslManager-ConfigureWsl",
+      "name" : "Component View: Shortcuts - WSL Manager",
+      "order" : 6,
+      "relationships" : [ {
+        "id" : "103"
+      }, {
+        "id" : "110"
+      }, {
+        "id" : "124"
+      }, {
+        "id" : "125"
+      }, {
+        "id" : "126"
+      }, {
+        "id" : "148"
+      }, {
+        "id" : "63"
+      } ]
+    }, {
+      "containerId" : "33",
+      "description" : "The Bash scripts WSL Manager runs inside a distribution.",
+      "elements" : [ {
+        "id" : "10",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "34",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "35",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "36",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "37",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "38",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "39",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "54",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "55",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "DistributionScripts",
+      "name" : "Component View: Shortcuts - Distribution scripts",
+      "order" : 7,
+      "relationships" : [ {
+        "id" : "152"
+      }, {
+        "id" : "155"
+      }, {
+        "id" : "157"
+      }, {
+        "id" : "159"
+      }, {
+        "id" : "161"
+      }, {
+        "id" : "163"
+      }, {
+        "id" : "164"
+      }, {
+        "id" : "167"
+      }, {
+        "id" : "168"
+      } ]
+    } ],
+    "configuration" : {
+      "styles" : {
+        "elements" : [ {
+          "background" : "#85bbf0",
+          "color" : "#000000",
+          "tag" : "Component"
+        }, {
+          "background" : "#438dd5",
+          "color" : "#ffffff",
+          "tag" : "Container"
+        }, {
+          "shape" : "Folder",
+          "tag" : "Data store"
+        }, {
+          "background" : "#999999",
+          "color" : "#ffffff",
+          "tag" : "External"
+        }, {
+          "background" : "#08427b",
+          "color" : "#ffffff",
+          "shape" : "Person",
+          "tag" : "Person"
+        }, {
+          "background" : "#1168bd",
+          "color" : "#ffffff",
+          "tag" : "Software System"
+        } ]
+      },
+      "terminology" : { }
+    },
+    "containerViews" : [ {
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "3",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "4",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "5",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "8",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "10",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "33",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "40",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "41",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "42",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "43",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "44",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "45",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "46",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "47",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "48",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "49",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "50",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "51",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "52",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "54",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "55",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "56",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "57",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalSoftwareSystemBoundariesVisible" : false,
+      "key" : "Containers",
+      "name" : "Container View: Shortcuts",
+      "order" : 2,
+      "relationships" : [ {
+        "id" : "105"
+      }, {
+        "id" : "134"
+      }, {
+        "id" : "137"
+      }, {
+        "id" : "145"
+      }, {
+        "id" : "153"
+      }, {
+        "id" : "165"
+      }, {
+        "id" : "169"
+      }, {
+        "id" : "58"
+      }, {
+        "id" : "59"
+      }, {
+        "id" : "60"
+      }, {
+        "id" : "62"
+      }, {
+        "id" : "64"
+      }, {
+        "id" : "65"
+      }, {
+        "id" : "66"
+      }, {
+        "id" : "68"
+      }, {
+        "id" : "69"
+      }, {
+        "id" : "70"
+      }, {
+        "id" : "71"
+      }, {
+        "id" : "72"
+      }, {
+        "id" : "73"
+      }, {
+        "id" : "74"
+      }, {
+        "id" : "76"
+      }, {
+        "id" : "78"
+      }, {
+        "id" : "80"
+      }, {
+        "id" : "82"
+      }, {
+        "id" : "84"
+      }, {
+        "id" : "85"
+      }, {
+        "id" : "86"
+      }, {
+        "id" : "87"
+      }, {
+        "id" : "88"
+      }, {
+        "id" : "90"
+      }, {
+        "id" : "93"
+      }, {
+        "id" : "95"
+      }, {
+        "id" : "96"
+      }, {
+        "id" : "98"
+      }, {
+        "id" : "99"
+      } ],
+      "softwareSystemId" : "2"
+    } ],
+    "systemContextViews" : [ {
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "45",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "46",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "47",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "48",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "49",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "50",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "51",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "52",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "54",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "55",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "56",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "57",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "key" : "SystemContext",
+      "name" : "System Context View: Shortcuts",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "100"
+      }, {
+        "id" : "146"
+      }, {
+        "id" : "166"
+      }, {
+        "id" : "170"
+      }, {
+        "id" : "58"
+      }, {
+        "id" : "59"
+      }, {
+        "id" : "61"
+      }, {
+        "id" : "67"
+      }, {
+        "id" : "75"
+      }, {
+        "id" : "77"
+      }, {
+        "id" : "79"
+      }, {
+        "id" : "81"
+      }, {
+        "id" : "83"
+      }, {
+        "id" : "89"
+      }, {
+        "id" : "91"
+      }, {
+        "id" : "94"
+      }, {
+        "id" : "97"
+      } ],
+      "softwareSystemId" : "2"
+    } ]
+  }
+}
