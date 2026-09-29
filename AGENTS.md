@@ -316,6 +316,26 @@ git log develop..HEAD   # Review ALL commits on branch
 # Even cosmetic changes to test files can break things
 ```
 
+#### Linear History: Rebase, Never Merge
+
+**Issue**: Merging `develop` into a feature branch puts a merge commit into the PR. The repository allows only "Rebase and merge", so the history stays linear only if feature branches never contain merge commits.
+
+**Guideline**: Bring a feature branch up to date by rebasing it onto `develop`, never by merging `develop` into it. Resolve conflicts commit by commit during the rebase, then push with `git push --force-with-lease`.
+
+**Example**:
+```bash
+git fetch origin
+git rebase origin/develop
+git push --force-with-lease
+```
+
+**Anti-pattern**:
+```bash
+git merge develop   # puts "Merge branch 'develop' into feature/..." into the PR
+```
+
+**When to apply**: Always, including when a PR shows a conflict with `develop`.
+
 #### Docs-Only Changes May Land Directly on `develop`
 
 **Context**: `develop` is a protected ref (PR required, 2 status checks). The repository owner has bypass rights and uses them intentionally for documentation-only changes.
