@@ -1021,9 +1021,9 @@ export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 
 ## Architecture
 
-For the planned C4 architecture of the WSL Manager (including Context, Container, and Component diagrams), see:
+WSL Manager is part of the C4 model of the whole repository in Structurizr DSL: system context, containers, an overview of its components and one component view per user goal. See:
 
-- [WSL Manager C4 Architecture](architecture/wsl-manager-c4.md)
+- [Architecture model (C4, Structurizr)](architecture/README.md)
 
 ---
 
