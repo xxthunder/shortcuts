@@ -14,7 +14,6 @@
 ### In Progress
 
 - [SC-001 — Backlog refinement](sc-001.md)
-- [SC-063 — setup-docker fails on WSL 3.0 at systemd-binfmt](sc-063.md)
 
 ### Open
 
@@ -42,6 +41,7 @@
 
 ### Done
 
+- [SC-063 — setup-docker fails on WSL 3.0 at systemd-binfmt](sc-063.md)
 - [SC-059 — WSL Manager docs claim `configure-wsl` writes `autoProxy = true`](sc-059.md)
 - [SC-058 — Redraw the WSL Manager panel at the live console width after a resize](sc-058.md)
 - [SC-057 — Refresh the distribution list in the WSL Manager menu](sc-057.md)
