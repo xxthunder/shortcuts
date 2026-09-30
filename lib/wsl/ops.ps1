@@ -424,7 +424,7 @@ function Invoke-ConfigureWsl {
 
     .DESCRIPTION
         Ensures the following keys are present in the [wsl2] section of .wslconfig.
-        Existing values are never overwritten.
+        Existing values are kept, except for 'autoProxy' (see below).
 
         kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
         networkingMode    = mirrored
