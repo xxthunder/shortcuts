@@ -13,5 +13,6 @@ Architecture documentation for the Shortcuts project.
 Records of significant architectural decisions, their context, and consequences.
 
 - [ADR 0001: Scoop and utils libraries stay Windows PowerShell 5.1-compatible](adr/0001-lib-powershell-5.1-compatibility.md)
+- [ADR 0003: wsl-manager keeps WSL's binfmt_misc protection on and does not rely on systemd-binfmt.service](adr/0003-wsl-manager-keeps-wsl-binfmt-protection.md)
 
 [← Back to README](../../README.md)
