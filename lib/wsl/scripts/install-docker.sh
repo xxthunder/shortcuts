@@ -207,9 +207,11 @@ setup_binfmt_interop() {
         echo ":WSLInterop:M::MZ::/init:PF" | sudo tee /etc/binfmt.d/WSLInterop.conf > /dev/null
     fi
 
-    # Restart systemd-binfmt to apply changes
+    # Apply the rule. Given a file, systemd-binfmt registers just that rule. Restarting
+    # systemd-binfmt.service would first flush all rules through
+    # /proc/sys/fs/binfmt_misc/status, which WSL 3.0 mounts read-only, and fail.
     if pidof systemd > /dev/null; then
-        sudo systemctl restart systemd-binfmt
+        sudo /usr/lib/systemd/systemd-binfmt /etc/binfmt.d/WSLInterop.conf
     fi
 }
 setup_binfmt_interop || { log_error "Failed to configure WSL interop via binfmt.d"; exit 3; }
@@ -234,15 +236,9 @@ if pidof systemd > /dev/null; then
         exit 3
     fi
 
-    # Verify WSLInterop is registered in kernel
-    if [ ! -e /proc/sys/fs/binfmt_misc/WSLInterop ]; then
-        log_error "WSLInterop not registered in binfmt_misc"
-        exit 3
-    fi
-
-    # Verify systemd-binfmt service is active
-    if ! systemctl is-active --quiet systemd-binfmt; then
-        log_error "systemd-binfmt service is not active"
+    # Verify WSLInterop is registered and enabled in the kernel
+    if [ "$(head -n 1 /proc/sys/fs/binfmt_misc/WSLInterop 2>/dev/null)" != "enabled" ]; then
+        log_error "WSLInterop not registered and enabled in binfmt_misc"
         exit 3
     fi
 fi
