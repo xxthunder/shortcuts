@@ -39,6 +39,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup DevPod](#setup-devpod)
   - [Sync SSH config](#sync-ssh-config)
   - [Setup proxy (corporate)](#setup-proxy-corporate)
+  - [Update WSL](#update-wsl)
   - [Shutdown WSL](#shutdown-wsl)
   - [Configure .wslconfig defaults](#configure-wslconfig-defaults)
   - [Refresh list](#refresh-list)
@@ -824,6 +825,25 @@ This command:
 - Writes `/etc/wsl-manager/proxy-mode` (`basic`) for mode-aware teardown
 - Remove mode deletes all managed proxy configurations and the mode marker
 - Is idempotent - safe to run multiple times (overwrites configuration)
+
+### Update WSL
+
+Update WSL itself to the latest release. This is not **Update distribution**, which updates the packages inside a distribution.
+
+- **TUI**: select **Update WSL**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 update-wsl`
+
+This command:
+- Shows the installed WSL version and asks for confirmation, with **No** as the default. Because `update-wsl` takes no distribution name, the CLI form asks too; only CI/test environments skip the prompt
+- Executes `wsl.exe --update`
+- Reports the version before and after, or that WSL is already up to date
+- Does not shut WSL down: running distributions use the new version after [Shutdown WSL](#shutdown-wsl), which stops them
+- Ends with an error when the update fails, naming the likely causes: missing rights, WSL managed by IT (Microsoft Store or Intune), or no network
+
+A new WSL release can break a setup that worked before, as WSL 3.0 did for `setup-docker` (SC-063). Older releases are available from the [WSL releases on GitHub](https://github.com/microsoft/WSL/releases).
+
+
+---
 
 ### Shutdown WSL
 
