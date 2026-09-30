@@ -14,13 +14,13 @@
 ### In Progress
 
 - [SC-001 — Backlog refinement](sc-001.md)
+- [SC-060 — Install the corporate root CA into a WSL distribution](sc-060.md)
 
 ### Open
 
 - [SC-065 — Devcontainer for development and tests on Linux](sc-065.md)
 - [SC-062 — Document the repository architecture as a C4 model in Structurizr DSL](sc-062.md)
 - [SC-061 — setup-proxy must not overwrite or delete apt, Docker and Podman files it does not own](sc-061.md)
-- [SC-060 — Install the corporate root CA into a WSL distribution](sc-060.md)
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
 - [SC-053 — Scoop update helper must surface the `Info` column from `scoop status`](sc-053.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
