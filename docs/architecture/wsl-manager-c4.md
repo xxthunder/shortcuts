@@ -114,6 +114,7 @@ C4Component
         Component(podman, "podman.ps1", "PowerShell", "Rootless Podman lifecycle: Test-WslPodmanInstalled, Install-WslPodman")
         Component(devpod, "devpod.ps1", "PowerShell", "DevPod CLI lifecycle: Test-WslDevPodInstalled, Install-WslDevPod")
         Component(proxy, "proxy.ps1", "PowerShell", "Proxy configuration: Install-WslProxy auto-detects PAC/registry/px, configures profile.d + zshenv env, apt, Docker, Podman")
+        Component(ca, "ca.ps1", "PowerShell", "Corporate root CA: Get-CorporateRootCertificate reads the Windows root store; Install-WslCaCertificate, Remove-WslCaCertificate")
     }
 
     Container_Boundary(scriptContainer, "Bash Install Scripts (lib/wsl/scripts/)") {
@@ -121,6 +122,7 @@ C4Component
         Component(podmanSh, "install-podman.sh", "Bash", "Installs Podman rootless; configures subuid/subgid and registries")
         Component(devpodSh, "install-devpod.sh", "Bash", "Downloads DevPod CLI binary; configures container provider (docker/podman)")
         Component(proxySh, "setup-proxy.sh", "Bash", "Writes proxy env vars to /etc/profile.d (sourced from zshenv), apt.conf, Docker config, Podman config")
+        Component(caSh, "setup-ca.sh", "Bash", "Writes wsl-manager-*.crt to /usr/local/share/ca-certificates, runs update-ca-certificates")
     }
 
     Rel(showMenu, invokeWslCmd, "Selected command")
@@ -143,6 +145,7 @@ C4Component
     Rel(invokeSetup, podman, "Install-WslPodman")
     Rel(invokeSetup, devpod, "Install-WslDevPod")
     Rel(invokeSetup, proxy, "Install-WslProxy")
+    Rel(invokeSetup, ca, "Install-WslCaCertificate / Remove-WslCaCertificate")
     Rel(invokeSetup, userMgmt, "New-WslUser")
     Rel(invokeOps, core, "Stop-WslDistro")
     Rel(invokeOps, ops, "Stop-WslSubsystem")
@@ -153,6 +156,7 @@ C4Component
     Rel(podman, wslConf, "Set-WslConf, Test-*Configured")
     Rel(devpod, exec, "Invoke-WslDistroScript")
     Rel(proxy, exec, "Invoke-WslDistroScript")
+    Rel(ca, exec, "Invoke-WslDistroScript")
     Rel(userMgmt, exec, "Invoke-WslDistroCommand")
     Rel(userMgmt, wslConf, "Set-WslConf")
 
@@ -160,6 +164,7 @@ C4Component
     Rel(exec, podmanSh, "install-podman.sh")
     Rel(exec, devpodSh, "install-devpod.sh")
     Rel(exec, proxySh, "setup-proxy.sh")
+    Rel(exec, caSh, "setup-ca.sh")
 
     UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")
 ```
