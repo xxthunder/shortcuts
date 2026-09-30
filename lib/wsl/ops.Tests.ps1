@@ -1113,3 +1113,31 @@ Describe "Open-WslDistroShell" {
         }
     }
 }
+
+Describe "Update-WslPlatform" {
+    BeforeEach {
+        Mock Out-Host { }
+    }
+
+    It "Should run wsl.exe --update" {
+        Mock Invoke-CommandLine { }
+
+        Update-WslPlatform -Confirm:$false
+
+        Should -Invoke Invoke-CommandLine -Times 1 -ParameterFilter { $CommandLine -eq "wsl.exe --update" }
+    }
+
+    It "Should not update with -WhatIf" {
+        Mock Invoke-CommandLine { }
+
+        Update-WslPlatform -WhatIf
+
+        Should -Invoke Invoke-CommandLine -Times 0
+    }
+
+    It "Should name the likely causes when the update fails" {
+        Mock Invoke-CommandLine { throw "Command line call `"wsl.exe --update`" failed with exit code 1" }
+
+        { Update-WslPlatform -Confirm:$false } | Should -Throw "*wsl --update failed*rights*IT*Store or Intune*network*"
+    }
+}

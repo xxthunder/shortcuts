@@ -54,6 +54,36 @@ function Assert-Wsl2Installed {
     }
 }
 
+function Get-WslPlatformVersion {
+    <#
+    .SYNOPSIS
+        Returns the version of WSL itself, e.g. 2.7.14.0, or $null if it cannot be read.
+    .DESCRIPTION
+        Reads the first line of 'wsl.exe --version'. Windows localises its label
+        ("WSL version", "WSL-Version"), so the function takes the first version number
+        on that line instead of matching the label. wsl.exe writes UTF-16, so null
+        characters are removed first (SC-064).
+    .OUTPUTS
+        System.String
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    $output = wsl.exe --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    $firstLine = @($output |
+        ForEach-Object { "$_" -replace '\x00', '' -replace '\r', '' -split "`n" } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) | Select-Object -First 1
+    if ($firstLine -match '\d+(\.\d+){1,3}') {
+        return $Matches[0]
+    }
+    return $null
+}
+
 function Get-WslDistroList {
     <#
     .SYNOPSIS

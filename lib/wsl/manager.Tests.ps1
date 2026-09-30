@@ -112,6 +112,19 @@ Describe "Show-WslMenu" {
         }
     }
 
+    It "Should offer 'Update WSL' right before 'Shutdown WSL', mapped to 'update-wsl'" {
+        Mock Read-SpectreSelection { "Update WSL" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "update-wsl"
+        Should -Invoke Read-SpectreSelection -ParameterFilter {
+            $choices = @($Choices)
+            $index = [array]::IndexOf($choices, "Update WSL")
+            $index -ge 0 -and $choices[$index + 1] -eq "Shutdown WSL"
+        }
+    }
+
     It "Should show every entry on one page" {
         Mock Read-SpectreSelection { "Quit" }
 
@@ -391,6 +404,16 @@ Describe "Invoke-WslManager" {
             Mock Assert-Wsl2Installed { throw "WSL 2 is required but only WSL 1 was detected. Please upgrade: wsl --update" }
 
             { Invoke-WslManager } | Should -Throw "*WSL 2 is required*"
+        }
+    }
+
+    Context "When called with 'update-wsl' argument" {
+        It "Should dispatch to Invoke-UpdateWsl" {
+            Mock Invoke-UpdateWsl {}
+
+            Invoke-WslManager -Command "update-wsl"
+
+            Should -Invoke Invoke-UpdateWsl -Times 1
         }
     }
 

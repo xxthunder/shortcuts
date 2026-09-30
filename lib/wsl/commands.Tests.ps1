@@ -497,6 +497,14 @@ Describe "Invoke-WslCommand" {
 
             Should -Invoke Invoke-ShutdownWsl -Times 1
         }
+
+        It "Should dispatch 'update-wsl'" {
+            Mock Invoke-UpdateWsl {}
+
+            Invoke-WslCommand -Command "update-wsl"
+
+            Should -Invoke Invoke-UpdateWsl -Times 1
+        }
     }
 
     Context "When Distros parameter is provided" {
@@ -1731,6 +1739,99 @@ Describe "Invoke-ConfigureWslDefault" {
 
         Should -Invoke Write-Host -ParameterFilter {
             $Object -like "*Done*" -and $ForegroundColor -eq "Green"
+        }
+    }
+}
+
+Describe "Invoke-UpdateWsl" {
+    BeforeEach {
+        Mock Update-WslPlatform { }
+        Mock Write-Success { }
+        Mock Write-Status { }
+        Mock Write-WarningMsg { }
+    }
+
+    Context "When a newer version is installed" {
+        BeforeEach {
+            $script:versions = [System.Collections.Generic.Queue[string]]::new([string[]]@("2.7.14.0", "3.0.1.0"))
+            Mock Get-WslPlatformVersion { $script:versions.Dequeue() }
+        }
+
+        It "Should ask for confirmation naming the current version" {
+            Mock Confirm-DestructiveAction { $true }
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter { $Action -like "*Update WSL 2.7.14.0*" }
+        }
+
+        It "Should update and report the version before and after" {
+            Mock Confirm-DestructiveAction { $true }
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Update-WslPlatform -Times 1
+            Should -Invoke Write-Success -Times 1 -ParameterFilter { $Message -like "*2.7.14.0 -> 3.0.1.0*" }
+        }
+
+        It "Should point to Shutdown WSL instead of shutting down" {
+            Mock Confirm-DestructiveAction { $true }
+            Mock Stop-WslSubsystem { }
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Write-Status -Times 1 -ParameterFilter { $Message -like "*Shutdown WSL*" }
+            Should -Invoke Stop-WslSubsystem -Times 0
+        }
+    }
+
+    Context "When WSL is already up to date" {
+        It "Should say so and not point to a shutdown" {
+            Mock Get-WslPlatformVersion { "3.0.1.0" }
+            Mock Confirm-DestructiveAction { $true }
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Write-Success -Times 1 -ParameterFilter { $Message -like "*already up to date*3.0.1.0*" }
+            Should -Invoke Write-Status -Times 0 -ParameterFilter { $Message -like "*Shutdown WSL*" }
+        }
+    }
+
+    Context "When the version cannot be read" {
+        It "Should still update and warn that the version is unknown" {
+            Mock Get-WslPlatformVersion { $null }
+            Mock Confirm-DestructiveAction { $true }
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter { $Action -like "*version unknown*" }
+            Should -Invoke Update-WslPlatform -Times 1
+            Should -Invoke Write-WarningMsg -Times 1 -ParameterFilter { $Message -like "*Could not read the WSL version*" }
+        }
+    }
+
+    Context "When the user declines" {
+        It "Should not update, report the cancellation and skip the continue pause" {
+            Mock Get-WslPlatformVersion { "2.7.14.0" }
+            Mock Confirm-DestructiveAction { $false }
+            $script:WslSkipContinuePause = $false
+
+            Invoke-UpdateWsl
+
+            Should -Invoke Update-WslPlatform -Times 0
+            Should -Invoke Write-Status -Times 1 -ParameterFilter { $Message -eq "Cancelled." }
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+    }
+
+    Context "When the update fails" {
+        It "Should let the error through and report no version change" {
+            Mock Get-WslPlatformVersion { "2.7.14.0" }
+            Mock Confirm-DestructiveAction { $true }
+            Mock Update-WslPlatform { throw "wsl --update failed: exit code 1" }
+
+            { Invoke-UpdateWsl } | Should -Throw "*wsl --update failed*"
+            Should -Invoke Write-Success -Times 0
         }
     }
 }

@@ -23,12 +23,13 @@
       repair-interop   Repair Windows interop configuration in wsl.conf
       terminate        Stop a running distribution
       shutdown         Shut down the entire WSL subsystem
+      update-wsl       Update WSL itself (wsl --update) and show the version before and after
       configure-wsl    Apply default global WSL settings to %USERPROFILE%\.wslconfig (idempotent)
 
     When called without a command, enters an interactive menu.
 
 .PARAMETER Command
-    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, configure-wsl.
+    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, update-wsl, configure-wsl.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -80,6 +81,10 @@
     .\wsl-manager.ps1 configure-wsl
     Applies default WSL global settings to %USERPROFILE%\.wslconfig (idempotent).
 
+.EXAMPLE
+    .\wsl-manager.ps1 update-wsl
+    Updates WSL itself after a confirmation and shows the version before and after.
+
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
@@ -87,7 +92,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]

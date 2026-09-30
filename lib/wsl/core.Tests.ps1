@@ -1011,3 +1011,28 @@ Describe "Stop-WslDistro" {
         }
     }
 }
+
+Describe "Get-WslPlatformVersion" {
+    It "Should read the version from <Scenario> output" -ForEach @(
+        @{ Scenario = "English"; Output = @("WSL version: 2.7.14.0", "Kernel version: 6.18.33.2-2"); Expected = "2.7.14.0" }
+        @{ Scenario = "German"; Output = @("WSL-Version: 3.0.1.0", "Kernelversion: 6.18.40.1-1"); Expected = "3.0.1.0" }
+        @{ Scenario = "UTF-16"; Output = @("W`0S`0L`0 `0v`0e`0r`0s`0i`0o`0n`0:`0 `02`0.`07`0.`01`04`0.`00`0", ""); Expected = "2.7.14.0" }
+        @{ Scenario = "blank-first-line"; Output = @("", "WSL version: 2.7.14.0"); Expected = "2.7.14.0" }
+    ) {
+        Mock wsl { $global:LASTEXITCODE = 0; $Output } -ParameterFilter { $args[0] -eq "--version" }
+
+        Get-WslPlatformVersion | Should -Be $Expected
+    }
+
+    It "Should return null when wsl --version fails" {
+        Mock wsl { $global:LASTEXITCODE = 1; "error" } -ParameterFilter { $args[0] -eq "--version" }
+
+        Get-WslPlatformVersion | Should -BeNullOrEmpty
+    }
+
+    It "Should return null when the output holds no version number" {
+        Mock wsl { $global:LASTEXITCODE = 0; "unexpected" } -ParameterFilter { $args[0] -eq "--version" }
+
+        Get-WslPlatformVersion | Should -BeNullOrEmpty
+    }
+}

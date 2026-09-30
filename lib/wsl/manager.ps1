@@ -73,6 +73,7 @@ function Show-WslMenu {
         "Setup DevPod"                  = "setup-devpod"
         "Sync SSH config"               = "sync-ssh-config"
         "Setup proxy (corporate)"       = "setup-proxy"
+        "Update WSL"                    = "update-wsl"
         "Shutdown WSL"                  = "shutdown"
         "Configure .wslconfig defaults" = "configure-wsl"
         "Refresh list"                  = "refresh"
@@ -167,7 +168,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
