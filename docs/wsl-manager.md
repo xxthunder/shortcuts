@@ -15,14 +15,15 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Step 1: Configure WSL Global Settings](#step-1-configure-wsl-global-settings)
   - [Step 2: Install WSL Distribution](#step-2-install-wsl-distribution)
   - [Step 3: Setup User Account](#step-3-setup-user-account)
-  - [Step 4: Configure Proxy (Corporate Networks)](#step-4-configure-proxy-corporate-networks)
-  - [Step 5: Update Distribution](#step-5-update-distribution)
-  - [Step 6: Windows SSH Agent Setup](#step-6-windows-ssh-agent-setup)
-  - [Step 7: Git Configuration](#step-7-git-configuration)
-  - [Step 8: Clone Distribution (Optional)](#step-8-clone-distribution-optional)
-  - [Step 9: Install Container Runtime](#step-9-install-container-runtime)
-  - [Step 10: Install Dev Container Client](#step-10-install-dev-container-client)
-  - [Step 11: Sync SSH Config](#step-11-sync-ssh-config)
+  - [Step 4: Install Corporate Root CA (TLS Inspection)](#step-4-install-corporate-root-ca-tls-inspection)
+  - [Step 5: Configure Proxy (Corporate Networks)](#step-5-configure-proxy-corporate-networks)
+  - [Step 6: Update Distribution](#step-6-update-distribution)
+  - [Step 7: Windows SSH Agent Setup](#step-7-windows-ssh-agent-setup)
+  - [Step 8: Git Configuration](#step-8-git-configuration)
+  - [Step 9: Clone Distribution (Optional)](#step-9-clone-distribution-optional)
+  - [Step 10: Install Container Runtime](#step-10-install-container-runtime)
+  - [Step 11: Install Dev Container Client](#step-11-install-dev-container-client)
+  - [Step 12: Sync SSH Config](#step-12-sync-ssh-config)
   - [Validation](#validation)
   - [Performance Tips](#performance-tips)
   - [Troubleshooting](#troubleshooting)
@@ -38,6 +39,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Setup Podman](#setup-podman)
   - [Setup DevPod](#setup-devpod)
   - [Sync SSH config](#sync-ssh-config)
+  - [Setup CA certificates (corporate)](#setup-ca-certificates-corporate)
   - [Setup proxy (corporate)](#setup-proxy-corporate)
   - [Update WSL](#update-wsl)
   - [Shutdown WSL](#shutdown-wsl)
@@ -147,7 +149,16 @@ Create a non-root user with sudo privileges (required for both Docker and Podman
 
 → [Setup user account](#setup-user-account)
 
-### Step 4: Configure Proxy (Corporate Networks)
+### Step 4: Install Corporate Root CA (TLS Inspection)
+
+If your corporate network inspects TLS, install the corporate root certificate authority (CA) into the distribution before configuring the proxy, so that HTTPS works through px and dev containers that take over the distribution's certificates trust it as well. The certificates come from the Windows certificate store, where the corporate root CA is already trusted. Skip this step if your network does not inspect TLS.
+
+- **TUI**: select **Setup CA certificates (corporate)** → select `Ubuntu-24.04` → **Install** → **Auto**, press Enter for `https://www.google.com`, add intranet sites such as git or Jira when asked for another URL, check the listed roots and confirm
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-ca Ubuntu-24.04 -Url https://www.google.com,https://git.example.corp`, or by name with `-Subject '*Contoso*'` (Manual)
+
+→ [Setup CA certificates (corporate)](#setup-ca-certificates-corporate)
+
+### Step 5: Configure Proxy (Corporate Networks)
 
 If you're behind a corporate proxy, configure proxy settings before updating or installing packages so that APT, Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
 
@@ -156,7 +167,7 @@ If you're behind a corporate proxy, configure proxy settings before updating or 
 
 → [Setup proxy (corporate)](#setup-proxy-corporate)
 
-### Step 5: Update Distribution
+### Step 6: Update Distribution
 
 Update all packages to latest versions.
 
@@ -165,7 +176,7 @@ Update all packages to latest versions.
 
 → [Update distribution](#update-distribution)
 
-### Step 6: Windows SSH Agent Setup
+### Step 7: Windows SSH Agent Setup
 
 These steps are performed on your **Windows host**.
 
@@ -186,7 +197,7 @@ ssh-add -l                                        # verify key is loaded
 
 > **Why non-elevated for `ssh-add`?** The Windows ssh-agent binds each key to the caller's user SID via DPAPI. Keys added from an elevated shell are not visible from your normal shell, which silently breaks git/DevPod auth.
 
-### Step 7: Git Configuration
+### Step 8: Git Configuration
 
 **These steps must be performed inside your WSL distribution.**
 
@@ -208,7 +219,7 @@ git config --global --list                        # verify
 
 This reuses your Windows git identity, aliases, and all other settings. Any changes made on either side take effect immediately.
 
-> **Note:** Do **not** set `core.sshCommand = ssh.exe` in your `.gitconfig`. It breaks DevPod and other tools that need Linux-native SSH. Use `sync-ssh-config` (Step 11) to copy your SSH keys into WSL instead.
+> **Note:** Do **not** set `core.sshCommand = ssh.exe` in your `.gitconfig`. It breaks DevPod and other tools that need Linux-native SSH. Use `sync-ssh-config` (Step 12) to copy your SSH keys into WSL instead.
 
 #### Option B: Configure Git Manually
 
@@ -219,7 +230,7 @@ git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git
 git config --global core.autocrlf input           # prevent line-ending issues
 ```
 
-### Step 8: Clone Distribution (Optional)
+### Step 9: Clone Distribution (Optional)
 
 Keep a clean base Ubuntu-24.04 and create a dedicated dev container distribution so you can experiment safely without affecting your base.
 
@@ -228,7 +239,7 @@ Keep a clean base Ubuntu-24.04 and create a dedicated dev container distribution
 
 → [Clone distribution](#clone-distribution)
 
-### Step 9: Install Container Runtime
+### Step 10: Install Container Runtime
 
 Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
 
@@ -250,7 +261,7 @@ Choose **one** of the two options below. Docker and Podman cannot coexist in the
 
 > **Note:** After installation, restart your terminal for docker group membership to take effect.
 
-### Step 10: Install Dev Container Client
+### Step 11: Install Dev Container Client
 
 Choose **one** of the two options below.
 
@@ -302,7 +313,7 @@ Then configure via **File → Preferences → Settings** (`Ctrl+,`):
 
 </details>
 
-**Podman-specific settings** (only if you chose Podman in Step 9):
+**Podman-specific settings** (only if you chose Podman in Step 10):
 
 | Setting | Value |
 |---------|-------|
@@ -327,7 +338,7 @@ For rootless Podman, also add `--userns=keep-id` to your `devcontainer.json` to 
 { "runArgs": ["--userns=keep-id"] }
 ```
 
-### Step 11: Sync SSH Config
+### Step 12: Sync SSH Config
 
 Syncs SSH configuration between Windows and the WSL distribution — copying keys, known_hosts, and SSH config in both directions. If DevPod is installed, it also syncs DevPod SSH config blocks so that Windows-side editors (VS Code, JetBrains) can connect to DevPod containers.
 
@@ -804,6 +815,26 @@ This command:
 - Creates timestamped backups before modifying any config file
 - Is idempotent - safe to re-run after adding new keys or DevPod workspaces
 
+### Setup CA certificates (corporate)
+
+Install the corporate root certificate authorities (CAs) from the Windows certificate store into a distribution's system trust store, or remove them again. Behind a proxy that inspects TLS, HTTPS from the distribution fails with certificate errors until the corporate root CA is trusted there; intranet sites signed by an internal PKI need its root as well.
+
+- **TUI**: select **Setup CA certificates (corporate)**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-ca <distro> -Url <url>[,<url>...]` (Auto) or `-Subject '<pattern>'` (Manual) to install, `.\tools\wsl-manager\wsl-manager.ps1 setup-ca <distro> -Remove` to remove
+
+This command:
+- **Auto** finds the roots by URL: it sends a HEAD request to each HTTPS site through the system proxy (including PAC, with your Windows logon), or directly where PAC says so, and takes the root of the certificate chain Windows builds for it. Behind TLS inspection that is the corporate root CA for any external site; for an intranet site it is the root of the internal PKI. The TUI offers `https://www.google.com` as the default, asks for further URLs, and lists every root once; a bare host name gets `https://`
+- **Manual** finds the roots by name: it selects the certificates in `Cert:\LocalMachine\Root` whose subject matches a PowerShell wildcard such as `*Contoso*`; without wildcards, only an exactly equal subject matches. It fails without changing the distribution when nothing matches, and asks you to narrow a pattern that matches too many certificates
+- Installs only roots that are in `Cert:\LocalMachine\Root` and have not expired. A root the machine does not trust is an error for that URL; a public site outside TLS inspection has a public root, which needs no install
+- In the TUI, asks for Install or Remove, then for Auto or Manual, lists the roots and asks for confirmation (`[Y/n]`, Enter installs; Remove asks `[y/N]`); on the CLI, `-Url`, `-Subject` and `-Remove` run without a prompt, and more than one of them is an error
+- Writes each certificate as `/usr/local/share/ca-certificates/wsl-manager-<thumbprint>.crt` and runs `update-ca-certificates`, which rebuilds `/etc/ssl/certs/ca-certificates.crt`: the bundle that [Setup proxy (corporate)](#setup-proxy-corporate) points uv, Node, pip and Go at
+- Adds to the managed certificates rather than replacing them, so Auto can run for several sites one after another; every run removes managed certificates that have expired, which is how a rotated root CA leaves
+- Remove deletes all `wsl-manager-*.crt` files and rebuilds the bundle; certificates installed any other way are never touched
+- A CA that was installed by hand before stays where it is and is then trusted twice, which does no harm. Remove the old copy so that wsl-manager manages the CA alone and **Remove** really takes it out: `sudo rm /usr/local/share/ca-certificates/<old file>.crt && sudo update-ca-certificates`
+- Requires the `ca-certificates` package in the distribution (it brings `openssl`) and, for a non-root default user, sudo rights (see [Setup user account](#setup-user-account))
+- Leaves the distribution running: the rebuilt bundle applies to the next TLS connection
+- Is idempotent - safe to run multiple times
+
 ### Setup proxy (corporate)
 
 Configure corporate proxy settings with automatic detection. Auto-detects proxy from PAC/registry, prompts for credentials if needed, and supports DIRECT (no proxy) mode to remove proxy configurations.
@@ -916,10 +947,12 @@ lib/wsl/
 ├── devpod.ps1                 # DevPod CLI installation & checks
 ├── ssh.ps1                    # SSH key/config sync between Windows and WSL
 ├── proxy.ps1                  # Proxy configuration
+├── ca.ps1                     # Corporate root CA install/remove from the Windows certificate store
 └── scripts/
     ├── install-docker.sh          # Docker Engine installation script
     ├── install-podman.sh          # Rootless Podman installation script
     ├── install-devpod.sh          # DevPod CLI installation script
+    ├── setup-ca.sh                # Corporate root CA files and trust store rebuild (update-ca-certificates)
     ├── setup-proxy.sh             # Proxy configuration (env, apt, Docker, Podman)
     └── sync-ssh-config.sh         # SSH config sync between Windows host and WSL
 ```

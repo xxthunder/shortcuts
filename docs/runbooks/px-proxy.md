@@ -89,7 +89,7 @@ env | grep -i proxy                  # http_proxy=http://127.0.0.1:3128
 
 To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
-`setup-proxy` also points tools that ship their own certificate store (uv, Node, pip, Go) at the system trust store, so they accept the corporate Transport Layer Security (TLS, the encryption behind HTTPS) inspection certificate instead of failing with `UnknownIssuer`. This assumes the corporate root certificate authority (CA) is already trusted system-wide (`curl`/`wget` working through px confirms it).
+`setup-proxy` also points tools that ship their own certificate store (uv, Node, pip, Go) at the system trust store, so they accept the corporate Transport Layer Security (TLS, the encryption behind HTTPS) inspection certificate instead of failing with `UnknownIssuer`. This needs the corporate root certificate authority (CA) in the distribution's trust store: `setup-ca` (wsl-manager) installs it from the Windows certificate store, see [Setup CA certificates (corporate)](../wsl-manager.md#setup-ca-certificates-corporate). `curl`/`wget` working through px confirms it.
 
 ---
 
@@ -157,7 +157,7 @@ Behind TLS inspection, Schannel (Windows' built-in secure-connection layer) runs
 
 ### TLS / certificate errors
 
-Import the corporate root CA into the Windows trust store (and, for WSL, into the distro's CA bundle).
+Import the corporate root CA into the Windows trust store. For WSL, install it into the distribution with `setup-ca` (wsl-manager), see [Setup CA certificates (corporate)](../wsl-manager.md#setup-ca-certificates-corporate).
 
 ### Nothing works / connection refused
 
