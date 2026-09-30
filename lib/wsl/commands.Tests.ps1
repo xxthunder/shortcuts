@@ -424,6 +424,30 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-SetupProxy -ParameterFilter { $DistroName -eq "Debian" }
         }
 
+        It "Should dispatch 'setup-ca' with DistroName and Subject" {
+            Mock Invoke-SetupCa {}
+
+            Invoke-WslCommand -Command "setup-ca" -Name "Debian" -Subject "*Contoso*"
+
+            Should -Invoke Invoke-SetupCa -ParameterFilter { $DistroName -eq "Debian" -and $Subject -eq "*Contoso*" -and -not $Remove }
+        }
+
+        It "Should dispatch 'setup-ca' with -Url" {
+            Mock Invoke-SetupCa {}
+
+            Invoke-WslCommand -Command "setup-ca" -Name "Debian" -Url "https://a.example.corp", "https://b.example.corp"
+
+            Should -Invoke Invoke-SetupCa -ParameterFilter { $DistroName -eq "Debian" -and @($Url).Count -eq 2 }
+        }
+
+        It "Should dispatch 'setup-ca' with -Remove" {
+            Mock Invoke-SetupCa {}
+
+            Invoke-WslCommand -Command "setup-ca" -Name "Debian" -Remove
+
+            Should -Invoke Invoke-SetupCa -ParameterFilter { $DistroName -eq "Debian" -and $Remove }
+        }
+
         It "Should dispatch 'setup-docker' with DistroName" {
             Mock Invoke-SetupDocker {}
 
@@ -1426,6 +1450,276 @@ Describe "Invoke-SetupProxy" {
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
             Should -Invoke Install-WslProxy -Times 0
+        }
+    }
+}
+
+Describe "Invoke-SetupCa" {
+    BeforeAll {
+        . "$PSScriptRoot\..\..\test\bin\lib\TestCertificate.ps1"
+        $script:rootA = Get-TestRootCertificate -Subject "CN=Contoso Root CA A, O=Contoso"
+        $script:rootB = Get-TestRootCertificate -Subject "CN=Contoso Root CA B, O=Contoso"
+    }
+
+    BeforeEach {
+        Mock Write-Host {}
+        Mock Write-Status {}
+        Mock Write-Success {}
+        Mock Write-WarningMsg {}
+        Mock Write-ErrorMsg {}
+        Mock Get-CorporateRootCertificate { @($script:rootA, $script:rootB) }
+        Mock Get-UrlRootCertificate { @($script:rootA) }
+        Mock Install-WslCaCertificate {}
+        Mock Remove-WslCaCertificate {}
+        Mock Confirm-DestructiveAction { $true }
+        Mock Get-UserConfirmation { $true }
+        $script:WslSkipContinuePause = $false
+    }
+
+    Context "When the pattern is given on the command line" {
+        It "Should install the matching certificates into the distribution" {
+            Invoke-SetupCa -DistroName "Debian" -Subject "*Contoso*"
+
+            Should -Invoke Get-CorporateRootCertificate -Times 1 -ParameterFilter { $Subject -eq "*Contoso*" }
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter {
+                $DistroName -eq "Debian" -and @($Certificate).Count -eq 2 -and $Confirm -eq $false
+            }
+        }
+
+        It "Should not ask for confirmation" {
+            Invoke-SetupCa -DistroName "Debian" -Subject "*Contoso*"
+
+            Should -Invoke Get-UserConfirmation -Times 0
+            Should -Invoke Confirm-DestructiveAction -Times 0
+        }
+
+        It "Should list each matching certificate with its thumbprint" {
+            Invoke-SetupCa -DistroName "Debian" -Subject "*Contoso*"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*CN=Contoso Root CA A*$($script:rootA.Thumbprint)*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*CN=Contoso Root CA B*$($script:rootB.Thumbprint)*" }
+        }
+
+        It "Should fail without installing when no certificate matches, suggesting wildcards" {
+            Mock Get-CorporateRootCertificate { @() }
+
+            { Invoke-SetupCa -DistroName "Debian" -Subject "Contoso" } | Should -Throw "*matches 'Contoso'*e.g. '[*]Contoso[*]'*"
+
+            Should -Invoke Install-WslCaCertificate -Times 0
+        }
+    }
+
+    Context "When URLs are given on the command line" {
+        It "Should install the roots of all URLs without asking" {
+            Mock Get-UrlRootCertificate { @($script:rootA, $script:rootB) }
+
+            Invoke-SetupCa -DistroName "Debian" -Url "https://www.google.com", "https://jira.example.corp"
+
+            Should -Invoke Get-UrlRootCertificate -Times 1 -ParameterFilter {
+                @($Url).Count -eq 2 -and $Url[1] -eq "https://jira.example.corp"
+            }
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter {
+                $DistroName -eq "Debian" -and @($Certificate).Count -eq 2 -and $Confirm -eq $false
+            }
+            Should -Invoke Get-UserConfirmation -Times 0
+        }
+
+        It "Should split a comma-separated -Url, as pwsh -File passes it through the .bat wrapper" {
+            Invoke-SetupCa -DistroName "Debian" -Url "https://www.google.com,https://jira.example.corp"
+
+            Should -Invoke Get-UrlRootCertificate -Times 1 -ParameterFilter {
+                @($Url).Count -eq 2 -and $Url[0] -eq "https://www.google.com" -and $Url[1] -eq "https://jira.example.corp"
+            }
+        }
+
+        It "Should install nothing when a URL fails" {
+            Mock Get-UrlRootCertificate { throw "The root 'CN=Public Root' of https://www.google.com/ is not in Cert:\LocalMachine\Root, so it is not installed." }
+
+            { Invoke-SetupCa -DistroName "Debian" -Url "https://www.google.com" } | Should -Throw "*not in Cert:\LocalMachine\Root*"
+
+            Should -Invoke Install-WslCaCertificate -Times 0
+        }
+    }
+
+    Context "When -Remove is given on the command line" {
+        It "Should remove the managed certificates without reading the store or asking" {
+            Invoke-SetupCa -DistroName "Debian" -Remove
+
+            Should -Invoke Remove-WslCaCertificate -Times 1 -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+            Should -Invoke Get-CorporateRootCertificate -Times 0
+            Should -Invoke Get-UrlRootCertificate -Times 0
+            Should -Invoke Confirm-DestructiveAction -Times 0
+        }
+    }
+
+    Context "When more than one of -Url, -Subject and -Remove is given" {
+        It "Should refuse <Name> before touching anything" -ForEach @(
+            @{ Name = "-Url with -Subject"; Arguments = @{ Url = @("https://www.google.com"); Subject = "*Contoso*" } }
+            @{ Name = "-Url with -Remove"; Arguments = @{ Url = @("https://www.google.com"); Remove = $true } }
+            @{ Name = "-Subject with -Remove"; Arguments = @{ Subject = "*Contoso*"; Remove = $true } }
+        ) {
+            Mock Select-WslDistro { "Debian" }
+
+            { Invoke-SetupCa @Arguments } | Should -Throw "*only one of -Url, -Subject or -Remove*"
+
+            Should -Invoke Select-WslDistro -Times 0
+            Should -Invoke Install-WslCaCertificate -Times 0
+            Should -Invoke Remove-WslCaCertificate -Times 0
+        }
+    }
+
+    Context "When neither URLs, a pattern nor -Remove is given in CI" {
+        It "Should warn and change nothing" {
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*Provide -Url, -Subject or -Remove*" }
+            Should -Invoke Install-WslCaCertificate -Times 0
+            Should -Invoke Remove-WslCaCertificate -Times 0
+        }
+    }
+
+    Context "When run interactively" {
+        BeforeEach {
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Read-SpectreSelection { "Install" } -ParameterFilter { $Message -eq "Root CA setup" }
+            Mock Read-SpectreSelection { "Manual" } -ParameterFilter { $Message -eq "Find the root certificates" }
+            Mock Read-SpectreText { "*Contoso*" } -ParameterFilter { $Message -like "Certificate subject pattern*" }
+            Mock Read-SpectreText { "https://www.google.com" } -ParameterFilter { $Message -like "HTTPS URL*" }
+            Mock Read-SpectreText { "N" } -ParameterFilter { $Message -eq "Check another URL?" }
+        }
+
+        It "Should install after the user picks Install, Manual, enters a pattern and confirms" {
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Get-CorporateRootCertificate -Times 1 -ParameterFilter { $Subject -eq "*Contoso*" }
+            Should -Invoke Get-UserConfirmation -Times 1 -ParameterFilter { $message -like "*Install 2 root certificate*'Debian'*" -and $defaultValueForUser -eq $true }
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should not install and skip the pause when the user declines" {
+            Mock Get-UserConfirmation { $false }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Install-WslCaCertificate -Times 0
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+
+        It "Should do nothing and skip the pause when the user goes back" {
+            Mock Read-SpectreSelection { $WslPickerBackChoice } -ParameterFilter { $Message -eq "Root CA setup" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Read-SpectreText -Times 0
+            Should -Invoke Install-WslCaCertificate -Times 0
+            Should -Invoke Remove-WslCaCertificate -Times 0
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+
+        It "Should do nothing and skip the pause when the user goes back from Auto or Manual" {
+            Mock Read-SpectreSelection { $WslPickerBackChoice } -ParameterFilter { $Message -eq "Find the root certificates" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Get-CorporateRootCertificate -Times 0
+            Should -Invoke Get-UrlRootCertificate -Times 0
+            Should -Invoke Install-WslCaCertificate -Times 0
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+
+        It "Should cancel without reading the store when the pattern is empty" {
+            Mock Read-SpectreText { "" } -ParameterFilter { $Message -like "Certificate subject pattern*" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Get-CorporateRootCertificate -Times 0
+            Should -Invoke Install-WslCaCertificate -Times 0
+        }
+
+        It "Should offer https://www.google.com as the default URL and install its root after confirmation" {
+            Mock Read-SpectreSelection { "Auto" } -ParameterFilter { $Message -eq "Find the root certificates" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Read-SpectreText -Times 1 -ParameterFilter { $Message -like "HTTPS URL*" -and $DefaultAnswer -eq "https://www.google.com" }
+            Should -Invoke Get-UrlRootCertificate -Times 1 -ParameterFilter { $Url -eq "https://www.google.com" }
+            Should -Invoke Get-UserConfirmation -Times 1 -ParameterFilter { $message -like "*Install 1 root certificate*'Debian'*" -and $defaultValueForUser -eq $true }
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter { $DistroName -eq "Debian" -and @($Certificate).Count -eq 1 }
+        }
+
+        It "Should ask for further URLs and install a root they share once" {
+            Mock Read-SpectreSelection { "Auto" } -ParameterFilter { $Message -eq "Find the root certificates" }
+            $script:urlAnswers = [System.Collections.Queue]::new(@("https://www.google.com", "https://github.com"))
+            $script:anotherAnswers = [System.Collections.Queue]::new(@("y", "N"))
+            Mock Read-SpectreText { $script:urlAnswers.Dequeue() } -ParameterFilter { $Message -like "HTTPS URL*" }
+            Mock Read-SpectreText { $script:anotherAnswers.Dequeue() } -ParameterFilter { $Message -eq "Check another URL?" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Get-UrlRootCertificate -Times 2
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter { @($Certificate).Count -eq 1 }
+        }
+
+        It "Should report a failing URL and go on with the next one" {
+            Mock Read-SpectreSelection { "Auto" } -ParameterFilter { $Message -eq "Find the root certificates" }
+            $script:urlAnswers = [System.Collections.Queue]::new(@("https://bad.example.corp", "https://www.google.com"))
+            $script:anotherAnswers = [System.Collections.Queue]::new(@("y", "N"))
+            Mock Read-SpectreText { $script:urlAnswers.Dequeue() } -ParameterFilter { $Message -like "HTTPS URL*" }
+            Mock Read-SpectreText { $script:anotherAnswers.Dequeue() } -ParameterFilter { $Message -eq "Check another URL?" }
+            Mock Get-UrlRootCertificate { throw "Could not read the certificate chain of https://bad.example.corp/" } -ParameterFilter { $Url -eq "https://bad.example.corp" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Write-ErrorMsg -Times 1 -ParameterFilter { $Message -like "*bad.example.corp*" }
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter { @($Certificate).Count -eq 1 }
+        }
+
+        It "Should install nothing when no URL yields a root" {
+            Mock Read-SpectreSelection { "Auto" } -ParameterFilter { $Message -eq "Find the root certificates" }
+            Mock Get-UrlRootCertificate { throw "Could not read the certificate chain of https://www.google.com/" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No root certificate found*" }
+            Should -Invoke Install-WslCaCertificate -Times 0
+        }
+
+        It "Should remove after the user picks Remove and confirms" {
+            Mock Read-SpectreSelection { "Remove" } -ParameterFilter { $Message -eq "Root CA setup" }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Confirm-DestructiveAction -Times 1 -ParameterFilter { $Action -like "*Remove*'Debian'*" }
+            Should -Invoke Remove-WslCaCertificate -Times 1 -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should not remove when the user declines" {
+            Mock Read-SpectreSelection { "Remove" } -ParameterFilter { $Message -eq "Root CA setup" }
+            Mock Confirm-DestructiveAction { $false }
+
+            Invoke-SetupCa -DistroName "Debian"
+
+            Should -Invoke Remove-WslCaCertificate -Times 0
+            $script:WslSkipContinuePause | Should -BeTrue
+        }
+    }
+
+    Context "When DistroName is not provided" {
+        It "Should stop when no distribution is chosen" {
+            Mock Select-WslDistro { $null }
+
+            Invoke-SetupCa -Subject "*Contoso*"
+
+            Should -Invoke Select-WslDistro -Times 1
+            Should -Invoke Install-WslCaCertificate -Times 0
+        }
+
+        It "Should install into the chosen distribution" {
+            Mock Select-WslDistro { "Ubuntu" }
+
+            Invoke-SetupCa -Subject "*Contoso*"
+
+            Should -Invoke Install-WslCaCertificate -Times 1 -ParameterFilter { $DistroName -eq "Ubuntu" }
         }
     }
 }

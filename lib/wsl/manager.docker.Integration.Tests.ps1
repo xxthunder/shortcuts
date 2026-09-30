@@ -447,6 +447,93 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
+    Context "Root CA Setup" {
+        BeforeAll {
+            . "$PSScriptRoot\..\..\test\bin\lib\TestCertificate.ps1"
+
+            $script:caDir = "/usr/local/share/ca-certificates"
+            $script:caA = Get-TestRootCertificate -Subject "CN=wsl-manager integration root A"
+            $script:caB = Get-TestRootCertificate -Subject "CN=wsl-manager integration root B"
+            $script:caExpired = Get-TestRootCertificate -Subject "CN=wsl-manager integration root expired" -NotAfter (Get-Date).AddDays(-1)
+
+            function Get-CaDirListing {
+                $listing = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "ls -l --time-style=+%s.%N $script:caDir" -PrintCommand $false -PassThru
+                return (@($listing) -join "`n")
+            }
+
+            function Test-CaBundleEntry {
+                param($Certificate)
+                $bundle = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "cat /etc/ssl/certs/ca-certificates.crt" -PrintCommand $false -PassThru
+                # The bundle concatenates PEM files; without whitespace a certificate's base64 body is contiguous
+                return ((@($bundle) -join '') -replace '\s', '').Contains([Convert]::ToBase64String($Certificate.RawData))
+            }
+        }
+
+        It "Should install a root certificate into the system trust store" {
+            Write-Host "`n==> TEST: Installing a root CA into $script:customDistroName ..." -ForegroundColor Magenta
+
+            Install-WslCaCertificate -DistroName $script:customDistroName -Certificate $script:caA -Confirm:$false
+
+            Get-CaDirListing | Should -Match "wsl-manager-$($script:caA.Thumbprint)\.crt"
+            Test-CaBundleEntry -Certificate $script:caA | Should -BeTrue
+        }
+
+        It "Should leave the files unchanged when run again with the same certificate" {
+            Write-Host "`n==> TEST: Repeating the root CA install (idempotency) ..." -ForegroundColor Magenta
+
+            $before = Get-CaDirListing
+            Install-WslCaCertificate -DistroName $script:customDistroName -Certificate $script:caA -Confirm:$false
+
+            Get-CaDirListing | Should -Be $before
+        }
+
+        It "Should add a certificate and keep the managed ones already there" {
+            Write-Host "`n==> TEST: Adding root CA B next to A ..." -ForegroundColor Magenta
+
+            Install-WslCaCertificate -DistroName $script:customDistroName -Certificate $script:caB -Confirm:$false
+
+            $listing = Get-CaDirListing
+            $listing | Should -Match "wsl-manager-$($script:caA.Thumbprint)\.crt"
+            $listing | Should -Match "wsl-manager-$($script:caB.Thumbprint)\.crt"
+            Test-CaBundleEntry -Certificate $script:caA | Should -BeTrue
+            Test-CaBundleEntry -Certificate $script:caB | Should -BeTrue
+        }
+
+        It "Should remove an expired managed certificate on the next run" {
+            Write-Host "`n==> TEST: Removing an expired root CA on the next run ..." -ForegroundColor Magenta
+
+            Install-WslCaCertificate -DistroName $script:customDistroName -Certificate $script:caExpired -Confirm:$false
+            Get-CaDirListing | Should -Match "wsl-manager-$($script:caExpired.Thumbprint)\.crt"
+
+            Install-WslCaCertificate -DistroName $script:customDistroName -Certificate $script:caB -Confirm:$false
+
+            $listing = Get-CaDirListing
+            $listing | Should -Not -Match "wsl-manager-$($script:caExpired.Thumbprint)\.crt"
+            $listing | Should -Match "wsl-manager-$($script:caA.Thumbprint)\.crt"
+            $listing | Should -Match "wsl-manager-$($script:caB.Thumbprint)\.crt"
+        }
+
+        It "Should remove only the certificates wsl-manager installed" {
+            Write-Host "`n==> TEST: Removing the managed root CAs, keeping a foreign one ..." -ForegroundColor Magenta
+
+            Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                -Command "sudo cp $script:caDir/wsl-manager-$($script:caB.Thumbprint).crt $script:caDir/foreign-test.crt" -PrintCommand $false
+            try {
+                Remove-WslCaCertificate -DistroName $script:customDistroName -Confirm:$false
+
+                $listing = Get-CaDirListing
+                $listing | Should -Not -Match "wsl-manager-"
+                $listing | Should -Match "foreign-test\.crt"
+            }
+            finally {
+                Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                    -Command "sudo rm -f $script:caDir/foreign-test.crt && sudo /usr/sbin/update-ca-certificates" -PrintCommand $false -StopAtError $false
+            }
+        }
+    }
+
     Context "Docker Setup with Prerequisites" {
         It "Should install or verify Docker and all components (idempotent)" {
             Write-Host "`n==> TEST: Setting up Docker (demonstrating idempotency)..." -ForegroundColor Magenta

@@ -61,23 +61,24 @@ function Show-WslMenu {
     # "Refresh list" right before Quit. The Commands Reference in docs/wsl-manager.md
     # follows the same order with the same headings.
     $menuChoices = [ordered]@{
-        "Start distribution"            = "shell"
-        "Stop distribution"             = "terminate"
-        "Install new distribution"      = "install"
-        "Clone distribution"            = "clone"
-        "Update distribution"           = "update"
-        "Remove distribution"           = "remove"
-        "Setup user account"            = "setup-user"
-        "Setup Docker"                  = "setup-docker"
-        "Setup Podman"                  = "setup-podman"
-        "Setup DevPod"                  = "setup-devpod"
-        "Sync SSH config"               = "sync-ssh-config"
-        "Setup proxy (corporate)"       = "setup-proxy"
-        "Update WSL"                    = "update-wsl"
-        "Shutdown WSL"                  = "shutdown"
-        "Configure .wslconfig defaults" = "configure-wsl"
-        "Refresh list"                  = "refresh"
-        "Quit"                          = "quit"
+        "Start distribution"                = "shell"
+        "Stop distribution"                 = "terminate"
+        "Install new distribution"          = "install"
+        "Clone distribution"                = "clone"
+        "Update distribution"               = "update"
+        "Remove distribution"               = "remove"
+        "Setup user account"                = "setup-user"
+        "Setup Docker"                      = "setup-docker"
+        "Setup Podman"                      = "setup-podman"
+        "Setup DevPod"                      = "setup-devpod"
+        "Sync SSH config"                   = "sync-ssh-config"
+        "Setup CA certificates (corporate)" = "setup-ca"
+        "Setup proxy (corporate)"           = "setup-proxy"
+        "Update WSL"                        = "update-wsl"
+        "Shutdown WSL"                      = "shutdown"
+        "Configure .wslconfig defaults"     = "configure-wsl"
+        "Refresh list"                      = "refresh"
+        "Quit"                              = "quit"
     }
 
     # Page size equals the entry count so the whole menu, Quit included, is visible without scrolling
@@ -168,7 +169,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -178,7 +179,10 @@ function Invoke-WslManager {
         [string]$TargetName = "",
 
         [string]$Username = "",
-        [string]$Password = ""
+        [string]$Password = "",
+        [string[]]$Url = @(),
+        [string]$Subject = "",
+        [switch]$Remove
     )
 
     Assert-Wsl2Installed
@@ -188,5 +192,5 @@ function Invoke-WslManager {
         return
     }
 
-    Invoke-WslCommand -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password
+    Invoke-WslCommand -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove
 }
