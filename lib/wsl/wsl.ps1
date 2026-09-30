@@ -21,3 +21,4 @@
 . "$PSScriptRoot\devpod.ps1"
 . "$PSScriptRoot\ssh.ps1"
 . "$PSScriptRoot\proxy.ps1"
+. "$PSScriptRoot\ca.ps1"
