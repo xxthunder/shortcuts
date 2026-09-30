@@ -14,11 +14,11 @@
 ### In Progress
 
 - [SC-001 — Backlog refinement](sc-001.md)
+- [SC-064 — Update WSL itself from wsl-manager](sc-064.md)
 
 ### Open
 
 - [SC-065 — Devcontainer for development and tests on Linux](sc-065.md)
-- [SC-064 — Update WSL itself from wsl-manager](sc-064.md)
 - [SC-062 — Document the repository architecture as a C4 model in Structurizr DSL](sc-062.md)
 - [SC-060 — Install the corporate root CA into a WSL distribution](sc-060.md)
 - [SC-052 — Scoop update helper must not silently drop apps when `scoop status` fails](sc-052.md)
