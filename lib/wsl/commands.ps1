@@ -513,6 +513,169 @@ function Invoke-SetupProxy {
     }
 }
 
+function Read-UrlRootCertificate {
+    <#
+    .SYNOPSIS
+        Asks for HTTPS URLs in a loop and collects their trusted root certificates, each once.
+    .DESCRIPTION
+        Offers https://www.google.com as the default, so Enter covers the TLS-inspection root
+        behind the corporate proxy; intranet sites with their own PKI can follow. A URL that
+        fails is reported and the loop goes on.
+    .OUTPUTS
+        System.Security.Cryptography.X509Certificates.X509Certificate2[]
+    #>
+    [CmdletBinding()]
+    [OutputType([System.Security.Cryptography.X509Certificates.X509Certificate2[]])]
+    param()
+
+    $found = [System.Collections.Generic.List[System.Security.Cryptography.X509Certificates.X509Certificate2]]::new()
+    do {
+        $url = Read-SpectreText -Message "HTTPS URL to read the root certificate from" -DefaultAnswer $script:WslCaDefaultUrl
+        if (-not [string]::IsNullOrWhiteSpace($url)) {
+            try {
+                foreach ($root in @(Get-UrlRootCertificate -Url $url)) {
+                    Write-Host "  $url -> $($root.Subject)  (expires $($root.NotAfter.ToString('yyyy-MM-dd')), $($root.Thumbprint))"
+                    if (-not ($found | Where-Object { $_.Thumbprint -eq $root.Thumbprint })) {
+                        $found.Add($root)
+                    }
+                }
+            }
+            catch {
+                Write-ErrorMsg "$_"
+            }
+        }
+        $again = Read-SpectreText -Message "Check another URL?" -Choices @("y", "N") -DefaultAnswer "N"
+    } while ($again -ieq "y")
+
+    return $found.ToArray()
+}
+
+function Invoke-SetupCa {
+    <#
+    .SYNOPSIS
+        Handles the root CA setup workflow (install or remove) for a WSL distribution.
+    .DESCRIPTION
+        Installs root certificates from Cert:\LocalMachine\Root into the distribution's trust
+        store, or removes the ones wsl-manager installed. The roots are found by URL (Auto: the
+        root of each site's certificate chain) or by subject pattern (Manual). URLs, a pattern
+        or -Remove given on the CLI run without a prompt; more than one of them is an error.
+        Without any, the user picks Install (then Auto or Manual) or Remove, sees the roots and
+        confirms; in CI/test environments this interactive path only warns.
+    .PARAMETER DistroName
+        The name of the distribution. If not provided, prompts the user.
+    .PARAMETER Url
+        HTTPS URLs whose certificate chain roots are installed, e.g. 'https://www.google.com'.
+    .PARAMETER Subject
+        Wildcard pattern matched against the certificate subject, e.g. '*Contoso*'.
+    .PARAMETER Remove
+        Remove the wsl-manager root certificates instead of installing.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [string[]]$Url = @(),
+        [string]$Subject = "",
+        [switch]$Remove,
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    # pwsh -File (the .bat wrapper) passes "-Url a,b" as one string, so split on commas here
+    $urls = @($Url | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $hasSubject = -not [string]::IsNullOrWhiteSpace($Subject)
+    $givenOptions = @(($urls.Count -gt 0), $hasSubject, $Remove.IsPresent) | Where-Object { $_ }
+    if (@($givenOptions).Count -gt 1) {
+        throw "Use only one of -Url, -Subject or -Remove."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    # URLs, a pattern or -Remove given on the CLI are trusted; only prompted choices are confirmed
+    $interactive = $urls.Count -eq 0 -and -not $hasSubject -and -not $Remove
+    $certificates = $null
+    if ($interactive) {
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive CA setup is not available in CI/test environment. Provide -Url, -Subject or -Remove."
+            return
+        }
+
+        $mode = Read-SpectreSelection -Message "Root CA setup" -Choices @("Install", "Remove", $WslPickerBackChoice) -PageSize 3
+        if ([string]::IsNullOrWhiteSpace($mode) -or $mode -eq $WslPickerBackChoice) {
+            $script:WslSkipContinuePause = $true
+            return
+        }
+
+        if ($mode -eq "Remove") {
+            $Remove = $true
+        }
+        else {
+            $source = Read-SpectreSelection -Message "Find the root certificates" -Choices @("Auto", "Manual", $WslPickerBackChoice) -PageSize 3
+            if ([string]::IsNullOrWhiteSpace($source) -or $source -eq $WslPickerBackChoice) {
+                $script:WslSkipContinuePause = $true
+                return
+            }
+
+            if ($source -eq "Auto") {
+                $certificates = @(Read-UrlRootCertificate)
+                if ($certificates.Count -eq 0) {
+                    Write-WarningMsg "No root certificate found. Nothing installed."
+                    return
+                }
+            }
+            else {
+                $Subject = Read-SpectreText -Message "Certificate subject pattern (wildcards, e.g. *Contoso*)"
+                if ([string]::IsNullOrWhiteSpace($Subject)) {
+                    Write-WarningMsg "No pattern provided. Cancelling."
+                    return
+                }
+            }
+        }
+    }
+
+    if ($Remove) {
+        if ($interactive -and -not (Confirm-DestructiveAction -Action "Remove all wsl-manager root certificates from '$DistroName'.")) {
+            Write-Status "Cancelled."
+            $script:WslSkipContinuePause = $true
+            return
+        }
+
+        Remove-WslCaCertificate -DistroName $DistroName -Confirm:$false
+        Write-Success "Removed the wsl-manager root certificates from '$DistroName'."
+        return
+    }
+
+    if ($null -eq $certificates) {
+        if ($urls.Count -gt 0) {
+            $certificates = @(Get-UrlRootCertificate -Url $urls)
+        }
+        else {
+            $certificates = @(Get-CorporateRootCertificate -Subject $Subject)
+            if ($certificates.Count -eq 0) {
+                throw "No valid root certificate in Cert:\LocalMachine\Root matches '$Subject'. Wildcards are needed for a partial match, e.g. '*$($Subject.Trim('*'))*'."
+            }
+        }
+    }
+
+    Write-Host "Root certificates to install:" -ForegroundColor Cyan
+    foreach ($certificate in $certificates) {
+        Write-Host "  $($certificate.Subject)  (expires $($certificate.NotAfter.ToString('yyyy-MM-dd')), $($certificate.Thumbprint))"
+    }
+
+    # Installing only adds wsl-manager's own files and can be repeated, so Enter means yes
+    if ($interactive -and -not (Get-UserConfirmation -message "Install $($certificates.Count) root certificate(s) into '$DistroName'?" -defaultValueForUser $true)) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Install-WslCaCertificate -DistroName $DistroName -Certificate $certificates -Confirm:$false
+    Write-Success "Installed $($certificates.Count) root certificate(s) into '$DistroName'."
+}
+
 function Invoke-SetupDocker {
     <#
     .SYNOPSIS
@@ -842,6 +1005,12 @@ function Invoke-WslCommand {
         Username for setup-user command.
     .PARAMETER Password
         Password for setup-user command.
+    .PARAMETER Url
+        HTTPS URLs whose certificate chain roots setup-ca installs.
+    .PARAMETER Subject
+        Certificate subject pattern for setup-ca.
+    .PARAMETER Remove
+        Remove instead of install, for setup-ca.
     .PARAMETER Distros
         Optional pre-fetched list of distributions (used by the TUI to avoid re-fetching).
     #>
@@ -850,13 +1019,16 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
         [string]$Command,
 
         [string]$Name = "",
         [string]$TargetName = "",
         [string]$Username = "",
         [string]$Password = "",
+        [string[]]$Url = @(),
+        [string]$Subject = "",
+        [switch]$Remove,
         [PSCustomObject[]]$Distros = $null
     )
 
@@ -884,6 +1056,9 @@ function Invoke-WslCommand {
         }
         "setup-proxy" {
             Invoke-SetupProxy -DistroName $Name -Distros $Distros
+        }
+        "setup-ca" {
+            Invoke-SetupCa -DistroName $Name -Url $Url -Subject $Subject -Remove:$Remove -Distros $Distros
         }
         "setup-docker" {
             Invoke-SetupDocker -DistroName $Name -Distros $Distros

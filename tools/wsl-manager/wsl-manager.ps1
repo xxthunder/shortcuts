@@ -16,6 +16,7 @@
       update           Update packages in a distribution
       setup-user       Create a user account with sudo privileges
       setup-proxy      Configure corporate proxy settings
+      setup-ca         Install or remove corporate root CA certificates, found by URL or by name
       setup-docker     Install Docker Engine (includes systemd and interop setup)
       setup-podman     Install Podman rootless (includes systemd and interop setup)
       setup-devpod     Install the DevPod CLI and configure its container provider
@@ -29,7 +30,7 @@
     When called without a command, enters an interactive menu.
 
 .PARAMETER Command
-    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, update-wsl, configure-wsl.
+    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-ca, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, update-wsl, configure-wsl.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -69,6 +70,19 @@
     The password for the new user (used with setup-user command).
     If not provided, the user is prompted interactively.
 
+.PARAMETER Url
+    HTTPS URLs whose certificate chain root is installed (used with setup-ca), e.g.
+    https://www.google.com,https://jira.example.corp. Behind TLS inspection the root of any
+    external site is the corporate root CA. The roots are installed without a prompt.
+
+.PARAMETER Subject
+    Wildcard pattern matched against the subject of the root certificates in
+    Cert:\LocalMachine\Root (used with setup-ca command), e.g. '*Contoso*'.
+    The matching certificates are installed without a prompt.
+
+.PARAMETER Remove
+    Remove the root certificates that setup-ca installed (used with setup-ca command).
+
 .EXAMPLE
     .\wsl-manager.ps1 clone Debian MyProject
     Clones the Debian distribution to a new distribution named MyProject.
@@ -76,6 +90,18 @@
 .EXAMPLE
     .\wsl-manager.ps1 setup-user Ubuntu-24.04 -Username wsluser -Password wsluser
     Creates a user named 'wsluser' in the Ubuntu-24.04 distribution without interactive prompts.
+
+.EXAMPLE
+    .\wsl-manager.ps1 setup-ca Ubuntu-24.04 -Url https://www.google.com,https://jira.example.corp
+    Installs the roots of the certificate chains of both sites into Ubuntu-24.04.
+
+.EXAMPLE
+    .\wsl-manager.ps1 setup-ca Ubuntu-24.04 -Subject '*Contoso*'
+    Installs the corporate root certificates whose subject contains "Contoso" into Ubuntu-24.04.
+
+.EXAMPLE
+    .\wsl-manager.ps1 setup-ca Ubuntu-24.04 -Remove
+    Removes the root certificates that setup-ca installed from Ubuntu-24.04.
 
 .EXAMPLE
     .\wsl-manager.ps1 configure-wsl
@@ -92,7 +118,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
+    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -102,9 +128,12 @@ param(
     [string]$TargetName = "",
 
     [string]$Username = "",
-    [string]$Password = ""
+    [string]$Password = "",
+    [string[]]$Url = @(),
+    [string]$Subject = "",
+    [switch]$Remove
 )
 
 . "$PSScriptRoot\..\..\lib\wsl\manager.ps1"
 
-Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password
+Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove

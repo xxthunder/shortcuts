@@ -125,6 +125,19 @@ Describe "Show-WslMenu" {
         }
     }
 
+    It "Should offer 'Setup CA certificates (corporate)' right before 'Setup proxy (corporate)', mapped to 'setup-ca'" {
+        Mock Read-SpectreSelection { "Setup CA certificates (corporate)" }
+
+        $result = Show-WslMenu
+
+        $result | Should -Be "setup-ca"
+        Should -Invoke Read-SpectreSelection -ParameterFilter {
+            $choices = @($Choices)
+            $index = [array]::IndexOf($choices, "Setup CA certificates (corporate)")
+            $index -ge 0 -and $choices[$index + 1] -eq "Setup proxy (corporate)"
+        }
+    }
+
     It "Should show every entry on one page" {
         Mock Read-SpectreSelection { "Quit" }
 
@@ -1181,6 +1194,46 @@ Describe "Invoke-WslManager" {
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
             Should -Invoke Install-WslProxy -Times 0
+        }
+    }
+
+    Context "When called with 'setup-ca' argument" {
+        BeforeAll {
+            . "$PSScriptRoot\..\..\test\bin\lib\TestCertificate.ps1"
+            $script:caRoot = Get-TestRootCertificate -Subject "CN=Contoso Root CA"
+        }
+
+        BeforeEach {
+            Mock Write-Host {}
+            Mock Write-Success {}
+            Mock Get-CorporateRootCertificate { @($script:caRoot) }
+            Mock Install-WslCaCertificate {}
+            Mock Remove-WslCaCertificate {}
+        }
+
+        It "Should install the certificates matching -Subject into the named distribution" {
+            Invoke-WslManager -Command "setup-ca" -Name "Debian" -Subject "*Contoso*"
+
+            Should -Invoke Get-CorporateRootCertificate -ParameterFilter { $Subject -eq "*Contoso*" }
+            Should -Invoke Install-WslCaCertificate -ParameterFilter {
+                $DistroName -eq "Debian" -and $Certificate[0].Thumbprint -eq $script:caRoot.Thumbprint
+            }
+        }
+
+        It "Should install the roots found for -Url into the named distribution" {
+            Mock Get-UrlRootCertificate { @($script:caRoot) }
+
+            Invoke-WslManager -Command "setup-ca" -Name "Debian" -Url "https://www.google.com"
+
+            Should -Invoke Get-UrlRootCertificate -ParameterFilter { $Url -eq "https://www.google.com" }
+            Should -Invoke Install-WslCaCertificate -ParameterFilter { $DistroName -eq "Debian" }
+        }
+
+        It "Should remove the managed certificates with -Remove" {
+            Invoke-WslManager -Command "setup-ca" -Name "Debian" -Remove
+
+            Should -Invoke Remove-WslCaCertificate -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Install-WslCaCertificate -Times 0
         }
     }
 
