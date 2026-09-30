@@ -253,6 +253,42 @@ function Stop-WslSubsystem {
     }
 }
 
+function Update-WslPlatform {
+    <#
+    .SYNOPSIS
+        Updates WSL itself with 'wsl.exe --update'.
+
+    .DESCRIPTION
+        Runs 'wsl.exe --update', which installs the latest WSL release. Running
+        distributions use the new version once WSL restarts ('wsl.exe --shutdown'), which
+        this function does not do. When the update fails, the error names the likely
+        causes on a corporate machine (SC-064).
+
+    .EXAMPLE
+        Update-WslPlatform
+        Updates WSL after asking for confirmation.
+
+    .EXAMPLE
+        Update-WslPlatform -WhatIf
+        Shows what would happen without updating.
+    #>
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param()
+
+    if (-not $PSCmdlet.ShouldProcess("WSL", "Update with wsl.exe --update")) {
+        return
+    }
+
+    try {
+        # Invoke-CommandLine returns wsl.exe's UTF-16 output through the pipeline
+        Invoke-CommandLine -CommandLine "wsl.exe --update" -PrintCommand $false |
+            ForEach-Object { "$_" -replace '\x00', '' } | Out-Host
+    }
+    catch {
+        throw "wsl --update failed: $($_.Exception.Message) Likely causes: missing rights, WSL managed by IT (Microsoft Store or Intune), or no network."
+    }
+}
+
 function Merge-WslConfig {
     <#
     .SYNOPSIS

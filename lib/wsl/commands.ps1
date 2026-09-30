@@ -786,6 +786,44 @@ function Invoke-ShutdownWsl {
     Stop-WslSubsystem -Confirm:$false
 }
 
+function Invoke-UpdateWsl {
+    <#
+    .SYNOPSIS
+        Handles the update-wsl workflow.
+    .DESCRIPTION
+        Shows the WSL version, asks for confirmation, runs 'wsl.exe --update' and reports
+        the version before and after. Like shutdown, update-wsl has no -Name to mark a
+        scripted call, so it confirms from the CLI too; CI/test skips the prompt. It does
+        not shut WSL down: when the version changed, it points to Shutdown WSL (SC-064).
+    #>
+    [CmdletBinding()]
+    param()
+
+    $before = Get-WslPlatformVersion
+    $current = if ($before) { "WSL $before" } else { "WSL (version unknown)" }
+
+    if (-not (Confirm-DestructiveAction -Action "Update $current with wsl --update.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Update-WslPlatform -Confirm:$false
+    $after = Get-WslPlatformVersion
+
+    if (-not $after) {
+        Write-WarningMsg "Could not read the WSL version after the update. Check it with: wsl --version"
+    }
+    elseif ($after -eq $before) {
+        Write-Success "WSL is already up to date ($after)."
+    }
+    else {
+        $from = if ($before) { $before } else { "unknown" }
+        Write-Success "WSL updated: $from -> $after."
+        Write-Status "Running distributions use the new version after Shutdown WSL, which stops them."
+    }
+}
+
 function Invoke-WslCommand {
     <#
     .SYNOPSIS
@@ -812,7 +850,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "configure-wsl", "refresh")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
         [string]$Command,
 
         [string]$Name = "",
@@ -867,6 +905,9 @@ function Invoke-WslCommand {
         }
         "shutdown" {
             Invoke-ShutdownWsl
+        }
+        "update-wsl" {
+            Invoke-UpdateWsl
         }
         "configure-wsl" {
             Invoke-ConfigureWslDefault
