@@ -571,17 +571,12 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             Write-Host "    WSLInterop.conf contents: $binfmtContent" -ForegroundColor Cyan
             $binfmtContent | Should -Match ":WSLInterop:M::MZ::/init:PF"
 
-            # Verify kernel registration exists
-            $interopRegistered = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "test -e /proc/sys/fs/binfmt_misc/WSLInterop && echo 'registered'" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Kernel WSLInterop registration: $interopRegistered" -ForegroundColor Cyan
-            $interopRegistered.Trim() | Should -Be "registered"
-
-            # Verify systemd-binfmt service is active
-            $binfmtServiceActive = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "systemctl is-active systemd-binfmt" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    systemd-binfmt service: $binfmtServiceActive" -ForegroundColor Cyan
-            $binfmtServiceActive.Trim() | Should -Be "active"
+            # Verify WSLInterop is registered and enabled in the kernel
+            # (systemd-binfmt.service itself fails on WSL 3.0, which mounts binfmt_misc/status read-only)
+            $interopState = Invoke-WslDistroCommand -DistroName $script:customDistroName `
+                -Command "head -n 1 /proc/sys/fs/binfmt_misc/WSLInterop 2>/dev/null || echo 'not-registered'" -PrintCommand $false -PassThru -StopAtError $false
+            Write-Host "    Kernel WSLInterop registration: $interopState" -ForegroundColor Cyan
+            $interopState.Trim() | Should -Be "enabled"
 
             # Verify rc.local does NOT exist (cleanup verification)
             $rcLocalExists = Invoke-WslDistroCommand -DistroName $script:customDistroName `

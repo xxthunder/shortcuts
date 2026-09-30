@@ -490,16 +490,15 @@ cat /etc/wsl.conf | grep -A 2 "\[interop\]"
 ```bash
 cat /etc/binfmt.d/WSLInterop.conf
 # Should show: :WSLInterop:M::MZ::/init:PF
-
-sudo systemctl is-active systemd-binfmt
-# Should show: active
 ```
+
+On WSL 3.0, `systemctl is-active systemd-binfmt` shows `failed`. That is expected: WSL mounts `/proc/sys/fs/binfmt_misc/status` read-only, so the unit cannot flush the existing rules and exits with an error, but it still applies `/etc/binfmt.d/WSLInterop.conf`. The kernel registration in the next step is what counts.
 
 3. **Test kernel registration:**
 
 ```bash
 cat /proc/sys/fs/binfmt_misc/WSLInterop
-# Should show registration details
+# First line should show: enabled
 ```
 
 4. **Restart distribution:**
@@ -949,7 +948,7 @@ default=<your-username>
 :WSLInterop:M::MZ::/init:PF
 ```
 
-This kernel-level configuration is managed by `systemd-binfmt.service` and is VS Code compatible (prevents interference).
+This kernel-level configuration is applied by `systemd-binfmt.service` at boot and is VS Code compatible (prevents interference). `setup-docker` applies the file directly with `systemd-binfmt`, without restarting the unit. On WSL 3.0 the unit shows `failed` although it applies the file (see Troubleshooting).
 
 **Podman Socket and Environment Variables:**
 
