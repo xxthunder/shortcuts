@@ -170,7 +170,7 @@
         "tags" : "Element,Container",
         "technology" : "PowerShell 7"
       }, {
-        "description" : "px-proxy.ps1 installs, configures, starts and tests px; setProxy.ps1 sets the session proxy from the PAC file. tools/proxy.",
+        "description" : "px-proxy.ps1 installs, configures, starts and tests px and registers it to start at logon; setProxy.ps1 sets the session proxy from the PAC file. tools/proxy.",
         "documentation" : { },
         "id" : "9",
         "name" : "Proxy tools",

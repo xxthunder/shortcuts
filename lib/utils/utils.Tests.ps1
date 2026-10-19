@@ -7,6 +7,18 @@ BeforeAll {
     . "$PSScriptRoot\..\..\test\bin\lib\TestIsolation.ps1"
     Start-SutIsolation
     . "$PSScriptRoot\utils.ps1"
+
+    # Reads a .lnk back through the same COM object Windows uses, so a test
+    # proves what the shortcut really holds.
+    function Get-ShortcutProperty {
+        param([string]$Path)
+        $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($Path)
+        [pscustomobject]@{
+            TargetPath       = $shortcut.TargetPath
+            Arguments        = $shortcut.Arguments
+            WorkingDirectory = $shortcut.WorkingDirectory
+        }
+    }
 }
 
 AfterAll {
@@ -330,6 +342,171 @@ Describe "New-Directory" {
 
             Should -Invoke New-Item -Times 1
         }
+    }
+}
+
+Describe "New-ShortcutFile" {
+    # Writes real .lnk files into TestDrive and reads them back. Each test gets
+    # its own file name: deleting a .lnk right after it was saved can fail
+    # silently (the file is briefly locked), and a leftover would break the
+    # next test.
+    BeforeEach {
+        $script:target = Join-Path $TestDrive 'app.exe'
+        Set-Content -Path $script:target -Value 'x'
+        $script:link = Join-Path $TestDrive "app-$([guid]::NewGuid().ToString('N')).lnk"
+    }
+
+    Context "When given a target, arguments and a working directory" {
+        It "Should write a shortcut that holds all three" {
+            New-ShortcutFile -Path $script:link -TargetPath $script:target -Arguments '--config="C:\px\px.ini"' -WorkingDirectory $TestDrive
+
+            $shortcut = Get-ShortcutProperty -Path $script:link
+            $shortcut.TargetPath | Should -Be $script:target
+            $shortcut.Arguments | Should -Be '--config="C:\px\px.ini"'
+            $shortcut.WorkingDirectory | Should -Be $TestDrive
+        }
+    }
+
+    Context "When given only a target" {
+        It "Should leave the arguments and the working directory empty" {
+            New-ShortcutFile -Path $script:link -TargetPath $script:target
+
+            $shortcut = Get-ShortcutProperty -Path $script:link
+            $shortcut.TargetPath | Should -Be $script:target
+            $shortcut.Arguments | Should -BeNullOrEmpty
+            $shortcut.WorkingDirectory | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When the shortcut already exists" {
+        It "Should overwrite it" {
+            $otherTarget = Join-Path $TestDrive 'other.exe'
+            Set-Content -Path $otherTarget -Value 'y'
+            New-ShortcutFile -Path $script:link -TargetPath $script:target -Arguments '--old'
+
+            New-ShortcutFile -Path $script:link -TargetPath $otherTarget -Arguments '--new'
+
+            $shortcut = Get-ShortcutProperty -Path $script:link
+            $shortcut.TargetPath | Should -Be $otherTarget
+            $shortcut.Arguments | Should -Be '--new'
+        }
+
+        It "Should clear arguments and working directory that the new call does not give" {
+            New-ShortcutFile -Path $script:link -TargetPath $script:target -Arguments '--old' -WorkingDirectory $TestDrive
+
+            New-ShortcutFile -Path $script:link -TargetPath $script:target
+
+            $shortcut = Get-ShortcutProperty -Path $script:link
+            $shortcut.Arguments | Should -BeNullOrEmpty
+            $shortcut.WorkingDirectory | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "When given a PowerShell drive path" {
+        It "Should write the shortcut to the file-system path behind the drive" {
+            New-ShortcutFile -Path "TestDrive:\$(Split-Path $script:link -Leaf)" -TargetPath $script:target
+
+            (Get-ShortcutProperty -Path $script:link).TargetPath | Should -Be $script:target
+        }
+    }
+
+    Context "When -WhatIf is given" {
+        It "Should not write the shortcut" {
+            New-ShortcutFile -Path $script:link -TargetPath $script:target -WhatIf
+
+            Test-Path $script:link | Should -BeFalse
+        }
+    }
+
+    Context "When testing boundary conditions" {
+        It "Should throw on an empty path" {
+            { New-ShortcutFile -Path '' -TargetPath $script:target } | Should -Throw
+        }
+
+        It "Should throw on an empty target" {
+            { New-ShortcutFile -Path $script:link -TargetPath '' } | Should -Throw
+        }
+
+        It "Should throw a clear error when the folder of the shortcut does not exist" {
+            $missing = Join-Path $TestDrive 'missing\app.lnk'
+
+            { New-ShortcutFile -Path $missing -TargetPath $script:target } | Should -Throw "*folder*does not exist*"
+            Test-Path $missing | Should -BeFalse
+        }
+    }
+}
+
+Describe "Get-AutostartPath" {
+    It "Should return the name as a .lnk file in the user's Startup folder" {
+        $startup = [Environment]::GetFolderPath('Startup')
+        Get-AutostartPath -Name 'my-tool' | Should -Be (Join-Path $startup 'my-tool.lnk')
+    }
+
+    Context "When testing boundary conditions" {
+        It "Should throw on an empty name" {
+            { Get-AutostartPath -Name '' } | Should -Throw
+        }
+
+        It "Should throw on a name that is not a plain file name" {
+            { Get-AutostartPath -Name 'sub\my-tool' } | Should -Throw
+        }
+    }
+}
+
+Describe "Register-Autostart" {
+    BeforeEach {
+        # Never touch the real Startup folder from a unit test. A name per test,
+        # for the same reason as in New-ShortcutFile.
+        Mock Get-AutostartPath { Join-Path $TestDrive "$Name.lnk" }
+        $script:target = Join-Path $TestDrive 'app.exe'
+        Set-Content -Path $script:target -Value 'x'
+        $script:name = "my-tool-$([guid]::NewGuid().ToString('N'))"
+        $script:link = Join-Path $TestDrive "$($script:name).lnk"
+    }
+
+    It "Should write a logon start with target, arguments and working directory" {
+        Register-Autostart -Name $script:name -TargetPath $script:target -Arguments '--quiet' -WorkingDirectory $TestDrive
+
+        $shortcut = Get-ShortcutProperty -Path $script:link
+        $shortcut.TargetPath | Should -Be $script:target
+        $shortcut.Arguments | Should -Be '--quiet'
+        $shortcut.WorkingDirectory | Should -Be $TestDrive
+    }
+
+    It "Should return the path of the logon start it wrote" {
+        Register-Autostart -Name $script:name -TargetPath $script:target | Should -Be $script:link
+    }
+
+    It "Should write nothing and return nothing with -WhatIf" {
+        Register-Autostart -Name $script:name -TargetPath $script:target -WhatIf | Should -BeNullOrEmpty
+        Test-Path $script:link | Should -BeFalse
+    }
+}
+
+Describe "Unregister-Autostart" {
+    BeforeEach {
+        # Never touch the real Startup folder from a unit test.
+        Mock Get-AutostartPath { Join-Path $TestDrive "$Name.lnk" }
+        $script:name = "my-tool-$([guid]::NewGuid().ToString('N'))"
+        $script:link = Join-Path $TestDrive "$($script:name).lnk"
+    }
+
+    It "Should delete the logon start and return true" {
+        Set-Content -Path $script:link -Value 'x'
+
+        Unregister-Autostart -Name $script:name | Should -BeTrue
+        Test-Path $script:link | Should -BeFalse
+    }
+
+    It "Should return false without an error when there is no logon start" {
+        Unregister-Autostart -Name $script:name | Should -BeFalse
+    }
+
+    It "Should keep the logon start and return false with -WhatIf" {
+        Set-Content -Path $script:link -Value 'x'
+
+        Unregister-Autostart -Name $script:name -WhatIf | Should -BeFalse
+        Test-Path $script:link | Should -BeTrue
     }
 }
 

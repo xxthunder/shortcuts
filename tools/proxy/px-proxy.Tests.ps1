@@ -23,11 +23,22 @@ BeforeAll {
     . "$PSScriptRoot\px-proxy.ps1"
 
     $script:TestDataDir = Join-Path $TestDrive '.config\px'
+
+    # SC-067: no unit test may reach the real Startup folder. Every logon start
+    # path goes through Get-AutostartPath, so this one file-level mock covers
+    # every block, including blocks added later.
+    Mock Get-AutostartPath { Join-Path $TestDrive "$Name.lnk" }
 }
 
 AfterAll {
     Remove-Item Env:\PXPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
     Stop-SutIsolation
+}
+
+Describe "Test safety" {
+    It "redirects the logon start to TestDrive in every block" {
+        Get-AutostartPath -Name 'px-proxy' | Should -Be (Join-Path $TestDrive 'px-proxy.lnk')
+    }
 }
 
 Describe "Get-PxDataDir" {
@@ -410,6 +421,17 @@ Describe "Stop-PxProxy" {
         # --quit; mocking both here guarantees no test can terminate a running px.
         Mock Get-Process { }
         Mock Stop-Process { }
+        Mock Unregister-Autostart { $true }
+    }
+
+    It "leaves the logon start in place, so the restart inside start keeps it" {
+        Mock Get-PxExecutable { 'C:\scoop\shims\px.exe' }
+        Mock Invoke-CommandLine { }
+        Mock Start-Sleep { }
+        $script:quitCalled = $false
+        Mock Test-PxRunning { if ($script:quitCalled) { $false } else { $script:quitCalled = $true; $true } }
+        Stop-PxProxy
+        Should -Invoke Unregister-Autostart -Times 0
     }
 
     It "does nothing when px is not running" {
@@ -451,6 +473,8 @@ Describe "Start-PxProxy" {
         Mock Get-PxExecutable { 'C:\scoop\shims\pxw.exe' }
         Mock Test-PxRunning { $false }
         Mock Start-Process { }
+        Mock Register-Autostart { Join-Path $TestDrive "$Name.lnk" }
+        Mock Unregister-Autostart { $true }
     }
 
     It "resolves, writes config, and starts px" {
@@ -462,12 +486,43 @@ Describe "Start-PxProxy" {
         Test-Path (Join-Path $script:TestDataDir 'px.ini') | Should -BeTrue
     }
 
+    It "registers the logon start: the launched pxw with the px config, in the data directory" {
+        Start-PxProxy
+        Should -Invoke Register-Autostart -Times 1 -ParameterFilter {
+            $Name -eq 'px-proxy' -and
+            $TargetPath -eq 'C:\scoop\shims\pxw.exe' -and
+            $Arguments -eq "--config=`"$(Join-Path $script:TestDataDir 'px.ini')`"" -and
+            $WorkingDirectory -eq $script:TestDataDir
+        }
+    }
+
+    It "names the logon start it wrote and the config it starts from" {
+        Start-PxProxy -InformationVariable info
+        $message = ($info | ForEach-Object { $_.MessageData }) -join "`n"
+        $message | Should -Match ([regex]::Escape((Join-Path $TestDrive 'px-proxy.lnk')))
+        $message | Should -Match ([regex]::Escape((Join-Path $script:TestDataDir 'px.ini')))
+    }
+
+    It "registers no logon start when px cannot be launched" {
+        Mock Start-Process { throw 'launch failed' }
+        { Start-PxProxy } | Should -Throw
+        Should -Invoke Register-Autostart -Times 0
+    }
+
     It "stops a running px before starting a fresh one" {
         Mock Test-PxRunning { $true }
         Mock Stop-PxProxy { }
         Start-PxProxy
         Should -Invoke Stop-PxProxy -Times 1
         Should -Invoke Start-Process -Times 1
+    }
+
+    It "keeps the logon start when it restarts a running px" {
+        Mock Test-PxRunning { $true }
+        Mock Stop-PxProxy { }
+        Start-PxProxy
+        Should -Invoke Unregister-Autostart -Times 0
+        Should -Invoke Register-Autostart -Times 1
     }
 
     It "throws when no px executable is available" {
@@ -482,6 +537,7 @@ Describe "Start-PxProxy" {
         Should -Invoke Resolve-PxUpstreamProxy -Times 0
         Should -Invoke Write-PxConfig -Times 0
         Should -Invoke Start-Process -Times 0
+        Should -Invoke Register-Autostart -Times 0
     }
 }
 
@@ -525,10 +581,14 @@ Describe "Script entry point" {
     # Invokes the script as a program (library mode off) so the guard's
     # 'exit (Invoke-PxProxyMain ...)' runs. Invoked with '&', so exit returns
     # control here and sets $LASTEXITCODE rather than killing the test host.
-    # 'stop' is the only action that is a pure no-op when px is not running;
-    # skipped outright if px happens to be running, so the test never stops a
-    # developer's live px.
-    It "dispatches the action and exits 0 when not in library mode" -Skip:([bool](Get-Process -Name 'px', 'pxw' -ErrorAction SilentlyContinue)) {
+    # 'stop' is the only action that is a pure no-op when px is not running and
+    # no logon entry exists; skipped outright if px happens to be running or the
+    # real logon entry exists (SC-067), so the test never stops a developer's
+    # live px and never deletes their logon start.
+    It "dispatches the action and exits 0 when not in library mode" -Skip:(
+        [bool](Get-Process -Name 'px', 'pxw' -ErrorAction SilentlyContinue) -or
+        (Test-Path (Join-Path ([Environment]::GetFolderPath('Startup')) 'px-proxy.lnk'))
+    ) {
         Remove-Item Env:\PXPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
         try {
             & "$PSScriptRoot\px-proxy.ps1" stop *> $null
@@ -611,7 +671,13 @@ Describe "Remove-PxProxy" {
         Mock Get-PxDataDir { $script:TestDataDir }
         Mock Stop-PxProxy { }
         Mock Invoke-CommandLine { }
+        Mock Unregister-Autostart { $true }
         New-Item -ItemType Directory -Path $script:TestDataDir -Force | Out-Null
+    }
+
+    It "removes the logon start" {
+        Remove-PxProxy
+        Should -Invoke Unregister-Autostart -Times 1 -ParameterFilter { $Name -eq 'px-proxy' }
     }
 
     It "uninstalls px when the marker exists" {
@@ -653,6 +719,10 @@ Describe "Remove-PxProxy" {
 }
 
 Describe "Invoke-PxProxy" {
+    BeforeEach {
+        Mock Unregister-Autostart { $true }
+    }
+
     It "dispatches install" {
         Mock Install-PxProxy { }
         Invoke-PxProxy -Action install
@@ -665,10 +735,30 @@ Describe "Invoke-PxProxy" {
         Should -Invoke Start-PxProxy -Times 1 -ParameterFilter { $ProxyHost -eq 'x.corp:8080' }
     }
 
-    It "dispatches stop" {
+    It "dispatches stop and removes the logon start" {
         Mock Stop-PxProxy { }
         Invoke-PxProxy -Action stop
         Should -Invoke Stop-PxProxy -Times 1
+        Should -Invoke Unregister-Autostart -Times 1 -ParameterFilter { $Name -eq 'px-proxy' }
+    }
+
+    It "reports on stop that px no longer starts at logon" {
+        Mock Stop-PxProxy { }
+        Invoke-PxProxy -Action stop -InformationVariable info
+        ($info | ForEach-Object { $_.MessageData }) -join "`n" | Should -Match 'no longer starts at logon'
+    }
+
+    It "reports nothing about the logon start on stop when there was none" {
+        Mock Stop-PxProxy { }
+        Mock Unregister-Autostart { $false }
+        Invoke-PxProxy -Action stop -InformationVariable info
+        ($info | ForEach-Object { $_.MessageData }) -join "`n" | Should -Not -Match 'logon'
+    }
+
+    It "keeps the logon start when it dispatches start" {
+        Mock Start-PxProxy { }
+        Invoke-PxProxy -Action start
+        Should -Invoke Unregister-Autostart -Times 0
     }
 
     It "dispatches test" {

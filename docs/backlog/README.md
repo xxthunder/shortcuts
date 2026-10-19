@@ -13,6 +13,7 @@
 
 ### In Progress
 
+- [SC-067 — px starts at logon](sc-067.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
