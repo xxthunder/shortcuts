@@ -13,7 +13,6 @@
 
 ### In Progress
 
-- [SC-067 — px starts at logon](sc-067.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
@@ -42,6 +41,7 @@
 
 ### Done
 
+- [SC-067 — px starts at logon](sc-067.md)
 - [SC-064 — Update WSL itself from wsl-manager](sc-064.md)
 - [SC-063 — setup-docker fails on WSL 3.0 at systemd-binfmt](sc-063.md)
 - [SC-062 — Document the repository architecture as a C4 model in Structurizr DSL](sc-062.md)
