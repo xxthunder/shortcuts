@@ -176,6 +176,170 @@ function New-Directory {
     }
 }
 
+function New-ShortcutFile {
+    <#
+    .SYNOPSIS
+        Creates or overwrites a Windows shortcut (.lnk) file.
+
+    .DESCRIPTION
+        Writes a shortcut that starts the target with optional arguments in an
+        optional working directory. An existing shortcut at the path is
+        overwritten completely: arguments and working directory that are not
+        given are cleared. The folder of the shortcut must exist.
+
+    .PARAMETER Path
+        The path of the .lnk file to write. PowerShell drive paths are accepted.
+
+    .PARAMETER TargetPath
+        The program the shortcut starts.
+
+    .PARAMETER Arguments
+        Optional command-line arguments for the target.
+
+    .PARAMETER WorkingDirectory
+        Optional folder the target starts in.
+
+    .EXAMPLE
+        New-ShortcutFile -Path "$env:TEMP\px.lnk" -TargetPath 'C:\tools\pxw.exe' -Arguments '--config="C:\px\px.ini"' -WorkingDirectory 'C:\px'
+        Writes a shortcut that starts pxw.exe with the config file in C:\px.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
+        [string]$TargetPath,
+        [Parameter(Mandatory = $false)]
+        [string]$Arguments,
+        [Parameter(Mandatory = $false)]
+        [string]$WorkingDirectory
+    )
+    # The COM object only understands file-system paths, not PowerShell drives.
+    $fullPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
+    $folder = Split-Path -Path $fullPath -Parent
+    if (-not (Test-Path -Path $folder -PathType Container)) {
+        throw "Cannot write shortcut '$fullPath': the folder '$folder' does not exist."
+    }
+    if ($PSCmdlet.ShouldProcess($fullPath, "Write shortcut to '$TargetPath'")) {
+        # CreateShortcut loads an existing .lnk, so every property is set to
+        # overwrite what an earlier call left there.
+        $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($fullPath)
+        $shortcut.TargetPath = $TargetPath
+        $shortcut.Arguments = $Arguments
+        $shortcut.WorkingDirectory = $WorkingDirectory
+        $shortcut.Save()
+    }
+}
+
+function Get-AutostartPath {
+    <#
+    .SYNOPSIS
+        Returns the path of a logon start entry in the user's Startup folder.
+
+    .PARAMETER Name
+        The name of the entry, without the .lnk extension. Must be a plain file name.
+
+    .EXAMPLE
+        Get-AutostartPath -Name 'px-proxy'
+        Returns ...\Start Menu\Programs\Startup\px-proxy.lnk.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ $_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -lt 0 })]
+        [string]$Name
+    )
+    # The .NET lookup also finds a Startup folder that IT has redirected.
+    return (Join-Path ([Environment]::GetFolderPath('Startup')) "$Name.lnk")
+}
+
+function Register-Autostart {
+    <#
+    .SYNOPSIS
+        Starts a program at the user's logon through the Startup folder.
+
+    .DESCRIPTION
+        Writes (or overwrites) <Name>.lnk in the user's Startup folder. Windows
+        starts the target with the arguments in the working directory at each
+        logon. Task Manager lists the entry under Startup apps.
+
+    .PARAMETER Name
+        The name of the entry, without the .lnk extension.
+
+    .PARAMETER TargetPath
+        The program to start at logon.
+
+    .PARAMETER Arguments
+        Optional command-line arguments for the target.
+
+    .PARAMETER WorkingDirectory
+        Optional folder the target starts in.
+
+    .OUTPUTS
+        The path of the entry, or nothing with -WhatIf.
+
+    .EXAMPLE
+        Register-Autostart -Name 'px-proxy' -TargetPath 'C:\tools\pxw.exe' -Arguments '--config="C:\px\px.ini"' -WorkingDirectory 'C:\px'
+        Starts pxw.exe with the config in C:\px at each logon.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$TargetPath,
+        [Parameter(Mandatory = $false)]
+        [string]$Arguments,
+        [Parameter(Mandatory = $false)]
+        [string]$WorkingDirectory
+    )
+    $path = Get-AutostartPath -Name $Name
+    if ($PSCmdlet.ShouldProcess($path, "Start '$TargetPath' at logon")) {
+        New-ShortcutFile -Path $path -TargetPath $TargetPath -Arguments $Arguments -WorkingDirectory $WorkingDirectory
+        return $path
+    }
+}
+
+function Unregister-Autostart {
+    <#
+    .SYNOPSIS
+        Deletes a logon start entry from the user's Startup folder.
+
+    .PARAMETER Name
+        The name of the entry, without the .lnk extension.
+
+    .OUTPUTS
+        $true when an entry was deleted; $false when there was none, or with -WhatIf.
+
+    .EXAMPLE
+        Unregister-Autostart -Name 'px-proxy'
+        Deletes px-proxy.lnk from the Startup folder, if it exists.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([bool])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+    $path = Get-AutostartPath -Name $Name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return $false
+    }
+    if ($PSCmdlet.ShouldProcess($path, 'Delete logon start')) {
+        Remove-Item -LiteralPath $path -Force
+        return $true
+    }
+    return $false
+}
+
 function Test-RunningInCIorTestEnvironment {
     # Check if running in CI environment
     $ciEnvVars = @('CI', 'GITHUB_ACTIONS', 'TF_BUILD', 'JENKINS_URL', 'CIRCLECI')

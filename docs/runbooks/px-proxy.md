@@ -37,16 +37,23 @@ You probably have everything already:
 | Action    | What it does |
 |-----------|--------------|
 | `install` | Installs px via Scoop (only if not already present), creates the px data directory, and seeds a `px-user.ini` settings template. Does **not** resolve the proxy or write config. |
-| `start`   | Resolves the upstream proxy fresh, (re)writes the px config (merging your `px-user.ini` overrides), and always (re)starts px. Exactly one `pxw.exe` instance results. |
-| `stop`    | Stops any running px cleanly. |
+| `start`   | Resolves the upstream proxy fresh, (re)writes the px config (merging your `px-user.ini` overrides), and always (re)starts px. Exactly one `pxw.exe` instance results. Also registers px to start at logon, see [Start at logon](#start-at-logon). |
+| `stop`    | Stops any running px cleanly and deletes the logon start. |
 | `test`    | Sends an HTTPS request through `127.0.0.1:3128` and reports a clear diagnostic. |
-| `remove`  | Stops px, uninstalls it (only if this tool installed it), and deletes `px.ini` and the log files. Your `px-user.ini` is preserved. |
+| `remove`  | Stops px, deletes the logon start, uninstalls px (only if this tool installed it), and deletes `px.ini` and the log files. Your `px-user.ini` is preserved. |
 
 `start` is the default action when none is given.
 
-> **px does not start itself.** There is currently no persistent installation, scheduled task, or other automation that launches px for you — after every reboot or logon, run `start` yourself (from Keypirinha or a terminal) before you need proxied tools.
->
-> **If your network requires a VPN** (for example, working from a home office), connect the VPN **first**, then run `start`. Both proxy discovery (PAC evaluation) and the Kerberos ticket lookup need the corporate network to be reachable; starting px before the VPN is up resolves against the wrong, unreachable path.
+> **If your network requires a VPN** (for example, working from a home office), connect the VPN **first**, then run `start`. Both proxy discovery (PAC evaluation) and the Kerberos ticket lookup need the corporate network to be reachable; starting px before the VPN is up resolves against the wrong, unreachable path. This applies to a manual `start` only: the logon start below does no lookup.
+
+### Start at logon
+
+Each successful `start` also registers px to start when you log on to Windows. Run `start` once on the company network or the VPN; after that, px is already running after each reboot.
+
+- The entry is `px-proxy.lnk` in your Startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`). Task Manager lists it under **Startup apps**.
+- At logon, the entry starts `pxw.exe` with the `px.ini` from your last `start`. It does not look up the proxy and does not rewrite `px.ini`, so it can run before you connect the VPN.
+- `stop` and `remove` delete the entry. After `stop`, px stays off, also across reboots, until the next `start`.
+- The logon start keeps the upstream proxy from your last `start`. If your upstream proxy changes (for example at another company site or abroad), run `start` again on the company network or the VPN.
 
 ### Manual upstream override
 
@@ -109,6 +116,7 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 - **Data directory:** `%USERPROFILE%\.config\px`
 - **Generated config:** `%USERPROFILE%\.config\px\px.ini` (regenerated on every `start`; do not hand-edit, your changes are overwritten)
 - **User settings:** `%USERPROFILE%\.config\px\px-user.ini` (your overrides; never overwritten by the tool and preserved on `remove`; see [Customizing settings](#customizing-settings))
+- **Logon start:** `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\px-proxy.lnk` (written by `start`, deleted by `stop` and `remove`; see [Start at logon](#start-at-logon))
 - **Log:** `%USERPROFILE%\.config\px\debug-*.log` (off by default; set `log = 3` in `px-user.ini` to write a unique log in px's working directory, which `start` sets to the data dir; `remove` deletes these)
 
 ---

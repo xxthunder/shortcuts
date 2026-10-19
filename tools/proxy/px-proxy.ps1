@@ -16,12 +16,13 @@
                the px data directory. Does NOT resolve the proxy or write config.
       start    Resolve the upstream proxy fresh, (re)write the px config, and
                (re)start px so the running instance always reflects the current
-               network. Exactly one px instance results.
-      stop     Stop any running px cleanly.
+               network. Exactly one px instance results. Also registers px to
+               start at logon from that config, without a proxy lookup (SC-067).
+      stop     Stop any running px cleanly and remove the logon start.
       test     Send an HTTPS request through the local px endpoint and report a
                clear diagnostic (auth vs TLS/cert vs revocation).
-      remove   Stop px, uninstall it (only if this tool installed it), and delete
-               the px config and log files.
+      remove   Stop px, remove the logon start, uninstall px (only if this tool
+               installed it), and delete the px config and log files.
 
 .PARAMETER Action
     One of: install, start, stop, test, remove. Defaults to 'start'.
@@ -90,6 +91,7 @@ $script:PxPort = 3128
 $script:PxEndpoint = "http://${script:PxListen}:${script:PxPort}"
 $script:PxDefaultUpstreamPort = 8080
 $script:PxInstalledMarkerName = 'installed-by-px-proxy.marker'
+$script:PxAutostartName = 'px-proxy'
 
 # --- Path helpers ---------------------------------------------------------
 function Get-PxDataDir {
@@ -604,6 +606,12 @@ function Start-PxProxy {
     Start-Process -FilePath $exe -ArgumentList "--config=`"$configPath`"" -WorkingDirectory $dir -WindowStyle Hidden | Out-Null
 
     Write-Information "px started (upstream $upstream). Listening on $script:PxEndpoint. Tune settings in $(Get-PxUserConfigPath); logging is off unless you set log = 3 there (then logs land in $dir\debug-*.log)."
+
+    # Only after a successful launch, so a failed start leaves an existing entry
+    # alone. The logon start reuses this px.ini and never looks up the proxy:
+    # at logon the laptop is usually outside the company network (ADR 0005).
+    $entry = Register-Autostart -Name $script:PxAutostartName -TargetPath $exe -Arguments "--config=`"$configPath`"" -WorkingDirectory $dir
+    Write-Information "px starts at logon through $entry (config $configPath); 'px-proxy stop' turns that off."
 }
 
 function Test-PxProxy {
@@ -660,11 +668,12 @@ function Remove-PxProxy {
     [CmdletBinding(SupportsShouldProcess)]
     param()
 
-    if (-not $PSCmdlet.ShouldProcess('px', 'Stop, uninstall (if installed by this tool), and delete config/logs')) {
+    if (-not $PSCmdlet.ShouldProcess('px', 'Stop, remove the logon start, uninstall (if installed by this tool), and delete config/logs')) {
         return
     }
 
     Stop-PxProxy
+    $null = Unregister-Autostart -Name $script:PxAutostartName
 
     $marker = Get-PxInstalledMarkerPath
     if (Test-Path $marker) {
@@ -691,7 +700,7 @@ function Remove-PxProxy {
             Remove-Item -ErrorAction SilentlyContinue
     }
 
-    Write-Information "px removed (config and logs deleted)."
+    Write-Information "px removed (logon start, config and logs deleted)."
 }
 
 function Invoke-PxProxy {
@@ -712,7 +721,14 @@ function Invoke-PxProxy {
     switch ($Action) {
         'install' { Install-PxProxy }
         'start' { Start-PxProxy -ProxyHost $ProxyHost }
-        'stop' { Stop-PxProxy }
+        # Only the stop action removes the logon start: 'start' calls
+        # Stop-PxProxy to restart px and must keep the entry (SC-067).
+        'stop' {
+            Stop-PxProxy
+            if (Unregister-Autostart -Name $script:PxAutostartName) {
+                Write-Information "px no longer starts at logon."
+            }
+        }
         'test' {
             if (-not (Test-PxProxy)) {
                 throw "the HTTPS probe through $script:PxEndpoint did not succeed (see the warning above)."

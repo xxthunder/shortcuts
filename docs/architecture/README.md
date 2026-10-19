@@ -50,5 +50,6 @@ Records of significant architectural decisions, their context, and consequences.
 - [ADR 0002: wsl-manager changes only what it has marked as its own in a distribution](adr/0002-wsl-manager-changes-only-what-it-marked.md)
 - [ADR 0003: wsl-manager keeps WSL's binfmt_misc protection on and does not rely on systemd-binfmt.service](adr/0003-wsl-manager-keeps-wsl-binfmt-protection.md)
 - [ADR 0004: wsl-manager confirmations follow the consequence of the step](adr/0004-wsl-manager-confirmations-follow-the-consequence.md)
+- [ADR 0005: px starts at logon from the last config and never looks up the proxy then](adr/0005-px-starts-at-logon-from-the-last-config.md)
 
 [← Back to README](../../README.md)

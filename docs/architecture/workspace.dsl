@@ -12,7 +12,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
             hotkeys = container "Hotkeys" "Global hotkeys, started at login through a startup shortcut. tools/AutoHotKey." "AutoHotkey script"
             scoopHelper = container "Scoop update helper" "Lists the Scoop apps with updates and updates the selected ones; runs in a classic console so pwsh and Windows Terminal can be updated. tools/scoop, lib/scoop/scoop.ps1." "Windows PowerShell 5.1"
             npmInstaller = container "npm package installer" "Installs or updates Node.js through Scoop and a global npm package. lib/install/install-npm-global.ps1." "PowerShell 7"
-            proxyTools = container "Proxy tools" "px-proxy.ps1 installs, configures, starts and tests px; setProxy.ps1 sets the session proxy from the PAC file. tools/proxy." "PowerShell 7"
+            proxyTools = container "Proxy tools" "px-proxy.ps1 installs, configures, starts and tests px and registers it to start at logon; setProxy.ps1 sets the session proxy from the PAC file. tools/proxy." "PowerShell 7"
             wslManager = container "WSL Manager" "Installs, clones, updates and removes WSL distributions and prepares them for dev containers, as a TUI and a CLI. tools/wsl-manager, lib/wsl loaded through wsl.ps1." "PowerShell 7, PwshSpectreConsole" {
                 menu = component "Menu and entry point" "Parses the CLI command or runs the interactive menu above the distribution table. wsl-manager.ps1, manager.ps1: Invoke-WslManager, Start-InteractiveMode, Show-WslMenu." "PowerShell"
                 spectre = component "Spectre loader" "Imports PwshSpectreConsole and offers to install it when it is missing. spectre.ps1." "PowerShell"
