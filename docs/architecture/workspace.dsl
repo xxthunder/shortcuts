@@ -46,14 +46,12 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
                 syncSshConfigSh = component "sync-ssh-config.sh" "Copies SSH keys into the distribution and syncs DevPod entries back to Windows." "Bash"
             }
             claudeCodeInstaller = container "Claude Code installer" "Installs or updates the Claude Code CLI with the native installer. tools/claude-code." "PowerShell"
-            flowLauncherSetup = container "Flow Launcher setup" "Installs Flow Launcher as an optional launcher and configures its Program plugin to index .url files. tools/flow-launcher." "PowerShell"
             windowsTweaks = container "Windows tweaks" "Disables Caps Lock, the screen saver and more through registry files. tools/windows." "cmd, registry files"
             gitHooks = container "Git hooks" "pre-commit checks BOM and PSScriptAnalyzer on staged .ps1 files, commit-msg checks the conventional-commit subject with its backlog item; installed by install-hooks.ps1. tools/githooks." "POSIX shell, run by Git"
             architectureViewer = container "Architecture viewer" "Starts Structurizr local on this model. tools/structurizr." "Bash, PowerShell"
         }
 
         keypirinha = softwareSystem "Keypirinha" "Keyboard launcher; indexes the shortcuts folder and shortcuts_private." "External"
-        flowLauncher = softwareSystem "Flow Launcher" "Optional keyboard launcher." "External"
         scoop = softwareSystem "Scoop" "Command-line installer for Windows with its buckets." "External"
         github = softwareSystem "GitHub" "Hosts the shortcuts repository." "External"
         psGallery = softwareSystem "PowerShell Gallery" "Source of the PwshSpectreConsole module." "External"
@@ -67,7 +65,6 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         structurizrLocal = softwareSystem "Structurizr local" "The structurizr/structurizr container image, run with docker or podman." "External"
 
         developer -> keypirinha "Launches tools and links by name"
-        developer -> flowLauncher "Launches links by name (optional)"
         developer -> hotkeys "Presses global hotkeys"
         developer -> installer "Installs and updates Shortcuts"
         developer -> menu "Runs commands or uses the menu"
@@ -79,7 +76,6 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         keypirinha -> proxyTools "Launches px-proxy.bat"
         keypirinha -> installer "Launches update.bat"
         keypirinha -> architectureViewer "Launches structurizr-local.bat"
-        flowLauncher -> launcherCatalog "Indexes .url files"
 
         installer -> github "Clones and pulls the repository"
         installer -> scoop "Installs Scoop, git and the tool sets"
@@ -93,8 +89,6 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         proxyTools -> windows "Reads the PAC URL from Internet Settings"
         px -> corpProxy "Authenticates upstream"
         claudeCodeInstaller -> claudeInstall "Downloads and runs"
-        flowLauncherSetup -> scoop "Installs Flow Launcher"
-        flowLauncherSetup -> flowLauncher "Configures the Program plugin"
         windowsTweaks -> windows "Imports registry settings"
         architectureViewer -> structurizrLocal "Runs on docs/architecture"
 

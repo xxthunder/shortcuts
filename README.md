@@ -204,7 +204,6 @@ It provides both a TUI (menu-driven interface) and CLI commands to:
 
 ## More Features
 
-- **[Flow Launcher](docs/runbooks/flow-launcher-setup.md)**: A modern, actively maintained alternative launcher to Keypirinha with plugin support and auto-reload
 - **[px Proxy](docs/runbooks/px-proxy.md)**: A Windows-side local authenticating proxy (px) that gives native CLI tools and WSL seamless SSPI/Kerberos auth through the corporate proxy, with no stored credentials
 - **[Scoop Update Helper](docs/runbooks/scoop-update.md)**: An interactive, resilient loop for updating Scoop apps; runs under Windows PowerShell 5.1 in a classic console so it can update pwsh and Windows Terminal
 

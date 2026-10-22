@@ -56,7 +56,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 
 ## Quick Start
 
-**TUI**: To launch the TUI, search for `wsl-manager` in Keypirinha or Flow Launcher, or launch directly from a PowerShell terminal:
+**TUI**: To launch the TUI, search for `wsl-manager` in Keypirinha, or launch directly from a PowerShell terminal:
 
 ```powershell
 .\tools\wsl-manager\wsl-manager.ps1
