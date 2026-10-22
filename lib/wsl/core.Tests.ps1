@@ -1036,3 +1036,13 @@ Describe "Get-WslPlatformVersion" {
         Get-WslPlatformVersion | Should -BeNullOrEmpty
     }
 }
+
+Describe "Format-WslPlatformVersion" {
+    It "Should label <Scenario> as '<Expected>'" -ForEach @(
+        @{ Scenario = "a version"; Version = "3.0.1.0"; Expected = "WSL 3.0.1.0" }
+        @{ Scenario = "null"; Version = $null; Expected = "WSL (version unknown)" }
+        @{ Scenario = "an empty string"; Version = ""; Expected = "WSL (version unknown)" }
+    ) {
+        Format-WslPlatformVersion -Version $Version | Should -Be $Expected
+    }
+}

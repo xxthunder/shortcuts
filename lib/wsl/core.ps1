@@ -84,6 +84,35 @@ function Get-WslPlatformVersion {
     return $null
 }
 
+function Format-WslPlatformVersion {
+    <#
+    .SYNOPSIS
+        Labels a WSL version for display, e.g. "WSL 3.0.1.0", or "WSL (version unknown)".
+    .DESCRIPTION
+        Takes the result of Get-WslPlatformVersion, so callers that also need the raw
+        version read it once. The version of WSL itself is not the architecture of a
+        distribution (1 or 2), which is why the label always carries the full number (SC-068).
+    .PARAMETER Version
+        The version from Get-WslPlatformVersion; $null or empty when it could not be read.
+    .OUTPUTS
+        System.String
+    .EXAMPLE
+        Format-WslPlatformVersion -Version (Get-WslPlatformVersion)
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Version
+    )
+
+    if ($Version) {
+        return "WSL $Version"
+    }
+    return "WSL (version unknown)"
+}
+
 function Get-WslDistroList {
     <#
     .SYNOPSIS

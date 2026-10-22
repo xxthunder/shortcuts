@@ -39,7 +39,9 @@ function Show-WslDistroTable {
 
     .DESCRIPTION
         Renders a Spectre.Console table showing all installed WSL distributions with
-        their index, name, state (Running/Stopped), WSL version, and default marker.
+        their index, name, state (Running/Stopped), architecture (1 or 2), and default
+        marker. The title shows the version of WSL itself, which is not the architecture:
+        WSL 3.0 still runs distributions on architecture 2 (SC-068).
         Returns a Spectre renderable object for use in layouts or panels.
 
     .PARAMETER Distros
@@ -79,12 +81,13 @@ function Show-WslDistroTable {
             '#'       = $index
             'Name'    = $distro.Name
             'State'   = $stateMarkup
-            'Version' = "WSL$($distro.Version)"
+            'Arch'    = "$($distro.Version)"
             'Default' = $defaultMark
         }
     }
 
-    $tableData | Format-SpectreTable -Border Rounded -Color Cyan -AllowMarkup -Expand
+    $title = Format-WslPlatformVersion -Version (Get-WslPlatformVersion)
+    $tableData | Format-SpectreTable -Border Rounded -Color Cyan -Title $title -AllowMarkup -Expand
 }
 
 function Select-WslDistro {
@@ -963,7 +966,7 @@ function Invoke-UpdateWsl {
     param()
 
     $before = Get-WslPlatformVersion
-    $current = if ($before) { "WSL $before" } else { "WSL (version unknown)" }
+    $current = Format-WslPlatformVersion -Version $before
 
     if (-not (Confirm-DestructiveAction -Action "Update $current with wsl --update.")) {
         Write-Status "Cancelled."

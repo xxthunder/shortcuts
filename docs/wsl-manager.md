@@ -922,6 +922,8 @@ Redraw the distribution table above the menu with the current state.
 
 The table is fetched once each time the menu is drawn and is not updated while the menu waits for your choice, so it can lag behind reality: a distribution started from the menu may still show `Stopped` for a moment, and anything that changes state outside the manager (exiting a distribution's shell, `wsl --shutdown` in another terminal, WSL's idle timeout) is not reflected until the next redraw. **Refresh list** redraws immediately, without the "Press Enter to continue" pause.
 
+The table lists each distribution with its state, its architecture and a `*` for the default. Its title is the version of WSL itself, e.g. `WSL 3.0.1.0`, or `WSL (version unknown)` when `wsl --version` cannot be read. The `Arch` column is the architecture of the distribution from `wsl --list --verbose`: `1` or `2`. The two numbers are independent; WSL 3.0 still runs distributions on architecture `2`.
+
 ## Technical Reference
 
 ### Module Structure
