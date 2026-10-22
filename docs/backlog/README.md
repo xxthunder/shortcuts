@@ -14,7 +14,6 @@
 ### In Progress
 
 - [SC-069 — Remove Flow Launcher](sc-069.md)
-- [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
@@ -45,6 +44,7 @@
 
 ### Done
 
+- [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-067 — px starts at logon](sc-067.md)
 - [SC-064 — Update WSL itself from wsl-manager](sc-064.md)
 - [SC-063 — setup-docker fails on WSL 3.0 at systemd-binfmt](sc-063.md)
