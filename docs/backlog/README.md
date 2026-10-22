@@ -13,11 +13,11 @@
 
 ### In Progress
 
+- [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
 
-- [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-066 — wsl-manager hands the Linux side of a distribution to Ansible](sc-066.md)
 - [SC-065 — Devcontainer for development and tests on Linux](sc-065.md)
 - [SC-061 — setup-proxy must not overwrite or delete apt, Docker and Podman files it does not own](sc-061.md)
