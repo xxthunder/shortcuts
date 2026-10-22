@@ -10,12 +10,15 @@ BeforeAll {
     Start-SutIsolation
 
     # Stub PwshSpectreConsole commands used by commands.ps1
-    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
+    function Format-SpectreTable { param($Border, $Color, $Title, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $Title, $AllowMarkup, $Expand; $_ } }
     function Read-SpectreSelection { param($Message, $Choices, $PageSize, [switch]$EnableSearch) $null = $Message, $Choices, $PageSize, $EnableSearch }
     function Read-SpectreText { param($Message, $DefaultAnswer, $Choices) $null = $Message, $DefaultAnswer, $Choices }
     function Get-SpectreEscapedText { param($Text) $Text }
 
     . "$PSScriptRoot\commands.ps1"
+
+    # Every drawn distribution table reads the WSL version for its title (SC-068).
+    Mock Get-WslPlatformVersion { "3.0.1.0" }
 }
 
 AfterAll {
@@ -23,6 +26,55 @@ AfterAll {
 }
 
 Describe "Show-WslDistroTable" {
+    BeforeEach {
+        Mock Get-WslPlatformVersion { "3.0.1.0" }
+    }
+
+    Context "Arch column" {
+        It "Should show architecture <Version> as the plain number in the Arch column" -ForEach @(
+            @{ Version = 1 }
+            @{ Version = 2 }
+        ) {
+            $distros = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = $Version; IsDefault = $true }
+            )
+
+            $rows = @(Show-WslDistroTable -Distros $distros)
+
+            $rows[0].Arch | Should -Be "$Version"
+            $rows[0].PSObject.Properties.Name | Should -Not -Contain "Version"
+        }
+    }
+
+    Context "Title" {
+        BeforeEach {
+            Mock Format-SpectreTable { "mocked-table" }
+            $script:oneDistro = @(
+                [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
+            )
+        }
+
+        It "Should title the table with the WSL version" {
+            Show-WslDistroTable -Distros $script:oneDistro
+
+            Should -Invoke Format-SpectreTable -Times 1 -ParameterFilter { $Title -eq "WSL 3.0.1.0" }
+        }
+
+        It "Should title the table 'WSL (version unknown)' when the version cannot be read" {
+            Mock Get-WslPlatformVersion { $null }
+
+            Show-WslDistroTable -Distros $script:oneDistro
+
+            Should -Invoke Format-SpectreTable -Times 1 -ParameterFilter { $Title -eq "WSL (version unknown)" }
+        }
+
+        It "Should not read the WSL version when there are no distributions" {
+            Show-WslDistroTable -Distros @()
+
+            Should -Invoke Get-WslPlatformVersion -Times 0
+        }
+    }
+
     Context "When distributions exist" {
         BeforeEach {
             Mock Format-SpectreTable { "mocked-table" }

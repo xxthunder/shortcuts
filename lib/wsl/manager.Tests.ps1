@@ -21,7 +21,7 @@ BeforeAll {
     function Read-SpectreText { param($Message, $DefaultAnswer, $Choices) $null = $Message, $DefaultAnswer, $Choices }
     function Get-SpectreEscapedText { param($Text) $Text }
     function Format-SpectrePanel { param($Header, $Border, $Color, [switch]$Expand) process { $null = $Header, $Border, $Color, $Expand; $_ } }
-    function Format-SpectreTable { param($Border, $Color, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $AllowMarkup, $Expand; $_ } }
+    function Format-SpectreTable { param($Border, $Color, $Title, [switch]$AllowMarkup, [switch]$Expand) process { $null = $Border, $Color, $Title, $AllowMarkup, $Expand; $_ } }
     function Out-SpectreHost { param([Parameter(ValueFromPipeline)]$Data) process { $null = $Data } }
     function Format-SpectreColumns {
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Must match PwshSpectreConsole cmdlet name')]
@@ -35,6 +35,9 @@ BeforeAll {
 
     . "$PSScriptRoot\commands.ps1"
     . "$PSScriptRoot\manager.ps1"
+
+    # Every drawn distribution table reads the WSL version for its title (SC-068).
+    Mock Get-WslPlatformVersion { "3.0.1.0" }
 }
 
 AfterAll {
