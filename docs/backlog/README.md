@@ -37,11 +37,11 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
-- [SC-069 — Remove Flow Launcher](sc-069.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
 - [SC-072 — Backlog index the backlog script can derive](sc-072.md)
+- [SC-069 — Remove Flow Launcher](sc-069.md)
 - [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-067 — px starts at logon](sc-067.md)
 - [SC-064 — Update WSL itself from wsl-manager](sc-064.md)
