@@ -13,8 +13,8 @@
 
 ### Open
 - [SC-073f — C4 elements as needs](sc-073f.md)
-- [SC-073e — codelinks markers in the px-proxy code](sc-073e.md)
-- [SC-073d — Pester test results as needs](sc-073d.md)
+- [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
+- [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
