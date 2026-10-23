@@ -177,7 +177,7 @@ powershell -File script-name.ps1 arg1 arg2
 
 1. Create wrapper
 2. Refresh Keypirinha catalog
-3. Press Win+Alt+Space
+3. Press Alt+Space
 4. Type script name
 5. Press Enter
 

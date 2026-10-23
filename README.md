@@ -50,7 +50,7 @@
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-After installation, press **Win+Alt+Space** and start typing to launch apps and shortcuts!
+After installation, press **Alt+Space** and start typing to launch apps and shortcuts!
 
 > **Note:** If you get an execution policy error, see [Troubleshooting](#installation-script-fails-with-execution-policy-error).
 
@@ -60,7 +60,7 @@ After installation, press **Win+Alt+Space** and start typing to launch apps and 
 
 Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 
-- **Keypirinha Launcher**: Press **Win+Alt+Space** to instantly search and open anything
+- **Keypirinha Launcher**: Press **Alt+Space** to instantly search and open anything
 - **Smart Shortcuts**: Quick access to tools, websites, and custom commands
 - **Package Management**: Easy installation of developer tools via Scoop
 - **Automation Scripts**: PowerShell utilities to streamline your workflow
@@ -105,7 +105,7 @@ irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin
 
 **4. Start using Shortcuts!**
 
-- Press **Win+Alt+Space** to launch Keypirinha
+- Press **Alt+Space** to launch Keypirinha
 - Start typing to search for apps and shortcuts
 
 ---
@@ -114,11 +114,11 @@ irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin
 
 ### Launch Keypirinha
 
-Press **Win+Alt+Space** anywhere, anytime. A search box appears where you can type to find what you need.
+Press **Alt+Space** anywhere, anytime. A search box appears where you can type to find what you need.
 
 ### Try These Examples
 
-Open Keypirinha (**Win+Alt+Space**) and try typing:
+Open Keypirinha (**Alt+Space**) and try typing:
 
 | Type this | What happens |
 |-----------|-------------|
@@ -141,7 +141,7 @@ Open Keypirinha (**Win+Alt+Space**) and try typing:
 
 After installing new apps or adding shortcuts, refresh Keypirinha's catalog:
 
-1. Press **Win+Alt+Space**
+1. Press **Alt+Space**
 2. Type **"Refresh catalog"**
 3. Press Enter
 4. Wait a few seconds for the scan to complete
@@ -172,7 +172,7 @@ Your shortcuts are stored as `.url` files in the `links/` directory. After refre
    URL=https://example.com
    ```
 
-4. Refresh Keypirinha catalog (**Win+Alt+Space** → "Refresh catalog")
+4. Refresh Keypirinha catalog (**Alt+Space** → "Refresh catalog")
 5. Type the shortcut name to use it!
 
 ### Installing Optional Tools
@@ -213,7 +213,7 @@ It provides both a TUI (menu-driven interface) and CLI commands to:
 
 ### Quick Update (Easiest)
 
-1. Press **Win+Alt+Space**
+1. Press **Alt+Space**
 2. Type **"update"**
 3. Select and run `update.bat`
 4. After update completes, type **"Refresh catalog"** in Keypirinha
@@ -267,7 +267,7 @@ scoop install keypirinha
 
 **Solution (fixes 90% of cases):**
 
-1. Press **Win+Alt+Space**
+1. Press **Alt+Space**
 2. Type **"Refresh catalog"**
 3. Press Enter and wait 5-10 seconds
 
@@ -289,7 +289,7 @@ scoop install keypirinha
 
 **Try these in order:**
 
-1. Run update via Keypirinha (**Win+Alt+Space** → "update")
+1. Run update via Keypirinha (**Alt+Space** → "update")
 2. Run installation command again (safe to repeat):
 
    ```powershell
@@ -299,7 +299,7 @@ scoop install keypirinha
 3. Check internet connection
 4. Disable antivirus temporarily and try again
 
-### Keypirinha hotkey (Win+Alt+Space) doesn't work
+### Keypirinha hotkey (Alt+Space) doesn't work
 
 **Possible causes:**
 
