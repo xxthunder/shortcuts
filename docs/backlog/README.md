@@ -13,12 +13,12 @@
 
 ### In Progress
 
+- [SC-072 — Backlog index the backlog script can derive](sc-072.md)
 - [SC-069 — Remove Flow Launcher](sc-069.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Open
 
-- [SC-072 — Backlog index the backlog script can derive](sc-072.md)
 - [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
 - [SC-066 — wsl-manager hands the Linux side of a distribution to Ansible](sc-066.md)
