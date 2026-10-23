@@ -60,7 +60,7 @@ try {
     Write-Information "You can now run: claude"
     Write-Information ""
     Write-Information "Remember to refresh Keypirinha catalog:"
-    Write-Information "  Press Win+Alt+Space and type 'Refresh catalog'"
+    Write-Information "  Press Alt+Space and type 'Refresh catalog'"
 
 } catch {
     Write-ErrorMsg "Installation failed: $_"

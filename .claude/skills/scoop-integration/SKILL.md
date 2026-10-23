@@ -189,7 +189,7 @@ After installing new apps:
 
 ```powershell
 Write-Host "Remember to refresh Keypirinha catalog:" -ForegroundColor Yellow
-Write-Host "  1. Press Win+Alt+Space" -ForegroundColor Yellow
+Write-Host "  1. Press Alt+Space" -ForegroundColor Yellow
 Write-Host "  2. Type 'Refresh catalog'" -ForegroundColor Yellow
 Write-Host "  3. Press Enter" -ForegroundColor Yellow
 ```

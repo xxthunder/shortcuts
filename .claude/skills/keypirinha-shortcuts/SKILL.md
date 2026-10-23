@@ -135,7 +135,7 @@ Always remind users after creating shortcuts:
 
 ```powershell
 Write-Host "`nKeypirinha catalog refresh required:" -ForegroundColor Yellow
-Write-Host "  1. Press Win+Alt+Space" -ForegroundColor Cyan
+Write-Host "  1. Press Alt+Space" -ForegroundColor Cyan
 Write-Host "  2. Type 'Refresh catalog'" -ForegroundColor Cyan
 Write-Host "  3. Press Enter" -ForegroundColor Cyan
 Write-Host "  4. Wait a few seconds for scan to complete" -ForegroundColor Cyan
@@ -150,7 +150,7 @@ New-KeypirinhaShortcut -Name "Gmail" -Url "https://gmail.com"
 
 Write-Host "`nShortcuts created successfully!" -ForegroundColor Green
 Write-Host "`nIMPORTANT: Refresh Keypirinha catalog to see new shortcuts" -ForegroundColor Yellow
-Write-Host "Press Win+Alt+Space and type 'Refresh catalog'" -ForegroundColor Cyan
+Write-Host "Press Alt+Space and type 'Refresh catalog'" -ForegroundColor Cyan
 ```
 
 ## Common Shortcuts
