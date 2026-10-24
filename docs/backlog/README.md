@@ -1,5 +1,3 @@
-[← Back to README](../../README.md)
-
 # Backlog
 
 ## Status Legend
@@ -129,6 +127,13 @@
 
 ---
 
+```{toctree}
+:hidden:
+:glob:
+
+*
+```
+
 ## Notes
 
 - **ID prefix**: `SC` (shortcuts)
@@ -142,7 +147,3 @@
 2. **Update the heading** - add `✅ DONE -` prefix (e.g., `# [SC-004] ✅ DONE - …`)
 3. **Update the Status field** - change to `**Status**: Done (YYYY-MM-DD)`
 4. **Update this README** - move the entry from its current section to **Done**
-
----
-
-[← Back to README](../../README.md)

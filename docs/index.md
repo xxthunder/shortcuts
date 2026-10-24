@@ -4,8 +4,20 @@ The requirements of the shortcuts tools and where the code implements and tests 
 Built with [Sphinx-Needs](https://sphinx-needs.readthedocs.io/) from `ubproject.toml`, the configuration [ubCode](https://ubcode.useblocks.com/) reads as well.
 
 ```{toctree}
-:maxdepth: 1
+:hidden:
+:caption: Tools
 
-requirements/px-proxy
-traceability/px-proxy
+wsl-manager
+runbooks/px-proxy
+runbooks/scoop-update
+```
+
+```{toctree}
+:hidden:
+:caption: Development
+
+development-principles
+architecture/README
+roadmap
+backlog/README
 ```

@@ -11,9 +11,8 @@ name = "shortcuts"
 [parse.parsers.md]
 flavour = "myst"
 include = [
-  "docs/index.md",
-  "docs/requirements/*.md",
-  "docs/traceability/*.md",
+  "docs/*.md",
+  "docs/**/*.md",
 ]
 
 [needs]

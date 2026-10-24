@@ -1,5 +1,3 @@
-[← Back to README](../README.md)
-
 # Shortcuts - Development Principles
 
 **Version**: 1.0.0 | **Created**: 2026-01-12 | **Adapted**: 2026-01-28
@@ -161,7 +159,3 @@ For detailed technical implementation guidance:
 - `AGENTS.md` - Project-wide development guidelines
 - `lib/AGENTS.md` - PowerShell library-specific guidance
 - `README.md` - User-facing installation and usage documentation
-
----
-
-[← Back to README](../README.md)

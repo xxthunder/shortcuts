@@ -1,5 +1,3 @@
-[← Back to README](../../README.md)
-
 # Architecture
 
 Architecture documentation for the Shortcuts project.
@@ -52,4 +50,9 @@ Records of significant architectural decisions, their context, and consequences.
 - [ADR 0004: wsl-manager confirmations follow the consequence of the step](adr/0004-wsl-manager-confirmations-follow-the-consequence.md)
 - [ADR 0005: px starts at logon from the last config and never looks up the proxy then](adr/0005-px-starts-at-logon-from-the-last-config.md)
 
-[← Back to README](../../README.md)
+```{toctree}
+:hidden:
+:glob:
+
+adr/*
+```
