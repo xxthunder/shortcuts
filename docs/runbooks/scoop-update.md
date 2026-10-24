@@ -67,7 +67,7 @@ Because the helper runs under Windows PowerShell 5.1 in a classic console:
 Launch via `update-scoop.bat`, not `update-scoop.ps1`. The wrapper uses `conhost.exe` specifically to bypass the "Windows Terminal is my default terminal application" setting. If you invoked the `.ps1` directly (or copied only part of the wrapper command), you lose that behavior.
 
 **"Scoop is not installed."**
-Install Scoop first (see the [Scoop website](https://scoop.sh) or the project README), then re-run.
+Install Scoop first (see the [Scoop website](https://scoop.sh) or [Installation](../index.md#installation)), then re-run.
 
 **A `windows-terminal` update keeps failing.**
 A Windows Terminal window is still open (it does not have to be the one you launched from). Close every Windows Terminal window, press `R`, and retry. The helper itself runs in a classic console, so it does not block the update.

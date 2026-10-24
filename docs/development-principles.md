@@ -158,4 +158,4 @@ pwsh -File ".\test\bin\testrunner.ps1"
 For detailed technical implementation guidance:
 - `AGENTS.md` - Project-wide development guidelines
 - `lib/AGENTS.md` - PowerShell library-specific guidance
-- `README.md` - User-facing installation and usage documentation
+- [User guide](index.md) - User-facing installation and usage documentation

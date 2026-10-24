@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides technical guidelines for AI agents working on the Shortcuts project. For user-facing documentation, see @README.md.
+This document provides technical guidelines for AI agents working on the Shortcuts project. For user-facing documentation, see @docs/index.md.
 
 ## Project Architecture
 
@@ -268,7 +268,7 @@ This project heavily uses Scoop for package management:
 Scripts that add/modify shortcuts should remind users to refresh the Keypirinha catalog:
 
 ```powershell
-Write-Host "Remember to refresh Keypirinha catalog (see README.md for details)" -ForegroundColor Yellow
+Write-Host "Remember to refresh Keypirinha catalog (see docs/index.md for details)" -ForegroundColor Yellow
 ```
 
 #### Bootstrap System
@@ -466,5 +466,5 @@ For detailed PowerShell library guidelines:
 For project documentation:
 
 - `docs/wsl-manager.md`: WSL Manager consolidated specification
-- `README.md`: User-facing installation and usage guide
+- `docs/index.md`: User-facing installation and usage guide, published at https://xxthunder.github.io/shortcuts/
 - `bin/install.ps1`: Main installation entry point
