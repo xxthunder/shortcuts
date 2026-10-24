@@ -16,7 +16,6 @@
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
-- [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
 - [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-066 — wsl-manager hands the Linux side of a distribution to Ansible](sc-066.md)
@@ -35,6 +34,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
+- [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
 - [SC-073 — Traceability with sphinx-needs, ubCode and codelinks: px-proxy first](sc-073.md)
 - [SC-001 — Backlog refinement](sc-001.md)
