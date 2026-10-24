@@ -1,0 +1,96 @@
+/* The shortcuts look on furo (SC-074). */
+
+/* sphinx-needs draws needs and needs tables in the fixed light colours of its modern.css,
+   while furo follows the colour scheme. In dark mode, furo's light text then sits on light
+   boxes. Its tokens follow furo here, after sphinx-needs' own documentation on furo
+   (docs-theme/static/ub-furo.css in useblocks/sphinx-needs). */
+body {
+    --sn-color-table-label: var(--color-foreground-muted);
+    --sn-color-table-btn-border: var(--color-foreground-muted);
+    --sn-color-table-popover-bg: var(--color-background-primary);
+    --sn-color-table-popover-fg: var(--color-foreground-primary);
+}
+
+@media not print {
+    body[data-theme="dark"] {
+        --sn-color-need-border: #aaaaaa;
+        --sn-color-need-row-border: hsla(52, 75%, 5%, 0.12);
+        --sn-color-need-bg: #111111;
+        --sn-color-need-bg-head: rgba(255, 255, 255, 0.1);
+        --sn-color-complete-bg-head: rgba(255, 255, 255, 0.1);
+        --sn-color-complete-bg-foot: rgba(255, 255, 255, 0.1);
+        --sn-color-bg-gray: #111111;
+        --sn-color-bg-lightgray: rgba(255, 255, 255, 0.1);
+        --sn-color-bg-green: #024e2a;
+        --sn-color-bg-red: #81201b;
+        --sn-color-bg-yellow: #a97c32;
+        --sn-color-bg-blue: #096285;
+        --sn-color-debug-btn-border: #888;
+        --sn-color-debug-btn-on-text: #ff3f34;
+        --sn-color-debug-btn-off-text: #0fbcf9;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        body:not([data-theme="light"]) {
+            --sn-color-need-border: #aaaaaa;
+            --sn-color-need-row-border: hsla(52, 75%, 5%, 0.12);
+            --sn-color-need-bg: #111111;
+            --sn-color-need-bg-head: rgba(255, 255, 255, 0.1);
+            --sn-color-complete-bg-head: rgba(255, 255, 255, 0.1);
+            --sn-color-complete-bg-foot: rgba(255, 255, 255, 0.1);
+            --sn-color-bg-gray: #111111;
+            --sn-color-bg-lightgray: rgba(255, 255, 255, 0.1);
+            --sn-color-bg-green: #024e2a;
+            --sn-color-bg-red: #81201b;
+            --sn-color-bg-yellow: #a97c32;
+            --sn-color-bg-blue: #096285;
+            --sn-color-debug-btn-border: #888;
+            --sn-color-debug-btn-on-text: #ff3f34;
+            --sn-color-debug-btn-off-text: #0fbcf9;
+        }
+    }
+}
+
+/* furo keeps the content column at 46em, centred, however wide the window is. From the
+   width at which the sidebar shows (63em), the column takes the room up to the table of
+   contents instead, up to 70em of text. It stays centred the way furo centres it: the
+   sidebar takes half the window less half the widest column (70em of text and 3em of
+   padding on each side), and never less than its 15em. Without `min-width: 0` on the
+   column and the flex box around it, a wide code block or table would stretch both past
+   the window instead of scrolling inside the column. */
+@media (min-width: 63em) {
+    .sidebar-drawer {
+        width: max(15em, 50% - 38em);
+    }
+
+    .main {
+        min-width: 0;
+    }
+
+    .content {
+        flex: 1 1 46em;
+        max-width: 70em;
+        min-width: 0;
+        width: auto;
+    }
+}
+
+/* The title logo's letters are transparent and vanish on a dark background: dark mode shows
+   the icon (`dark_logo` in conf.py) and the name as text, light mode the title logo alone. */
+.sidebar-brand-text {
+    display: none;
+}
+
+img.sidebar-logo.only-dark {
+    max-width: 6rem;
+}
+
+body[data-theme="dark"] .sidebar-brand-text {
+    display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) .sidebar-brand-text {
+        display: block;
+    }
+}
