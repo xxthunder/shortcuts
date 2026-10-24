@@ -12,6 +12,7 @@
 ## Table of Contents
 
 ### Open
+- [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
