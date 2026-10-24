@@ -1,6 +1,6 @@
 # px-proxy requirements
 
-What [px-proxy](https://github.com/xxthunder/shortcuts/blob/develop/docs/runbooks/px-proxy.md) does now. A requirement changes when the tool's behaviour changes; the backlog items that changed it link to it.
+What [px-proxy](../runbooks/px-proxy.md) does now. A requirement changes when the tool's behaviour changes; the backlog items that changed it link to it.
 
 ```{req} px's files live in the user profile
 :id: REQ_PX_FILES

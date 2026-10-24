@@ -1,5 +1,3 @@
-[← Back to README](../README.md)
-
 # WSL Manager
 
 ## Overview
@@ -1047,7 +1045,3 @@ WSL Manager is part of the C4 model of the whole repository in Structurizr DSL: 
 - **Why binfmt.d?** Uses kernel-level configuration managed by `systemd-binfmt.service` instead of late-boot rc.local scripts. This prevents VS Code from interfering with Windows executable interop when opening WSL folders.
 - **Why copy SSH keys into WSL?** DevPod and other WSL-native tools need Linux SSH, which cannot access the Windows SSH agent. Copying keys ensures git and DevPod work with Linux-native SSH inside WSL, while the Windows SSH config gets the correct ProxyCommand for connecting from Windows editors.
 - **Security consideration:** This setup forwards your SSH agent into containers. Only use with trusted dev container configurations.
-
----
-
-[← Back to README](../README.md)

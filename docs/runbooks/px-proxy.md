@@ -1,5 +1,3 @@
-[← Back to README](../../README.md)
-
 # px Proxy Runbook
 
 ## Overview
@@ -26,7 +24,7 @@ You probably have everything already:
 
 ## Usage
 
-**From Keypirinha:** search for `px-proxy`. Keypirinha's file catalog only indexes `.url`, `.lnk`, `.cmd`, `.bat`, and `.exe` files (not `.ps1`), so it finds and runs `tools\proxy\px-proxy.bat`, the `.bat` wrapper around the script (see the PowerShell Script Wrapper Convention in `AGENTS.md`) — never the `.ps1` file directly. Press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the wrapper with no action, which runs the default (`start`).
+**From Keypirinha:** search for `px-proxy`. Keypirinha's file catalog only indexes `.url`, `.lnk`, `.cmd`, `.bat`, and `.exe` files (not `.ps1`), so it finds and runs `tools\proxy\px-proxy.bat`, the `.bat` wrapper around the script (see the PowerShell Script Wrapper Convention in `AGENTS.md`), never the `.ps1` file directly. Press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the wrapper with no action, which runs the default (`start`).
 
 **From a terminal:**
 
@@ -177,6 +175,13 @@ Confirm px is running and reachable:
 
 Logging is off by default; set `log = 3` in `px-user.ini` (see [Customizing settings](#customizing-settings)) and re-run `start`, then read the px log at `%USERPROFILE%\.config\px\debug-*.log`. Re-running `start` also regenerates the config and restarts px.
 
----
+## Requirements and traces
 
-[← Back to README](../../README.md)
+What px-proxy does, stated as requirements, and where the code implements and tests each of them.
+
+```{toctree}
+:maxdepth: 1
+
+../requirements/px-proxy
+../traceability/px-proxy
+```
