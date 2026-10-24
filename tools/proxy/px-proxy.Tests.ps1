@@ -42,12 +42,14 @@ Describe "Test safety" {
 }
 
 Describe "Get-PxDataDir" {
+    # @returns a path under the user profile .config\px, TEST_PX_DATA_DIR_UNDER_PROFILE, test, [REQ_PX_FILES]
     It "returns a path under the user profile .config\px" {
         Get-PxDataDir | Should -BeLike '*\.config\px'
     }
 }
 
 Describe "Get-PxConfigPath" {
+    # @returns px.ini inside the data directory, TEST_PX_CONFIG_PATH_IN_DATA_DIR, test, [REQ_PX_FILES]
     It "returns px.ini inside the data directory" {
         Mock Get-PxDataDir { 'C:\fake\px' }
         Get-PxConfigPath | Should -Be 'C:\fake\px\px.ini'
@@ -125,6 +127,7 @@ Describe "Library-mode env restoration" {
 }
 
 Describe "Get-KerberosProxyHost" {
+    # @extracts the HTTP SPN host and appends the default port, TEST_PX_KERBEROS_EXTRACTS_HOST, test, [REQ_PX_UPSTREAM]
     It "extracts the HTTP SPN host and appends the default port" {
         Mock Get-KlistOutput { @(
                 'Cached Tickets: (5)',
@@ -133,16 +136,19 @@ Describe "Get-KerberosProxyHost" {
         Get-KerberosProxyHost -WarningAction SilentlyContinue | Should -Be 'osproxy.corp.example:8080'
     }
 
+    # @returns null when no HTTP SPN is present, TEST_PX_KERBEROS_NO_SPN, test, [REQ_PX_UPSTREAM]
     It "returns null when no HTTP SPN is present" {
         Mock Get-KlistOutput { @('Cached Tickets: (1)', '    Server: krbtgt/CORP.EXAMPLE') }
         Get-KerberosProxyHost | Should -BeNullOrEmpty
     }
 
+    # @returns null when klist output is empty, TEST_PX_KERBEROS_EMPTY_KLIST, test, [REQ_PX_UPSTREAM]
     It "returns null when klist output is empty" {
         Mock Get-KlistOutput { $null }
         Get-KerberosProxyHost | Should -BeNullOrEmpty
     }
 
+    # @warns that the host and port are a guess when it falls back to an SPN, TEST_PX_KERBEROS_WARNS_GUESS, test, [REQ_PX_UPSTREAM]
     It "warns that the host and port are a guess when it falls back to an SPN" {
         Mock Get-KlistOutput { @('    Server: HTTP/intranet.corp.example @ CORP.EXAMPLE') }
         Mock Write-Warning { }
@@ -152,6 +158,7 @@ Describe "Get-KerberosProxyHost" {
         }
     }
 
+    # @does not warn when no SPN is found, TEST_PX_KERBEROS_NO_WARNING_WITHOUT_SPN, test, [REQ_PX_UPSTREAM]
     It "does not warn when no SPN is found" {
         Mock Get-KlistOutput { @('    Server: krbtgt/CORP.EXAMPLE') }
         Mock Write-Warning { }
@@ -159,6 +166,7 @@ Describe "Get-KerberosProxyHost" {
         Should -Invoke Write-Warning -Times 0
     }
 
+    # @returns null when klist is unavailable and throws, TEST_PX_KERBEROS_KLIST_THROWS, test, [REQ_PX_UPSTREAM]
     It "returns null when klist is unavailable and throws" {
         Mock Get-KlistOutput { throw 'klist: command not found' }
         Get-KerberosProxyHost | Should -BeNullOrEmpty
@@ -166,16 +174,19 @@ Describe "Get-KerberosProxyHost" {
 }
 
 Describe "Resolve-PxUpstreamProxy" {
+    # @returns the explicit ProxyHost override when provided, TEST_PX_UPSTREAM_EXPLICIT_HOST, test, [REQ_PX_UPSTREAM]
     It "returns the explicit ProxyHost override when provided" {
         Resolve-PxUpstreamProxy -ProxyHost 'manual.corp:8080' | Should -Be 'manual.corp:8080'
     }
 
+    # @resolves via PAC when the PAC returns a non-direct proxy, TEST_PX_UPSTREAM_PAC, test, [REQ_PX_UPSTREAM]
     It "resolves via PAC when the PAC returns a non-direct proxy" {
         Mock Get-InternetSettingsFromRegistry { @{ AutoConfigUrl = 'http://wpad/pac' } }
         Mock Get-ProxyFromPac { @{ ProxyUrl = 'http://pacproxy.corp:8080'; IsDirect = $false } }
         Resolve-PxUpstreamProxy | Should -Be 'pacproxy.corp:8080'
     }
 
+    # @falls back to the Kerberos SPN when PAC is direct, TEST_PX_UPSTREAM_KERBEROS_FALLBACK, test, [REQ_PX_UPSTREAM]
     It "falls back to the Kerberos SPN when PAC is direct" {
         Mock Get-InternetSettingsFromRegistry { @{ } }
         Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
@@ -183,6 +194,7 @@ Describe "Resolve-PxUpstreamProxy" {
         Resolve-PxUpstreamProxy | Should -Be 'spnproxy.corp:8080'
     }
 
+    # @throws when nothing resolves in a non-interactive session, TEST_PX_UPSTREAM_FAILS_NON_INTERACTIVE, test, [REQ_PX_UPSTREAM]
     It "throws when nothing resolves in a non-interactive session" {
         Mock Get-InternetSettingsFromRegistry { $null }
         Mock Get-KerberosProxyHost { $null }
@@ -190,6 +202,7 @@ Describe "Resolve-PxUpstreamProxy" {
         { Resolve-PxUpstreamProxy } | Should -Throw
     }
 
+    # @prompts for the host in an interactive session when nothing resolves, TEST_PX_UPSTREAM_PROMPTS_INTERACTIVE, test, [REQ_PX_UPSTREAM]
     It "prompts for the host in an interactive session when nothing resolves" {
         Mock Get-InternetSettingsFromRegistry { $null }
         Mock Get-KerberosProxyHost { $null }
@@ -199,6 +212,7 @@ Describe "Resolve-PxUpstreamProxy" {
         Should -Invoke Read-Host -Times 1
     }
 
+    # @throws when the interactive prompt is answered with nothing, TEST_PX_UPSTREAM_EMPTY_ANSWER_FAILS, test, [REQ_PX_UPSTREAM]
     It "throws when the interactive prompt is answered with nothing" {
         Mock Get-InternetSettingsFromRegistry { $null }
         Mock Get-KerberosProxyHost { $null }
@@ -207,6 +221,7 @@ Describe "Resolve-PxUpstreamProxy" {
         { Resolve-PxUpstreamProxy } | Should -Throw
     }
 
+    # @ignores a PAC result that reports DIRECT, TEST_PX_UPSTREAM_IGNORES_PAC_DIRECT, test, [REQ_PX_UPSTREAM]
     It "ignores a PAC result that reports DIRECT" {
         Mock Get-InternetSettingsFromRegistry { @{ AutoConfigUrl = 'http://wpad/pac' } }
         Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
@@ -216,6 +231,7 @@ Describe "Resolve-PxUpstreamProxy" {
 }
 
 Describe "Get-PxUserConfigPath" {
+    # @returns px-user.ini inside the data directory, TEST_PX_USER_CONFIG_PATH_IN_DATA_DIR, test, [REQ_PX_FILES]
     It "returns px-user.ini inside the data directory" {
         Mock Get-PxDataDir { 'C:\fake\px' }
         Get-PxUserConfigPath | Should -Be 'C:\fake\px\px-user.ini'
@@ -675,11 +691,13 @@ Describe "Remove-PxProxy" {
         New-Item -ItemType Directory -Path $script:TestDataDir -Force | Out-Null
     }
 
+    # @removes the logon start, TEST_PX_REMOVE_LOGON_START, test, [REQ_PX_REMOVE]
     It "removes the logon start" {
         Remove-PxProxy
         Should -Invoke Unregister-Autostart -Times 1 -ParameterFilter { $Name -eq 'px-proxy' }
     }
 
+    # @uninstalls px when the marker exists, TEST_PX_REMOVE_UNINSTALLS_WITH_MARKER, test, [REQ_PX_REMOVE]
     It "uninstalls px when the marker exists" {
         Set-Content -Path (Get-PxInstalledMarkerPath) -Value 'x'
         Mock Test-PxInstalled { $true }
@@ -688,12 +706,14 @@ Describe "Remove-PxProxy" {
         Test-Path (Get-PxInstalledMarkerPath) | Should -BeFalse
     }
 
+    # @does not uninstall px when no marker exists, TEST_PX_REMOVE_KEEPS_PX_WITHOUT_MARKER, test, [REQ_PX_REMOVE]
     It "does not uninstall px when no marker exists" {
         Remove-Item (Get-PxInstalledMarkerPath) -ErrorAction SilentlyContinue
         Remove-PxProxy
         Should -Invoke Invoke-CommandLine -Times 0
     }
 
+    # @keeps the marker when the uninstall is skipped because px is not on PATH, TEST_PX_REMOVE_KEEPS_MARKER_WITHOUT_PX, test, [REQ_PX_REMOVE]
     It "keeps the marker when the uninstall is skipped because px is not on PATH" {
         Set-Content -Path (Get-PxInstalledMarkerPath) -Value 'x'
         Mock Test-PxInstalled { $false }
@@ -702,12 +722,14 @@ Describe "Remove-PxProxy" {
         Test-Path (Get-PxInstalledMarkerPath) | Should -BeTrue
     }
 
+    # @deletes the px config file, TEST_PX_REMOVE_DELETES_CONFIG, test, [REQ_PX_REMOVE]
     It "deletes the px config file" {
         Set-Content -Path (Get-PxConfigPath) -Value 'stale'
         Remove-PxProxy
         Test-Path (Get-PxConfigPath) | Should -BeFalse
     }
 
+    # @preserves the user config file so tuning survives a reinstall, TEST_PX_REMOVE_KEEPS_USER_CONFIG, test, [REQ_PX_REMOVE]
     It "preserves the user config file so tuning survives a reinstall" {
         Set-Content -Path (Get-PxUserConfigPath) -Value 'MINE' -Encoding ascii
         Set-Content -Path (Get-PxConfigPath) -Value 'stale'

@@ -16,9 +16,11 @@ copyright = author
 extensions = [
     "myst_parser",
     "sphinx_needs",
+    "sphinx_codelinks",
 ]
 
 needs_from_toml = _UBPROJECT
+src_trace_config_from_toml = _UBPROJECT
 
 # Sphinx reads its configuration here and its sources from docs/ (`-c .` in the docs task),
 # so the published site starts at docs/index.md.
