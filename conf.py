@@ -42,5 +42,8 @@ myst_enable_extensions = ["tasklist"]
 
 html_theme = "furo"
 html_title = "shortcuts"
-html_logo = "docs/images/shortcuts_logo_title_transparent.png"
-html_theme_options = {"sidebar_hide_name": True}
+_LIGHT_LOGO = "shortcuts_logo_title_transparent.png"
+_DARK_LOGO = "shortcuts_logo_transparent.png"
+html_static_path = ["docs/_static", f"docs/images/{_LIGHT_LOGO}", f"docs/images/{_DARK_LOGO}"]
+html_css_files = ["shortcuts.css"]
+html_theme_options = {"light_logo": _LIGHT_LOGO, "dark_logo": _DARK_LOGO}
