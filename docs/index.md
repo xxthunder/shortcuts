@@ -7,4 +7,5 @@ Built with [Sphinx-Needs](https://sphinx-needs.readthedocs.io/) from `ubproject.
 :maxdepth: 1
 
 requirements/px-proxy
+traceability/px-proxy
 ```
