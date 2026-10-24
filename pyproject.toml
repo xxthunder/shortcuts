@@ -1,0 +1,24 @@
+# The documentation toolchain of shortcuts (SC-073b). Not a package: uv only resolves
+# and locks the tools the documentation build runs with.
+# .python-version pins the interpreter, so a local build and the CI build run on the same one.
+[project]
+name = "shortcuts-docs"
+version = "0"
+requires-python = ">=3.13"
+dependencies = [
+  "sphinx",
+  "myst-parser",
+  "sphinx-needs>=9.1",
+  "furo",
+]
+
+[dependency-groups]
+dev = ["poethepoet"]
+
+[tool.uv]
+package = false
+
+# The one documentation build. CI runs this task too, so the local build and the CI build
+# are the same command; no build flag lives anywhere else.
+[tool.poe.tasks]
+docs = "sphinx-build -W --keep-going -b html -c . docs _build/html"

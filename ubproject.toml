@@ -1,0 +1,49 @@
+"$schema" = "https://ubcode.useblocks.com/ubproject.schema.json"
+
+# The one needs configuration. ubCode and ubc read it directly, the Sphinx build through
+# `needs_from_toml` in conf.py (SC-073b, after useblocks/SPLed).
+
+[project]
+name = "shortcuts"
+
+# Configuring a parser puts ubCode in parser mode: the document set is this `include`, and
+# it must equal `include_patterns` in conf.py, or ubCode reads documents Sphinx never builds.
+[parse.parsers.md]
+flavour = "myst"
+include = [
+  "docs/index.md",
+  "docs/requirements/*.md",
+  "docs/traceability/*.md",
+]
+
+[needs]
+id_required = true
+
+[needs.links.implements]
+incoming = "is implemented by"
+outgoing = "implements"
+
+[needs.links.tests]
+incoming = "is tested by"
+outgoing = "tests"
+
+[[needs.types]]
+directive = "req"
+title = "Requirement"
+prefix = "REQ_"
+color = "#BFD8D2"
+style = "node"
+
+[[needs.types]]
+directive = "impl"
+title = "Implementation"
+prefix = "IMPL_"
+color = "#DF744A"
+style = "node"
+
+[[needs.types]]
+directive = "test"
+title = "Test"
+prefix = "TEST_"
+color = "#DCB239"
+style = "node"
