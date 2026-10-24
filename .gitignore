@@ -30,3 +30,8 @@ Thumbs.db
 # What: Structurizr local runtime data (logs, search index)
 # Why: written by tools/structurizr/structurizr-local on every start; only workspace.dsl and workspace.json belong in git
 docs/architecture/.structurizr/
+
+# What: documentation build output and its uv environment
+# Why: `uv run poe docs` writes both; pyproject.toml and uv.lock are what belong in git
+/_build/
+/.venv/

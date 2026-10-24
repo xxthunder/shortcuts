@@ -372,6 +372,15 @@ Manually delete these folders if desired:
 - **[Architecture](docs/architecture/README.md)**: Diagrams and Architecture Decision Records (ADRs)
 - **[Roadmap](docs/roadmap.md)**: Project vision and future direction
 - **[Backlog](docs/backlog/README.md)**: Current work items, priorities, and completed features
+- **[Requirements and traces](https://xxthunder.github.io/shortcuts/)**: The requirements of the tools and the code and tests that implement and test them, published from `develop`
+
+Build the published documentation locally with [uv](https://docs.astral.sh/uv/); CI runs the same command:
+
+```bash
+uv run poe docs   # Sphinx with -W: a warning, such as a link to a missing requirement, fails the build
+```
+
+The output is in `_build/html`. `ubproject.toml` is the one configuration; ubCode reads it as well.
 
 ### Getting Started
 
