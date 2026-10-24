@@ -12,7 +12,6 @@
 ## Table of Contents
 
 ### Open
-- [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
@@ -33,6 +32,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
+- [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
