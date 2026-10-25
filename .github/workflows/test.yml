@@ -91,9 +91,10 @@ jobs:
           require_tests: true
           check_name: "Test Results (PowerShell 7.x)"
 
-  # The documentation (SC-073b) builds on the same OS as the tests and after them, so that it
-  # can take their results (SC-073d). The build is `uv run poe docs`, the same command as
-  # locally; with -W, a warning such as a link to a missing requirement fails it. A push to
+  # The documentation (SC-073b) builds on the same OS as the tests, after them, and only when
+  # they pass. Each job runs on a machine of its own: the build does not read the test results
+  # yet; SC-073d hands them over as an artifact. The build is `uv run poe docs`, the same command
+  # as locally; with -W, a warning such as a link to a missing requirement fails it. A push to
   # develop publishes the result to GitHub Pages; a pull request only builds.
   docs:
     name: Documentation
