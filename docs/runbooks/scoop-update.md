@@ -1,4 +1,4 @@
-# Scoop Update Helper Runbook
+# update-scoop
 
 ## Overview
 
