@@ -30,7 +30,6 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
-- [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
@@ -39,6 +38,7 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
+- [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-072 — Backlog index the backlog script can derive](sc-072.md)
 - [SC-069 — Remove Flow Launcher](sc-069.md)
 - [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
