@@ -1,6 +1,6 @@
 # px-proxy traces
 
-Where each [px-proxy requirement](../requirements/px-proxy.md) is implemented and tested. The implementation and test needs come from [codelinks](https://sphinx-codelinks.useblocks.com/) markers in the PowerShell source: a `# @<title>, <id>, <type>, [<requirements>]` comment above a function or a Pester `It`.
+Where each [px-proxy requirement](../requirements/px-proxy.md) is implemented and tested. The implementation and test needs come from [codelinks](https://sphinx-codelinks.useblocks.com/) markers in the PowerShell source: a `<# @need <type>: <title> ... @endneed #>` block above a function or a Pester `It`, naming its `:id:` and the requirements it `:implements:` or `:tests:`.
 
 ```{needtable}
 :types: req

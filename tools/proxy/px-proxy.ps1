@@ -94,7 +94,12 @@ $script:PxInstalledMarkerName = 'installed-by-px-proxy.marker'
 $script:PxAutostartName = 'px-proxy'
 
 # --- Path helpers ---------------------------------------------------------
-# @Get-PxDataDir, IMPL_PX_DATA_DIR, impl, [REQ_PX_FILES]
+<#
+@need impl: Get-PxDataDir
+:id: IMPL_PX_DATA_DIR
+:implements: REQ_PX_FILES
+@endneed
+#>
 function Get-PxDataDir {
     <#
     .SYNOPSIS
@@ -107,7 +112,12 @@ function Get-PxDataDir {
     return (Join-Path $env:USERPROFILE '.config\px')
 }
 
-# @Get-PxConfigPath, IMPL_PX_CONFIG_PATH, impl, [REQ_PX_FILES]
+<#
+@need impl: Get-PxConfigPath
+:id: IMPL_PX_CONFIG_PATH
+:implements: REQ_PX_FILES
+@endneed
+#>
 function Get-PxConfigPath {
     <#
     .SYNOPSIS
@@ -120,7 +130,12 @@ function Get-PxConfigPath {
     return (Join-Path (Get-PxDataDir) 'px.ini')
 }
 
-# @Get-PxUserConfigPath, IMPL_PX_USER_CONFIG_PATH, impl, [REQ_PX_FILES]
+<#
+@need impl: Get-PxUserConfigPath
+:id: IMPL_PX_USER_CONFIG_PATH
+:implements: REQ_PX_FILES
+@endneed
+#>
 function Get-PxUserConfigPath {
     <#
     .SYNOPSIS
@@ -224,7 +239,12 @@ function Get-KlistOutput {
     return (klist 2>$null)
 }
 
-# @Get-KerberosProxyHost, IMPL_PX_KERBEROS_HOST, impl, [REQ_PX_UPSTREAM]
+<#
+@need impl: Get-KerberosProxyHost
+:id: IMPL_PX_KERBEROS_HOST
+:implements: REQ_PX_UPSTREAM
+@endneed
+#>
 function Get-KerberosProxyHost {
     <#
     .SYNOPSIS
@@ -265,7 +285,12 @@ function Get-KerberosProxyHost {
     return $null
 }
 
-# @Resolve-PxUpstreamProxy, IMPL_PX_RESOLVE_UPSTREAM, impl, [REQ_PX_UPSTREAM]
+<#
+@need impl: Resolve-PxUpstreamProxy
+:id: IMPL_PX_RESOLVE_UPSTREAM
+:implements: REQ_PX_UPSTREAM
+@endneed
+#>
 function Resolve-PxUpstreamProxy {
     <#
     .SYNOPSIS
@@ -665,7 +690,12 @@ function Test-PxProxy {
     }
 }
 
-# @Remove-PxProxy, IMPL_PX_REMOVE, impl, [REQ_PX_REMOVE]
+<#
+@need impl: Remove-PxProxy
+:id: IMPL_PX_REMOVE
+:implements: REQ_PX_REMOVE
+@endneed
+#>
 function Remove-PxProxy {
     <#
     .SYNOPSIS
