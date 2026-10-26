@@ -53,6 +53,26 @@
           }
         }
       }
+    },
+    {
+      "id": "test-title-matchable",
+      "message": "a test's title is its Pester path, which its result is matched on: a join splits on commas, and the testrunner turns backslashes in case names into slashes, so the title has neither (SC-073d)",
+      "select": {
+        "properties": {
+          "type": {
+            "const": "test"
+          }
+        }
+      },
+      "validate": {
+        "local": {
+          "properties": {
+            "title": {
+              "pattern": "^[^,\\\\]*$"
+            }
+          }
+        }
+      }
     }
   ]
 }

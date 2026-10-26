@@ -43,19 +43,19 @@ Describe "Test safety" {
 
 Describe "Get-PxDataDir" {
     <#
-    @need test: returns a path under the user profile .config\px
+    @need test: Get-PxDataDir.returns the px folder in .config under the user profile
     :id: TEST_PX_DATA_DIR_UNDER_PROFILE
     :tests: REQ_PX_FILES
     @endneed
     #>
-    It "returns a path under the user profile .config\px" {
+    It "returns the px folder in .config under the user profile" {
         Get-PxDataDir | Should -BeLike '*\.config\px'
     }
 }
 
 Describe "Get-PxConfigPath" {
     <#
-    @need test: returns px.ini inside the data directory
+    @need test: Get-PxConfigPath.returns px.ini inside the data directory
     :id: TEST_PX_CONFIG_PATH_IN_DATA_DIR
     :tests: REQ_PX_FILES
     @endneed
@@ -138,7 +138,7 @@ Describe "Library-mode env restoration" {
 
 Describe "Get-KerberosProxyHost" {
     <#
-    @need test: extracts the HTTP SPN host and appends the default port
+    @need test: Get-KerberosProxyHost.extracts the HTTP SPN host and appends the default port
     :id: TEST_PX_KERBEROS_EXTRACTS_HOST
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -152,7 +152,7 @@ Describe "Get-KerberosProxyHost" {
     }
 
     <#
-    @need test: returns null when no HTTP SPN is present
+    @need test: Get-KerberosProxyHost.returns null when no HTTP SPN is present
     :id: TEST_PX_KERBEROS_NO_SPN
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -163,7 +163,7 @@ Describe "Get-KerberosProxyHost" {
     }
 
     <#
-    @need test: returns null when klist output is empty
+    @need test: Get-KerberosProxyHost.returns null when klist output is empty
     :id: TEST_PX_KERBEROS_EMPTY_KLIST
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -174,7 +174,7 @@ Describe "Get-KerberosProxyHost" {
     }
 
     <#
-    @need test: warns that the host and port are a guess when it falls back to an SPN
+    @need test: Get-KerberosProxyHost.warns that the host and port are a guess when it falls back to an SPN
     :id: TEST_PX_KERBEROS_WARNS_GUESS
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -189,7 +189,7 @@ Describe "Get-KerberosProxyHost" {
     }
 
     <#
-    @need test: does not warn when no SPN is found
+    @need test: Get-KerberosProxyHost.does not warn when no SPN is found
     :id: TEST_PX_KERBEROS_NO_WARNING_WITHOUT_SPN
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -202,7 +202,7 @@ Describe "Get-KerberosProxyHost" {
     }
 
     <#
-    @need test: returns null when klist is unavailable and throws
+    @need test: Get-KerberosProxyHost.returns null when klist is unavailable and throws
     :id: TEST_PX_KERBEROS_KLIST_THROWS
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -215,7 +215,7 @@ Describe "Get-KerberosProxyHost" {
 
 Describe "Resolve-PxUpstreamProxy" {
     <#
-    @need test: returns the explicit ProxyHost override when provided
+    @need test: Resolve-PxUpstreamProxy.returns the explicit ProxyHost override when provided
     :id: TEST_PX_UPSTREAM_EXPLICIT_HOST
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -225,7 +225,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: resolves via PAC when the PAC returns a non-direct proxy
+    @need test: Resolve-PxUpstreamProxy.resolves via PAC when the PAC returns a non-direct proxy
     :id: TEST_PX_UPSTREAM_PAC
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -237,7 +237,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: falls back to the Kerberos SPN when PAC is direct
+    @need test: Resolve-PxUpstreamProxy.falls back to the Kerberos SPN when PAC is direct
     :id: TEST_PX_UPSTREAM_KERBEROS_FALLBACK
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -250,7 +250,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: throws when nothing resolves in a non-interactive session
+    @need test: Resolve-PxUpstreamProxy.throws when nothing resolves in a non-interactive session
     :id: TEST_PX_UPSTREAM_FAILS_NON_INTERACTIVE
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -263,7 +263,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: prompts for the host in an interactive session when nothing resolves
+    @need test: Resolve-PxUpstreamProxy.prompts for the host in an interactive session when nothing resolves
     :id: TEST_PX_UPSTREAM_PROMPTS_INTERACTIVE
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -278,7 +278,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: throws when the interactive prompt is answered with nothing
+    @need test: Resolve-PxUpstreamProxy.throws when the interactive prompt is answered with nothing
     :id: TEST_PX_UPSTREAM_EMPTY_ANSWER_FAILS
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -292,7 +292,7 @@ Describe "Resolve-PxUpstreamProxy" {
     }
 
     <#
-    @need test: ignores a PAC result that reports DIRECT
+    @need test: Resolve-PxUpstreamProxy.ignores a PAC result that reports DIRECT
     :id: TEST_PX_UPSTREAM_IGNORES_PAC_DIRECT
     :tests: REQ_PX_UPSTREAM
     @endneed
@@ -307,7 +307,7 @@ Describe "Resolve-PxUpstreamProxy" {
 
 Describe "Get-PxUserConfigPath" {
     <#
-    @need test: returns px-user.ini inside the data directory
+    @need test: Get-PxUserConfigPath.returns px-user.ini inside the data directory
     :id: TEST_PX_USER_CONFIG_PATH_IN_DATA_DIR
     :tests: REQ_PX_FILES
     @endneed
@@ -520,7 +520,7 @@ Describe "Stop-PxProxy" {
         Mock Unregister-Autostart { $true }
     }
 
-    It "leaves the logon start in place, so the restart inside start keeps it" {
+    It "leaves the logon start in place so the restart inside start keeps it" {
         Mock Get-PxExecutable { 'C:\scoop\shims\px.exe' }
         Mock Invoke-CommandLine { }
         Mock Start-Sleep { }
@@ -573,7 +573,7 @@ Describe "Start-PxProxy" {
         Mock Unregister-Autostart { $true }
     }
 
-    It "resolves, writes config, and starts px" {
+    It "resolves the upstream and writes the config before it starts px" {
         Start-PxProxy
         Should -Invoke Resolve-PxUpstreamProxy -Times 1
         Should -Invoke Start-Process -Times 1 -ParameterFilter {
@@ -582,7 +582,7 @@ Describe "Start-PxProxy" {
         Test-Path (Join-Path $script:TestDataDir 'px.ini') | Should -BeTrue
     }
 
-    It "registers the logon start: the launched pxw with the px config, in the data directory" {
+    It "registers the logon start: the launched pxw with the px config in the data directory" {
         Start-PxProxy
         Should -Invoke Register-Autostart -Times 1 -ParameterFilter {
             $Name -eq 'px-proxy' -and
@@ -772,7 +772,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: removes the logon start
+    @need test: Remove-PxProxy.removes the logon start
     :id: TEST_PX_REMOVE_LOGON_START
     :tests: REQ_PX_REMOVE
     @endneed
@@ -783,7 +783,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: uninstalls px when the marker exists
+    @need test: Remove-PxProxy.uninstalls px when the marker exists
     :id: TEST_PX_REMOVE_UNINSTALLS_WITH_MARKER
     :tests: REQ_PX_REMOVE
     @endneed
@@ -797,7 +797,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: does not uninstall px when no marker exists
+    @need test: Remove-PxProxy.does not uninstall px when no marker exists
     :id: TEST_PX_REMOVE_KEEPS_PX_WITHOUT_MARKER
     :tests: REQ_PX_REMOVE
     @endneed
@@ -809,7 +809,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: keeps the marker when the uninstall is skipped because px is not on PATH
+    @need test: Remove-PxProxy.keeps the marker when the uninstall is skipped because px is not on PATH
     :id: TEST_PX_REMOVE_KEEPS_MARKER_WITHOUT_PX
     :tests: REQ_PX_REMOVE
     @endneed
@@ -823,7 +823,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: deletes the px config file
+    @need test: Remove-PxProxy.deletes the px config file
     :id: TEST_PX_REMOVE_DELETES_CONFIG
     :tests: REQ_PX_REMOVE
     @endneed
@@ -835,7 +835,7 @@ Describe "Remove-PxProxy" {
     }
 
     <#
-    @need test: preserves the user config file so tuning survives a reinstall
+    @need test: Remove-PxProxy.preserves the user config file so tuning survives a reinstall
     :id: TEST_PX_REMOVE_KEEPS_USER_CONFIG
     :tests: REQ_PX_REMOVE
     @endneed
@@ -899,7 +899,7 @@ Describe "Invoke-PxProxy" {
         Should -Invoke Test-PxProxy -Times 1
     }
 
-    It "throws when the test action fails, so the caller sees a non-zero exit code" {
+    It "throws when the test action fails so the caller sees a non-zero exit code" {
         Mock Test-PxProxy { $false }
         { Invoke-PxProxy -Action test } | Should -Throw
     }

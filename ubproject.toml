@@ -17,7 +17,7 @@ include = [
 
 [needs]
 id_required = true
-# The rules a missing trace breaks (SC-073e); ubCode reads the same file.
+# The rules a missing or broken trace breaks (SC-073d, SC-073e); ubCode reads the same file.
 schema_definitions_from_json = "schemas.json"
 
 [needs.links.implements]
