@@ -20,7 +20,7 @@ dev = ["poethepoet"]
 package = false
 
 [tool.uv.sources]
-sphinx-codelinks = { git = "https://github.com/xxthunder/sphinx-needs", subdirectory = "packages/sphinx-codelinks", rev = "sc-073a-preview-1" }
+sphinx-codelinks = { git = "https://github.com/xxthunder/sphinx-needs", subdirectory = "packages/sphinx-codelinks", rev = "sc-073a-preview-2" }
 
 # The one documentation build. CI runs this task too, so the local build and the CI build
 # are the same command; no build flag lives anywhere else.

@@ -802,7 +802,7 @@ requires-dist = [
     { name = "furo" },
     { name = "myst-parser" },
     { name = "sphinx" },
-    { name = "sphinx-codelinks", git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-1" },
+    { name = "sphinx-codelinks", git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-2" },
     { name = "sphinx-needs", specifier = ">=9.1" },
 ]
 
@@ -870,7 +870,7 @@ wheels = [
 [[package]]
 name = "sphinx-codelinks"
 version = "2.0.1"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-1#68614e53c386130f267ff24c302c91b3c79a9b90" }
+source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-2#123dd967692c986e62b198aed1a81f4940dc74c2" }
 dependencies = [
     { name = "comment-parser" },
     { name = "docutils" },
@@ -911,7 +911,7 @@ wheels = [
 [[package]]
 name = "sphinx-needs"
 version = "9.1.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-needs&rev=sc-073a-preview-1#68614e53c386130f267ff24c302c91b3c79a9b90" }
+source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-needs&rev=sc-073a-preview-2#123dd967692c986e62b198aed1a81f4940dc74c2" }
 dependencies = [
     { name = "docutils" },
     { name = "jsonschema-rs" },
@@ -1198,12 +1198,12 @@ wheels = [
 [[package]]
 name = "ub-needs-exchange"
 version = "1.1.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-needs-exchange&rev=sc-073a-preview-1#68614e53c386130f267ff24c302c91b3c79a9b90" }
+source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-needs-exchange&rev=sc-073a-preview-2#123dd967692c986e62b198aed1a81f4940dc74c2" }
 
 [[package]]
 name = "ub-project"
 version = "1.1.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-project&rev=sc-073a-preview-1#68614e53c386130f267ff24c302c91b3c79a9b90" }
+source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-project&rev=sc-073a-preview-2#123dd967692c986e62b198aed1a81f4940dc74c2" }
 
 [[package]]
 name = "urllib3"
