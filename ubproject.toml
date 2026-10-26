@@ -17,6 +17,8 @@ include = [
 
 [needs]
 id_required = true
+# Lowercase too: the deterministic IDs of test results are (SC-073d).
+id_regex = "^[A-Za-z0-9_-]{6,}"
 # The rules a missing or broken trace breaks (SC-073d, SC-073e); ubCode reads the same file.
 schema_definitions_from_json = "schemas.json"
 
@@ -28,12 +30,34 @@ outgoing = "implements"
 incoming = "is tested by"
 outgoing = "tests"
 
+# A Pester result links the test it resulted from: the test whose title, its Pester path,
+# equals the result's case name (SC-073d).
+[needs.links.result_of]
+incoming = "has result"
+outgoing = "result of"
+derive = { kind = "links", join = { field = "title", equals = "case_name" }, where = "type == 'test'" }
+
+# A result's outcome, ordered worst first, so that `min` gives the worst. "not run" sorts
+# last: it is what a test holds of its own, and any result of the test outranks it (SC-073d).
+[needs.fields.result]
+nullable = true
+schema = { type = "string", enum = ["failed", "error", "passed", "skipped", "disabled", "not run"] }
+
+# A test's verdict: the worst of its results, "not run" with none. A requirement's: the
+# worst verdict of its tests (SC-073d).
+[needs.fields.verdict]
+nullable = true
+schema = { type = "string", enum = ["failed", "error", "passed", "skipped", "disabled", "not run"] }
+
 [[needs.types]]
 directive = "req"
 title = "Requirement"
 prefix = "REQ_"
 color = "#BFD8D2"
 style = "node"
+
+[needs.types.fields.verdict]
+derive = { kind = "min", field = "verdict", over = "tests_back", where = "type == 'test'" }
 
 [[needs.types]]
 directive = "impl"
@@ -48,6 +72,12 @@ title = "Test"
 prefix = "TEST_"
 color = "#DCB239"
 style = "node"
+
+[needs.types.fields.result]
+default = "not run"
+
+[needs.types.fields.verdict]
+derive = { kind = "min", field = "result", over = "result_of_back", transitive = true, include_self = true }
 
 # The `src-trace` directive, so ubCode parses it as a known directive.
 [parse.extend_directives.src-trace]
@@ -90,3 +120,7 @@ comment_type = "powershell"
 get_oneline_needs = false
 get_need_id_refs = false
 get_multiline_needs = true
+
+# Pester results (SC-073d).
+[test_reports]
+deterministic_case_ids = true

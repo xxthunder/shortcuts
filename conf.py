@@ -17,9 +17,13 @@ extensions = [
     "myst_parser",
     "sphinx_needs",
     "sphinx_codelinks",
+    "sphinx_test_reports",
 ]
 
 needs_from_toml = _UBPROJECT
+# A build without a test run first has no test/out/junit.xml: its tests show not run (SC-073d).
+# In CI the documentation job downloads the report, and a missing one fails that step.
+suppress_warnings = ["test_reports.report_missing"]
 src_trace_config_from_toml = _UBPROJECT
 
 # Sphinx reads its configuration here and its sources from docs/ (`-c .` in the docs task),
