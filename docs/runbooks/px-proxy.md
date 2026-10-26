@@ -182,6 +182,6 @@ What px-proxy does, stated as requirements, and where the code implements and te
 ```{toctree}
 :maxdepth: 1
 
-../requirements/px-proxy
-../traceability/px-proxy
+Requirements <../requirements/px-proxy>
+Traces <../traceability/px-proxy>
 ```

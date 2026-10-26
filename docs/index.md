@@ -463,6 +463,7 @@ runbooks/scoop-update
 development-principles
 architecture/README
 test-results
+Coverage <https://app.codecov.io/gh/xxthunder/shortcuts/tree/develop>
 roadmap
 backlog/README
 ```
