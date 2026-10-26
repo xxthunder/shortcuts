@@ -94,3 +94,9 @@ body[data-theme="dark"] .sidebar-brand-text {
         display: block;
     }
 }
+
+/* A test result's ID is its file and case name (SC-073d), longer than the column is wide. */
+.needs-id,
+.needs_data {
+    overflow-wrap: anywhere;
+}

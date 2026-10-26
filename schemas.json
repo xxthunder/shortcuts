@@ -73,6 +73,39 @@
           }
         }
       }
+    },
+    {
+      "id": "result-links-its-test",
+      "message": "a result from a traced Describe of px-proxy.Tests.ps1 links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The Describes are those SC-073e traced; the rule covers the whole file once every It carries a marker",
+      "select": {
+        "properties": {
+          "type": {
+            "const": "testcase"
+          },
+          "classname": {
+            "pattern": "px-proxy\\.Tests\\.ps1$"
+          },
+          "case_name": {
+            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Get-PxUserConfigPath|Get-KerberosProxyHost|Resolve-PxUpstreamProxy|Remove-PxProxy)\\."
+          }
+        },
+        "required": [
+          "classname",
+          "case_name"
+        ]
+      },
+      "validate": {
+        "local": {
+          "properties": {
+            "result_of": {
+              "minItems": 1
+            }
+          },
+          "required": [
+            "result_of"
+          ]
+        }
+      }
     }
   ]
 }
