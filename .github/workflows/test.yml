@@ -91,11 +91,20 @@ jobs:
           require_tests: true
           check_name: "Test Results (PowerShell 7.x)"
 
+      - name: Upload the test report for the documentation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pester-report
+          path: "${{ env.SHORTCUTS_DIR }}/test/out/junit.xml"
+          if-no-files-found: error
+
   # The documentation (SC-073b) builds on the same OS as the tests, after them, and only when
-  # they pass. Each job runs on a machine of its own: the build does not read the test results
-  # yet; SC-073d hands them over as an artifact. The build is `uv run poe docs`, the same command
-  # as locally; with -W, a warning such as a link to a missing requirement fails it. A push to
-  # develop publishes the result to GitHub Pages; a pull request only builds.
+  # they pass. Each job runs on a machine of its own, so the test job hands its JUnit report over
+  # as an artifact, and the build links each result to its test (SC-073d); a missing report fails
+  # the download. The build is `uv run poe docs`, the same command as locally; with -W, a warning
+  # such as a link to a missing requirement fails it. A push to develop publishes the result to
+  # GitHub Pages; a pull request only builds.
   docs:
     name: Documentation
     needs: test
@@ -105,6 +114,12 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      - name: Download the test report
+        uses: actions/download-artifact@v8
+        with:
+          name: pester-report
+          path: test/out
 
       - uses: astral-sh/setup-uv@v10.3.2
 
