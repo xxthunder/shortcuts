@@ -57,9 +57,9 @@ parse_content = false
 description = "Needs from codelinks markers in source code"
 extension = "sphinx-codelinks"
 
-# Codelinks markers in PowerShell (SC-073e): `# @<title>, <id>, <type>, [<requirements>]` in
-# the comment above a function or a Pester `It`. Code and tests are two projects, so that the
-# fourth field is `implements` in the one and `tests` in the other.
+# Codelinks markers in PowerShell (SC-073e): a `<# @need <type>: <title> ... @endneed #>` block
+# above a function or a Pester `It`, with `:id:` and the requirements it implements or tests.
+# Code and tests are two projects, so that the traces page renders them in sections of their own.
 [codelinks]
 set_remote_url = true
 
@@ -72,16 +72,9 @@ include = ["px-proxy.ps1"]
 comment_type = "powershell"
 
 [codelinks.projects.px-proxy.analyse]
-get_oneline_needs = true
+get_oneline_needs = false
 get_need_id_refs = false
-
-[codelinks.projects.px-proxy.analyse.oneline_comment_style]
-needs_fields = [
-  { name = "title" },
-  { name = "id" },
-  { name = "type", default = "impl" },
-  { name = "implements", type = "list[str]", default = [] },
-]
+get_multiline_needs = true
 
 [codelinks.projects.px-proxy-tests]
 remote_url_pattern = "https://github.com/xxthunder/shortcuts/blob/{commit}/{path}#L{line}"
@@ -92,13 +85,6 @@ include = ["px-proxy.Tests.ps1"]
 comment_type = "powershell"
 
 [codelinks.projects.px-proxy-tests.analyse]
-get_oneline_needs = true
+get_oneline_needs = false
 get_need_id_refs = false
-
-[codelinks.projects.px-proxy-tests.analyse.oneline_comment_style]
-needs_fields = [
-  { name = "title" },
-  { name = "id" },
-  { name = "type", default = "test" },
-  { name = "tests", type = "list[str]", default = [] },
-]
+get_multiline_needs = true
