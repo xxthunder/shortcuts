@@ -386,14 +386,14 @@ Describe "Confirm-DestructiveAction" {
             Should -Invoke Read-SpectreText -Times 1 -ParameterFilter { $Message -eq "ESCAPED" }
         }
 
-        It "Should return true on y in either case" -ForEach @("y", "Y") {
+        It "Should return true on '<_>'" -ForEach @("y", "Y") {
             $script:typedAnswer = $_
             Mock Read-SpectreText { $script:typedAnswer }
 
             Confirm-DestructiveAction -Action "Shut down WSL." | Should -BeTrue
         }
 
-        It "Should return false on n in either case" -ForEach @("n", "N") {
+        It "Should return false on '<_>'" -ForEach @("n", "N") {
             $script:typedAnswer = $_
             Mock Read-SpectreText { $script:typedAnswer }
 
