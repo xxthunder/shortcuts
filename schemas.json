@@ -1,0 +1,58 @@
+{
+  "schemas": [
+    {
+      "id": "req-implemented",
+      "message": "a requirement is implemented by at least one function (SC-073e)",
+      "select": {
+        "properties": {
+          "type": {
+            "const": "req"
+          }
+        }
+      },
+      "validate": {
+        "network_back": {
+          "implements": {
+            "contains": {
+              "local": {
+                "properties": {
+                  "type": {
+                    "const": "impl"
+                  }
+                }
+              }
+            },
+            "minContains": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "req-tested",
+      "message": "a requirement is tested by at least one test (SC-073e)",
+      "select": {
+        "properties": {
+          "type": {
+            "const": "req"
+          }
+        }
+      },
+      "validate": {
+        "network_back": {
+          "tests": {
+            "contains": {
+              "local": {
+                "properties": {
+                  "type": {
+                    "const": "test"
+                  }
+                }
+              }
+            },
+            "minContains": 1
+          }
+        }
+      }
+    }
+  ]
+}
