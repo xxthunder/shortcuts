@@ -1,5 +1,13 @@
 {
     "AutoHotkey2.InterpreterPath": "AutoHotkey.exe",
+    "[powershell]": {
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4
+    },
+    "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
+    "powershell.codeFormatting.preset": "Custom",
+    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
     "cSpell.words": [
         "buildx",
         "dearmor",
