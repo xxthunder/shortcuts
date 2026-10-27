@@ -10,6 +10,9 @@
 ## Table of Contents
 
 ### Open
+- [SC-077 — One status per test and requirement, passed only when all tests passed](sc-077.md)
+- [SC-076 — Short test result IDs, and a Test results page that fits and stays current](sc-076.md)
+- [SC-075 — CI on Node 24 actions, Python toolchain past the emSign CA incident](sc-075.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
 - [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
