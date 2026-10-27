@@ -26,11 +26,11 @@ Describe 'Get-ScoopUpdatableApp' {
 
     It 'parses scoop status output with updatable apps' {
         Mock Invoke-CommandLine { return @(
-            "Name      Installed Version  Latest Version  Missing Dependencies  Info"
-            "----      -----------------  --------------  --------------------  ----"
-            "7zip      24.08              24.09"
-            "git       2.46.0             2.47.0"
-        ) }
+                "Name      Installed Version  Latest Version  Missing Dependencies  Info"
+                "----      -----------------  --------------  --------------------  ----"
+                "7zip      24.08              24.09"
+                "git       2.46.0             2.47.0"
+            ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -45,9 +45,9 @@ Describe 'Get-ScoopUpdatableApp' {
 
     It 'returns empty array when no apps need updating' {
         Mock Invoke-CommandLine { return @(
-            "Name      Installed Version  Latest Version  Missing Dependencies  Info"
-            "----      -----------------  --------------  --------------------  ----"
-        ) }
+                "Name      Installed Version  Latest Version  Missing Dependencies  Info"
+                "----      -----------------  --------------  --------------------  ----"
+            ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -56,9 +56,9 @@ Describe 'Get-ScoopUpdatableApp' {
 
     It 'parses structured PSCustomObject output from modern scoop' {
         Mock Invoke-CommandLine { return @(
-            [PSCustomObject]@{ Name = 'gimp'; 'Installed Version' = '3.0.8-2'; 'Latest Version' = '3.2.0'; 'Missing Dependencies' = ''; Info = '' }
-            [PSCustomObject]@{ Name = 'pwsh'; 'Installed Version' = '7.5.4'; 'Latest Version' = '7.5.5'; 'Missing Dependencies' = ''; Info = '' }
-        ) }
+                [PSCustomObject]@{ Name = 'gimp'; 'Installed Version' = '3.0.8-2'; 'Latest Version' = '3.2.0'; 'Missing Dependencies' = ''; Info = '' }
+                [PSCustomObject]@{ Name = 'pwsh'; 'Installed Version' = '7.5.4'; 'Latest Version' = '7.5.5'; 'Missing Dependencies' = ''; Info = '' }
+            ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -71,14 +71,14 @@ Describe 'Get-ScoopUpdatableApp' {
 
     It 'skips blank lines and malformed rows in legacy output' {
         Mock Invoke-CommandLine { return @(
-            "Name      Installed Version  Latest Version  Missing Dependencies  Info"
-            "----      -----------------  --------------  --------------------  ----"
-            ""
-            "7zip      24.08              24.09"
-            "   "
-            "malformed-line"
-            "git       2.46.0             2.47.0"
-        ) }
+                "Name      Installed Version  Latest Version  Missing Dependencies  Info"
+                "----      -----------------  --------------  --------------------  ----"
+                ""
+                "7zip      24.08              24.09"
+                "   "
+                "malformed-line"
+                "git       2.46.0             2.47.0"
+            ) }
 
         $result = @(Get-ScoopUpdatableApp)
 
@@ -89,10 +89,10 @@ Describe 'Get-ScoopUpdatableApp' {
 
     It 'handles single updatable app' {
         Mock Invoke-CommandLine { return @(
-            "Name      Installed Version  Latest Version  Missing Dependencies  Info"
-            "----      -----------------  --------------  --------------------  ----"
-            "nodejs    20.11.0            22.0.0"
-        ) }
+                "Name      Installed Version  Latest Version  Missing Dependencies  Info"
+                "----      -----------------  --------------  --------------------  ----"
+                "nodejs    20.11.0            22.0.0"
+            ) }
 
         $result = @(Get-ScoopUpdatableApp)
 

@@ -1,7 +1,7 @@
 ﻿function Get-TestConfiguration {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         [string[]]$TestPath,
 
         [Parameter()]
@@ -10,10 +10,10 @@
         [Parameter()]
         [switch]$RunIntegration,
 
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [string]$ExcludePattern,
 
-        [Parameter(Position=2)]
+        [Parameter(Position = 2)]
         [string]$RepoRoot
     )
 
@@ -31,14 +31,15 @@
         $fullPath = if ([System.IO.Path]::IsPathRooted($path)) { $path } else { Join-Path $RepoRoot $path }
         if (Test-Path $fullPath) {
             $resolvedPaths += $fullPath
-        } else {
+        }
+        else {
             $invalidPaths += $path
         }
     }
 
     # Only throw for missing user-provided paths; silently skip missing default paths
     if (-not $isDefaultPaths -and $invalidPaths.Count -gt 0) {
-        Throw "The following test paths do not exist: $($invalidPaths -join ', ')"
+        throw "The following test paths do not exist: $($invalidPaths -join ', ')"
     }
 
     # 3. Apply Mode Logic
@@ -61,12 +62,14 @@
                         $unitTestFiles += $file.FullName
                     }
                 }
-            } elseif ($path -like '*.Tests.ps1' -and $path -notlike '*.Integration.Tests.ps1') {
+            }
+            elseif ($path -like '*.Tests.ps1' -and $path -notlike '*.Integration.Tests.ps1') {
                 $unitTestFiles += $path
             }
         }
         $pesterPaths = $unitTestFiles
-    } elseif ($isIntegrationOnly) {
+    }
+    elseif ($isIntegrationOnly) {
         # Find *.Integration.Tests.ps1 in resolved paths and run ONLY those
         $integrationFiles = @()
         foreach ($path in $resolvedPaths) {
@@ -74,7 +77,8 @@
                 # If path is a container, find integration tests inside
                 $found = Get-ChildItem -Path $path -Filter "*.Integration.Tests.ps1" -Recurse -File -ErrorAction SilentlyContinue
                 if ($found) { $integrationFiles += $found.FullName }
-            } elseif ($path -like '*.Integration.Tests.ps1') {
+            }
+            elseif ($path -like '*.Integration.Tests.ps1') {
                 # If path is a file and matches, include it
                 $integrationFiles += $path
             }

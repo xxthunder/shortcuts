@@ -514,7 +514,8 @@ Describe "Stop-WslSubsystem" {
                         [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
                         [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
                     )
-                } else {
+                }
+                else {
                     @(
                         [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true },
                         [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
@@ -632,11 +633,13 @@ Describe "Stop-WslSubsystem" {
                     @(
                         [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
                     )
-                } elseif ($script:pollCount -le 4) {
+                }
+                elseif ($script:pollCount -le 4) {
                     @(
                         [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true }
                     )
-                } else {
+                }
+                else {
                     @(
                         [PSCustomObject]@{ Name = "Debian"; State = "Stopped"; Version = 2; IsDefault = $true }
                     )

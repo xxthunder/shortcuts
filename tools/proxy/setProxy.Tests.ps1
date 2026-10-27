@@ -35,19 +35,22 @@ AfterAll {
     # Restore original environment state
     if ($null -eq $script:OriginalHttpProxy) {
         Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
-    } else {
+    }
+    else {
         $Env:HTTP_PROXY = $script:OriginalHttpProxy
     }
 
     if ($null -eq $script:OriginalHttpsProxy) {
         Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
-    } else {
+    }
+    else {
         $Env:HTTPS_PROXY = $script:OriginalHttpsProxy
     }
 
     if ($null -eq $script:OriginalNoProxy) {
         Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
-    } else {
+    }
+    else {
         $Env:NO_PROXY = $script:OriginalNoProxy
     }
 
@@ -139,7 +142,7 @@ Describe "Get-ProxyFromPac" {
         It "Should return hashtable with proxy information" {
             $mockSettings = [PSCustomObject]@{
                 AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                ProxyEnable = 1
+                ProxyEnable   = 1
             }
 
             Mock Get-SystemWebProxy {
@@ -164,7 +167,7 @@ Describe "Get-ProxyFromPac" {
         It "Should detect DIRECT connection when bypassed" {
             $mockSettings = [PSCustomObject]@{
                 AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                ProxyEnable = 1
+                ProxyEnable   = 1
             }
 
             Mock Get-SystemWebProxy {
@@ -187,7 +190,7 @@ Describe "Get-ProxyFromPac" {
         It "Should use provided ProbeUrl" {
             $mockSettings = [PSCustomObject]@{
                 AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                ProxyEnable = 1
+                ProxyEnable   = 1
             }
 
             Mock Get-SystemWebProxy {
@@ -211,7 +214,7 @@ Describe "Get-ProxyFromPac" {
         It "Should handle exceptions and return null" {
             $mockSettings = [PSCustomObject]@{
                 AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                ProxyEnable = 1
+                ProxyEnable   = 1
             }
             Mock Get-SystemWebProxy { throw "Network error" }
 
@@ -252,12 +255,14 @@ Describe "Get-ProxyFromPac" {
         AfterEach {
             if ($null -eq $script:OrigHttpProxyForPac) {
                 Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 $Env:HTTP_PROXY = $script:OrigHttpProxyForPac
             }
             if ($null -eq $script:OrigHttpsProxyForPac) {
                 Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 $Env:HTTPS_PROXY = $script:OrigHttpsProxyForPac
             }
         }
@@ -434,19 +439,22 @@ Describe "Initialize-ProxyConfiguration" {
         # Clean up environment variables and proxy state after each test
         if ($null -eq $script:SavedHttpProxy) {
             Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:HTTP_PROXY = $script:SavedHttpProxy
         }
 
         if ($null -eq $script:SavedHttpsProxy) {
             Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:HTTPS_PROXY = $script:SavedHttpsProxy
         }
 
         if ($null -eq $script:SavedNoProxy) {
             Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:NO_PROXY = $script:SavedNoProxy
         }
 
@@ -464,7 +472,7 @@ Describe "Initialize-ProxyConfiguration" {
             Mock Get-InternetSettingsFromRegistry {
                 return [PSCustomObject]@{
                     AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                    ProxyEnable = 1
+                    ProxyEnable   = 1
                 }
             }
             Mock Enable-ProxyInRegistry {
@@ -503,7 +511,7 @@ Describe "Initialize-ProxyConfiguration" {
                 Mock Get-InternetSettingsFromRegistry {
                     return [PSCustomObject]@{
                         AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                        ProxyEnable = 1
+                        ProxyEnable   = 1
                     }
                 }
                 Mock Enable-ProxyInRegistry { return $false }
@@ -534,7 +542,7 @@ Describe "Initialize-ProxyConfiguration" {
             Mock Get-InternetSettingsFromRegistry {
                 return [PSCustomObject]@{
                     AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                    ProxyEnable = 1
+                    ProxyEnable   = 1
                 }
             }
             Mock Enable-ProxyInRegistry { return $false }
@@ -562,7 +570,7 @@ Describe "Initialize-ProxyConfiguration" {
             Mock Get-InternetSettingsFromRegistry {
                 return [PSCustomObject]@{
                     AutoConfigURL = "http://proxy.company.com/proxy.pac"
-                    ProxyEnable = 1
+                    ProxyEnable   = 1
                 }
             }
             Mock Enable-ProxyInRegistry {
@@ -699,19 +707,22 @@ Describe "Initialize-ProxyConfiguration -UsePx" {
         # Clean up environment variables and proxy state after each test
         if ($null -eq $script:PxSavedHttpProxy) {
             Remove-Item Env:\HTTP_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:HTTP_PROXY = $script:PxSavedHttpProxy
         }
 
         if ($null -eq $script:PxSavedHttpsProxy) {
             Remove-Item Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:HTTPS_PROXY = $script:PxSavedHttpsProxy
         }
 
         if ($null -eq $script:PxSavedNoProxy) {
             Remove-Item Env:\NO_PROXY -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             $Env:NO_PROXY = $script:PxSavedNoProxy
         }
 
@@ -866,7 +877,8 @@ Describe "Script entry point" {
                 @{ Name = 'NO_PROXY'; Value = $script:EntrySavedNoProxy })) {
             if ($null -eq $pair.Value) {
                 Remove-Item "Env:\$($pair.Name)" -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 Set-Item "Env:\$($pair.Name)" -Value $pair.Value
             }
         }
@@ -903,7 +915,8 @@ Describe "Test-PxProxyAvailable" {
         try {
             $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
             Test-PxProxyAvailable -PxEndpoint "http://127.0.0.1:$port" -TimeoutMs 1000 | Should -BeTrue
-        } finally {
+        }
+        finally {
             $listener.Stop()
         }
     }

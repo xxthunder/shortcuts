@@ -32,7 +32,8 @@ foreach ($hook in $hooks) {
         Write-Information "Installing $hook hook... " -Tags "Status"
         Copy-Item -Path $sourcePath -Destination $destPath -Force
         Write-Information "Done." -Tags "Success"
-    } else {
+    }
+    else {
         Write-Error "Source hook not found: $sourcePath"
     }
 }

@@ -196,7 +196,7 @@ Then run setup-docker again.
 
         # Add boot section if systemd not configured
         if (-not $systemdConfigured) {
-            $sections.boot = @{systemd = "true"}
+            $sections.boot = @{systemd = "true" }
         }
 
         # Add interop section if not configured
@@ -217,7 +217,7 @@ Then run setup-docker again.
 
         # Preserve existing default user
         if ($existingUser) {
-            $sections.user = @{default = $existingUser}
+            $sections.user = @{default = $existingUser }
         }
 
         # Configure wsl.conf
@@ -284,7 +284,8 @@ Then run setup-docker again.
                     Write-Information "Successfully verified Docker configuration in '$DistroName'."
                     Write-Information ""
                     Write-Information "Docker was already installed. Configuration has been verified and any missing components have been repaired."
-                } else {
+                }
+                else {
                     Write-Information "Successfully installed Docker in '$DistroName'."
                 }
                 Write-Information ""

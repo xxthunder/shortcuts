@@ -165,10 +165,12 @@ if (-not $InPlace) {
             git fetch origin $branch
             git checkout $branch
             git pull origin $branch
-        } finally {
+        }
+        finally {
             Pop-Location
         }
-    } else {
+    }
+    else {
         Write-Host "==> Cloning repository..." -ForegroundColor Cyan
         git clone -b $branch $repoUrl $shortcutsDir
     }
@@ -181,7 +183,8 @@ if (-not $InPlace) {
     exit
 
     #endregion
-} else {
+}
+else {
     #region Local Mode - full installation with dot-sourceable functions
 
     # Resolve repo root from script location
@@ -280,7 +283,8 @@ if (-not $InPlace) {
             Write-Status "Installing optional tools..."
             Invoke-CommandLine -CommandLine "scoop import `"$optionalJson`"" -StopAtError $true
             Write-Success "Optional tools installed"
-        } else {
+        }
+        else {
             Write-Status "Skipping optional tools"
         }
     }
@@ -352,7 +356,8 @@ if (-not $InPlace) {
             }
 
             Write-Output "Installation/Update of Shortcuts was successful."
-        } finally {
+        }
+        finally {
             if (-not (Test-RunningInCIorTestEnvironment)) {
                 Read-Host -Prompt "Press Enter to continue ..."
             }

@@ -6,7 +6,7 @@ Describe "Test Configuration Logic" {
         . "$PSScriptRoot\TestIsolation.ps1"
         $libPath = Join-Path $PSScriptRoot "TestConfiguration.ps1"
         if (-not (Test-Path $libPath)) {
-            Throw "Script not found at $libPath"
+            throw "Script not found at $libPath"
         }
         Start-SutIsolation
         . $libPath
@@ -85,7 +85,7 @@ Describe "Test Configuration Logic" {
             $params = @{
                 TestPath = @('tools')
                 RepoRoot = "$($script:TestRepoRoot)"
-                RunUnit = $true
+                RunUnit  = $true
             }
             $config = Get-TestConfiguration @params
 
@@ -101,8 +101,8 @@ Describe "Test Configuration Logic" {
 
         It "Should expand files and include ONLY Integration tests when -Integration is specified" {
             $params = @{
-                TestPath = @('tools')
-                RepoRoot = "$($script:TestRepoRoot)"
+                TestPath       = @('tools')
+                RepoRoot       = "$($script:TestRepoRoot)"
                 RunIntegration = $true
             }
             $config = Get-TestConfiguration @params

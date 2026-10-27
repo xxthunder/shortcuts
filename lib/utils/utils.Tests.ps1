@@ -153,7 +153,8 @@ Describe "Initialize-EnvPath" {
             # Restore
             if ($null -eq $originalEnv) {
                 Remove-Item Env:\USER_PATH_FIRST -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 $Env:USER_PATH_FIRST = $originalEnv
             }
             $Env:Path = $originalPath
@@ -751,7 +752,8 @@ Describe "Test-RunningInCIorTestEnvironment" {
             # Restore
             if ($null -eq $originalCI) {
                 Remove-Item Env:\CI -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 $Env:CI = $originalCI
             }
         }
@@ -767,7 +769,8 @@ Describe "Test-RunningInCIorTestEnvironment" {
             # Restore
             if ($null -eq $originalGHA) {
                 Remove-Item Env:\GITHUB_ACTIONS -ErrorAction SilentlyContinue
-            } else {
+            }
+            else {
                 $Env:GITHUB_ACTIONS = $originalGHA
             }
         }

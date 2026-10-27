@@ -17,7 +17,7 @@
 #>
 
 [CmdletBinding()]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification='Official Anthropic installation method requires Invoke-Expression to execute the downloaded installer script from https://claude.ai/install.ps1')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Official Anthropic installation method requires Invoke-Expression to execute the downloaded installer script from https://claude.ai/install.ps1')]
 param()
 
 Set-StrictMode -Version Latest
@@ -62,10 +62,12 @@ try {
     Write-Information "Remember to refresh Keypirinha catalog:"
     Write-Information "  Press Alt+Space and type 'Refresh catalog'"
 
-} catch {
+}
+catch {
     Write-ErrorMsg "Installation failed: $_"
     exit 1
-} finally {
+}
+finally {
     if (-not (Test-RunningInCIorTestEnvironment)) {
         Write-Information ""
         Write-Information "Press any key to exit..."
