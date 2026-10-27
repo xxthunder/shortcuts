@@ -37,7 +37,7 @@
     Ignores any running px and forces the corporate-proxy resolution path
 #>
 
-Param(
+param(
     [Parameter(Mandatory = $false)]
     [string]$ProbeUrl = "https://www.microsoft.com",
 
@@ -510,9 +510,11 @@ function Test-PxProxyAvailable {
             return $true
         }
         return $false
-    } catch {
+    }
+    catch {
         return $false
-    } finally {
+    }
+    finally {
         if ($client) {
             $client.Close()
         }
@@ -566,9 +568,11 @@ function Initialize-ProxyConfiguration {
     $shouldUsePx = $false
     if ($NoPx) {
         $shouldUsePx = $false
-    } elseif ($UsePx) {
+    }
+    elseif ($UsePx) {
         $shouldUsePx = $true
-    } elseif (Test-PxProxyAvailable -PxEndpoint $PxEndpoint) {
+    }
+    elseif (Test-PxProxyAvailable -PxEndpoint $PxEndpoint) {
         Write-Output "Detected running px proxy at $PxEndpoint; using it automatically (pass -NoPx to override)."
         $shouldUsePx = $true
     }

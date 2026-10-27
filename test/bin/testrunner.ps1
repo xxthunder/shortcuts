@@ -143,11 +143,13 @@ function Get-CoverageSummary {
         # Pester 5.4+ API
         $coveredCommands = $CoverageResult.CommandsExecutedCount
         $totalCommands = $CoverageResult.CommandsAnalyzedCount
-    } elseif ($null -ne $CoverageResult.NumberOfCommandsExecuted) {
+    }
+    elseif ($null -ne $CoverageResult.NumberOfCommandsExecuted) {
         # Older Pester API
         $coveredCommands = $CoverageResult.NumberOfCommandsExecuted
         $totalCommands = $CoverageResult.NumberOfCommandsAnalyzed
-    } else {
+    }
+    else {
         # Manual calculation fallback
         $coveredCommands = ($CoverageResult.HitCommands | Measure-Object).Count
         $missedCommands = ($CoverageResult.MissedCommands | Measure-Object).Count
@@ -156,7 +158,8 @@ function Get-CoverageSummary {
 
     $coveragePercent = if ($totalCommands -gt 0) {
         [math]::Round(($coveredCommands / $totalCommands) * 100, 2)
-    } else {
+    }
+    else {
         0
     }
 
@@ -234,7 +237,8 @@ function Import-XmlWithoutDtd {
         $doc = New-Object System.Xml.XmlDocument
         $doc.Load($reader)
         return $doc
-    } finally {
+    }
+    finally {
         $reader.Close()
     }
 }
@@ -298,7 +302,8 @@ function ConvertTo-RelativeJaCoCoXml {
 if (-not $ReportPath) {
     if ($PSScriptRoot) {
         $ReportPath = Join-Path $PSScriptRoot "..\out\junit.xml"
-    } else {
+    }
+    else {
         # Fallback if PSScriptRoot is somehow empty (e.g. interactive without context)
         $ReportPath = Join-Path (Get-Location) "..\out\junit.xml"
     }
@@ -324,14 +329,16 @@ if ($MyInvocation.InvocationName -ne '.') {
         # Display test path(s)
         if ($finalTestPaths.Count -eq 1) {
             Write-Status "Running tests in: $($finalTestPaths[0])"
-        } else {
+        }
+        else {
             Write-Status "Running tests in $($finalTestPaths.Count) path(s):"
             foreach ($path in $finalTestPaths) {
                 # Shorten output if it's a file list
                 if ($path.Contains($repoRoot)) {
                     $relativePath = $path -replace [regex]::Escape($repoRoot), '.'
                     Write-Output "  - $relativePath"
-                } else {
+                }
+                else {
                     Write-Output "  - $path"
                 }
             }
@@ -348,7 +355,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($LintOnly) {
             $runList = @($linterTestPath)
             Write-Status "Lint only — skipping tests"
-        } else {
+        }
+        else {
             $runList = @($linterTestPath) + $finalTestPaths
         }
 
@@ -417,7 +425,8 @@ if ($MyInvocation.InvocationName -ne '.') {
 
                 Write-Status "Code coverage enabled"
                 Write-Output "Coverage XML will be generated at: $coverageXmlPath"
-            } else {
+            }
+            else {
                 Write-Warning "Code coverage requested but no source files found to analyze."
             }
         }
@@ -435,11 +444,13 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($null -eq $testResult) {
             Write-ErrorMsg "Pester returned no results. Test execution may have failed."
             $exitCode = 1
-        } else {
+        }
+        else {
             if (Test-Path $ReportPath) {
                 ConvertTo-RelativeJUnitXml -Path $ReportPath -RepoRoot (Resolve-Path $repoRoot).Path
                 Write-Success "Test report generated at: $ReportPath"
-            } else {
+            }
+            else {
                 Write-Warning "Test report was not generated at: $ReportPath"
             }
 
@@ -477,10 +488,12 @@ if ($MyInvocation.InvocationName -ne '.') {
             $testConfig = $null
         }
 
-    } catch {
+    }
+    catch {
         Write-ErrorMsg "Test runner failed: $_"
         $exitCode = 1
-    } finally {
+    }
+    finally {
         # Cleanup environment variable
         if ($env:PESTER_LINT_PATHS) {
             Remove-Item -Path "Env:\PESTER_LINT_PATHS" -ErrorAction SilentlyContinue

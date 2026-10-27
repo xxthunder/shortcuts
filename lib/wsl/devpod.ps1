@@ -184,7 +184,8 @@ Then run setup-devpod again.
                     Write-Information "Successfully verified DevPod configuration in '$DistroName'."
                     Write-Information ""
                     Write-Information "DevPod was already installed. Configuration has been verified and any missing components have been repaired."
-                } else {
+                }
+                else {
                     Write-Information "Successfully installed DevPod CLI in '$DistroName'."
                 }
                 Write-Information ""

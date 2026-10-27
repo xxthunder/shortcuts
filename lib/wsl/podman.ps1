@@ -231,7 +231,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
 
         # Preserve existing default user
         if ($existingUser) {
-            $sections.user = @{default = $existingUser}
+            $sections.user = @{default = $existingUser }
         }
 
         # Configure wsl.conf
@@ -252,7 +252,7 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
 
         # Preserve existing default user
         if ($existingUser) {
-            $sections.user = @{default = $existingUser}
+            $sections.user = @{default = $existingUser }
         }
 
         Write-Information "Configuring boot command for rootless Podman..."
@@ -319,7 +319,8 @@ To use Podman, first remove Docker, or use a separate WSL distribution.
                     Write-Information "Successfully verified Podman configuration in '$DistroName'."
                     Write-Information ""
                     Write-Information "Podman was already installed. Configuration has been verified and any missing components have been repaired."
-                } else {
+                }
+                else {
                     Write-Information "Successfully installed rootless Podman in '$DistroName'."
                 }
                 Write-Information ""

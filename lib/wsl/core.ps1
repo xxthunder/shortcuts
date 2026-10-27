@@ -76,8 +76,8 @@ function Get-WslPlatformVersion {
     }
 
     $firstLine = @($output |
-        ForEach-Object { "$_" -replace '\x00', '' -replace '\r', '' -split "`n" } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) | Select-Object -First 1
+            ForEach-Object { "$_" -replace '\x00', '' -replace '\r', '' -split "`n" } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) | Select-Object -First 1
     if ($firstLine -match '\d+(\.\d+){1,3}') {
         return $Matches[0]
     }

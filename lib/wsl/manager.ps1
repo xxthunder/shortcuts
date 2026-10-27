@@ -125,7 +125,8 @@ function Start-InteractiveMode {
         # Build single panel: branding header + distro table
         $distroContent = if ($null -ne $menuDistros) {
             Show-WslDistroTable -Distros $menuDistros
-        } else {
+        }
+        else {
             "[yellow]Could not load distributions.[/]"
         }
         # Out-SpectreHost renders at the live console width. Emitting the renderable to the

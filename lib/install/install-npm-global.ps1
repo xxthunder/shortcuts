@@ -49,7 +49,8 @@ try {
     # Install the npm package
     if ($CheckCommand) {
         Install-NpmPackage -PackageName $PackageName -CheckCommand $CheckCommand
-    } else {
+    }
+    else {
         Install-NpmPackage -PackageName $PackageName
     }
 
@@ -59,7 +60,8 @@ try {
 
     if ($CheckCommand) {
         Write-Information "You can now run: $CheckCommand"
-    } else {
+    }
+    else {
         Write-Information "Package '$PackageName' has been installed globally"
     }
 
@@ -67,10 +69,12 @@ try {
     Write-Information "Remember to refresh Keypirinha catalog:"
     Write-Information "  Press Alt+Space and type 'Refresh catalog'"
 
-} catch {
+}
+catch {
     Write-Error "An unexpected error occurred: $_"
     exit 1
-} finally {
+}
+finally {
     if (-not (Test-RunningInCIorTestEnvironment)) {
         Write-Information ""
         Write-Information "Press any key to exit..."

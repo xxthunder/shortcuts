@@ -14,8 +14,9 @@ Describe "WSL Library Integration Tests" -Tag "Integration" {
         $wslScript = Join-Path $PSScriptRoot ".\wsl.ps1"
         if (Test-Path $wslScript) {
             . $wslScript
-        } else {
-            Throw "Could not find wsl.ps1 at $wslScript"
+        }
+        else {
+            throw "Could not find wsl.ps1 at $wslScript"
         }
 
         # Check for WSL
@@ -64,13 +65,13 @@ Describe "WSL Library Integration Tests" -Tag "Integration" {
 
     Context "Test-Wsl2Version" {
         It "Should return boolean for existing distributions" {
-             $distros = @(Get-WslDistroList -Detailed)
+            $distros = @(Get-WslDistroList -Detailed)
 
-             foreach ($d in $distros) {
-                 $isWsl2 = Test-Wsl2Version -DistroName $d.Name
-                 $expected = ($d.Version -eq 2)
-                 $isWsl2 | Should -Be $expected
-             }
+            foreach ($d in $distros) {
+                $isWsl2 = Test-Wsl2Version -DistroName $d.Name
+                $expected = ($d.Version -eq 2)
+                $isWsl2 | Should -Be $expected
+            }
         }
     }
 

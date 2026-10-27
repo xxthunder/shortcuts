@@ -28,7 +28,8 @@ Write-Output 'Check and install dependencies ...'
 # Check if Pester exists in the bounds we want
 if (Get-InstalledModule -Name Pester -MinimumVersion 5.7.1 -MaximumVersion 5.99 -ErrorAction SilentlyContinue) {
     Write-Output 'Pester 5 is already installed.'
-} else {
+}
+else {
     Write-Output 'Installing Pester 5 ...'
     # -Force bypasses the "Untrusted Repository" prompt
     # -AllowClobber fixes issues if an older default version of Pester exists on the system
@@ -38,7 +39,8 @@ if (Get-InstalledModule -Name Pester -MinimumVersion 5.7.1 -MaximumVersion 5.99 
 # --- PSSCRIPTANALYZER ---
 if (Get-InstalledModule -Name PSScriptAnalyzer -MinimumVersion 1.24 -ErrorAction SilentlyContinue) {
     Write-Output 'PSScriptAnalyzer is already installed.'
-} else {
+}
+else {
     Write-Output 'Installing PSScriptAnalyzer ...'
     Install-Module -Name PSScriptAnalyzer -Repository PSGallery -Scope $Scope -Force -MinimumVersion 1.24 -SkipPublisherCheck
 }
@@ -48,9 +50,10 @@ if (Get-InstalledModule -Name PSScriptAnalyzer -MinimumVersion 1.24 -ErrorAction
 # so integration tests (which run under pwsh) need it installed here too.
 if (Get-InstalledModule -Name PwshSpectreConsole -MinimumVersion 2.0 -ErrorAction SilentlyContinue) {
     Write-Output 'PwshSpectreConsole is already installed.'
-} else {
+}
+else {
     Write-Output 'Installing PwshSpectreConsole ...'
     Install-Module -Name PwshSpectreConsole -Repository PSGallery -Scope $Scope -Force -MinimumVersion 2.0 -SkipPublisherCheck
 }
 
-Exit 0
+exit 0

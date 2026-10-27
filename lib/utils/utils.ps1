@@ -574,10 +574,12 @@ function Install-NpmPackage {
         $newNodeVersion = node --version
         if ($nodeVersion -eq $newNodeVersion) {
             Write-Success "Node.js is up to date ($newNodeVersion)"
-        } else {
+        }
+        else {
             Write-Success "Node.js updated from $nodeVersion to $newNodeVersion"
         }
-    } else {
+    }
+    else {
         Write-Status "Installing Node.js via Scoop..."
         Invoke-CommandLine -CommandLine "scoop install nodejs" -StopAtError $true
         Write-Success "Node.js installed"
@@ -602,7 +604,8 @@ function Install-NpmPackage {
         if ($LASTEXITCODE -eq 0) {
             $isInstalled = $true
         }
-    } catch {
+    }
+    catch {
         # Ignore errors from npm list
         $null = $_
     }
@@ -612,7 +615,8 @@ function Install-NpmPackage {
         Write-Status "Updating $PackageName..."
         Invoke-CommandLine -CommandLine "npm update -g $PackageName" -StopAtError $true
         Write-Success "$PackageName updated"
-    } else {
+    }
+    else {
         Write-Status "Installing $PackageName..."
         Invoke-CommandLine -CommandLine "npm install -g $PackageName" -StopAtError $true
         Write-Success "$PackageName installed"
@@ -624,11 +628,13 @@ function Install-NpmPackage {
         if (Get-Command $CheckCommand -ErrorAction SilentlyContinue) {
             $cmdVersion = & $CheckCommand --version
             if ($null -ne $cmdVersion) {
-                 Write-Success "$CheckCommand version: $cmdVersion"
-            } else {
-                 Write-Success "$CheckCommand is available"
+                Write-Success "$CheckCommand version: $cmdVersion"
             }
-        } else {
+            else {
+                Write-Success "$CheckCommand is available"
+            }
+        }
+        else {
             Write-Warning "$CheckCommand command not found even after installation."
         }
     }

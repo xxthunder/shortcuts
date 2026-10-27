@@ -52,7 +52,8 @@ function Get-ScoopUpdatableApp {
                 LatestVersion    = $item."Latest Version"
             }
         }
-    } else {
+    }
+    else {
         # Legacy scoop: parse text table output
         $lines = @($statusOutput) | ForEach-Object { "$_" }
         $headerFound = $false

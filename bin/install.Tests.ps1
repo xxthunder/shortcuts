@@ -345,7 +345,7 @@ Describe 'New-StartupShortcut' {
     It 'delegates to New-Shortcut with the startup folder path' {
         Mock New-Shortcut {}
 
-        New-StartupShortcut -name 'myapp' -path 'C:\myapp.exe'
+        New-StartupShortcut -Name 'myapp' -path 'C:\myapp.exe'
 
         $expectedDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
         $expectedLnk = Join-Path $expectedDir 'myapp.lnk'
@@ -357,7 +357,7 @@ Describe 'New-StartupShortcut' {
     It 'supports -WhatIf and does not delegate' {
         Mock New-Shortcut {}
 
-        New-StartupShortcut -name 'myapp' -path 'C:\myapp.exe' -WhatIf
+        New-StartupShortcut -Name 'myapp' -path 'C:\myapp.exe' -WhatIf
 
         Should -Not -Invoke New-Shortcut
     }

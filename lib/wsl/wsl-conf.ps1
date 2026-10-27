@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     WSL wsl.conf management functions for reading, writing, and checking
     configuration in per-distro /etc/wsl.conf files.

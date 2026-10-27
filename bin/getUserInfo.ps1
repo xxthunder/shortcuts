@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Get information about a domain user
 .DESCRIPTION

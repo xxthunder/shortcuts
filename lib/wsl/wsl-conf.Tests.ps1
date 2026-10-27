@@ -1,4 +1,4 @@
-<#
+﻿<#
 .DESCRIPTION
     Pester tests for lib/wsl-conf.ps1 - WSL wsl.conf management functions
 #>
