@@ -28,7 +28,8 @@ BeforeDiscovery {
         foreach ($path in $paths) {
             $resolvedPath = if ([System.IO.Path]::IsPathRooted($path)) {
                 $path
-            } else {
+            }
+            else {
                 Join-Path $repoRoot $path
             }
 
@@ -37,7 +38,8 @@ BeforeDiscovery {
                 if ($files) {
                     $toBeAnalysed += $files.FullName
                 }
-            } elseif (Test-Path $resolvedPath -PathType Leaf) {
+            }
+            elseif (Test-Path $resolvedPath -PathType Leaf) {
                 if ($resolvedPath -like "*.ps1") {
                     $toBeAnalysed += $resolvedPath
 
@@ -51,7 +53,8 @@ BeforeDiscovery {
                 }
             }
         }
-    } else {
+    }
+    else {
         # Fallback to default behavior
         $toBeAnalysed = @()
         $files = Get-ChildItem -Path $PSScriptRoot -Depth 0 -Filter "*.ps1"
@@ -67,8 +70,9 @@ BeforeDiscovery {
 
 Describe 'Analysis of file <_> against Script Analyzer Rules' -ForEach $toBeAnalysed {
     It "Shall not have deviations" {
-        $analysisRules = Get-ScriptAnalyzerRule -Severity Warning, Error
-        $analysisResult = Invoke-ScriptAnalyzer -IncludeRule $analysisRules -Path $_
+        # The default rules at Warning and Error severity, plus the formatting rules (SC-083)
+        $settingsPath = Join-Path $PSScriptRoot "..\..\PSScriptAnalyzerSettings.psd1"
+        $analysisResult = Invoke-ScriptAnalyzer -Settings $settingsPath -Path $_
         if ($analysisResult) {
             $ScriptAnalyzerResultString = $analysisResult | Out-String
             Write-Warning $ScriptAnalyzerResultString

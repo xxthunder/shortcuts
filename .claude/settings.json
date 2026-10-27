@@ -17,5 +17,19 @@
       "Bash(dd:*)",
       "Bash(mkfs:*)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"$CLAUDE_PROJECT_DIR/tools/claude-hooks/format-powershell.ps1\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }
