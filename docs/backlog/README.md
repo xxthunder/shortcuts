@@ -10,6 +10,7 @@
 ## Table of Contents
 
 ### Open
+- [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)
 - [SC-078 — wsl-manager makes a distribution the default](sc-078.md)
 - [SC-077 — One status per test and requirement, passed only when all tests passed](sc-077.md)
 - [SC-076 — Short test result IDs, and a Test results page that fits and stays current](sc-076.md)
