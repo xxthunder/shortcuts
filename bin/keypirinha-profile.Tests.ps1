@@ -10,7 +10,7 @@
 #>
 
 BeforeDiscovery {
-    $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+    $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $searchPaths = @('bin', 'lib', 'tools') | ForEach-Object { Join-Path $repoRoot $_ }
     $script:hintFiles = @(Get-ChildItem -Path $searchPaths -Filter '*.ps1' -Recurse |
             Where-Object { $_.Name -notlike '*.Tests.ps1' } |
@@ -19,7 +19,7 @@ BeforeDiscovery {
 }
 
 BeforeAll {
-    $script:repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+    $script:repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $iniPath = Join-Path $script:repoRoot 'config\keypirinha\portable\Profile\User\Keypirinha.ini'
     $script:hotkey = (Select-String -Path $iniPath -Pattern '^hotkey_run\s*=\s*(\S+)').Matches[0].Groups[1].Value
 }
