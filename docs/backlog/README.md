@@ -38,7 +38,6 @@
 ### In Progress
 - [SC-084 — A release branch holds only the files users need](sc-084.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
-- [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
@@ -47,6 +46,7 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
+- [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)
 - [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-072 — Backlog index the backlog script can derive](sc-072.md)
