@@ -19,6 +19,7 @@ This document provides technical guidelines for AI agents working on the Shortcu
 ### Directory Structure
 
 - `bin/`: Installation and update scripts
+  - `release/`: Allow-list, README and scripts that build and publish the `release` branch
 - `config/`: Configuration files
 - `lib/`: Shared PowerShell library (reusable functions)
   - `utils/`: Utility functions (`utils.ps1`)
@@ -351,6 +352,16 @@ For a docs-only change:
 The push prints `Cannot update this protected ref` alongside a successful ref update. That is expected for the owner. **Verify the push landed** (`git fetch origin develop`, then compare `origin/develop` to `HEAD`) instead of reading the push output, which is ambiguous.
 
 Contributors without bypass rights must use a pull request for documentation too.
+
+#### Release Branch
+
+`release` is an orphan branch that holds only the files users need: the paths that `bin/release/paths.txt` lists, and its own `README.md`. A downstream fork pulls it with `git subtree`.
+
+CI builds it. After the tests pass on a push to `develop`, the `release` job in `test.yml` copies the paths of `bin/release/paths.txt` into a tree, checks that tree and commits it to `release` with the message `release: build from <develop sha>`. A release commit is skipped when its source commit is older than the one already on `release`, so a slow run of an older push never takes the branch backwards. The scripts are in `bin/release/`.
+
+- Change a file on `develop`; CI carries it to `release` on the next push. Do not edit `release` by hand or open a pull request against it: CI overwrites it.
+- A new file that users need goes into `bin/release/paths.txt`. A file that is not on the list never reaches `release`.
+- The integration test `bin/release/release.Integration.Tests.ps1` builds and checks the real tree on every pull request, so a gap in the list fails before the merge.
 
 #### GitHub Actions Shell
 
