@@ -49,6 +49,7 @@ Records of significant architectural decisions, their context, and consequences.
 - [ADR 0003: wsl-manager keeps WSL's binfmt_misc protection on and does not rely on systemd-binfmt.service](adr/0003-wsl-manager-keeps-wsl-binfmt-protection.md)
 - [ADR 0004: wsl-manager confirmations follow the consequence of the step](adr/0004-wsl-manager-confirmations-follow-the-consequence.md)
 - [ADR 0005: px starts at logon from the last config and never looks up the proxy then](adr/0005-px-starts-at-logon-from-the-last-config.md)
+- [ADR 0006: Containers get the proxy by a port forward and the CA at a path of their own](adr/0006-containers-get-proxy-by-port-forward-and-ca-at-own-path.md)
 
 ```{toctree}
 :hidden:
