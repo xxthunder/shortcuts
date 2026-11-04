@@ -1,0 +1,13 @@
+# Allow-list of the release branch: what users of px-proxy, WSL Manager and
+# the Scoop update helper need. Build-Release.ps1 reads it.
+#   folder/   a folder, taken recursively
+#   file      a single file
+#   !pattern  removes files (-like against the relative path and the file name)
+LICENSE
+.gitattributes
+lib/
+tools/proxy/
+tools/scoop/
+tools/wsl-manager/
+!*.Tests.ps1
+!lib/AGENTS.md
