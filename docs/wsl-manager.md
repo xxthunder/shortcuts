@@ -149,7 +149,7 @@ Create a non-root user with sudo privileges (required for both Docker and Podman
 
 ### Step 4: Install Corporate Root CA (TLS Inspection)
 
-If your corporate network inspects TLS, install the corporate root certificate authority (CA) into the distribution before configuring the proxy, so that HTTPS works through px and dev containers that take over the distribution's certificates trust it as well. The certificates come from the Windows certificate store, where the corporate root CA is already trusted. Skip this step if your network does not inspect TLS.
+If your corporate network inspects TLS, install the corporate root certificate authority (CA) into the distribution before configuring the proxy, so that HTTPS works through px. Podman containers get the bundle and the CA variables through a drop-in (see [Setup CA certificates (corporate)](#setup-ca-certificates-corporate)). The certificates come from the Windows certificate store, where the corporate root CA is already trusted. Skip this step if your network does not inspect TLS.
 
 - **TUI**: select **Setup CA certificates (corporate)** → select `Ubuntu-24.04` → **Install** → **Auto**, press Enter for `https://www.google.com`, add intranet sites such as git or Jira when asked for another URL, check the listed roots and confirm
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-ca Ubuntu-24.04 -Url https://www.google.com,https://git.example.corp`, or by name with `-Subject '*Contoso*'` (Manual)
@@ -826,8 +826,9 @@ This command:
 - Installs only roots that are in `Cert:\LocalMachine\Root` and have not expired. A root the machine does not trust is an error for that URL; a public site outside TLS inspection has a public root, which needs no install
 - In the TUI, asks for Install or Remove, then for Auto or Manual, lists the roots and asks for confirmation (`[Y/n]`, Enter installs; Remove asks `[y/N]`); on the CLI, `-Url`, `-Subject` and `-Remove` run without a prompt, and more than one of them is an error
 - Writes each certificate as `/usr/local/share/ca-certificates/wsl-manager-<thumbprint>.crt` and runs `update-ca-certificates`, which rebuilds `/etc/ssl/certs/ca-certificates.crt`: the bundle that [Setup proxy (corporate)](#setup-proxy-corporate) points uv, Node, pip and Go at
+- Writes `/etc/containers/containers.conf.d/wsl-manager-ca.conf`. It mounts the bundle read-only at `/etc/wsl-manager/ca-certificates.crt` in every Podman container and points `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `NODE_EXTRA_CA_CERTS` and `PIP_CERT` there, because images trust their own bundle, not the distribution's. The mount does not use the image's own path, so the image can still rebuild its own bundle (`update-ca-certificates`). The cost: a tool that reads only the system bundle and ignores the variables does not trust the proxy. The drop-in adds to your own lists in `containers.conf` instead of replacing them
 - Adds to the managed certificates rather than replacing them, so Auto can run for several sites one after another; every run removes managed certificates that have expired, which is how a rotated root CA leaves
-- Remove deletes all `wsl-manager-*.crt` files and rebuilds the bundle; certificates installed any other way are never touched
+- Remove deletes all `wsl-manager-*.crt` files and the container drop-in, and rebuilds the bundle; certificates installed any other way are never touched
 - A CA that was installed by hand before stays where it is and is then trusted twice, which does no harm. Remove the old copy so that wsl-manager manages the CA alone and **Remove** really takes it out: `sudo rm /usr/local/share/ca-certificates/<old file>.crt && sudo update-ca-certificates`
 - Requires the `ca-certificates` package in the distribution (it brings `openssl`) and, for a non-root default user, sudo rights (see [Setup user account](#setup-user-account))
 - Leaves the distribution running: the rebuilt bundle applies to the next TLS connection
@@ -851,6 +852,10 @@ This command:
 - Configures `/etc/apt/apt.conf.d/99proxy` for APT package manager
 - Configures `~/.docker/config.json` proxy settings
 - Configures `~/.config/containers/containers.conf` for Podman
+- When the proxy is on loopback (px), writes `~/.config/containers/containers.conf.d/wsl-manager-proxy.conf`
+  - A container's loopback is its own, so the file makes pasta forward the container's `127.0.0.1:<port>` to the distribution's loopback
+  - Containers keep their own network, so `-p` works as before
+  - With a proxy elsewhere, the file is deleted
 - Writes `/etc/wsl-manager/proxy-mode` (`basic`) for mode-aware teardown
 - Remove mode deletes all managed proxy configurations and the mode marker
 - Is idempotent - safe to run multiple times (overwrites configuration)
