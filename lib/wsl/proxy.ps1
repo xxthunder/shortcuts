@@ -32,6 +32,7 @@ function Install-WslProxy {
         - /etc/apt/apt.conf.d/99proxy
         - ~/.docker/config.json (proxies.default)
         - ~/.config/containers/containers.conf ([engine] env)
+        - ~/.config/containers/containers.conf.d/wsl-manager-proxy.conf (pasta forward of a loopback proxy port)
 
     .PARAMETER DistroName
         The name of the WSL distribution to configure.
@@ -279,6 +280,7 @@ Then run setup-proxy again.
                 Write-Information "  - /etc/apt/apt.conf.d/99proxy"
                 Write-Information "  - ~/.docker/config.json"
                 Write-Information "  - ~/.config/containers/containers.conf"
+                Write-Information "  - ~/.config/containers/containers.conf.d/wsl-manager-proxy.conf"
 
                 # Auto-terminate so a fresh session picks up the updated proxy exports.
                 # Wrapped: a termination failure here must not be reported as a

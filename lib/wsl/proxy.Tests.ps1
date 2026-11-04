@@ -583,6 +583,18 @@ Describe "Install-WslProxy" {
             Test-Path (Join-Path $PSScriptRoot "scripts\setup-proxy-negotiate.sh") | Should -Be $false
         }
 
+        It "setup-proxy.sh forwards a loopback proxy port into containers through a Podman drop-in (SC-079)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            $script | Should -Match 'PODMAN_PROXY_DROPIN="\$TARGET_HOME/\.config/containers/containers\.conf\.d/wsl-manager-proxy\.conf"'
+            $script | Should -Match 'pasta_options = \["-T", "\$port", \{append=true\}\]'
+            $script | Should -Match '127\\\.0\\\.0\\\.1\|localhost'
+        }
+
+        It "setup-proxy.sh deletes the network drop-in when the proxy is not on loopback and on --remove (SC-079)" {
+            $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
+            ([regex]::Matches($script, 'rm -f "\$PODMAN_PROXY_DROPIN"')).Count | Should -BeGreaterOrEqual 2
+        }
+
         It "setup-proxy.sh writes the basic mode marker on success" {
             $script = Get-Content (Join-Path $PSScriptRoot "scripts\setup-proxy.sh") -Raw
             $script | Should -Match '/etc/wsl-manager'
