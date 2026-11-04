@@ -36,6 +36,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
+- [SC-085 — Keypirinha hint test passes on a UNC repository path](sc-085.md)
 - [SC-084 — A release branch holds only the files users need](sc-084.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
