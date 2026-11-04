@@ -13,7 +13,6 @@
 - [SC-082 — px-proxy sets the proxy variables in the user environment](sc-082.md)
 - [SC-081 — Setup CA with the default URL misses the intranet root CA](sc-081.md)
 - [SC-080 — update-scoop reports success for apps Scoop skipped](sc-080.md)
-- [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)
 - [SC-078 — wsl-manager makes a distribution the default](sc-078.md)
 - [SC-077 — One status per test and requirement, passed only when all tests passed](sc-077.md)
 - [SC-076 — Short test result IDs, and a Test results page that fits and stays current](sc-076.md)
@@ -39,6 +38,7 @@
 ### In Progress
 - [SC-084 — A release branch holds only the files users need](sc-084.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
+- [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
