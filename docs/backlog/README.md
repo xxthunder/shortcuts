@@ -10,6 +10,7 @@
 ## Table of Contents
 
 ### Open
+- [SC-084 — A release branch holds only the files users need](sc-084.md)
 - [SC-082 — px-proxy sets the proxy variables in the user environment](sc-082.md)
 - [SC-081 — Setup CA with the default URL misses the intranet root CA](sc-081.md)
 - [SC-080 — update-scoop reports success for apps Scoop skipped](sc-080.md)
