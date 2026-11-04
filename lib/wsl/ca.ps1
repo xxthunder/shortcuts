@@ -355,7 +355,10 @@ function Install-WslCaCertificate {
         Writes each certificate as /usr/local/share/ca-certificates/wsl-manager-<thumbprint>.crt,
         keeps the other wsl-manager certificates, deletes the ones that have expired, and rebuilds
         the system CA bundle. Certificates not named wsl-manager-*.crt are never touched. Running it
-        again with the same certificates changes nothing.
+        again with the same certificates changes nothing. It also writes
+        /etc/containers/containers.conf.d/wsl-manager-ca.conf, which mounts the bundle at
+        /etc/wsl-manager/ca-certificates.crt in every Podman container and sets SSL_CERT_FILE, REQUESTS_CA_BUNDLE,
+        NODE_EXTRA_CA_CERTS and PIP_CERT to that path.
 
     .PARAMETER DistroName
         The name of the WSL distribution.
@@ -394,7 +397,8 @@ function Remove-WslCaCertificate {
 
     .DESCRIPTION
         Deletes /usr/local/share/ca-certificates/wsl-manager-*.crt and rebuilds the system CA
-        bundle. Certificates installed by anything else stay.
+        bundle. Certificates installed by anything else stay. It also deletes
+        /etc/containers/containers.conf.d/wsl-manager-ca.conf.
 
     .PARAMETER DistroName
         The name of the WSL distribution.
