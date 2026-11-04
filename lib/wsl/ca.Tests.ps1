@@ -246,3 +246,19 @@ Describe "Get-UrlRootCertificate" {
         { Get-UrlRootCertificate -Url 'https://www.google.com', 'https://jira.example.corp' } | Should -Throw "*jira.example.corp*"
     }
 }
+
+Describe "setup-ca.sh" {
+    BeforeAll { $script:caScript = Get-Content (Join-Path $PSScriptRoot "scripts\setup-ca.sh") -Raw }
+
+    It "mounts the bundle into every Podman container and points tools at it (SC-079)" {
+        $script:caScript | Should -Match 'PODMAN_CA_DROPIN="/etc/containers/containers\.conf\.d/wsl-manager-ca\.conf"'
+        $script:caScript | Should -Match 'CONTAINER_BUNDLE="/etc/wsl-manager/ca-certificates\.crt"'
+        $script:caScript | Should -Match 'volumes = \["\$BUNDLE:\$CONTAINER_BUNDLE:ro", \{append=true\}\]'
+        $script:caScript | Should -Match 'env = \["SSL_CERT_FILE=\$CONTAINER_BUNDLE", "REQUESTS_CA_BUNDLE=\$CONTAINER_BUNDLE", "NODE_EXTRA_CA_CERTS=\$CONTAINER_BUNDLE", "PIP_CERT=\$CONTAINER_BUNDLE", \{append=true\}\]'
+    }
+
+    It "deletes the Podman drop-in on --remove and checks it is gone (SC-079)" {
+        $script:caScript | Should -Match 'rm -f "\$PODMAN_CA_DROPIN"'
+        $script:caScript | Should -Match '\[ -e "\$PODMAN_CA_DROPIN" \]'
+    }
+}
