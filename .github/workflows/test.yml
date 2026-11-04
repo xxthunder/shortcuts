@@ -150,3 +150,42 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # The release branch (SC-084) is built from develop and holds only the files users need.
+  # It needs the test job, so a red develop never reaches it. It runs only on a push to develop:
+  # a pull request or a push to main must not change the branch that downstream forks track.
+  # The concurrency group runs one release job at a time, so two runs never race on the release branch.
+  # A run that waits in the group can be replaced by a newer one, and Publish-Release skips a source
+  # commit older than the one the release branch is already built from.
+  release:
+    name: Publish the release branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: release-branch
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set the git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build the release tree
+        shell: pwsh
+        run: bin\release\Build-Release.ps1 -Destination "$env:RUNNER_TEMP\release-tree"
+
+      - name: Check the release tree
+        shell: pwsh
+        run: bin\release\Test-Release.ps1 -Path "$env:RUNNER_TEMP\release-tree"
+
+      - name: Publish to the release branch
+        shell: pwsh
+        run: bin\release\Publish-Release.ps1 -RepoPath . -TreePath "$env:RUNNER_TEMP\release-tree" -SourceCommit ${{ github.sha }}
