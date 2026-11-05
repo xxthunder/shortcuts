@@ -1,0 +1,1101 @@
+﻿<#
+.DESCRIPTION
+    WSL Manager action functions and command dispatcher.
+    This file is dot-sourced by manager.ps1 (the orchestration layer).
+#>
+
+# Suppress PSAvoidUsingWriteHost - Write-Host is required for colored interactive console output
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Interactive tool requires colored console output')]
+param()
+
+# Always set the $InformationPreference variable to "Continue" globally,
+# this way it gets printed on execution and continues execution afterwards.
+$InformationPreference = "Continue"
+
+# Stop on first error
+$ErrorActionPreference = "Stop"
+
+# Source dependencies
+. "$PSScriptRoot\wsl.ps1"
+
+. "$PSScriptRoot\spectre.ps1"
+
+# Last entry of every distro picker; choosing it cancels the prompt (returns $null).
+# Explicit choice because Ctrl+C under the .bat wrapper is intercepted by cmd.exe.
+$WslPickerBackChoice = "Back to main menu"
+
+# Raised when a command ends without output worth reading (the user chose
+# $WslPickerBackChoice in a picker, or answered No to a confirmation), so the TUI
+# loop (Start-InteractiveMode) can skip its "Press Enter to continue" pause.
+# The loop resets it before every command.
+$script:WslSkipContinuePause = $false
+
+#region Functions
+
+function Show-WslDistroTable {
+    <#
+    .SYNOPSIS
+        Displays installed WSL distributions as a formatted Spectre table.
+
+    .DESCRIPTION
+        Renders a Spectre.Console table showing all installed WSL distributions with
+        their index, name, state (Running/Stopped), architecture (1 or 2), and default
+        marker. The title shows the version of WSL itself, which is not the architecture:
+        WSL 3.0 still runs distributions on architecture 2 (SC-068).
+        Returns a Spectre renderable object for use in layouts or panels.
+
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If not provided, fetches from WSL.
+
+    .OUTPUTS
+        A Spectre renderable table object, or a markup string when no distributions are found.
+
+    .EXAMPLE
+        Show-WslDistroTable
+        # Fetches distributions from WSL and displays them as a formatted table.
+
+    .EXAMPLE
+        $distros = Get-WslDistroList -Detailed
+        Show-WslDistroTable -Distros $distros
+        # Displays a pre-fetched list of distributions as a formatted table.
+    #>
+    [CmdletBinding()]
+    param(
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ($null -eq $Distros) {
+        $Distros = @(Get-WslDistroList -Detailed)
+    }
+
+    if ($Distros.Count -eq 0) {
+        return "[yellow]No WSL distributions found.[/]"
+    }
+
+    $index = 0
+    $tableData = foreach ($distro in $Distros) {
+        $index++
+        $stateMarkup = if ($distro.State -eq "Running") { "[green]Running[/]" } else { "[grey]Stopped[/]" }
+        $defaultMark = if ($distro.IsDefault) { "[green]*[/]" } else { "" }
+        [PSCustomObject]@{
+            '#'       = $index
+            'Name'    = $distro.Name
+            'State'   = $stateMarkup
+            'Arch'    = "$($distro.Version)"
+            'Default' = $defaultMark
+        }
+    }
+
+    $title = Format-WslPlatformVersion -Version (Get-WslPlatformVersion)
+    $tableData | Format-SpectreTable -Border Rounded -Color Cyan -Title $title -AllowMarkup -Expand
+}
+
+function Select-WslDistro {
+    <#
+    .SYNOPSIS
+        Distro selection helper. Resolves a pre-provided selection or prompts with an arrow-key picker.
+
+    .PARAMETER Selection
+        Pre-provided selection (number or name). If provided, skips the prompt.
+        Required in CI/test environments, where no prompt is shown.
+
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If not provided, fetches from WSL and shows the table.
+        When provided (e.g. from the TUI), the table is assumed already visible.
+
+    .OUTPUTS
+        The selected distribution name, or $null on cancellation (Ctrl+C), in CI without -Selection, or on error.
+    #>
+    param(
+        [string]$Selection = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $showTable = $null -eq $Distros
+    if ($showTable) {
+        $Distros = @(Get-WslDistroList -Detailed)
+    }
+
+    if ($Distros.Count -eq 0) {
+        Write-WarningMsg "No WSL distributions found."
+        return $null
+    }
+
+    if ($showTable) {
+        Show-WslDistroTable -Distros $Distros | Out-Host
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Selection)) {
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive selection is not available in CI/test environment. Provide -Name."
+            return $null
+        }
+
+        $choices = @($Distros.Name) + $WslPickerBackChoice
+        # Ctrl+C returns $null, which the [string] parameter coerces to ""
+        $Selection = Read-SpectreSelection -Message "Select distribution" -Choices $choices -PageSize 15 -EnableSearch
+
+        if ($Selection -eq $WslPickerBackChoice) {
+            $script:WslSkipContinuePause = $true
+            return $null
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Selection)) {
+            Write-WarningMsg "No selection provided. Cancelling."
+            return $null
+        }
+
+        # Spectre clears the prompt on selection; echo the choice so the user sees it while the action runs
+        Write-Status "Selected distribution: $Selection"
+        return $Selection
+    }
+
+    if ($Selection -match '^\d+$') {
+        $selectionNum = [int]$Selection
+        if ($selectionNum -ge 1 -and $selectionNum -le $Distros.Count) {
+            return $Distros[$selectionNum - 1].Name
+        }
+        Write-ErrorMsg "Invalid selection number. Must be between 1 and $($Distros.Count)."
+        return $null
+    }
+
+    # Validate name against known distributions
+    $matched = $Distros | Where-Object { $_.Name -eq $Selection }
+    if ($null -eq $matched) {
+        Write-ErrorMsg "Distribution '$Selection' not found."
+        return $null
+    }
+
+    return $Selection
+}
+
+function Confirm-DestructiveAction {
+    <#
+    .SYNOPSIS
+        Asks the user to confirm a destructive TUI action.
+
+    .DESCRIPTION
+        Shows a Spectre "[y/N]" prompt: No is the Enter default and, following the
+        Get-UserConfirmation convention, the default is the capital letter. Returns
+        $true only on an explicit yes. In CI/test environments no prompt is shown and
+        $true is returned (the non-interactive path).
+
+        Read-SpectreText is used rather than Read-SpectreConfirm because the latter
+        hard-codes lowercase y/n choices and cannot render the capital default.
+
+    .PARAMETER Action
+        Plain-text description of what is about to happen, e.g. "Remove distribution 'Ubuntu'."
+        Treated as plain text, not Spectre markup: distribution names are user data, so
+        any [brackets] are escaped before the prompt renders them.
+
+    .OUTPUTS
+        [bool] $true to proceed, $false to cancel.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Action
+    )
+
+    if (Test-RunningInCIorTestEnvironment) {
+        return $true
+    }
+
+    $message = Get-SpectreEscapedText -Text "$Action Continue?"
+    # Choices are matched case-insensitively; the returned text is what the user typed
+    # ("N" for a bare Enter, $null on Ctrl+C), so anything but a y is a No.
+    $answer = Read-SpectreText -Message $message -Choices @("y", "N") -DefaultAnswer "N"
+    return $answer -ieq "y"
+}
+
+function Invoke-CreateDistro {
+    <#
+    .SYNOPSIS
+        Handles the create distribution workflow.
+    .PARAMETER Name
+        The name of the distribution to create. If empty, prompts the user with an arrow-key picker.
+        Required in CI/test environments, where no prompt is shown.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Name = ""
+    )
+
+    # Get available distributions dynamically
+    $availableDistros = Get-WslAvailableDistro
+
+    # If Name is not provided, prompt for it
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive selection is not available in CI/test environment. Provide -Name."
+            return
+        }
+
+        $choices = @($availableDistros) + $WslPickerBackChoice
+        # Ctrl+C returns $null, which the [string] parameter coerces to ""
+        $Name = Read-SpectreSelection -Message "Select distribution to install" -Choices $choices -PageSize 15 -EnableSearch
+
+        if ($Name -eq $WslPickerBackChoice) {
+            $script:WslSkipContinuePause = $true
+            return
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Name)) {
+            Write-WarningMsg "No selection provided. Cancelling."
+            return
+        }
+
+        # Spectre clears the prompt on selection; echo the choice so the user sees it while the install runs
+        Write-Status "Selected distribution: $Name"
+    }
+
+    # Validate the distribution name
+    if ($Name -notin $availableDistros) {
+        Write-ErrorMsg "Distribution '$Name' is not available."
+        Write-Host ""
+        Write-Host "Available distributions:" -ForegroundColor Yellow
+        foreach ($distro in $availableDistros) {
+            Write-Host "  - $distro" -ForegroundColor Yellow
+        }
+        Write-Host ""
+        Write-Host "Run 'wsl.exe --list --online' to see all available distributions." -ForegroundColor Yellow
+        return
+    }
+
+    # Create the distribution (skip confirmation since we're handling it interactively)
+    New-WslDistro -Name $Name -Confirm:$false
+}
+
+function Invoke-RemoveDistro {
+    <#
+    .SYNOPSIS
+        Handles the remove distribution workflow.
+    .PARAMETER Name
+        The name or number of the distribution to remove. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Name = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $interactive = [string]::IsNullOrWhiteSpace($Name)
+
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
+    if ($null -eq $selectedName) { return }
+
+    # A name given on the CLI is trusted; only a picked name is confirmed
+    if ($interactive -and -not (Confirm-DestructiveAction -Action "Remove distribution '$selectedName' and all its data.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Remove-WslDistro -Name $selectedName -Confirm:$false
+}
+
+function Invoke-OpenDistroShell {
+    <#
+    .SYNOPSIS
+        Handles the open-terminal workflow.
+    .DESCRIPTION
+        Opens a shell in the chosen distribution next to the manager (new Windows Terminal
+        tab, or a new console window) and returns to the menu without pausing.
+    .PARAMETER Name
+        The name or number of the distribution. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Name = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
+    if ($null -eq $selectedName) { return }
+
+    Open-WslDistroShell -Name $selectedName
+    Write-Status "Opened terminal for $selectedName"
+    # Give wsl.exe a moment to bring the distribution up, so the menu's next redraw already
+    # shows it as Running in the common case. Best effort: "Refresh list" is the way to be sure.
+    $startupGraceSeconds = 1
+    Start-Sleep -Seconds $startupGraceSeconds
+    # The shell lives in its own tab or window; nothing here to read before returning to the menu
+    $script:WslSkipContinuePause = $true
+}
+
+function Invoke-UpdateDistro {
+    <#
+    .SYNOPSIS
+        Handles the update distribution workflow.
+    .PARAMETER Name
+        The name or number of the distribution to update. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Name = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    $selectedName = Select-WslDistro -Selection $Name -Distros $Distros
+    if ($null -eq $selectedName) { return }
+
+    Update-WslDistro -Name $selectedName -Confirm:$false
+}
+
+function Invoke-TerminateDistro {
+    <#
+    .SYNOPSIS
+        Handles the terminate distribution workflow.
+    .PARAMETER Name
+        The name of the distribution to terminate. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+        Numbers entered by the user correspond to the full list (consistent with the TUI).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Name,
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    # Fetch distros for running-state check; keep original param for Select-WslDistro table logic
+    $allDistros = if ($null -ne $Distros) { $Distros } else { @(Get-WslDistroList -Detailed) }
+
+    # Check if any distributions are running
+    $hasRunning = $false
+    foreach ($distro in $allDistros) {
+        if ($distro.State -eq "Running") {
+            $hasRunning = $true
+            break
+        }
+    }
+
+    if (-not $hasRunning) {
+        Write-WarningMsg "No running WSL distributions found."
+        return
+    }
+
+    # If Name is provided, use it directly
+    if (-not [string]::IsNullOrWhiteSpace($Name)) {
+        Stop-WslDistro -Name $Name -Confirm:$false
+        return
+    }
+
+    # CI/Test Environment Check
+    if (Test-RunningInCIorTestEnvironment) {
+        throw "Cannot run interactive 'terminate' command in CI/Test environment. Please provide -Name parameter."
+    }
+
+    $selectedName = Select-WslDistro -Distros $Distros
+    if ($null -eq $selectedName) { return }
+
+    # Validate that the selected distribution is running
+    $selectedDistro = $allDistros | Where-Object { $_.Name -eq $selectedName }
+    if ($null -eq $selectedDistro) {
+        Write-ErrorMsg "Distribution '$selectedName' is not in the list of distributions."
+        return
+    }
+    if ($selectedDistro.State -ne "Running") {
+        Write-ErrorMsg "Distribution '$selectedName' is not in the list of running distributions."
+        return
+    }
+
+    if (-not (Confirm-DestructiveAction -Action "Terminate distribution '$selectedName'.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Stop-WslDistro -Name $selectedName -Confirm:$false
+}
+
+function Invoke-SetupUser {
+    <#
+    .SYNOPSIS
+        Handles the user setup workflow.
+    .PARAMETER DistroName
+        The name of the distribution to create a user in. If not provided, prompts the user.
+    .PARAMETER Username
+        The username to create. If not provided, user is prompted.
+    .PARAMETER Password
+        The password for the new user. If not provided, user is prompted.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Plain-text password is required by chpasswd inside the WSL distribution.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are required together for non-interactive WSL user creation.')]
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+
+        [string]$Username = "",
+        [string]$Password = "",
+
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+        # CI guard - only fires when prompting is needed
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-Host "Skipping user setup in CI/test environment." -ForegroundColor Yellow
+            return
+        }
+
+        Write-Host ""
+        Write-Host "Setting up user account in '$DistroName' ..." -ForegroundColor Cyan
+        Write-Host ""
+
+        if ([string]::IsNullOrWhiteSpace($Username)) {
+            $Username = Read-Host "Enter username"
+            if ([string]::IsNullOrWhiteSpace($Username)) {
+                Write-WarningMsg "No username provided. Cancelling user setup."
+                return
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Password)) {
+            $securePassword = Read-Host "Enter password" -AsSecureString
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+            $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+
+    try {
+        New-WslUser -DistroName $DistroName -Username $Username -Password $Password -Confirm:$false
+
+        Write-Host ""
+        Write-Success "Successfully created user '$Username' in '$DistroName'."
+    }
+    finally {
+        $Password = $null
+    }
+}
+
+function Invoke-SetupProxy {
+    <#
+    .SYNOPSIS
+        Handles the proxy setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to configure proxy in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Setting up proxy in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $result = Install-WslProxy -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully configured proxy in '$DistroName'."
+    }
+}
+
+function Read-UrlRootCertificate {
+    <#
+    .SYNOPSIS
+        Asks for HTTPS URLs in a loop and collects their trusted root certificates, each once.
+    .DESCRIPTION
+        Offers https://www.google.com as the default, so Enter covers the TLS-inspection root
+        behind the corporate proxy; intranet sites with their own PKI can follow. A URL that
+        fails is reported and the loop goes on.
+    .OUTPUTS
+        System.Security.Cryptography.X509Certificates.X509Certificate2[]
+    #>
+    [CmdletBinding()]
+    [OutputType([System.Security.Cryptography.X509Certificates.X509Certificate2[]])]
+    param()
+
+    $found = [System.Collections.Generic.List[System.Security.Cryptography.X509Certificates.X509Certificate2]]::new()
+    do {
+        $url = Read-SpectreText -Message "HTTPS URL to read the root certificate from" -DefaultAnswer $script:WslCaDefaultUrl
+        if (-not [string]::IsNullOrWhiteSpace($url)) {
+            try {
+                foreach ($root in @(Get-UrlRootCertificate -Url $url)) {
+                    Write-Host "  $url -> $($root.Subject)  (expires $($root.NotAfter.ToString('yyyy-MM-dd')), $($root.Thumbprint))"
+                    if (-not ($found | Where-Object { $_.Thumbprint -eq $root.Thumbprint })) {
+                        $found.Add($root)
+                    }
+                }
+            }
+            catch {
+                Write-ErrorMsg "$_"
+            }
+        }
+        $again = Read-SpectreText -Message "Check another URL?" -Choices @("y", "N") -DefaultAnswer "N"
+    } while ($again -ieq "y")
+
+    return $found.ToArray()
+}
+
+function Invoke-SetupCa {
+    <#
+    .SYNOPSIS
+        Handles the root CA setup workflow (install or remove) for a WSL distribution.
+    .DESCRIPTION
+        Installs root certificates from Cert:\LocalMachine\Root into the distribution's trust
+        store, or removes the ones wsl-manager installed. The roots are found by URL (Auto: the
+        root of each site's certificate chain) or by subject pattern (Manual). URLs, a pattern
+        or -Remove given on the CLI run without a prompt; more than one of them is an error.
+        Without any, the user picks Install (then Auto or Manual) or Remove, sees the roots and
+        confirms; in CI/test environments this interactive path only warns.
+    .PARAMETER DistroName
+        The name of the distribution. If not provided, prompts the user.
+    .PARAMETER Url
+        HTTPS URLs whose certificate chain roots are installed, e.g. 'https://www.google.com'.
+    .PARAMETER Subject
+        Wildcard pattern matched against the certificate subject, e.g. '*Contoso*'.
+    .PARAMETER Remove
+        Remove the wsl-manager root certificates instead of installing.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [string[]]$Url = @(),
+        [string]$Subject = "",
+        [switch]$Remove,
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    # pwsh -File (the .bat wrapper) passes "-Url a,b" as one string, so split on commas here
+    $urls = @($Url | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $hasSubject = -not [string]::IsNullOrWhiteSpace($Subject)
+    $givenOptions = @(($urls.Count -gt 0), $hasSubject, $Remove.IsPresent) | Where-Object { $_ }
+    if (@($givenOptions).Count -gt 1) {
+        throw "Use only one of -Url, -Subject or -Remove."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    # URLs, a pattern or -Remove given on the CLI are trusted; only prompted choices are confirmed
+    $interactive = $urls.Count -eq 0 -and -not $hasSubject -and -not $Remove
+    $certificates = $null
+    if ($interactive) {
+        if (Test-RunningInCIorTestEnvironment) {
+            Write-WarningMsg "Interactive CA setup is not available in CI/test environment. Provide -Url, -Subject or -Remove."
+            return
+        }
+
+        $mode = Read-SpectreSelection -Message "Root CA setup" -Choices @("Install", "Remove", $WslPickerBackChoice) -PageSize 3
+        if ([string]::IsNullOrWhiteSpace($mode) -or $mode -eq $WslPickerBackChoice) {
+            $script:WslSkipContinuePause = $true
+            return
+        }
+
+        if ($mode -eq "Remove") {
+            $Remove = $true
+        }
+        else {
+            $source = Read-SpectreSelection -Message "Find the root certificates" -Choices @("Auto", "Manual", $WslPickerBackChoice) -PageSize 3
+            if ([string]::IsNullOrWhiteSpace($source) -or $source -eq $WslPickerBackChoice) {
+                $script:WslSkipContinuePause = $true
+                return
+            }
+
+            if ($source -eq "Auto") {
+                $certificates = @(Read-UrlRootCertificate)
+                if ($certificates.Count -eq 0) {
+                    Write-WarningMsg "No root certificate found. Nothing installed."
+                    return
+                }
+            }
+            else {
+                $Subject = Read-SpectreText -Message "Certificate subject pattern (wildcards, e.g. *Contoso*)"
+                if ([string]::IsNullOrWhiteSpace($Subject)) {
+                    Write-WarningMsg "No pattern provided. Cancelling."
+                    return
+                }
+            }
+        }
+    }
+
+    if ($Remove) {
+        if ($interactive -and -not (Confirm-DestructiveAction -Action "Remove all wsl-manager root certificates from '$DistroName'.")) {
+            Write-Status "Cancelled."
+            $script:WslSkipContinuePause = $true
+            return
+        }
+
+        Remove-WslCaCertificate -DistroName $DistroName -Confirm:$false
+        Write-Success "Removed the wsl-manager root certificates from '$DistroName'."
+        return
+    }
+
+    if ($null -eq $certificates) {
+        if ($urls.Count -gt 0) {
+            $certificates = @(Get-UrlRootCertificate -Url $urls)
+        }
+        else {
+            $certificates = @(Get-CorporateRootCertificate -Subject $Subject)
+            if ($certificates.Count -eq 0) {
+                throw "No valid root certificate in Cert:\LocalMachine\Root matches '$Subject'. Wildcards are needed for a partial match, e.g. '*$($Subject.Trim('*'))*'."
+            }
+        }
+    }
+
+    Write-Host "Root certificates to install:" -ForegroundColor Cyan
+    foreach ($certificate in $certificates) {
+        Write-Host "  $($certificate.Subject)  (expires $($certificate.NotAfter.ToString('yyyy-MM-dd')), $($certificate.Thumbprint))"
+    }
+
+    # Installing only adds wsl-manager's own files and can be repeated, so Enter means yes
+    if ($interactive -and -not (Get-UserConfirmation -message "Install $($certificates.Count) root certificate(s) into '$DistroName'?" -defaultValueForUser $true)) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Install-WslCaCertificate -DistroName $DistroName -Certificate $certificates -Confirm:$false
+    Write-Success "Installed $($certificates.Count) root certificate(s) into '$DistroName'."
+}
+
+function Invoke-SetupDocker {
+    <#
+    .SYNOPSIS
+        Handles the Docker setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install Docker in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Setting up Docker in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    # Install Docker Engine (skip confirmation since we're handling it interactively)
+    $result = Install-WslDockerEngine -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed Docker in '$DistroName'."
+    }
+}
+
+function Invoke-SetupPodman {
+    <#
+    .SYNOPSIS
+        Handles the Podman setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install Podman in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Setting up Podman in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    # Install Podman (skip confirmation since we're handling it interactively)
+    $result = Install-WslPodman -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed Podman in '$DistroName'."
+    }
+}
+
+function Invoke-SetupDevPod {
+    <#
+    .SYNOPSIS
+        Handles the DevPod setup workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to install DevPod in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Setting up DevPod in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $result = Install-WslDevPod -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully installed DevPod in '$DistroName'."
+    }
+}
+
+function Invoke-SyncSshConfig {
+    <#
+    .SYNOPSIS
+        Handles the SSH config sync workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to sync SSH config for. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Syncing SSH config between Windows host and '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $result = Invoke-WslSyncSshConfig -DistroName $DistroName -Confirm:$false
+
+    if ($result) {
+        Write-Host ""
+        Write-Success "Successfully synced SSH config for '$DistroName'."
+    }
+}
+
+function Invoke-RepairInterop {
+    <#
+    .SYNOPSIS
+        Handles the repair-interop workflow for a WSL distribution.
+    .PARAMETER DistroName
+        The name of the distribution to repair interop in. If not provided, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DistroName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DistroName)) {
+        $DistroName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Repairing Windows interop in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    # Check current interop state
+    $interopConfigured = Test-WslInteropConfigured -DistroName $DistroName
+
+    if ($interopConfigured) {
+        Write-Host "Windows interop is already configured in '$DistroName'." -ForegroundColor Green
+        return
+    }
+
+    # Configure interop via wsl.conf
+    $sections = @{
+        interop = @{
+            enabled           = "true"
+            appendWindowsPath = "true"
+        }
+    }
+
+    Write-Host "Configuring Windows interop in wsl.conf ..." -ForegroundColor Cyan
+    Set-WslConf -DistroName $DistroName -Sections $sections -Confirm:$false
+
+    # Auto-terminate so wsl.conf changes take effect (no manual step required)
+    Stop-WslDistro -Name $DistroName -Confirm:$false | Out-Null
+
+    Write-Host ""
+    Write-Success "Successfully configured Windows interop in '$DistroName'."
+}
+
+function Invoke-CloneDistro {
+    <#
+    .SYNOPSIS
+        Handles the clone distribution workflow.
+    .PARAMETER SourceName
+        The source distribution to clone from. If empty, prompts the user.
+    .PARAMETER TargetName
+        The target name for the cloned distribution. If empty, prompts the user.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$SourceName = "",
+        [string]$TargetName = "",
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    # If SourceName is not provided, prompt for it
+    if ([string]::IsNullOrWhiteSpace($SourceName)) {
+        $SourceName = Select-WslDistro -Distros $Distros
+        if ([string]::IsNullOrWhiteSpace($SourceName)) { return }
+    }
+
+    # If TargetName is not provided, prompt for it
+    if ([string]::IsNullOrWhiteSpace($TargetName)) {
+        Write-Host ""
+        $targetInput = Read-Host "Enter the target name for the cloned distribution"
+
+        if ([string]::IsNullOrWhiteSpace($targetInput)) {
+            Write-WarningMsg "No target name provided. Cancelling."
+            return
+        }
+
+        $TargetName = $targetInput
+    }
+
+    # Clone the distribution (skip confirmation since we're handling it interactively)
+    Copy-WslDistro -SourceName $SourceName -TargetName $TargetName -Confirm:$false
+}
+
+function Invoke-ConfigureWslDefault {
+    <#
+    .SYNOPSIS
+        Handles the configure-wsl workflow (idempotent .wslconfig defaults).
+    .DESCRIPTION
+        Applies default WSL global settings to %USERPROFILE%\.wslconfig.
+        Existing user values are never overwritten.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-Host ""
+    Write-Host "Applying default WSL global settings to .wslconfig ..." -ForegroundColor Cyan
+    Write-Host ""
+
+    Invoke-ConfigureWsl -Confirm:$false
+
+    Write-Host ""
+    Write-Success "Done."
+}
+
+function Invoke-ShutdownWsl {
+    <#
+    .SYNOPSIS
+        Handles the WSL shutdown workflow.
+    .DESCRIPTION
+        Asks for confirmation, naming the running distributions that will be stopped,
+        then shuts down the entire WSL subsystem. Shutdown has no -Name to mark a
+        scripted call, so it confirms from the CLI too; CI/test skips the prompt.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $allDistros = @(Get-WslDistroList -Detailed)
+    $runningDistros = @($allDistros | Where-Object { $_.State -eq "Running" })
+
+    $action = if ($runningDistros.Count -gt 0) {
+        "Shut down WSL. Running distributions that will be stopped: $($runningDistros.Name -join ', ')."
+    }
+    else {
+        "Shut down WSL. No distributions are running."
+    }
+
+    if (-not (Confirm-DestructiveAction -Action $action)) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Stop-WslSubsystem -Confirm:$false
+}
+
+function Invoke-UpdateWsl {
+    <#
+    .SYNOPSIS
+        Handles the update-wsl workflow.
+    .DESCRIPTION
+        Shows the WSL version, asks for confirmation, runs 'wsl.exe --update' and reports
+        the version before and after. Like shutdown, update-wsl has no -Name to mark a
+        scripted call, so it confirms from the CLI too; CI/test skips the prompt. It does
+        not shut WSL down: when the version changed, it points to Shutdown WSL (SC-064).
+    #>
+    [CmdletBinding()]
+    param()
+
+    $before = Get-WslPlatformVersion
+    $current = Format-WslPlatformVersion -Version $before
+
+    if (-not (Confirm-DestructiveAction -Action "Update $current with wsl --update.")) {
+        Write-Status "Cancelled."
+        $script:WslSkipContinuePause = $true
+        return
+    }
+
+    Update-WslPlatform -Confirm:$false
+    $after = Get-WslPlatformVersion
+
+    if (-not $after) {
+        Write-WarningMsg "Could not read the WSL version after the update. Check it with: wsl --version"
+    }
+    elseif ($after -eq $before) {
+        Write-Success "WSL is already up to date ($after)."
+    }
+    else {
+        $from = if ($before) { $before } else { "unknown" }
+        Write-Success "WSL updated: $from -> $after."
+        Write-Status "Running distributions use the new version after Shutdown WSL, which stops them."
+    }
+}
+
+function Invoke-WslCommand {
+    <#
+    .SYNOPSIS
+        Central command dispatcher for WSL Manager actions.
+    .DESCRIPTION
+        Routes a command name to the corresponding action function. Called by
+        Invoke-WslManager (CLI) and Start-InteractiveMode (TUI) to avoid
+        duplicating the dispatch logic.
+    .PARAMETER Command
+        The command to execute.
+    .PARAMETER Name
+        Distribution name or selection (passed as Name, SourceName, or DistroName depending on the command).
+    .PARAMETER TargetName
+        Target distribution name for clone operations.
+    .PARAMETER Username
+        Username for setup-user command.
+    .PARAMETER Password
+        Password for setup-user command.
+    .PARAMETER Url
+        HTTPS URLs whose certificate chain roots setup-ca installs.
+    .PARAMETER Subject
+        Certificate subject pattern for setup-ca.
+    .PARAMETER Remove
+        Remove instead of install, for setup-ca.
+    .PARAMETER Distros
+        Optional pre-fetched list of distributions (used by the TUI to avoid re-fetching).
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password', Justification = 'Passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingUsernameAndPasswordParams', '', Justification = 'Username and Password are passed through to Invoke-SetupUser for non-interactive WSL user creation.')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
+        [string]$Command,
+
+        [string]$Name = "",
+        [string]$TargetName = "",
+        [string]$Username = "",
+        [string]$Password = "",
+        [string[]]$Url = @(),
+        [string]$Subject = "",
+        [switch]$Remove,
+        [PSCustomObject[]]$Distros = $null
+    )
+
+    switch ($Command) {
+        "list" {
+            Show-WslDistroTable -Distros $Distros
+        }
+        "install" {
+            Invoke-CreateDistro -Name $Name
+        }
+        "shell" {
+            Invoke-OpenDistroShell -Name $Name -Distros $Distros
+        }
+        "clone" {
+            Invoke-CloneDistro -SourceName $Name -TargetName $TargetName -Distros $Distros
+        }
+        "remove" {
+            Invoke-RemoveDistro -Name $Name -Distros $Distros
+        }
+        "update" {
+            Invoke-UpdateDistro -Name $Name -Distros $Distros
+        }
+        "setup-user" {
+            Invoke-SetupUser -DistroName $Name -Username $Username -Password $Password -Distros $Distros
+        }
+        "setup-proxy" {
+            Invoke-SetupProxy -DistroName $Name -Distros $Distros
+        }
+        "setup-ca" {
+            Invoke-SetupCa -DistroName $Name -Url $Url -Subject $Subject -Remove:$Remove -Distros $Distros
+        }
+        "setup-docker" {
+            Invoke-SetupDocker -DistroName $Name -Distros $Distros
+        }
+        "setup-podman" {
+            Invoke-SetupPodman -DistroName $Name -Distros $Distros
+        }
+        "setup-devpod" {
+            Invoke-SetupDevPod -DistroName $Name -Distros $Distros
+        }
+        "sync-ssh-config" {
+            Invoke-SyncSshConfig -DistroName $Name -Distros $Distros
+        }
+        "repair-interop" {
+            Invoke-RepairInterop -DistroName $Name -Distros $Distros
+        }
+        "terminate" {
+            Invoke-TerminateDistro -Name $Name -Distros $Distros
+        }
+        "shutdown" {
+            Invoke-ShutdownWsl
+        }
+        "update-wsl" {
+            Invoke-UpdateWsl
+        }
+        "configure-wsl" {
+            Invoke-ConfigureWslDefault
+        }
+        "refresh" {
+            # TUI only: the menu loop re-fetches the list on its next iteration, so all
+            # this has to do is return without the "Press Enter to continue" pause.
+            $script:WslSkipContinuePause = $true
+        }
+    }
+}
+
+#endregion
