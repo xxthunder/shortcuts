@@ -19,7 +19,6 @@
 - [SC-075 — CI on Node 24 actions, Python toolchain past the emSign CA incident](sc-075.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
-- [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-066 — wsl-manager hands the Linux side of a distribution to Ansible](sc-066.md)
 - [SC-065 — Devcontainer for development and tests on Linux](sc-065.md)
 - [SC-061 — setup-proxy must not overwrite or delete apt, Docker and Podman files it does not own](sc-061.md)
@@ -42,6 +41,7 @@
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
 - [SC-073 — Traceability with sphinx-needs, ubCode and codelinks: px-proxy first](sc-073.md)
+- [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
