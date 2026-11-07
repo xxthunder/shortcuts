@@ -12,7 +12,7 @@
 
     Local mode (.\install.ps1 -InPlace):
         Sources lib utilities, installs Scoop dependencies, mandatory and optional
-        tools, and configures Keypirinha.
+        tools, configures Keypirinha, and starts Keypirinha and PowerToys.
 
     Can be dot-sourced (. .\install.ps1) to expose functions without running main logic.
 
@@ -243,12 +243,30 @@ else {
     function Install-MandatoryToolset {
         <#
         .SYNOPSIS
-            Installs mandatory tools from scoop_mandatory.json (keypirinha + extras bucket).
+            Installs mandatory tools from scoop_mandatory.json (keypirinha, powertoys + extras bucket).
         #>
         $mandatoryJson = Join-Path $script:repoRoot 'scoop_mandatory.json'
         Write-Status "Installing mandatory tools..."
         Invoke-CommandLine -CommandLine "scoop import `"$mandatoryJson`"" -StopAtError $true
         Write-Success "Mandatory tools installed"
+    }
+
+    function Start-Launcher {
+        <#
+        .SYNOPSIS
+            Starts Keypirinha and PowerToys (Command Palette). Skipped in CI, where
+            headless runners cannot launch GUI apps.
+        #>
+        [CmdletBinding(SupportsShouldProcess)]
+        param()
+
+        if (Test-RunningInCIorTestEnvironment) {
+            return
+        }
+        if ($PSCmdlet.ShouldProcess('Keypirinha and PowerToys', 'Start')) {
+            Start-Process -FilePath (Join-Path $Env:USERPROFILE 'scoop\apps\keypirinha\current\keypirinha.exe')
+            Start-Process -FilePath (Join-Path $Env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe')
+        }
     }
 
     function Install-OptionalToolset {
@@ -350,10 +368,8 @@ else {
                 New-StartupShortcut -name "shortcuts_hotkeys" -path "$shortcutsDir\tools\AutoHotKey\hotkeys.cmd"
             }
 
-            # Start Keypirinha (skip in CI — headless runners cannot launch GUI apps)
-            if (-not (Test-RunningInCIorTestEnvironment)) {
-                & "$Env:USERPROFILE\scoop\apps\keypirinha\current\keypirinha.exe"
-            }
+            # Start Keypirinha and PowerToys (skipped in CI)
+            Start-Launcher
 
             Write-Output "Installation/Update of Shortcuts was successful."
         }
