@@ -70,6 +70,14 @@ Describe 'Post-Install: Keypirinha' -Tag 'Integration' {
     }
 }
 
+Describe 'Post-Install: PowerToys' -Tag 'Integration' {
+
+    It 'PowerToys binary exists' {
+        $ptPath = Join-Path $env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe'
+        Test-Path $ptPath | Should -BeTrue
+    }
+}
+
 Describe 'Post-Install: Private Shortcuts Directory' -Tag 'Integration' {
 
     It 'shortcuts_private directory exists' {
