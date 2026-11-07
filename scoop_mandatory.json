@@ -17,6 +17,10 @@
         {
             "Source": "extras",
             "Name": "keypirinha"
+        },
+        {
+            "Source": "extras",
+            "Name": "powertoys"
         }
     ]
 }

@@ -362,3 +362,55 @@ Describe 'New-StartupShortcut' {
         Should -Not -Invoke New-Shortcut
     }
 }
+
+Describe 'Start-Launcher' {
+    BeforeAll {
+        . $script:installScript -InPlace
+        $script:originalUserProfile = $Env:USERPROFILE
+    }
+
+    BeforeEach {
+        $Env:USERPROFILE = Join-Path $TestDrive 'home'
+        Mock Start-Process {}
+    }
+
+    AfterEach {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    AfterAll {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    It 'starts Keypirinha and PowerToys outside CI' {
+        Mock Test-RunningInCIorTestEnvironment { $false }
+
+        Start-Launcher
+
+        Should -Invoke Start-Process -Times 1 -ParameterFilter {
+            $FilePath -eq (Join-Path $Env:USERPROFILE 'scoop\apps\keypirinha\current\keypirinha.exe')
+        }
+        Should -Invoke Start-Process -Times 1 -ParameterFilter {
+            $FilePath -eq (Join-Path $Env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe')
+        }
+    }
+
+    It 'starts no launcher in CI' {
+        Mock Test-RunningInCIorTestEnvironment { $true }
+
+        Start-Launcher
+
+        Should -Invoke Start-Process -Times 0
+    }
+}
+
+Describe 'scoop_mandatory.json' {
+    It 'lists <_> from the extras bucket' -ForEach 'keypirinha', 'powertoys' {
+        $name = $_
+        $manifest = Get-Content (Join-Path $PSScriptRoot '..\scoop_mandatory.json') -Raw | ConvertFrom-Json
+        $entries = @($manifest.apps | Where-Object { $_.Name -eq $name })
+
+        $entries | Should -HaveCount 1
+        $entries[0].Source | Should -Be 'extras'
+    }
+}
