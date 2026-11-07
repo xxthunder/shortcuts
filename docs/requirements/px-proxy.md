@@ -1,6 +1,6 @@
 # px-proxy requirements
 
-What [px-proxy](../runbooks/px-proxy.md) does now. A requirement changes when the tool's behaviour changes; the backlog items that changed it link to it.
+What [px-proxy](../runbooks/px-proxy.md) does now. A requirement changes when the tool's behaviour changes, in the commit that closes the backlog item that changed it; no item links to it.
 
 ```{req} px's files live in the user profile
 :id: REQ_PX_FILES

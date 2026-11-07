@@ -38,7 +38,7 @@
 - [SC-086 — Install PowerToys Command Palette alongside Keypirinha](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
-- [SC-073c — px-proxy requirements, and the items and ADRs that change them](sc-073c.md)
+- [SC-073c — px-proxy requirements, and the ADR that constrains them](sc-073c.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
 - [SC-073 — Traceability with sphinx-needs, ubCode and codelinks: px-proxy first](sc-073.md)
