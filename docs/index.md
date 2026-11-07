@@ -10,7 +10,7 @@
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-After installation, press **Alt+Space** and start typing to launch apps and shortcuts!
+After installation, press **Alt+Space** and start typing to launch apps and shortcuts! PowerToys Command Palette is installed too and opens with **Win+Alt+Space**.
 
 > **Note:** If you get an execution policy error, see [Troubleshooting](#installation-script-fails-with-execution-policy-error).
 
@@ -19,6 +19,7 @@ After installation, press **Alt+Space** and start typing to launch apps and shor
 Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 
 - **Keypirinha Launcher**: Press **Alt+Space** to instantly search and open anything
+- **PowerToys Command Palette**: Installed next to Keypirinha, opens with **Win+Alt+Space**
 - **Smart Shortcuts**: Quick access to tools, websites, and custom commands
 - **Package Management**: Easy installation of developer tools via Scoop
 - **Automation Scripts**: PowerShell utilities to streamline your workflow
@@ -56,12 +57,12 @@ irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin
 
 **3. Wait for installation to complete**
 
-- The script will install Scoop (package manager) and Keypirinha (launcher)
+- The script will install Scoop (package manager), Keypirinha (launcher) and PowerToys (with Command Palette)
 - You'll see a *k*-icon appear in your taskbar when done
 
 **4. Start using Shortcuts!**
 
-- Press **Alt+Space** to launch Keypirinha
+- Press **Alt+Space** to launch Keypirinha, or **Win+Alt+Space** for Command Palette
 - Start typing to search for apps and shortcuts
 
 ## Using Keypirinha
@@ -99,6 +100,12 @@ After installing new apps or adding shortcuts, refresh Keypirinha's catalog:
 2. Type **"Refresh catalog"**
 3. Press Enter
 4. Wait a few seconds for the scan to complete
+
+## Using Command Palette
+
+The installation also sets up PowerToys Command Palette. Press **Win+Alt+Space** to open it; Keypirinha stays on **Alt+Space**.
+
+Command Palette does not yet catalog the shortcuts folders: the shortcuts from `links/` and the tools are found only in Keypirinha.
 
 ## Managing Shortcuts
 
@@ -257,20 +264,22 @@ scoop install keypirinha
 
 ## Uninstallation
 
-### Quick Uninstall (Just Keypirinha)
+### Quick Uninstall (Just the Launchers)
 
-If you just want to remove the launcher:
+If you just want to remove the launchers:
 
 ```powershell
 scoop uninstall keypirinha
+scoop uninstall powertoys
 ```
 
 ### Complete Uninstall
 
-**Step 1: Uninstall Keypirinha**
+**Step 1: Uninstall the launchers**
 
 ```powershell
 scoop uninstall keypirinha
+scoop uninstall powertoys
 ```
 
 **Step 2: Remove other Scoop packages (optional)**

@@ -37,6 +37,14 @@ Describe 'Architecture model' {
         $script:dsl | Should -Match 'utils\.ps1'
     }
 
+    It 'Should model PowerToys Command Palette as an external launcher' {
+        $script:dsl | Should -Match 'commandPalette\s*=\s*softwareSystem\s+"PowerToys Command Palette"'
+    }
+
+    It 'Should let the installer install and start Command Palette' {
+        $script:dsl | Should -Match 'installer\s*->\s*commandPalette\s+"'
+    }
+
     It 'Should define the view <_>' -ForEach $script:views {
         $script:dsl | Should -Match ('"' + [regex]::Escape($_) + '"')
     }

@@ -6,7 +6,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         developer = person "Developer" "Works on a Windows machine and starts tools and links from the keyboard."
 
         shortcuts = softwareSystem "Shortcuts" "Installs a keyboard-driven toolset on Windows and manages WSL distributions for development." {
-            installer = container "Installer and updater" "Bootstraps Scoop and git, clones the repository, installs the mandatory and optional tools and PwshSpectreConsole, copies the Keypirinha profile and creates the hotkeys startup shortcut. bin/install.ps1, bin/update.bat." "Windows PowerShell 5.1"
+            installer = container "Installer and updater" "Bootstraps Scoop and git, clones the repository, installs the mandatory and optional tools and PwshSpectreConsole, copies the Keypirinha profile and installs PowerToys, creates the hotkeys startup shortcut. bin/install.ps1, bin/update.bat." "Windows PowerShell 5.1"
             launcherCatalog = container "Launcher catalog" "Internet shortcuts to web apps and tools that the launchers index. links/*.url." "Internet shortcut files" "Data store"
             helperCommands = container "Helper commands" "Small commands launched by name: rdp.cmd opens a Remote Desktop session, getUserInfo.ps1 shows a domain user's details. bin/." "cmd, PowerShell"
             hotkeys = container "Hotkeys" "Global hotkeys, started at login through a startup shortcut. tools/AutoHotKey." "AutoHotkey script"
@@ -52,6 +52,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         }
 
         keypirinha = softwareSystem "Keypirinha" "Keyboard launcher; indexes the shortcuts folder and shortcuts_private." "External"
+        commandPalette = softwareSystem "PowerToys Command Palette" "Keyboard launcher on Win+Alt+Space; installed with PowerToys next to Keypirinha." "External"
         scoop = softwareSystem "Scoop" "Command-line installer for Windows with its buckets." "External"
         github = softwareSystem "GitHub" "Hosts the shortcuts repository." "External"
         psGallery = softwareSystem "PowerShell Gallery" "Source of the PwshSpectreConsole module." "External"
@@ -65,6 +66,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         structurizrLocal = softwareSystem "Structurizr local" "The structurizr/structurizr container image, run with docker or podman." "External"
 
         developer -> keypirinha "Launches tools and links by name"
+        developer -> commandPalette "Launches apps and links by name"
         developer -> hotkeys "Presses global hotkeys"
         developer -> installer "Installs and updates Shortcuts"
         developer -> menu "Runs commands or uses the menu"
@@ -81,6 +83,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         installer -> scoop "Installs Scoop, git and the tool sets"
         installer -> psGallery "Installs PwshSpectreConsole"
         installer -> keypirinha "Copies the profile and starts it"
+        installer -> commandPalette "Installs PowerToys and starts it"
         installer -> hotkeys "Creates the startup shortcut"
         scoopHelper -> scoop "Updates apps and buckets"
         npmInstaller -> scoop "Installs Node.js"
