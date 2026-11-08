@@ -42,7 +42,6 @@
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
 - [SC-073 — Traceability with sphinx-needs, ubCode and codelinks: px-proxy first](sc-073.md)
-- [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
@@ -52,6 +51,7 @@
 - [SC-074 — README as landing page, the documentation on GitHub Pages](sc-074.md)
 - [SC-073d — Pester test results linked to their tests](sc-073d.md)
 - [SC-072 — Backlog index the backlog script can derive](sc-072.md)
+- [SC-070 — Try PowerToys Command Palette as a Keypirinha successor](sc-070.md)
 - [SC-069 — Remove Flow Launcher](sc-069.md)
 - [SC-068 — Distribution table: tell the WSL architecture from the WSL version](sc-068.md)
 - [SC-067 — px starts at logon](sc-067.md)
