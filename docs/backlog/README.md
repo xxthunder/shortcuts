@@ -35,7 +35,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
-- [SC-086 — Install PowerToys Command Palette alongside Keypirinha](sc-086.md)
+- [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073c — px-proxy requirements, and the ADR that constrains them](sc-073c.md)
