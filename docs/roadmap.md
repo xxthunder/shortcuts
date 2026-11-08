@@ -8,7 +8,7 @@ This document outlines the high-level vision and planned features for the Shortc
 
 ## Vision
 
-Provide a seamless, keyboard-driven Windows automation experience through Keypirinha integration, with robust WSL management and developer productivity tools.
+Provide a seamless, keyboard-driven Windows automation experience through Command Palette on Alt+Space, with robust WSL management and developer productivity tools.
 
 ---
 
@@ -42,7 +42,7 @@ Provide a seamless, keyboard-driven Windows automation experience through Keypir
 
 ## Future Considerations
 
-- Additional launcher integrations (beyond Keypirinha)
+- Additional launcher integrations (beyond Command Palette)
 - Cross-platform support exploration
 - Plugin/extension system for custom shortcuts
 

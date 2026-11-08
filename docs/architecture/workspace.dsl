@@ -6,8 +6,8 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         developer = person "Developer" "Works on a Windows machine and starts tools and links from the keyboard."
 
         shortcuts = softwareSystem "Shortcuts" "Installs a keyboard-driven toolset on Windows and manages WSL distributions for development." {
-            installer = container "Installer and updater" "Bootstraps Scoop and git, clones the repository, installs the mandatory and optional tools and PwshSpectreConsole, copies the Keypirinha profile and installs PowerToys, creates the hotkeys startup shortcut. bin/install.ps1, bin/update.bat." "Windows PowerShell 5.1"
-            launcherCatalog = container "Launcher catalog" "Internet shortcuts to web apps and tools that the launchers index. links/*.url." "Internet shortcut files" "Data store"
+            installer = container "Installer and updater" "Bootstraps Scoop and git, clones the repository, installs the mandatory and optional tools and PwshSpectreConsole, installs PowerToys, sets the Command Palette hotkey to Alt+Space and starts it, creates the hotkeys startup shortcut. bin/install.ps1, bin/update.bat." "Windows PowerShell 5.1"
+            launcherCatalog = container "Launcher catalog" "Internet shortcuts to web apps and tools. Command Palette does not catalog them until the folder extension CmdPal.Extension.Folders arrives. links/*.url." "Internet shortcut files" "Data store"
             helperCommands = container "Helper commands" "Small commands launched by name: rdp.cmd opens a Remote Desktop session, getUserInfo.ps1 shows a domain user's details. bin/." "cmd, PowerShell"
             hotkeys = container "Hotkeys" "Global hotkeys, started at login through a startup shortcut. tools/AutoHotKey." "AutoHotkey script"
             scoopHelper = container "Scoop update helper" "Lists the Scoop apps with updates and updates the selected ones; runs in a classic console so pwsh and Windows Terminal can be updated. tools/scoop, lib/scoop/scoop.ps1." "Windows PowerShell 5.1"
@@ -51,8 +51,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
             architectureViewer = container "Architecture viewer" "Starts Structurizr local on this model. tools/structurizr." "Bash, PowerShell"
         }
 
-        keypirinha = softwareSystem "Keypirinha" "Keyboard launcher; indexes the shortcuts folder and shortcuts_private." "External"
-        commandPalette = softwareSystem "PowerToys Command Palette" "Keyboard launcher on Win+Alt+Space; installed with PowerToys next to Keypirinha." "External"
+        commandPalette = softwareSystem "PowerToys Command Palette" "Keyboard launcher on Alt+Space; installed with PowerToys, hotkey set by the installer." "External"
         scoop = softwareSystem "Scoop" "Command-line installer for Windows with its buckets." "External"
         github = softwareSystem "GitHub" "Hosts the shortcuts repository." "External"
         psGallery = softwareSystem "PowerShell Gallery" "Source of the PwshSpectreConsole module." "External"
@@ -65,25 +64,16 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         claudeInstall = softwareSystem "Claude Code installer script" "Native installer at claude.ai." "External"
         structurizrLocal = softwareSystem "Structurizr local" "The structurizr/structurizr container image, run with docker or podman." "External"
 
-        developer -> keypirinha "Launches tools and links by name"
-        developer -> commandPalette "Launches apps and links by name"
+        developer -> commandPalette "Launches apps by name"
         developer -> hotkeys "Presses global hotkeys"
         developer -> installer "Installs and updates Shortcuts"
         developer -> menu "Runs commands or uses the menu"
         developer -> gitHooks "Commits changes; Git runs the hooks"
-        keypirinha -> launcherCatalog "Indexes and opens"
-        keypirinha -> helperCommands "Launches"
-        keypirinha -> wslManager "Launches wsl-manager.bat"
-        keypirinha -> scoopHelper "Launches update-scoop.bat"
-        keypirinha -> proxyTools "Launches px-proxy.bat"
-        keypirinha -> installer "Launches update.bat"
-        keypirinha -> architectureViewer "Launches structurizr-local.bat"
 
         installer -> github "Clones and pulls the repository"
         installer -> scoop "Installs Scoop, git and the tool sets"
         installer -> psGallery "Installs PwshSpectreConsole"
-        installer -> keypirinha "Copies the profile and starts it"
-        installer -> commandPalette "Installs PowerToys and starts it"
+        installer -> commandPalette "Installs PowerToys, sets the hotkey and starts it"
         installer -> hotkeys "Creates the startup shortcut"
         scoopHelper -> scoop "Updates apps and buckets"
         npmInstaller -> scoop "Installs Node.js"
