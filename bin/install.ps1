@@ -12,7 +12,7 @@
 
     Local mode (.\install.ps1 -InPlace):
         Sources lib utilities, installs Scoop dependencies, mandatory and optional
-        tools, configures Keypirinha, and starts Keypirinha and PowerToys.
+        tools, sets the Command Palette hotkey to Alt+Space, and starts PowerToys.
 
     Can be dot-sourced (. .\install.ps1) to expose functions without running main logic.
 
@@ -65,26 +65,6 @@ function Test-AdminPrivilege {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-function Copy-Config {
-    <#
-    .SYNOPSIS
-        Copies a configuration directory tree to a destination using robocopy.
-    #>
-    [CmdletBinding(SupportsShouldProcess)]
-    param (
-        [Parameter(Mandatory = $true, Position = 0)]
-        [string]$source,
-        [Parameter(Mandatory = $true, Position = 1)]
-        [string]$destination
-    )
-    if ($PSCmdlet.ShouldProcess($destination, "Copy config from '$source'")) {
-        robocopy $source $destination /E /IS /IT
-        if ($LASTEXITCODE -ge 8) {
-            Write-Error "Copying config to '$destination' failed"
-        }
-    }
 }
 
 function New-Shortcut {
@@ -243,7 +223,7 @@ else {
     function Install-MandatoryToolset {
         <#
         .SYNOPSIS
-            Installs mandatory tools from scoop_mandatory.json (keypirinha, powertoys + extras bucket).
+            Installs mandatory tools from scoop_mandatory.json (pwsh, powertoys + extras bucket).
         #>
         $mandatoryJson = Join-Path $script:repoRoot 'scoop_mandatory.json'
         Write-Status "Installing mandatory tools..."
@@ -254,7 +234,7 @@ else {
     function Start-Launcher {
         <#
         .SYNOPSIS
-            Starts Keypirinha and PowerToys (Command Palette). Skipped in CI, where
+            Starts PowerToys (Command Palette). Skipped in CI, where
             headless runners cannot launch GUI apps.
         #>
         [CmdletBinding(SupportsShouldProcess)]
@@ -263,10 +243,83 @@ else {
         if (Test-RunningInCIorTestEnvironment) {
             return
         }
-        if ($PSCmdlet.ShouldProcess('Keypirinha and PowerToys', 'Start')) {
-            Start-Process -FilePath (Join-Path $Env:USERPROFILE 'scoop\apps\keypirinha\current\keypirinha.exe')
+        if ($PSCmdlet.ShouldProcess('PowerToys', 'Start')) {
             Start-Process -FilePath (Join-Path $Env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe')
         }
+    }
+
+    function Set-CommandPaletteHotkey {
+        <#
+        .SYNOPSIS
+            Sets Command Palette's activation shortcut to Alt+Space.
+        .DESCRIPTION
+            Merges the top-level key Hotkey into Command Palette's settings.json and keeps
+            every other setting. A running Command Palette picks it up after a restart.
+        #>
+        [CmdletBinding(SupportsShouldProcess)]
+        param(
+            [string]$SettingsPath = (Join-Path $Env:LOCALAPPDATA 'Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json')
+        )
+
+        $hotkey = [pscustomobject]@{ win = $false; ctrl = $false; alt = $true; shift = $false; code = 32; key = '' }
+        if ($PSCmdlet.ShouldProcess($SettingsPath, 'Set Command Palette hotkey to Alt+Space')) {
+            $settings = $null
+            if (Test-Path $SettingsPath) {
+                $raw = Get-Content $SettingsPath -Raw -Encoding UTF8
+                if (-not [string]::IsNullOrWhiteSpace($raw)) {
+                    try {
+                        $settings = $raw | ConvertFrom-Json
+                    }
+                    catch {
+                        $settings = $null
+                    }
+                    if ($settings -isnot [System.Management.Automation.PSCustomObject]) {
+                        Write-Warning "Command Palette settings '$SettingsPath' are not a JSON object; hotkey left unchanged."
+                        return
+                    }
+                }
+            }
+            else {
+                New-Item -ItemType Directory -Path (Split-Path $SettingsPath -Parent) -Force | Out-Null
+            }
+            if ($null -eq $settings) {
+                $settings = [pscustomobject]@{}
+            }
+            $settings | Add-Member -NotePropertyName Hotkey -NotePropertyValue $hotkey -Force
+            $json = $settings | ConvertTo-Json -Depth 10
+            [System.IO.File]::WriteAllText($SettingsPath, $json, (New-Object System.Text.UTF8Encoding $false))
+        }
+    }
+
+    function Invoke-Install {
+        <#
+        .SYNOPSIS
+            Runs the install sequence.
+        #>
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$ShortcutsDir
+        )
+
+        Install-Scoop
+        Install-ScoopDependency
+        Install-Git
+        Install-MandatoryToolset
+        Install-PwshSpectreDependency
+        Install-OptionalToolset
+
+        # Post-install: private shortcuts directory
+        New-Directory "$Env:USERPROFILE\shortcuts_private"
+
+        # Post-install: AutoHotkey startup shortcut (only if autohotkey is installed)
+        if (Get-Command autohotkey -ErrorAction SilentlyContinue) {
+            New-StartupShortcut -name "shortcuts_hotkeys" -path "$ShortcutsDir\tools\AutoHotKey\hotkeys.cmd"
+        }
+
+        Set-CommandPaletteHotkey
+
+        # Start PowerToys (skipped in CI)
+        Start-Launcher
     }
 
     function Install-OptionalToolset {
@@ -350,27 +403,7 @@ else {
         $shortcutsDir = $script:repoRoot
 
         try {
-            Install-Scoop
-            Install-ScoopDependency
-            Install-Git
-            Install-MandatoryToolset
-            Install-PwshSpectreDependency
-            Install-OptionalToolset
-
-            # Post-install: Keypirinha config
-            Copy-Config (Join-Path $shortcutsDir "config\keypirinha\portable\Profile") "$Env:USERPROFILE\scoop\apps\keypirinha\current\portable\Profile"
-
-            # Post-install: private shortcuts directory
-            New-Directory "$Env:USERPROFILE\shortcuts_private"
-
-            # Post-install: AutoHotkey startup shortcut (only if autohotkey is installed)
-            if (Get-Command autohotkey -ErrorAction SilentlyContinue) {
-                New-StartupShortcut -name "shortcuts_hotkeys" -path "$shortcutsDir\tools\AutoHotKey\hotkeys.cmd"
-            }
-
-            # Start Keypirinha and PowerToys (skipped in CI)
-            Start-Launcher
-
+            Invoke-Install -ShortcutsDir $shortcutsDir
             Write-Output "Installation/Update of Shortcuts was successful."
         }
         finally {
