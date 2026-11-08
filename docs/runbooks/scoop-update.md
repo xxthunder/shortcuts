@@ -25,7 +25,7 @@ It is built around three properties:
 
 ## Usage
 
-Run from Keypirinha (type `update-scoop`) or from a terminal:
+Run `update-scoop` from a terminal:
 
 ```bat
 tools\scoop\update-scoop.bat

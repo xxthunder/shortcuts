@@ -24,7 +24,7 @@ You probably have everything already:
 
 ## Usage
 
-**From Keypirinha:** search for `px-proxy`. Keypirinha's file catalog only indexes `.url`, `.lnk`, `.cmd`, `.bat`, and `.exe` files (not `.ps1`), so it finds and runs `tools\proxy\px-proxy.bat`, the `.bat` wrapper around the script (see the PowerShell Script Wrapper Convention in `AGENTS.md`), never the `.ps1` file directly. Press **Tab** to open the argument line and type the action (for example `start`). Without Tab, Keypirinha just launches the wrapper with no action, which runs the default (`start`).
+**From a launcher:** run `tools\proxy\px-proxy.bat`, the `.bat` wrapper around the script (see the PowerShell Script Wrapper Convention in `AGENTS.md`), never the `.ps1` file directly. Command Palette does not catalog the tools folders yet. Without an action argument the wrapper runs the default (`start`).
 
 **From a terminal:**
 
