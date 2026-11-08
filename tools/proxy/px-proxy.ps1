@@ -35,7 +35,7 @@
 .PARAMETER WaitForKey
     Pause for a key press before the script exits (default: on). Keeps the
     console window open when the tool is launched from a .bat wrapper or
-    Keypirinha, so the user can read the result before the terminal closes.
+    a launcher, so the user can read the result before the terminal closes.
     Pass -WaitForKey:$false for unattended/scripted use. Always skipped in
     CI/test environments.
 
@@ -59,7 +59,7 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$ProxyHost,
 
-    [Parameter(Mandatory = $false, HelpMessage = 'Pause for a key press before exiting so batch/Keypirinha windows stay open. Default: $true. Pass -WaitForKey:$false to disable.')]
+    [Parameter(Mandatory = $false, HelpMessage = 'Pause for a key press before exiting so batch/launcher windows stay open. Default: $true. Pass -WaitForKey:$false to disable.')]
     [bool]$WaitForKey = $true
 )
 
@@ -669,7 +669,7 @@ function Wait-ForKeyPress {
         Pauses until a key press so a launched console window stays readable.
 
     .DESCRIPTION
-        When px-proxy runs from its .bat wrapper (e.g. via Keypirinha) the
+        When px-proxy runs from its .bat wrapper (e.g. from a launcher) the
         console closes as soon as the process exits, hiding the result. This
         holds the window open until the user acknowledges. Skipped in CI/test
         environments, and tolerant of hosts with no interactive console (the

@@ -45,6 +45,15 @@ Describe 'Architecture model' {
         $script:dsl | Should -Match 'installer\s*->\s*commandPalette\s+"'
     }
 
+    It 'Should not define a keypirinha identifier' {
+        $script:dsl | Should -Not -Match '(?i)\bkeypirinha\b\s*='
+        $script:dsl | Should -Not -Match '(?i)->\s*keypirinha\b|\bkeypirinha\s*->'
+    }
+
+    It 'Should not mention Keypirinha anywhere' {
+        $script:dsl | Should -Not -Match '(?i)keypirinha'
+    }
+
     It 'Should define the view <_>' -ForEach $script:views {
         $script:dsl | Should -Match ('"' + [regex]::Escape($_) + '"')
     }

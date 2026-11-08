@@ -10,7 +10,7 @@
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-After installation, press **Alt+Space** and start typing to launch apps and shortcuts! PowerToys Command Palette is installed too and opens with **Win+Alt+Space**.
+After installation, press **Alt+Space** and start typing to launch apps! The launcher is PowerToys Command Palette.
 
 > **Note:** If you get an execution policy error, see [Troubleshooting](#installation-script-fails-with-execution-policy-error).
 
@@ -18,9 +18,8 @@ After installation, press **Alt+Space** and start typing to launch apps and shor
 
 Shortcuts turns your Windows PC into a productivity powerhouse by providing:
 
-- **Keypirinha Launcher**: Press **Alt+Space** to instantly search and open anything
-- **PowerToys Command Palette**: Installed next to Keypirinha, opens with **Win+Alt+Space**
-- **Smart Shortcuts**: Quick access to tools, websites, and custom commands
+- **PowerToys Command Palette**: Press **Alt+Space** to instantly search and open anything
+- **Smart Shortcuts**: Tools, websites, and custom commands as files in the shortcuts folders (not in the Command Palette catalog yet)
 - **Package Management**: Easy installation of developer tools via Scoop
 - **Automation Scripts**: PowerShell utilities to streamline your workflow
 
@@ -57,23 +56,23 @@ irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin
 
 **3. Wait for installation to complete**
 
-- The script will install Scoop (package manager), Keypirinha (launcher) and PowerToys (with Command Palette)
-- You'll see a *k*-icon appear in your taskbar when done
+- The script will install Scoop (package manager) and PowerToys (with Command Palette), set **Alt+Space** as its hotkey and start it
+- On a machine where PowerToys already ran, restart PowerToys once (tray icon, Exit, then start PowerToys) so Command Palette picks up the hotkey
 
 **4. Start using Shortcuts!**
 
-- Press **Alt+Space** to launch Keypirinha, or **Win+Alt+Space** for Command Palette
-- Start typing to search for apps and shortcuts
+- Press **Alt+Space** to open Command Palette
+- Start typing to search for apps
 
-## Using Keypirinha
+## Using Command Palette
 
-### Launch Keypirinha
+### Launch Command Palette
 
 Press **Alt+Space** anywhere, anytime. A search box appears where you can type to find what you need.
 
 ### Try These Examples
 
-Open Keypirinha (**Alt+Space**) and try typing:
+Open Command Palette (**Alt+Space**) and try typing:
 
 | Type this | What happens |
 |-----------|-------------|
@@ -85,33 +84,28 @@ Open Keypirinha (**Alt+Space**) and try typing:
 | `powershell` | Opens PowerShell |
 | `notepad` | Opens Notepad |
 
-### Pro Tips
+### Shortcuts folders are not in the catalog yet
 
-- **Fuzzy search**: Type `chr` to find Chrome, `wrd` to find Word
-- **Calculator**: Type math directly: `2+2`, `15*8`, etc.
-- **Files**: Start typing a file path to open folders
-- **Recent items**: Your recently used items appear first
+Command Palette does not catalog the shortcuts folders yet: the `.url` files in `links/` and the `.bat` wrappers of the tools do not show up when you search. They will, once the folder extension for Command Palette (CPF-002) arrives. Until then, open them from File Explorer or a terminal.
 
-### Important: Refresh Catalog
+### Coming from Keypirinha?
 
-After installing new apps or adding shortcuts, refresh Keypirinha's catalog:
+The installer no longer installs Keypirinha. If you still have it, remove it. Keypirinha holds **Alt+Space** while it runs, so:
 
-1. Press **Alt+Space**
-2. Type **"Refresh catalog"**
-3. Press Enter
-4. Wait a few seconds for the scan to complete
+1. Exit Keypirinha (tray icon, Exit).
+2. Uninstall it:
 
-## Using Command Palette
+```powershell
+scoop uninstall keypirinha
+```
 
-The installation also sets up PowerToys Command Palette. Press **Win+Alt+Space** to open it; Keypirinha stays on **Alt+Space**.
-
-Command Palette does not yet catalog the shortcuts folders: the shortcuts from `links/` and the tools are found only in Keypirinha.
+3. Restart PowerToys (tray icon, Exit, then start PowerToys) so Command Palette picks up **Alt+Space**.
 
 ## Managing Shortcuts
 
 ### Available Shortcuts
 
-Your shortcuts are stored as `.url` files in the `links/` directory. After refreshing Keypirinha's catalog, these appear instantly when you search.
+Your shortcuts are stored as `.url` files in the `links/` directory. Command Palette does not catalog this folder yet (see [above](#shortcuts-folders-are-not-in-the-catalog-yet)).
 
 **Common categories:**
 
@@ -131,8 +125,7 @@ Your shortcuts are stored as `.url` files in the `links/` directory. After refre
    URL=https://example.com
    ```
 
-4. Refresh Keypirinha catalog (**Alt+Space** → "Refresh catalog")
-5. Type the shortcut name to use it!
+4. Double-click the file to use it; Command Palette will list it once the folder extension arrives
 
 ### Installing Optional Tools
 
@@ -166,10 +159,8 @@ It provides both a TUI (menu-driven interface) and CLI commands to:
 
 ### Quick Update (Easiest)
 
-1. Press **Alt+Space**
-2. Type **"update"**
-3. Select and run `update.bat`
-4. After update completes, type **"Refresh catalog"** in Keypirinha
+1. Open the `bin` folder of your Shortcuts installation
+2. Run `update.bat`
 
 ### Manual Update
 
@@ -178,8 +169,6 @@ Run the installation command again (it won't duplicate anything):
 ```powershell
 irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
-
-> **Remember:** Always refresh Keypirinha's catalog after updates to see new shortcuts.
 
 ## Troubleshooting
 
@@ -199,34 +188,21 @@ Or use the bypass option (one-time):
 Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/xxthunder/shortcuts/refs/heads/develop/bin/install.ps1 | iex
 ```
 
-### Keypirinha doesn't start or show the window
+### Command Palette doesn't open on Alt+Space
 
 **Check these:**
 
-1. Look for the *k*-icon in your system tray (bottom-right corner)
-2. If missing, search for "Keypirinha" in Start Menu and launch it
-3. Try restarting: Right-click the *k*-icon → Exit → Launch again
+1. PowerToys is running (look for its icon in the system tray)
+2. If missing, start PowerToys from the Start Menu
+3. Another app may use the same hotkey; close it and try again
+4. Run the installation command again; it sets the hotkey. Then restart PowerToys (tray icon, Exit, then start PowerToys)
 
-**Still not working?** Reinstall Keypirinha:
+**Still not working?** Reinstall PowerToys:
 
 ```powershell
-scoop uninstall keypirinha
-scoop install keypirinha
+scoop uninstall powertoys
+scoop install powertoys
 ```
-
-### Shortcuts or apps don't appear in Keypirinha
-
-**Solution (fixes 90% of cases):**
-
-1. Press **Alt+Space**
-2. Type **"Refresh catalog"**
-3. Press Enter and wait 5-10 seconds
-
-**Still missing?** Check if:
-
-- The application is actually installed
-- The `.url` file exists in the `links/` folder
-- Keypirinha is running (check system tray)
 
 ### Scoop commands not recognized
 
@@ -240,7 +216,7 @@ scoop install keypirinha
 
 **Try these in order:**
 
-1. Run update via Keypirinha (**Alt+Space** → "update")
+1. Run `bin\update.bat`
 2. Run installation command again (safe to repeat):
 
    ```powershell
@@ -250,35 +226,21 @@ scoop install keypirinha
 3. Check internet connection
 4. Disable antivirus temporarily and try again
 
-### Keypirinha hotkey (Alt+Space) doesn't work
-
-**Possible causes:**
-
-1. Another app is using the same hotkey
-2. Keypirinha isn't running (check system tray)
-3. You can configure a different hotkey in Keypirinha settings
-
-**To change hotkey:**
-
-- Right-click Keypirinha *k*-icon → Configure Keypirinha → Edit main settings
-
 ## Uninstallation
 
-### Quick Uninstall (Just the Launchers)
+### Quick Uninstall (Just the Launcher)
 
-If you just want to remove the launchers:
+If you just want to remove the launcher:
 
 ```powershell
-scoop uninstall keypirinha
 scoop uninstall powertoys
 ```
 
 ### Complete Uninstall
 
-**Step 1: Uninstall the launchers**
+**Step 1: Uninstall the launcher**
 
 ```powershell
-scoop uninstall keypirinha
 scoop uninstall powertoys
 ```
 

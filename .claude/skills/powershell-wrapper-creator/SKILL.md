@@ -1,6 +1,6 @@
 ---
 name: powershell-wrapper-creator
-description: "Create .bat wrappers for PowerShell scripts following project conventions. Use when: (1) Creating executable PowerShell scripts, (2) Making scripts launchable from command line, (3) Making scripts accessible from Keypirinha, (4) Following the PowerShell Script Wrapper Convention documented in AGENTS.md."
+description: "Create .bat wrappers for PowerShell scripts following project conventions. Use when: (1) Creating executable PowerShell scripts, (2) Making scripts launchable from command line, (3) Making scripts launchable by name from a launcher, (4) Following the PowerShell Script Wrapper Convention documented in AGENTS.md."
 ---
 
 # PowerShell Script Wrapper Creator
@@ -17,7 +17,7 @@ Executable PowerShell scripts should have a .bat wrapper in the same directory.
 - Batch wrapper handles PowerShell execution policy automatically
 - Arguments are passed through automatically via `%*`
 - Consistent user experience across all executable scripts
-- Works with Keypirinha launcher
+- Works with any launcher that runs `.bat` files
 
 ## Wrapper Template
 
@@ -149,7 +149,7 @@ New-BatWrappersForDirectory -Directory ".\tools\wsl-manager"
 
 - Scripts meant to be run by users directly
 - Scripts launched from command line
-- Scripts accessible via Keypirinha
+- Scripts launched by name from a launcher
 - Utility scripts in tools/ directory
 - Management scripts (install, update, etc.)
 
@@ -173,13 +173,12 @@ script-name arg1 arg2
 powershell -File script-name.ps1 arg1 arg2
 ```
 
-### Test from Keypirinha
+### Test from the Run dialog
 
 1. Create wrapper
-2. Refresh Keypirinha catalog
-3. Press Alt+Space
-4. Type script name
-5. Press Enter
+2. Press Win+R
+3. Type the wrapper path
+4. Press Enter
 
 ## Template Asset
 
