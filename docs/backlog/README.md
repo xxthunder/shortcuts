@@ -10,6 +10,7 @@
 ## Table of Contents
 
 ### Open
+- [SC-087 — px takes the upstream proxy from Windows on every request](sc-087.md)
 - [SC-082 — px-proxy sets the proxy variables in the user environment](sc-082.md)
 - [SC-081 — Setup CA with the default URL misses the intranet root CA](sc-081.md)
 - [SC-080 — update-scoop reports success for apps Scoop skipped](sc-080.md)
