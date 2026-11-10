@@ -1177,7 +1177,7 @@
       } ],
       "tags" : "Element,Software System,External"
     }, {
-      "description" : "Found through the PAC file; px authenticates to it.",
+      "description" : "Windows names it per request from its proxy settings; px authenticates to it.",
       "documentation" : { },
       "id" : "51",
       "name" : "Corporate proxy",

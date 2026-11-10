@@ -58,7 +58,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         windows = softwareSystem "Windows" "Registry, Internet Settings including the PAC URL, and the certificate store." "External"
         wsl = softwareSystem "Windows Subsystem for Linux" "wsl.exe and the WSL 2 distributions." "External"
         px = softwareSystem "px" "Local authenticating proxy on localhost:3128, installed through Scoop." "External"
-        corpProxy = softwareSystem "Corporate proxy" "Found through the PAC file; px authenticates to it." "External"
+        corpProxy = softwareSystem "Corporate proxy" "Windows names it per request from its proxy settings; px authenticates to it." "External"
         packageRepos = softwareSystem "Docker and Podman package repositories" "APT repositories for the container engines." "External"
         devpodReleases = softwareSystem "DevPod releases" "Download location of the DevPod CLI." "External"
         claudeInstall = softwareSystem "Claude Code installer script" "Native installer at claude.ai." "External"
