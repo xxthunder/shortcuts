@@ -116,195 +116,6 @@ Describe "Test-PxRunning" {
     }
 }
 
-Describe "Get-KlistOutput" {
-    It "returns the output of the klist command" {
-        Mock klist { 'Cached Tickets: (0)' }
-        Get-KlistOutput | Should -Be 'Cached Tickets: (0)'
-    }
-}
-
-Describe "Library-mode env restoration" {
-    It "restores a pre-existing SETPROXY_LIBRARY_MODE after dot-sourcing setProxy" {
-        $env:SETPROXY_LIBRARY_MODE = 'preset'
-        try {
-            . "$PSScriptRoot\px-proxy.ps1"
-            $env:SETPROXY_LIBRARY_MODE | Should -Be 'preset'
-        }
-        finally {
-            Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
-        }
-    }
-}
-
-Describe "Get-KerberosProxyHost" {
-    <#
-    @need test: Get-KerberosProxyHost.extracts the HTTP SPN host and appends the default port
-    :id: TEST_PX_KERBEROS_EXTRACTS_HOST
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "extracts the HTTP SPN host and appends the default port" {
-        Mock Get-KlistOutput { @(
-                'Cached Tickets: (5)',
-                '    Server: HTTP/osproxy.corp.example @ CORP.EXAMPLE'
-            ) }
-        Get-KerberosProxyHost -WarningAction SilentlyContinue | Should -Be 'osproxy.corp.example:8080'
-    }
-
-    <#
-    @need test: Get-KerberosProxyHost.returns null when no HTTP SPN is present
-    :id: TEST_PX_KERBEROS_NO_SPN
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "returns null when no HTTP SPN is present" {
-        Mock Get-KlistOutput { @('Cached Tickets: (1)', '    Server: krbtgt/CORP.EXAMPLE') }
-        Get-KerberosProxyHost | Should -BeNullOrEmpty
-    }
-
-    <#
-    @need test: Get-KerberosProxyHost.returns null when klist output is empty
-    :id: TEST_PX_KERBEROS_EMPTY_KLIST
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "returns null when klist output is empty" {
-        Mock Get-KlistOutput { $null }
-        Get-KerberosProxyHost | Should -BeNullOrEmpty
-    }
-
-    <#
-    @need test: Get-KerberosProxyHost.warns that the host and port are a guess when it falls back to an SPN
-    :id: TEST_PX_KERBEROS_WARNS_GUESS
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "warns that the host and port are a guess when it falls back to an SPN" {
-        Mock Get-KlistOutput { @('    Server: HTTP/intranet.corp.example @ CORP.EXAMPLE') }
-        Mock Write-Warning { }
-        Get-KerberosProxyHost | Out-Null
-        Should -Invoke Write-Warning -Times 1 -ParameterFilter {
-            $Message -match 'intranet\.corp\.example:8080' -and $Message -match '-ProxyHost'
-        }
-    }
-
-    <#
-    @need test: Get-KerberosProxyHost.does not warn when no SPN is found
-    :id: TEST_PX_KERBEROS_NO_WARNING_WITHOUT_SPN
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "does not warn when no SPN is found" {
-        Mock Get-KlistOutput { @('    Server: krbtgt/CORP.EXAMPLE') }
-        Mock Write-Warning { }
-        Get-KerberosProxyHost | Out-Null
-        Should -Invoke Write-Warning -Times 0
-    }
-
-    <#
-    @need test: Get-KerberosProxyHost.returns null when klist is unavailable and throws
-    :id: TEST_PX_KERBEROS_KLIST_THROWS
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "returns null when klist is unavailable and throws" {
-        Mock Get-KlistOutput { throw 'klist: command not found' }
-        Get-KerberosProxyHost | Should -BeNullOrEmpty
-    }
-}
-
-Describe "Resolve-PxUpstreamProxy" {
-    <#
-    @need test: Resolve-PxUpstreamProxy.returns the explicit ProxyHost override when provided
-    :id: TEST_PX_UPSTREAM_EXPLICIT_HOST
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "returns the explicit ProxyHost override when provided" {
-        Resolve-PxUpstreamProxy -ProxyHost 'manual.corp:8080' | Should -Be 'manual.corp:8080'
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.resolves via PAC when the PAC returns a non-direct proxy
-    :id: TEST_PX_UPSTREAM_PAC
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "resolves via PAC when the PAC returns a non-direct proxy" {
-        Mock Get-InternetSettingsFromRegistry { @{ AutoConfigUrl = 'http://wpad/pac' } }
-        Mock Get-ProxyFromPac { @{ ProxyUrl = 'http://pacproxy.corp:8080'; IsDirect = $false } }
-        Resolve-PxUpstreamProxy | Should -Be 'pacproxy.corp:8080'
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.falls back to the Kerberos SPN when PAC is direct
-    :id: TEST_PX_UPSTREAM_KERBEROS_FALLBACK
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "falls back to the Kerberos SPN when PAC is direct" {
-        Mock Get-InternetSettingsFromRegistry { @{ } }
-        Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
-        Mock Get-KerberosProxyHost { 'spnproxy.corp:8080' }
-        Resolve-PxUpstreamProxy | Should -Be 'spnproxy.corp:8080'
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.throws when nothing resolves in a non-interactive session
-    :id: TEST_PX_UPSTREAM_FAILS_NON_INTERACTIVE
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "throws when nothing resolves in a non-interactive session" {
-        Mock Get-InternetSettingsFromRegistry { $null }
-        Mock Get-KerberosProxyHost { $null }
-        Mock Test-RunningInCIorTestEnvironment { $true }
-        { Resolve-PxUpstreamProxy } | Should -Throw
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.prompts for the host in an interactive session when nothing resolves
-    :id: TEST_PX_UPSTREAM_PROMPTS_INTERACTIVE
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "prompts for the host in an interactive session when nothing resolves" {
-        Mock Get-InternetSettingsFromRegistry { $null }
-        Mock Get-KerberosProxyHost { $null }
-        Mock Test-RunningInCIorTestEnvironment { $false }
-        Mock Read-Host { 'typed.corp:8080' }
-        Resolve-PxUpstreamProxy | Should -Be 'typed.corp:8080'
-        Should -Invoke Read-Host -Times 1
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.throws when the interactive prompt is answered with nothing
-    :id: TEST_PX_UPSTREAM_EMPTY_ANSWER_FAILS
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "throws when the interactive prompt is answered with nothing" {
-        Mock Get-InternetSettingsFromRegistry { $null }
-        Mock Get-KerberosProxyHost { $null }
-        Mock Test-RunningInCIorTestEnvironment { $false }
-        Mock Read-Host { '   ' }
-        { Resolve-PxUpstreamProxy } | Should -Throw
-    }
-
-    <#
-    @need test: Resolve-PxUpstreamProxy.ignores a PAC result that reports DIRECT
-    :id: TEST_PX_UPSTREAM_IGNORES_PAC_DIRECT
-    :tests: REQ_PX_UPSTREAM
-    @endneed
-    #>
-    It "ignores a PAC result that reports DIRECT" {
-        Mock Get-InternetSettingsFromRegistry { @{ AutoConfigUrl = 'http://wpad/pac' } }
-        Mock Get-ProxyFromPac { @{ ProxyUrl = $null; IsDirect = $true } }
-        Mock Get-KerberosProxyHost { 'spn.corp:8080' }
-        Resolve-PxUpstreamProxy | Should -Be 'spn.corp:8080'
-    }
-}
-
 Describe "Get-PxUserConfigPath" {
     <#
     @need test: Get-PxUserConfigPath.returns px-user.ini inside the data directory
@@ -397,6 +208,8 @@ Describe "New-PxUserConfigTemplate" {
         # behaves exactly like no file (pure defaults).
         $content | Should -Match '(?m)^#\s*log\b'
         $content | Should -Match '(?m)^#\s*workers\b'
+        $content | Should -Match '(?m)^#\s*proxyreload = 60'
+        $content | Should -Match '(?m)^#\s*foreground = 0'
         (Get-PxUserSetting).Count | Should -Be 0
     }
 
@@ -428,6 +241,8 @@ Describe "Write-PxConfig" {
         $content | Should -Match 'socktimeout = 300\.0'
         $content | Should -Match 'workers = 1'
         $content | Should -Match 'threads = 32'
+        $content | Should -Match 'proxyreload = 60'
+        $content | Should -Match 'foreground = 0'
     }
 
     It "overwrites an existing config on each call" {
@@ -479,6 +294,69 @@ log = 3
     It "seeds the user template when it is absent" {
         Write-PxConfig -UpstreamProxy 'up.corp:8080' | Out-Null
         Test-Path (Get-PxUserConfigPath) | Should -BeTrue
+    }
+
+    <#
+    @need test: Write-PxConfig.writes no upstream when no proxy host is given so px asks Windows on every request
+    :id: TEST_PX_WRITE_CONFIG_NO_UPSTREAM
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "writes no upstream when no proxy host is given so px asks Windows on every request" {
+        $content = Get-Content -Raw (Write-PxConfig)
+        $content | Should -Not -Match '(?m)^\s*server\s*='
+        $content | Should -Not -Match '(?m)^\s*pac\s*='
+        $content | Should -Match '(?m)^listen = 127\.0\.0\.1'
+        $content | Should -Match '(?m)^port = 3128'
+        $content | Should -Match '(?m)^proxyreload = 60'
+        $content | Should -Match '(?m)^foreground = 0'
+    }
+
+    <#
+    @need test: Write-PxConfig.writes no upstream when the proxy host is blank
+    :id: TEST_PX_WRITE_CONFIG_BLANK_UPSTREAM
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "writes no upstream when the proxy host is blank" {
+        (Get-Content -Raw (Write-PxConfig -UpstreamProxy '   ')) | Should -Not -Match '(?m)^\s*server\s*='
+    }
+
+    <#
+    @need test: Write-PxConfig.pins the trimmed proxy host as server
+    :id: TEST_PX_WRITE_CONFIG_PINS_SERVER
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "pins the trimmed proxy host as server" {
+        $content = Get-Content -Raw (Write-PxConfig -UpstreamProxy ' up.corp:8080 ')
+        $content | Should -Match '(?m)^server = up\.corp:8080\r?$'
+        $content | Should -Match '(?m)^proxyreload = 60'
+    }
+
+    <#
+    @need test: Write-PxConfig.drops a pinned server when rewritten without a proxy host
+    :id: TEST_PX_WRITE_CONFIG_DROPS_PINNED_SERVER
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "drops a pinned server when rewritten without a proxy host" {
+        Write-PxConfig -UpstreamProxy 'old.corp:8080' | Out-Null
+        (Get-Content -Raw (Write-PxConfig)) | Should -Not -Match 'old\.corp'
+    }
+
+    It "lets px-user.ini override proxyreload and foreground, each once" {
+        Set-Content -Path (Get-PxUserConfigPath) -Encoding ascii -Value "[settings]`nproxyreload = 30`nforeground = 1"
+        $content = Get-Content -Raw (Write-PxConfig)
+        $content | Should -Match '(?m)^proxyreload = 30'
+        $content | Should -Match '(?m)^foreground = 1'
+        ([regex]::Matches($content, '(?m)^proxyreload\s*=')).Count | Should -Be 1
+        ([regex]::Matches($content, '(?m)^foreground\s*=')).Count | Should -Be 1
+    }
+
+    It "drops a pac key from px-user.ini" {
+        Set-Content -Path (Get-PxUserConfigPath) -Encoding ascii -Value "[settings]`npac = http://wpad.corp.example/proxy.pac"
+        (Get-Content -Raw (Write-PxConfig)) | Should -Not -Match 'wpad'
     }
 }
 
@@ -565,7 +443,6 @@ Describe "Start-PxProxy" {
     BeforeEach {
         Mock Get-PxDataDir { $script:TestDataDir }
         Mock New-Directory { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
-        Mock Resolve-PxUpstreamProxy { 'up.corp:8080' }
         Mock Get-PxExecutable { 'C:\scoop\shims\pxw.exe' }
         Mock Test-PxRunning { $false }
         Mock Start-Process { }
@@ -573,9 +450,8 @@ Describe "Start-PxProxy" {
         Mock Unregister-Autostart { $true }
     }
 
-    It "resolves the upstream and writes the config before it starts px" {
+    It "writes the config before it starts px" {
         Start-PxProxy
-        Should -Invoke Resolve-PxUpstreamProxy -Times 1
         Should -Invoke Start-Process -Times 1 -ParameterFilter {
             $FilePath -eq 'C:\scoop\shims\pxw.exe' -and $ArgumentList -match '^--config='
         }
@@ -626,14 +502,56 @@ Describe "Start-PxProxy" {
         { Start-PxProxy } | Should -Throw
     }
 
-    It "fails fast without resolving the proxy or writing config when px is absent" {
+    It "fails fast without writing config when px is absent" {
         Mock Get-PxExecutable { $null }
         Mock Write-PxConfig { }
         { Start-PxProxy } | Should -Throw
-        Should -Invoke Resolve-PxUpstreamProxy -Times 0
         Should -Invoke Write-PxConfig -Times 0
         Should -Invoke Start-Process -Times 0
         Should -Invoke Register-Autostart -Times 0
+    }
+
+    <#
+    @need test: Start-PxProxy.starts without a lookup or a prompt when no proxy host is given
+    :id: TEST_PX_START_NO_LOOKUP
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "starts without a lookup or a prompt when no proxy host is given" {
+        Mock Test-RunningInCIorTestEnvironment { $false }
+        Mock Read-Host { throw 'prompted for the upstream' }
+        Mock klist { throw 'klist was called' }
+        Start-PxProxy
+        (Get-Content -Raw (Join-Path $script:TestDataDir 'px.ini')) | Should -Not -Match '(?m)^\s*server\s*='
+        Should -Invoke Read-Host -Times 0
+    }
+
+    <#
+    @need test: Start-PxProxy.pins the proxy host given with -ProxyHost
+    :id: TEST_PX_START_PINS_PROXY_HOST
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "pins the proxy host given with -ProxyHost" {
+        Start-PxProxy -ProxyHost 'up.corp:8080'
+        (Get-Content -Raw (Join-Path $script:TestDataDir 'px.ini')) | Should -Match '(?m)^server = up\.corp:8080'
+    }
+
+    <#
+    @need test: Start-PxProxy.says px takes the upstream from the Windows proxy settings when no proxy host is given
+    :id: TEST_PX_START_SAYS_WINDOWS_PROXY
+    :tests: REQ_PX_UPSTREAM
+    @endneed
+    #>
+    It "says px takes the upstream from the Windows proxy settings when no proxy host is given" {
+        Start-PxProxy -InformationVariable info
+        (($info | ForEach-Object { $_.MessageData }) -join "`n") | Should -Match 'Windows proxy settings'
+    }
+}
+
+Describe "Removed upstream lookup" {
+    It "no longer defines <_>" -ForEach @('Resolve-PxUpstreamProxy', 'Get-KerberosProxyHost', 'Get-KlistOutput') {
+        Get-Command $_ -CommandType Function -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
     }
 }
 

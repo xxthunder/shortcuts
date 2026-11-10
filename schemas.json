@@ -86,7 +86,7 @@
             "pattern": "px-proxy\\.Tests\\.ps1$"
           },
           "case_name": {
-            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Get-PxUserConfigPath|Get-KerberosProxyHost|Resolve-PxUpstreamProxy|Remove-PxProxy)\\."
+            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Get-PxUserConfigPath|Remove-PxProxy)\\."
           }
         },
         "required": [

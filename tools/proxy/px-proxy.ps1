@@ -13,11 +13,12 @@
 
     Actions:
       install  Install px via Scoop (only if not already present) and create
-               the px data directory. Does NOT resolve the proxy or write config.
-      start    Resolve the upstream proxy fresh, (re)write the px config, and
-               (re)start px so the running instance always reflects the current
-               network. Exactly one px instance results. Also registers px to
-               start at logon from that config, without a proxy lookup (SC-067).
+               the px data directory. Does NOT write config.
+      start    (Re)write the px config and (re)start px. Without -ProxyHost the
+               config names no upstream, so px asks Windows for the proxy on
+               every request and follows the network without a new start.
+               Exactly one px instance results. Also registers px to start at
+               logon from that config, without a proxy lookup (SC-067).
       stop     Stop any running px cleanly and remove the logon start.
       test     Send an HTTPS request through the local px endpoint and report a
                clear diagnostic (auth vs TLS/cert vs revocation).
@@ -28,8 +29,8 @@
     One of: install, start, stop, test, remove. Defaults to 'start'.
 
 .PARAMETER ProxyHost
-    Optional manual upstream proxy 'host:port'. When provided, overrides
-    PAC/klist discovery for the 'start' action.
+    Optional upstream proxy 'host:port'. When provided, the 'start' action pins
+    it as 'server' in px.ini. Without it there is no lookup: px asks Windows.
 
 .PARAMETER WaitForKey
     Pause for a key press before the script exits (default: on). Keeps the
@@ -69,27 +70,10 @@ $InformationPreference = 'Continue'
 # --- Dependencies ---------------------------------------------------------
 . "$PSScriptRoot\..\..\lib\utils\utils.ps1"
 
-# Source setProxy.ps1 in library mode to reuse its PAC-resolution helpers
-# (Get-InternetSettingsFromRegistry, Get-ProxyFromPac) without executing main.
-$script:PreviousSetProxyLibMode = $env:SETPROXY_LIBRARY_MODE
-$env:SETPROXY_LIBRARY_MODE = '1'
-try {
-    . "$PSScriptRoot\setProxy.ps1"
-}
-finally {
-    if ($null -eq $script:PreviousSetProxyLibMode) {
-        Remove-Item Env:\SETPROXY_LIBRARY_MODE -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:SETPROXY_LIBRARY_MODE = $script:PreviousSetProxyLibMode
-    }
-}
-
 # --- Constants ------------------------------------------------------------
 $script:PxListen = '127.0.0.1'
 $script:PxPort = 3128
 $script:PxEndpoint = "http://${script:PxListen}:${script:PxPort}"
-$script:PxDefaultUpstreamPort = 8080
 $script:PxInstalledMarkerName = 'installed-by-px-proxy.marker'
 $script:PxAutostartName = 'px-proxy'
 
@@ -226,140 +210,12 @@ function Test-PxRunning {
     return [bool]$procs
 }
 
-# --- Upstream proxy resolution -------------------------------------------
-function Get-KlistOutput {
-    <#
-    .SYNOPSIS
-        Thin wrapper around the external 'klist' command (mockable in tests).
-    #>
-    [CmdletBinding()]
-    [OutputType([string[]])]
-    param()
-
-    return (klist 2>$null)
-}
-
-<#
-@need impl: Get-KerberosProxyHost
-:id: IMPL_PX_KERBEROS_HOST
-:implements: REQ_PX_UPSTREAM
-@endneed
-#>
-function Get-KerberosProxyHost {
-    <#
-    .SYNOPSIS
-        Extracts an 'HTTP/<host>' service-ticket host from klist output.
-
-    .DESCRIPTION
-        Returns '<host>:<default port>' when a Kerberos HTTP SPN is present in
-        the current logon session, otherwise $null. Used as a fallback when PAC
-        evaluation yields no proxy.
-    #>
-    [CmdletBinding()]
-    [OutputType([string])]
-    param()
-
-    $output = $null
-    try {
-        $output = Get-KlistOutput
-    }
-    catch {
-        return $null
-    }
-
-    if (-not $output) {
-        return $null
-    }
-
-    foreach ($line in $output) {
-        if ($line -match 'HTTP/(?<host>[A-Za-z0-9._-]+)') {
-            $candidate = "{0}:{1}" -f $Matches['host'], $script:PxDefaultUpstreamPort
-            # The ticket cache holds an HTTP/ SPN for every intranet site this
-            # session has touched, not just the proxy. Take the first one, but
-            # never let the guess pass silently -- a wrong host surfaces as a 407.
-            Write-Warning "Guessing the upstream proxy is '$candidate': it is the first HTTP/ ticket in your klist cache and the port is a default. If requests fail, re-run with -ProxyHost '<host:port>'."
-            return $candidate
-        }
-    }
-
-    return $null
-}
-
-<#
-@need impl: Resolve-PxUpstreamProxy
-:id: IMPL_PX_RESOLVE_UPSTREAM
-:implements: REQ_PX_UPSTREAM
-@endneed
-#>
-function Resolve-PxUpstreamProxy {
-    <#
-    .SYNOPSIS
-        Resolves the real upstream proxy 'host:port' for px.
-
-    .DESCRIPTION
-        Resolution order:
-          1. Explicit -ProxyHost override.
-          2. PAC evaluation via setProxy.ps1's Get-ProxyFromPac (the real proxy
-             the PAC hands out, which carries the Kerberos SPN).
-          3. klist-derived HTTP/<host> SPN fallback.
-          4. Manual prompt (interactive sessions only).
-
-    .PARAMETER ProxyHost
-        Optional manual override.
-
-    .PARAMETER ProbeUrl
-        URL used to evaluate the PAC (default: https://www.google.com).
-    #>
-    [CmdletBinding()]
-    [OutputType([string])]
-    param(
-        [Parameter(Mandatory = $false)]
-        [string]$ProxyHost,
-
-        [Parameter(Mandatory = $false)]
-        [string]$ProbeUrl = 'https://www.google.com'
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($ProxyHost)) {
-        return $ProxyHost.Trim()
-    }
-
-    # 1. PAC evaluation (reuse setProxy.ps1 helpers)
-    $settings = Get-InternetSettingsFromRegistry
-    if ($settings) {
-        $pac = Get-ProxyFromPac -InternetSettings $settings -ProbeUrl $ProbeUrl
-        if ($pac -and $pac.ContainsKey('IsDirect') -and -not $pac.IsDirect -and $pac.ProxyUrl) {
-            $authority = ([Uri]$pac.ProxyUrl).Authority
-            if (-not [string]::IsNullOrWhiteSpace($authority)) {
-                Write-Information "Resolved upstream proxy via PAC: $authority"
-                return $authority
-            }
-        }
-    }
-
-    # 2. klist SPN fallback
-    $spnHost = Get-KerberosProxyHost
-    if ($spnHost) {
-        return $spnHost
-    }
-
-    # 3. Manual prompt (interactive only)
-    if (-not (Test-RunningInCIorTestEnvironment)) {
-        $manual = Read-Host "Could not auto-resolve the upstream proxy. Enter proxy host:port (e.g. proxy.corp:8080)"
-        if (-not [string]::IsNullOrWhiteSpace($manual)) {
-            return $manual.Trim()
-        }
-    }
-
-    throw "Could not resolve an upstream proxy host (PAC returned DIRECT/none, no Kerberos SPN found, no manual entry). Re-run with -ProxyHost '<host:port>'."
-}
-
 # --- px config ------------------------------------------------------------
 
 # Keys the tool owns; a user cannot override these from px-user.ini because the
-# WSL/native-tool contract (127.0.0.1:3128) and the resolved upstream depend on
-# them. Compared case-insensitively.
-$script:PxManagedSettingKeys = @('server', 'listen', 'port', 'auth')
+# WSL/native-tool contract (127.0.0.1:3128) and the upstream choice (none unless
+# -ProxyHost pinned one) depend on them. Compared case-insensitively.
+$script:PxManagedSettingKeys = @('server', 'pac', 'listen', 'port', 'auth')
 
 # Built-in [settings] defaults, in emission order. log defaults to 0 (quiet):
 # set log = 3 in px-user.ini to capture a debug log when troubleshooting.
@@ -382,6 +238,8 @@ function Get-PxDefaultSetting {
         threads     = '32'
         idle        = '300'
         socktimeout = '300.0'
+        proxyreload = '60'
+        foreground  = '0'
     }
 }
 
@@ -459,7 +317,7 @@ function New-PxUserConfigTemplate {
 
     $content = @"
 # px-proxy user settings (SC-046) -- overrides the generated px.ini.
-# Only the [settings] block below is read; [proxy] (server/listen/port) stays
+# Only the [settings] block below is read; [proxy] (server/pac/listen/port) stays
 # managed by the tool. Uncomment a key to change it; delete this file to reset
 # to defaults. px-proxy never overwrites this file.
 [settings]
@@ -473,6 +331,10 @@ function New-PxUserConfigTemplate {
 # idle = 300
 # Socket timeout (seconds) for long-running requests.
 # socktimeout = 300.0
+# Seconds between rereads of the Windows proxy settings.
+# proxyreload = 60
+# 0 runs px detached from a console.
+# foreground = 0
 "@
 
     if ($PSCmdlet.ShouldProcess($path, "Write px-user.ini template")) {
@@ -480,28 +342,36 @@ function New-PxUserConfigTemplate {
     }
 }
 
+<#
+@need impl: Write-PxConfig
+:id: IMPL_PX_WRITE_CONFIG
+:implements: REQ_PX_UPSTREAM, REQ_PX_FILES
+@endneed
+#>
 function Write-PxConfig {
     <#
     .SYNOPSIS
-        (Re)writes the px config from the resolved upstream proxy and user overrides.
+        (Re)writes the px config from the optional pinned upstream and user overrides.
 
     .DESCRIPTION
         Overwrites px.ini every call. The '[proxy]' block is tool-managed
-        (server resolved fresh; listen/port fixed). The '[settings]' block is
-        the built-in defaults (Get-PxDefaultSettings) with any user overrides
+        (server only when an upstream is pinned; never pac; listen/port fixed).
+        Without a pinned upstream px reads the Windows proxy settings and asks
+        Windows for the proxy on every request. The '[settings]' block is
+        the built-in defaults (Get-PxDefaultSetting) with any user overrides
         from px-user.ini's '[settings]' merged on top (user wins). Managed keys
         are stripped from the user overrides so nothing in px-user.ini can move
         the listen endpoint or upstream. Also seeds the px-user.ini template
         when absent so the overridable keys are discoverable (SC-046).
 
     .PARAMETER UpstreamProxy
-        The upstream proxy 'host:port' px authenticates to.
+        Optional upstream proxy 'host:port' to pin as 'server'. Empty or blank
+        writes no 'server', so px takes the upstream from Windows.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([string])]
     param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
+        [Parameter(Mandatory = $false)]
         [string]$UpstreamProxy
     )
 
@@ -526,10 +396,14 @@ function Write-PxConfig {
 
     $settingsBlock = ($merged.Keys | ForEach-Object { "$_ = $($merged[$_])" }) -join "`n"
 
+    $serverLine = ''
+    if (-not [string]::IsNullOrWhiteSpace($UpstreamProxy)) {
+        $serverLine = "server = $($UpstreamProxy.Trim())`n"
+    }
+
     $content = @"
 [proxy]
-server = $UpstreamProxy
-listen = $script:PxListen
+${serverLine}listen = $script:PxListen
 port = $script:PxPort
 auth =
 
@@ -602,10 +476,11 @@ function Stop-PxProxy {
 function Start-PxProxy {
     <#
     .SYNOPSIS
-        Resolves the proxy, rewrites config, and (re)starts px.
+        Rewrites the config and (re)starts px.
 
     .PARAMETER ProxyHost
-        Optional manual upstream 'host:port' override.
+        Optional upstream 'host:port' to pin. Without it px asks Windows for the
+        upstream on every request.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -613,19 +488,21 @@ function Start-PxProxy {
         [string]$ProxyHost
     )
 
-    # Fail before resolving (which may prompt) or writing a config we cannot use.
+    # Fail before writing a config we cannot use.
     $exe = Get-PxExecutable -Windowless
     if (-not $exe) {
         throw "px executable not found. Run 'px-proxy install' first."
     }
 
-    $upstream = Resolve-PxUpstreamProxy -ProxyHost $ProxyHost
+    # Write-PxConfig owns the blank-means-no-upstream rule; this only words the messages.
+    $pinned = "$ProxyHost".Trim()
+    $upstreamLabel = if ($pinned) { $pinned } else { 'upstream from Windows' }
 
-    if (-not $PSCmdlet.ShouldProcess("px ($upstream)", 'Rewrite config and restart px')) {
+    if (-not $PSCmdlet.ShouldProcess("px ($upstreamLabel)", 'Rewrite config and restart px')) {
         return
     }
 
-    $configPath = Write-PxConfig -UpstreamProxy $upstream
+    $configPath = Write-PxConfig -UpstreamProxy $ProxyHost
 
     # Always restart so the running instance reflects the fresh config.
     if (Test-PxRunning) {
@@ -635,11 +512,12 @@ function Start-PxProxy {
     $dir = Get-PxDataDir
     Start-Process -FilePath $exe -ArgumentList "--config=`"$configPath`"" -WorkingDirectory $dir -WindowStyle Hidden | Out-Null
 
-    Write-Information "px started (upstream $upstream). Listening on $script:PxEndpoint. Tune settings in $(Get-PxUserConfigPath); logging is off unless you set log = 3 there (then logs land in $dir\debug-*.log)."
+    $upstreamInfo = if ($pinned) { "upstream $pinned" } else { 'upstream from the Windows proxy settings, asked on every request' }
+    Write-Information "px started ($upstreamInfo). Listening on $script:PxEndpoint. Tune settings in $(Get-PxUserConfigPath); logging is off unless you set log = 3 there (then logs land in $dir\debug-*.log)."
 
     # Only after a successful launch, so a failed start leaves an existing entry
-    # alone. The logon start reuses this px.ini and never looks up the proxy:
-    # at logon the laptop is usually outside the company network (ADR 0005).
+    # alone. px.ini holds no upstream unless -ProxyHost pinned one, so the logon
+    # start reuses it without any lookup (ADR 0008).
     $entry = Register-Autostart -Name $script:PxAutostartName -TargetPath $exe -Arguments "--config=`"$configPath`"" -WorkingDirectory $dir
     Write-Information "px starts at logon through $entry (config $configPath); 'px-proxy stop' turns that off."
 }
@@ -674,7 +552,7 @@ function Test-PxProxy {
         }
 
         if ($status -eq 407) {
-            Write-Warning "FAILED (407 Proxy Authentication Required): px could not authenticate to the upstream proxy. Confirm the resolved proxy host carries a Kerberos SPN (klist should list HTTP/<host>). $logHint"
+            Write-Warning "FAILED (407 Proxy Authentication Required): px could not authenticate to the upstream proxy. The upstream is the proxy px asked Windows for, or the -ProxyHost you gave. It must carry a Kerberos SPN (klist should list HTTP/<host>). $logHint"
         }
         elseif ($message -match 'revocation|revoc|CRL') {
             Write-Warning "TLS revocation check failed: Schannel could not reach the certificate revocation endpoint. This is often benign behind TLS inspection (the 'curl --ssl-no-revoke' scenario). Ensure the corporate root CA is trusted. $logHint"
