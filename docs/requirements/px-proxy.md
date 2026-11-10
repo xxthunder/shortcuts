@@ -8,10 +8,10 @@ What [px-proxy](../runbooks/px-proxy.md) does now. A requirement changes when th
 px-proxy keeps px's files in `%USERPROFILE%\.config\px`: `px.ini`, which it generates and rewrites on every `start`, and `px-user.ini`, the user's overrides, which it never overwrites.
 ```
 
-```{req} The upstream proxy is resolved in a fixed order
+```{req} px takes the upstream proxy from Windows unless a host is given
 :id: REQ_PX_UPSTREAM
 
-`start` resolves the upstream proxy in this order: an explicit host; the PAC's proxy unless it reports `DIRECT`; the host of an `HTTP/<host>` Kerberos service ticket with port 8080. When none resolves, it asks for the host in an interactive session and fails otherwise.
+Without an explicit host, `start` writes no upstream into `px.ini`, so px asks Windows for the upstream proxy on every request and rereads the Windows proxy settings every `proxyreload` seconds. With an explicit host, `start` writes it as `server`. `start` looks up nothing and never prompts.
 ```
 
 ```{req} remove leaves only the user's overrides

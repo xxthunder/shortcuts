@@ -34,28 +34,26 @@ You probably have everything already:
 
 | Action    | What it does |
 |-----------|--------------|
-| `install` | Installs px via Scoop (only if not already present), creates the px data directory, and seeds a `px-user.ini` settings template. Does **not** resolve the proxy or write config. |
-| `start`   | Resolves the upstream proxy fresh, (re)writes the px config (merging your `px-user.ini` overrides), and always (re)starts px. Exactly one `pxw.exe` instance results. Also registers px to start at logon, see [Start at logon](#start-at-logon). |
+| `install` | Installs px via Scoop (only if not already present), creates the px data directory, and seeds a `px-user.ini` settings template. Does **not** write config. |
+| `start`   | (Re)writes the px config (merging your `px-user.ini` overrides) and always (re)starts px. px takes the upstream proxy from Windows; `-ProxyHost` pins one instead. `start` looks up nothing. Exactly one `pxw.exe` instance results. Also registers px to start at logon, see [Start at logon](#start-at-logon). |
 | `stop`    | Stops any running px cleanly and deletes the logon start. |
 | `test`    | Sends an HTTPS request through `127.0.0.1:3128` and reports a clear diagnostic. |
 | `remove`  | Stops px, deletes the logon start, uninstalls px (only if this tool installed it), and deletes `px.ini` and the log files. Your `px-user.ini` is preserved. |
 
 `start` is the default action when none is given.
 
-> **If your network requires a VPN** (for example, working from a home office), connect the VPN **first**, then run `start`. Both proxy discovery (PAC evaluation) and the Kerberos ticket lookup need the corporate network to be reachable; starting px before the VPN is up resolves against the wrong, unreachable path. This applies to a manual `start` only: the logon start below does no lookup.
-
 ### Start at logon
 
-Each successful `start` also registers px to start when you log on to Windows. Run `start` once on the company network or the VPN; after that, px is already running after each reboot.
+Each successful `start` also registers px to start when you log on to Windows. Run `start` once, on any network; after that, px is already running after each reboot.
 
 - The entry is `px-proxy.lnk` in your Startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`). Task Manager lists it under **Startup apps**.
 - At logon, the entry starts `pxw.exe` with the `px.ini` from your last `start`. It does not look up the proxy and does not rewrite `px.ini`, so it can run before you connect the VPN.
 - `stop` and `remove` delete the entry. After `stop`, px stays off, also across reboots, until the next `start`.
-- The logon start keeps the upstream proxy from your last `start`. If your upstream proxy changes (for example at another company site or abroad), run `start` again on the company network or the VPN.
+- px follows network changes by itself: it asks Windows for the upstream proxy on every request, so another company site, home office or a VPN needs no new `start`. With `-ProxyHost`, px keeps the pinned upstream from your last `start`; run `start -ProxyHost` again when that upstream changes.
 
 ### Manual upstream override
 
-If auto-discovery cannot resolve the proxy (the network's Proxy Auto-Config (PAC, the script your company publishes to tell clients which proxy to use) returns `DIRECT`, meaning "go direct, no proxy", and no Kerberos ticket for the proxy is present), pass the host explicitly:
+Pin the upstream with `-ProxyHost` when Windows has no or wrong proxy settings, or when the PAC answers `DIRECT` for a host that needs the proxy:
 
 ```powershell
 .\tools\proxy\px-proxy.ps1 start -ProxyHost "proxy.corp.example:8080"
@@ -100,12 +98,11 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
 ## How discovery works
 
-1. **`-ProxyHost` override** (if provided) wins.
-2. **PAC evaluation**: reuses `setProxy.ps1`'s `Get-ProxyFromPac`, which runs the PAC's `FindProxyForURL` via `GetSystemWebProxy().GetProxy()` and returns the **real upstream proxy** (the host carrying the Kerberos Service Principal Name (SPN), the identity Kerberos hands out a ticket against), not the PAC-distribution host.
-3. **Kerberos SPN fallback**: parses an `HTTP/<host>` service ticket from `klist` and appends the default port `8080`.
-4. **Manual prompt**: interactive sessions only.
+- **Default:** `start` writes no upstream into `px.ini`. px then reads the Windows proxy settings and asks Windows for the proxy of each request with `WinHttpGetProxyForUrl`, like the browser does. `proxyreload` makes px reread the settings, so a network change needs no restart.
+- **Why Windows decides:** Windows evaluates the PAC (the script your company publishes to tell clients which proxy to use) with the machine's real addresses. px's own PAC engine (`pac =`) takes the first IP of the host name instead; on a machine with home Wi-Fi plus VPN that can be the home address, and the PAC then answers `DIRECT`. This comes from the item SC-087 and the comments of a sister setup; this repository has not verified it.
+- **`-ProxyHost` override:** writes `server = <host:port>` into `px.ini`. px then uses that proxy for every request and asks Windows nothing.
 
-> **Root-cause note:** px must target the real proxy host (the one carrying the Kerberos SPN). Pointing px at the PAC-distribution / AutoConfigURL host yields no SPN, SSPI falls back to NTLM, and the proxy rejects it.
+> **Root-cause note:** px must target the real proxy host (the one carrying the Kerberos SPN). Pointing px at the PAC-distribution / AutoConfigURL host yields no SPN, SSPI falls back to NTLM, and the proxy rejects it. Windows returns the real proxy, so the default keeps this.
 
 ---
 
@@ -123,7 +120,7 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
 `px.ini` is regenerated on every `start`, so it is not the place for your own changes. Put overrides in `%USERPROFILE%\.config\px\px-user.ini` instead: the tool merges them over its defaults and never overwrites the file. `install` (and the first `start`) seed a commented template listing every key.
 
-Only the `[settings]` block is read; the `[proxy]` block (`server`, `listen`, `port`) stays tool-managed, so nothing here can move the `127.0.0.1:3128` endpoint or the resolved upstream. Overridable keys and their defaults:
+Only the `[settings]` block is read; the `[proxy]` block (`server`, `pac`, `listen`, `port`) stays tool-managed, so nothing here can move the `127.0.0.1:3128` endpoint or the upstream. Overridable keys and their defaults:
 
 | Key | Default | Purpose |
 |-----|---------|---------|
@@ -132,6 +129,8 @@ Only the `[settings]` block is read; the `[proxy]` block (`server`, `listen`, `p
 | `threads` | `32` | Threads per worker. |
 | `idle` | `300` | Seconds an idle upstream connection is kept. |
 | `socktimeout` | `300.0` | Socket timeout (seconds) for long-running requests. |
+| `proxyreload` | `60` | Seconds between rereads of the Windows proxy settings. |
+| `foreground` | `0` | `0` runs px detached from a console. |
 
 Example `px-user.ini` that turns logging on and enlarges the pool:
 
@@ -149,13 +148,13 @@ Run `start` to apply. Delete `px-user.ini` (or a single line) to return to defau
 
 ### `407 Proxy Authentication Required`
 
-px could not authenticate to the upstream proxy. Confirm the resolved proxy host carries a Kerberos SPN:
+px could not authenticate to the upstream proxy. Confirm the proxy host that px uses carries a Kerberos SPN. Set `log = 3` in `px-user.ini`; the px log then shows which upstream px used. To check whether a Kerberos ticket for the proxy host exists, run:
 
 ```powershell
 klist
 ```
 
-Look for a `Server: HTTP/<host>` ticket. A working Kerberos exchange sends a large `Proxy-Authorization: Negotiate` token (thousands of bytes) and gets `200 Connection established`; an NTLM fallback sends a ~40-byte token and keeps getting `407`. If px is pointed at the wrong host, override it with `-ProxyHost`.
+Look for a `Server: HTTP/<host>` ticket. A working Kerberos exchange sends a large `Proxy-Authorization: Negotiate` token (thousands of bytes) and gets `200 Connection established`; an NTLM fallback sends a ~40-byte token and keeps getting `407`. If Windows names the wrong host, or none, pin the right one with `-ProxyHost`.
 
 ### TLS revocation check failed (`curl --ssl-no-revoke` scenario)
 

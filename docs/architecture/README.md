@@ -51,6 +51,7 @@ Records of significant architectural decisions, their context, and consequences.
 - [ADR 0005: px starts at logon from the last config and never looks up the proxy then](adr/0005-px-starts-at-logon-from-the-last-config.md)
 - [ADR 0006: Containers get the proxy by a port forward and the CA at a path of their own](adr/0006-containers-get-proxy-by-port-forward-and-ca-at-own-path.md)
 - [ADR 0007: release is an orphan branch that CI builds from an allow-list](adr/0007-release-is-an-orphan-branch-built-from-an-allow-list.md)
+- [ADR 0008: px takes the upstream proxy from Windows on every request](adr/0008-px-takes-the-upstream-from-windows.md)
 
 ```{toctree}
 :hidden:
