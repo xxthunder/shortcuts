@@ -10,7 +10,6 @@
 ## Table of Contents
 
 ### Open
-- [SC-087 — px takes the upstream proxy from Windows on every request](sc-087.md)
 - [SC-082 — px-proxy sets the proxy variables in the user environment](sc-082.md)
 - [SC-081 — Setup CA with the default URL misses the intranet root CA](sc-081.md)
 - [SC-080 — update-scoop reports success for apps Scoop skipped](sc-080.md)
@@ -37,6 +36,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
+- [SC-087 — px takes the upstream proxy from Windows on every request](sc-087.md)
 - [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
