@@ -64,11 +64,6 @@ try {
     else {
         Write-Information "Package '$PackageName' has been installed globally"
     }
-
-    Write-Information ""
-    Write-Information "Remember to refresh Keypirinha catalog:"
-    Write-Information "  Press Alt+Space and type 'Refresh catalog'"
-
 }
 catch {
     Write-Error "An unexpected error occurred: $_"

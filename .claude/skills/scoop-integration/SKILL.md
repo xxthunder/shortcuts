@@ -81,7 +81,7 @@ The project uses `scoopfile.json` to track managed packages.
     },
     {
       "Source": "extras",
-      "Name": "keypirinha"
+      "Name": "powertoys"
     }
   ]
 }
@@ -182,14 +182,3 @@ See [scoop-commands.md](references/scoop-commands.md) for detailed command refer
 5. **Track in scoopfile.json** - Document managed packages
 6. **Test on clean system** - Ensure installer works from scratch
 7. **Add required buckets** - Some apps need extras/versions buckets
-
-## Integration with Keypirinha
-
-After installing new apps:
-
-```powershell
-Write-Host "Remember to refresh Keypirinha catalog:" -ForegroundColor Yellow
-Write-Host "  1. Press Alt+Space" -ForegroundColor Yellow
-Write-Host "  2. Type 'Refresh catalog'" -ForegroundColor Yellow
-Write-Host "  3. Press Enter" -ForegroundColor Yellow
-```

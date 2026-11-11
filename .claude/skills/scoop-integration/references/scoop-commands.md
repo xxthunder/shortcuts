@@ -156,9 +156,9 @@ foreach ($pkg in $packages) {
 ### Add Bucket Before Install
 
 ```powershell
-# Keypirinha is in extras bucket
+# PowerToys is in extras bucket
 Invoke-CommandLine -Command "scoop bucket add extras" -StopAtError
-Invoke-CommandLine -Command "scoop install keypirinha" -StopAtError
+Invoke-CommandLine -Command "scoop install powertoys" -StopAtError
 ```
 
 ### Update with Error Handling
@@ -180,20 +180,19 @@ try {
 
 Main apps tracked in scoopfile.json:
 - `git` - Version control
-- `keypirinha` - Keyboard launcher
+- `powertoys` - PowerToys with Command Palette launcher
 - `pwsh` - PowerShell Core (optional)
 
 ### Installation Order
 
 1. Install Scoop (if not installed)
-2. Add required buckets (extras for Keypirinha)
+2. Add required buckets (extras for PowerToys)
 3. Install base packages (git)
-4. Install Keypirinha
+4. Install PowerToys
 5. Install optional tools (pwsh, nodejs, python, etc.)
 
 ### Post-Installation
 
 After installing apps:
-1. Refresh Keypirinha catalog
-2. Verify installation with `scoop list`
-3. Test app launches
+1. Verify installation with `scoop list`
+2. Test app launches

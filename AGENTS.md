@@ -6,13 +6,13 @@ This document provides technical guidelines for AI agents working on the Shortcu
 
 ## Project Architecture
 
-**Shortcuts** is a Windows automation project that provides CLI tools, shortcuts, and system utilities accessible through the Keypirinha launcher.
+**Shortcuts** is a Windows automation project that provides CLI tools, shortcuts, and system utilities accessible through the PowerToys Command Palette launcher on Alt+Space.
 
 ### Technical Stack
 
 - **Language**: PowerShell 7.4+ (bootstrap scripts remain PS 5.1-compatible)
 - **Package Manager**: Scoop (for Windows tools)
-- **Launcher Integration**: Keypirinha (fast keyboard-driven launcher)
+- **Launcher**: PowerToys Command Palette (Alt+Space), installed and started by `bin/install.ps1`
 - **Testing**: Pester 5.7.1+
 - **Linting**: PSScriptAnalyzer 1.24.0+
 
@@ -27,7 +27,7 @@ This document provides technical guidelines for AI agents working on the Shortcu
   - `install/`: Installation utilities
 - `tools/`: Tool-specific utilities and installers
   - `wsl-manager/`: WSL Manager entry point and integration tests
-- `links/`: Keypirinha link definitions (.url files)
+- `links/`: Shortcut link definitions (.url files)
 - `test/`: Test files and test utilities
 - `.bootstrap/`: Bootstrap system for initial setup
 
@@ -35,7 +35,7 @@ This document provides technical guidelines for AI agents working on the Shortcu
 
 **Executable PowerShell scripts should have a `.bat` wrapper in the same directory.**
 
-This allows scripts to be executed directly from the command line or Keypirinha without requiring the full `pwsh -File` syntax.
+This allows scripts to be executed directly from the command line without requiring the full `pwsh -File` syntax.
 
 **Example:**
 
@@ -264,14 +264,6 @@ This project heavily uses Scoop for package management:
 - Reference `scoopfile.json` for managed packages
 - Use `Invoke-CommandLine` for all Scoop commands (see "External Commands" section)
 
-#### Keypirinha Integration
-
-Scripts that add/modify shortcuts should remind users to refresh the Keypirinha catalog:
-
-```powershell
-Write-Host "Remember to refresh Keypirinha catalog (see docs/index.md for details)" -ForegroundColor Yellow
-```
-
 #### Bootstrap System
 
 The project uses a `.bootstrap` system (see `.bootstrap/` directory):
@@ -453,7 +445,7 @@ When reviewing code, verify adherence to:
 - **Testing**: Pester tests with proper mocking (see "Testing Requirements")
 - **Security**: No hardcoded secrets, proper input validation
 - **Documentation**: Clear comments, synopsis/examples in headers
-- **Integration**: Conventional commits, Keypirinha compatibility
+- **Integration**: Conventional commits
 
 Provide specific feedback with `file:line` references.
 

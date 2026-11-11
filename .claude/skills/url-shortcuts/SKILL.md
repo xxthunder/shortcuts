@@ -1,15 +1,15 @@
 ---
-name: keypirinha-shortcuts
-description: "Create and manage Keypirinha shortcuts and URL files for the Shortcuts project. Use when: (1) Creating new shortcuts, (2) Adding tool shortcuts, (3) Adding website shortcuts, (4) Organizing shortcuts in the links/ directory, (5) Setting up Keypirinha integrations."
+name: url-shortcuts
+description: "Create and manage .url shortcut files in the links/ directory of the Shortcuts project. Use when: (1) Creating new shortcuts, (2) Adding tool shortcuts, (3) Adding website shortcuts, (4) Organizing shortcuts in the links/ directory."
 ---
 
-# Keypirinha Shortcuts
+# URL Shortcuts
 
-Create and manage Keypirinha shortcuts (.url files) for quick access to tools and websites.
+Create and manage .url shortcut files in `links/` for quick access to tools and websites.
 
 ## Shortcut File Format
 
-Keypirinha uses standard Windows .url files:
+Shortcuts are standard Windows .url files:
 
 ```ini
 [InternetShortcut]
@@ -88,25 +88,25 @@ Set-Content -Path $shortcutPath -Value $shortcutContent
 ### Using Helper Function
 
 ```powershell
-function New-KeypirinhaShortcut {
+function New-UrlShortcut {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Name,
-        
+
         [Parameter(Mandatory = $true)]
         [string]$Url,
-        
+
         [Parameter(Mandatory = $false)]
         [string]$Category = ""
     )
-    
+
     $content = @"
 [InternetShortcut]
 URL=$Url
 "@
-    
+
     $linksDir = Join-Path $PSScriptRoot "links"
-    
+
     if ($Category) {
         $categoryDir = Join-Path $linksDir $Category
         if (-not (Test-Path $categoryDir)) {
@@ -116,41 +116,13 @@ URL=$Url
     } else {
         $shortcutPath = Join-Path $linksDir "$Name.url"
     }
-    
+
     Set-Content -Path $shortcutPath -Value $content
     Write-Information "Created shortcut: $shortcutPath"
 }
 
 # Usage
-New-KeypirinhaShortcut -Name "GitHub" -Url "https://github.com" -Category "web"
-```
-
-## Refreshing Keypirinha Catalog
-
-After creating/modifying shortcuts, users must refresh the Keypirinha catalog:
-
-### Reminder Pattern
-
-Always remind users after creating shortcuts:
-
-```powershell
-Write-Host "`nKeypirinha catalog refresh required:" -ForegroundColor Yellow
-Write-Host "  1. Press Alt+Space" -ForegroundColor Cyan
-Write-Host "  2. Type 'Refresh catalog'" -ForegroundColor Cyan
-Write-Host "  3. Press Enter" -ForegroundColor Cyan
-Write-Host "  4. Wait a few seconds for scan to complete" -ForegroundColor Cyan
-```
-
-### In Scripts
-
-```powershell
-# After creating shortcuts
-New-KeypirinhaShortcut -Name "GitHub" -Url "https://github.com"
-New-KeypirinhaShortcut -Name "Gmail" -Url "https://gmail.com"
-
-Write-Host "`nShortcuts created successfully!" -ForegroundColor Green
-Write-Host "`nIMPORTANT: Refresh Keypirinha catalog to see new shortcuts" -ForegroundColor Yellow
-Write-Host "Press Alt+Space and type 'Refresh catalog'" -ForegroundColor Cyan
+New-UrlShortcut -Name "GitHub" -Url "https://github.com" -Category "web"
 ```
 
 ## Common Shortcuts
@@ -159,36 +131,36 @@ Write-Host "Press Alt+Space and type 'Refresh catalog'" -ForegroundColor Cyan
 
 ```powershell
 # VS Code
-New-KeypirinhaShortcut -Name "VSCode" -Url "C:\Users\$env:USERNAME\scoop\apps\vscode\current\Code.exe"
+New-UrlShortcut -Name "VSCode" -Url "C:\Users\$env:USERNAME\scoop\apps\vscode\current\Code.exe"
 
 # Git Bash
-New-KeypirinhaShortcut -Name "GitBash" -Url "C:\Program Files\Git\git-bash.exe"
+New-UrlShortcut -Name "GitBash" -Url "C:\Program Files\Git\git-bash.exe"
 
 # PowerShell
-New-KeypirinhaShortcut -Name "PowerShell" -Url "pwsh.exe"
+New-UrlShortcut -Name "PowerShell" -Url "pwsh.exe"
 ```
 
 ### Websites
 
 ```powershell
 # GitHub
-New-KeypirinhaShortcut -Name "GitHub" -Url "https://github.com"
+New-UrlShortcut -Name "GitHub" -Url "https://github.com"
 
 # Stack Overflow
-New-KeypirinhaShortcut -Name "StackOverflow" -Url "https://stackoverflow.com"
+New-UrlShortcut -Name "StackOverflow" -Url "https://stackoverflow.com"
 
 # Documentation
-New-KeypirinhaShortcut -Name "PowerShellDocs" -Url "https://docs.microsoft.com/powershell"
+New-UrlShortcut -Name "PowerShellDocs" -Url "https://docs.microsoft.com/powershell"
 ```
 
 ### Local Folders
 
 ```powershell
 # Projects
-New-KeypirinhaShortcut -Name "Projects" -Url "C:\Users\$env:USERNAME\Projects"
+New-UrlShortcut -Name "Projects" -Url "C:\Users\$env:USERNAME\Projects"
 
 # Downloads
-New-KeypirinhaShortcut -Name "Downloads" -Url "C:\Users\$env:USERNAME\Downloads"
+New-UrlShortcut -Name "Downloads" -Url "C:\Users\$env:USERNAME\Downloads"
 ```
 
 ## Shortcut Templates
@@ -200,10 +172,9 @@ See `assets/shortcut-template.url` for a template file.
 1. **Descriptive names** - Use clear, searchable names
 2. **Organize by category** - Use subdirectories for organization
 3. **Test shortcuts** - Verify URLs/paths are correct
-4. **Remind users to refresh** - Always include refresh reminder
-5. **Use environment variables** - For user-specific paths (`$env:USERNAME`)
-6. **Document shortcuts** - Comment complex shortcuts
-7. **Validate paths** - Check paths exist before creating shortcuts
+4. **Use environment variables** - For user-specific paths (`$env:USERNAME`)
+5. **Document shortcuts** - Comment complex shortcuts
+6. **Validate paths** - Check paths exist before creating shortcuts
 
 ## Interactive Shortcut Creator
 
@@ -219,10 +190,9 @@ $name = Read-Host "Shortcut name"
 $url = Read-Host "URL or path"
 $category = Read-Host "Category (optional, press Enter to skip)"
 
-New-KeypirinhaShortcut -Name $name -Url $url -Category $category
+New-UrlShortcut -Name $name -Url $url -Category $category
 
 Write-Host "`nShortcut created!" -ForegroundColor Green
-Write-Host "Remember to refresh Keypirinha catalog" -ForegroundColor Yellow
 ```
 
 ## Batch Shortcut Creation
@@ -235,9 +205,8 @@ $shortcuts = @(
 )
 
 foreach ($shortcut in $shortcuts) {
-    New-KeypirinhaShortcut @shortcut
+    New-UrlShortcut @shortcut
 }
 
 Write-Host "`nAll shortcuts created!" -ForegroundColor Green
-Write-Host "Refresh Keypirinha catalog to see them" -ForegroundColor Yellow
 ```
