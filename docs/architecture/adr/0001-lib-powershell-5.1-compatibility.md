@@ -1,5 +1,10 @@
 # ADR-0001: Scoop and utils libraries stay Windows PowerShell 5.1-compatible
 
+```{decision} Scoop and utils libraries stay Windows PowerShell 5.1-compatible
+:id: ADR-0001
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-07-24
 **Related**: [SC-047](../../backlog/sc-047.md)

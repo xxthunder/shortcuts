@@ -1,5 +1,10 @@
 # ADR-0003: wsl-manager keeps WSL's binfmt_misc protection on and does not rely on systemd-binfmt.service
 
+```{decision} wsl-manager keeps WSL's binfmt_misc protection on and does not rely on systemd-binfmt.service
+:id: ADR-0003
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-09-30
 **Related**: [SC-063](../../backlog/sc-063.md)

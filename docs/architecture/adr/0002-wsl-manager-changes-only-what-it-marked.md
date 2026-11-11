@@ -1,5 +1,10 @@
 # ADR-0002: wsl-manager changes only what it has marked as its own in a distribution
 
+```{decision} wsl-manager changes only what it has marked as its own in a distribution
+:id: ADR-0002
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-09-28
 **Related**: [SC-060](../../backlog/sc-060.md)

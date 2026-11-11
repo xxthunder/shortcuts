@@ -1,5 +1,10 @@
 # ADR-0005: px starts at logon from the last config and never looks up the proxy then
 
+```{decision} px starts at logon from the last config and never looks up the proxy then
+:id: ADR-0005
+:status: Superseded
+```
+
 **Status**: Superseded by [ADR-0008](0008-px-takes-the-upstream-from-windows.md)
 **Date**: 2026-10-19
 **Related**: [SC-067](../../backlog/sc-067.md)

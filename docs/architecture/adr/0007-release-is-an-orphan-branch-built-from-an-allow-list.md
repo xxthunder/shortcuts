@@ -1,5 +1,10 @@
 # ADR-0007: release is an orphan branch that CI builds from an allow-list
 
+```{decision} release is an orphan branch that CI builds from an allow-list
+:id: ADR-0007
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-11-05
 **Related**: [SC-084](../../backlog/sc-084.md)
