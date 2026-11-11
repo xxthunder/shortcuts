@@ -3,6 +3,7 @@
 ```{decision} px takes the upstream proxy from Windows on every request
 :id: ADR-0008
 :status: Accepted
+:constrains: REQ_PX_UPSTREAM, REQ_PX_SETTINGS, REQ_PX_ENDPOINT, REQ_PX_LOGON
 ```
 
 **Status**: Accepted

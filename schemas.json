@@ -76,7 +76,7 @@
     },
     {
       "id": "result-links-its-test",
-      "message": "a result from a traced Describe of px-proxy.Tests.ps1 links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The Describes are those SC-073e traced; the rule covers the whole file once every It carries a marker",
+      "message": "a result from a traced Describe of px-proxy.Tests.ps1 links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The Describes are those SC-073e and SC-073c traced: every Describe but \"Test safety\" and \"Removed upstream lookup\"",
       "select": {
         "properties": {
           "type": {
@@ -86,7 +86,7 @@
             "pattern": "px-proxy\\.Tests\\.ps1$"
           },
           "case_name": {
-            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Get-PxUserConfigPath|Remove-PxProxy)\\."
+            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Test-PxInstalled|Get-PxExecutable|Test-PxRunning|Get-PxUserConfigPath|Get-PxUserSetting|New-PxUserConfigTemplate|Write-PxConfig|Install-PxProxy|Stop-PxProxy|Start-PxProxy|Test-PxProxy|Script entry point|Invoke-PxProxyMain|Wait-ForKeyPress|Remove-PxProxy|Invoke-PxProxy)\\."
           }
         },
         "required": [

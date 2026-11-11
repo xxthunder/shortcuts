@@ -150,6 +150,12 @@ function Get-PxInstalledMarkerPath {
 }
 
 # --- px discovery ---------------------------------------------------------
+<#
+@need impl: Test-PxInstalled
+:id: IMPL_PX_INSTALLED
+:implements: REQ_PX_INSTALL
+@endneed
+#>
 function Test-PxInstalled {
     <#
     .SYNOPSIS
@@ -162,6 +168,12 @@ function Test-PxInstalled {
     return [bool](Get-Command 'px' -ErrorAction SilentlyContinue)
 }
 
+<#
+@need impl: Get-PxExecutable
+:id: IMPL_PX_EXECUTABLE
+:implements: REQ_PX_START
+@endneed
+#>
 function Get-PxExecutable {
     <#
     .SYNOPSIS
@@ -197,6 +209,12 @@ function Get-PxExecutable {
     return $null
 }
 
+<#
+@need impl: Test-PxRunning
+:id: IMPL_PX_RUNNING
+:implements: REQ_PX_START
+@endneed
+#>
 function Test-PxRunning {
     <#
     .SYNOPSIS
@@ -223,6 +241,12 @@ $script:PxManagedSettingKeys = @('server', 'pac', 'listen', 'port', 'auth')
 # Code, Copilot CLI) are not dropped. workers defaults to 1 and idle to 300 for
 # a stable baseline suitable for sharing with colleagues (SC-048); raise workers
 # in px-user.ini if you need more parallelism.
+<#
+@need impl: Get-PxDefaultSetting
+:id: IMPL_PX_DEFAULT_SETTING
+:implements: REQ_PX_SETTINGS
+@endneed
+#>
 function Get-PxDefaultSetting {
     <#
     .SYNOPSIS
@@ -243,6 +267,12 @@ function Get-PxDefaultSetting {
     }
 }
 
+<#
+@need impl: Get-PxUserSetting
+:id: IMPL_PX_USER_SETTING
+:implements: REQ_PX_SETTINGS
+@endneed
+#>
 function Get-PxUserSetting {
     <#
     .SYNOPSIS
@@ -295,6 +325,12 @@ function Get-PxUserSetting {
     return $settings
 }
 
+<#
+@need impl: New-PxUserConfigTemplate
+:id: IMPL_PX_USER_CONFIG_TEMPLATE
+:implements: REQ_PX_USER_TEMPLATE
+@endneed
+#>
 function New-PxUserConfigTemplate {
     <#
     .SYNOPSIS
@@ -345,7 +381,7 @@ function New-PxUserConfigTemplate {
 <#
 @need impl: Write-PxConfig
 :id: IMPL_PX_WRITE_CONFIG
-:implements: REQ_PX_UPSTREAM, REQ_PX_FILES
+:implements: REQ_PX_UPSTREAM, REQ_PX_FILES, REQ_PX_ENDPOINT, REQ_PX_SETTINGS, REQ_PX_USER_TEMPLATE
 @endneed
 #>
 function Write-PxConfig {
@@ -419,6 +455,12 @@ $settingsBlock
 }
 
 # --- Actions --------------------------------------------------------------
+<#
+@need impl: Install-PxProxy
+:id: IMPL_PX_INSTALL
+:implements: REQ_PX_INSTALL, REQ_PX_USER_TEMPLATE
+@endneed
+#>
 function Install-PxProxy {
     <#
     .SYNOPSIS
@@ -441,6 +483,12 @@ function Install-PxProxy {
     Write-Information "px installed."
 }
 
+<#
+@need impl: Stop-PxProxy
+:id: IMPL_PX_STOP
+:implements: REQ_PX_STOP
+@endneed
+#>
 function Stop-PxProxy {
     <#
     .SYNOPSIS
@@ -473,6 +521,12 @@ function Stop-PxProxy {
     Write-Information "px stopped."
 }
 
+<#
+@need impl: Start-PxProxy
+:id: IMPL_PX_START
+:implements: REQ_PX_START, REQ_PX_UPSTREAM, REQ_PX_LOGON
+@endneed
+#>
 function Start-PxProxy {
     <#
     .SYNOPSIS
@@ -522,6 +576,12 @@ function Start-PxProxy {
     Write-Information "px starts at logon through $entry (config $configPath); 'px-proxy stop' turns that off."
 }
 
+<#
+@need impl: Test-PxProxy
+:id: IMPL_PX_TEST
+:implements: REQ_PX_TEST
+@endneed
+#>
 function Test-PxProxy {
     <#
     .SYNOPSIS
@@ -617,6 +677,12 @@ function Remove-PxProxy {
     Write-Information "px removed (logon start, config and logs deleted)."
 }
 
+<#
+@need impl: Invoke-PxProxy
+:id: IMPL_PX_INVOKE
+:implements: REQ_PX_STOP, REQ_PX_TEST, REQ_PX_LOGON
+@endneed
+#>
 function Invoke-PxProxy {
     <#
     .SYNOPSIS
@@ -652,6 +718,12 @@ function Invoke-PxProxy {
     }
 }
 
+<#
+@need impl: Read-SingleKey
+:id: IMPL_PX_READ_SINGLE_KEY
+:implements: REQ_PX_WAIT_KEY
+@endneed
+#>
 function Read-SingleKey {
     <#
     .SYNOPSIS
@@ -663,6 +735,12 @@ function Read-SingleKey {
     $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
 
+<#
+@need impl: Wait-ForKeyPress
+:id: IMPL_PX_WAIT_FOR_KEY_PRESS
+:implements: REQ_PX_WAIT_KEY
+@endneed
+#>
 function Wait-ForKeyPress {
     <#
     .SYNOPSIS
@@ -700,6 +778,12 @@ function Wait-ForKeyPress {
     }
 }
 
+<#
+@need impl: Invoke-PxProxyMain
+:id: IMPL_PX_MAIN
+:implements: REQ_PX_EXIT, REQ_PX_WAIT_KEY, REQ_PX_UPSTREAM
+@endneed
+#>
 function Invoke-PxProxyMain {
     <#
     .SYNOPSIS

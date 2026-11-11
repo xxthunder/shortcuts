@@ -120,7 +120,7 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 
 `px.ini` is regenerated on every `start`, so it is not the place for your own changes. Put overrides in `%USERPROFILE%\.config\px\px-user.ini` instead: the tool merges them over its defaults and never overwrites the file. `install` (and the first `start`) seed a commented template listing every key.
 
-Only the `[settings]` block is read; the `[proxy]` block (`server`, `pac`, `listen`, `port`) stays tool-managed, so nothing here can move the `127.0.0.1:3128` endpoint or the upstream. Overridable keys and their defaults:
+Only the `[settings]` block is read; the `[proxy]` block (`server`, `pac`, `listen`, `port`, `auth`) stays tool-managed, so nothing here can move the `127.0.0.1:3128` endpoint or the upstream. Overridable keys and their defaults:
 
 | Key | Default | Purpose |
 |-----|---------|---------|
