@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0002: wsl-manager changes only what it has marked as its own in a distribution
 
-# ADR 0002: wsl-manager changes only what it has marked as its own in a distribution
-
-**Status**: Accepted (2026-09-28)
-**Context item**: [SC-060](../../backlog/sc-060.md)
+**Status**: Accepted
+**Date**: 2026-09-28
+**Related**: [SC-060](../../backlog/sc-060.md)
 
 ## Context
 

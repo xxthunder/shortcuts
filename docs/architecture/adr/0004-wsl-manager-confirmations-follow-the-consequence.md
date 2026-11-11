@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0004: wsl-manager confirmations follow the consequence of the step
 
-# ADR 0004: wsl-manager confirmations follow the consequence of the step
-
-**Status**: Accepted (2026-10-01)
-**Context item**: [SC-060](../../backlog/sc-060.md)
+**Status**: Accepted
+**Date**: 2026-10-01
+**Related**: [SC-060](../../backlog/sc-060.md)
 
 ## Context
 

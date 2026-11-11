@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0006: Containers get the proxy by a port forward and the CA at a path of their own
 
-# ADR 0006: Containers get the proxy by a port forward and the CA at a path of their own
-
-**Status**: Accepted (2026-11-04)
-**Context item**: [SC-079](../../backlog/sc-079.md)
+**Status**: Accepted
+**Date**: 2026-11-04
+**Related**: [SC-079](../../backlog/sc-079.md)
 
 ## Context
 

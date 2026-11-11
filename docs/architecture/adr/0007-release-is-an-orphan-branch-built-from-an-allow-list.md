@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0007: release is an orphan branch that CI builds from an allow-list
 
-# ADR 0007: release is an orphan branch that CI builds from an allow-list
-
-**Status**: Accepted (2026-11-05)
-**Context item**: [SC-084](../../backlog/sc-084.md)
+**Status**: Accepted
+**Date**: 2026-11-05
+**Related**: [SC-084](../../backlog/sc-084.md)
 
 ## Context
 

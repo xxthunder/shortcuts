@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0001: Scoop and utils libraries stay Windows PowerShell 5.1-compatible
 
-# ADR 0001: Scoop and utils libraries stay Windows PowerShell 5.1-compatible
-
-**Status**: Accepted (2026-07-24)
-**Context item**: [SC-047](../../backlog/sc-047.md)
+**Status**: Accepted
+**Date**: 2026-07-24
+**Related**: [SC-047](../../backlog/sc-047.md)
 
 ## Context
 

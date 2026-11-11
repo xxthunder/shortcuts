@@ -1,9 +1,8 @@
-[← Back to Architecture](../README.md)
+# ADR-0005: px starts at logon from the last config and never looks up the proxy then
 
-# ADR 0005: px starts at logon from the last config and never looks up the proxy then
-
-**Status**: Superseded by [ADR 0008](0008-px-takes-the-upstream-from-windows.md) (2026-11-10)
-**Context item**: [SC-067](../../backlog/sc-067.md)
+**Status**: Superseded by [ADR-0008](0008-px-takes-the-upstream-from-windows.md)
+**Date**: 2026-10-19
+**Related**: [SC-067](../../backlog/sc-067.md)
 
 ## Context
 

@@ -1,10 +1,9 @@
-[← Back to Architecture](../README.md)
+# ADR-0008: px takes the upstream proxy from Windows on every request
 
-# ADR 0008: px takes the upstream proxy from Windows on every request
-
-**Status**: Accepted (2026-11-10)
-**Context item**: [SC-087](../../backlog/sc-087.md)
-**Supersedes**: [ADR 0005](0005-px-starts-at-logon-from-the-last-config.md)
+**Status**: Accepted
+**Date**: 2026-11-10
+**Related**: [SC-087](../../backlog/sc-087.md)
+**Supersedes**: [ADR-0005](0005-px-starts-at-logon-from-the-last-config.md)
 
 ## Context
 
