@@ -37,6 +37,10 @@ incoming = "has result"
 outgoing = "result of"
 derive = { kind = "links", join = { field = "title", equals = "case_name" }, where = "type == 'test'" }
 
+[needs.links.constrains]
+incoming = "is constrained by"
+outgoing = "constrains"
+
 # A result's outcome, ordered worst first, so that `min` gives the worst. "not run" sorts
 # last: it is what a test holds of its own, and any result of the test outranks it (SC-073d).
 [needs.fields.result]
@@ -78,6 +82,11 @@ default = "not run"
 
 [needs.types.fields.verdict]
 derive = { kind = "min", field = "result", over = "result_of_back", transitive = true, include_self = true }
+
+[[needs.types]]
+directive = "decision"
+title = "Decision"
+prefix = "ADR-"
 
 # The `src-trace` directive, so ubCode parses it as a known directive.
 [parse.extend_directives.src-trace]

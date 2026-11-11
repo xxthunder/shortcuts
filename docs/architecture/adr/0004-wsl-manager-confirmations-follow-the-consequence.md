@@ -1,5 +1,10 @@
 # ADR-0004: wsl-manager confirmations follow the consequence of the step
 
+```{decision} wsl-manager confirmations follow the consequence of the step
+:id: ADR-0004
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-10-01
 **Related**: [SC-060](../../backlog/sc-060.md)

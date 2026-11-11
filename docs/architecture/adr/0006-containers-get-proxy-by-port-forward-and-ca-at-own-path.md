@@ -1,5 +1,10 @@
 # ADR-0006: Containers get the proxy by a port forward and the CA at a path of their own
 
+```{decision} Containers get the proxy by a port forward and the CA at a path of their own
+:id: ADR-0006
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-11-04
 **Related**: [SC-079](../../backlog/sc-079.md)

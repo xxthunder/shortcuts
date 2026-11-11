@@ -1,5 +1,10 @@
 # ADR-0008: px takes the upstream proxy from Windows on every request
 
+```{decision} px takes the upstream proxy from Windows on every request
+:id: ADR-0008
+:status: Accepted
+```
+
 **Status**: Accepted
 **Date**: 2026-11-10
 **Related**: [SC-087](../../backlog/sc-087.md)
