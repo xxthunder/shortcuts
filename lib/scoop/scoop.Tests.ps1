@@ -16,6 +16,12 @@ Describe 'Get-ScoopUpdatableApp' {
         Mock Write-Status {}
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.returns empty array when scoop status returns null
+    :id: TEST_SCOOP_LIST_NULL_STATUS_EMPTY
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'returns empty array when scoop status returns null' {
         Mock Invoke-CommandLine { return $null }
 
@@ -24,6 +30,12 @@ Describe 'Get-ScoopUpdatableApp' {
         $result.Count | Should -Be 0
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.parses scoop status output with updatable apps
+    :id: TEST_SCOOP_LIST_PARSES_TEXT
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'parses scoop status output with updatable apps' {
         Mock Invoke-CommandLine { return @(
                 "Name      Installed Version  Latest Version  Missing Dependencies  Info"
@@ -43,6 +55,12 @@ Describe 'Get-ScoopUpdatableApp' {
         $result[1].LatestVersion | Should -Be '2.47.0'
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.returns empty array when no apps need updating
+    :id: TEST_SCOOP_LIST_TEXT_NONE_EMPTY
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'returns empty array when no apps need updating' {
         Mock Invoke-CommandLine { return @(
                 "Name      Installed Version  Latest Version  Missing Dependencies  Info"
@@ -54,6 +72,12 @@ Describe 'Get-ScoopUpdatableApp' {
         $result.Count | Should -Be 0
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.parses structured PSCustomObject output from modern scoop
+    :id: TEST_SCOOP_LIST_PARSES_OBJECTS
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'parses structured PSCustomObject output from modern scoop' {
         Mock Invoke-CommandLine { return @(
                 [PSCustomObject]@{ Name = 'gimp'; 'Installed Version' = '3.0.8-2'; 'Latest Version' = '3.2.0'; 'Missing Dependencies' = ''; Info = '' }
@@ -69,6 +93,12 @@ Describe 'Get-ScoopUpdatableApp' {
         $result[1].Name | Should -Be 'pwsh'
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.skips blank lines and malformed rows in legacy output
+    :id: TEST_SCOOP_LIST_SKIPS_MALFORMED
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'skips blank lines and malformed rows in legacy output' {
         Mock Invoke-CommandLine { return @(
                 "Name      Installed Version  Latest Version  Missing Dependencies  Info"
@@ -87,6 +117,12 @@ Describe 'Get-ScoopUpdatableApp' {
         $result[1].Name | Should -Be 'git'
     }
 
+    <#
+    @need test: Get-ScoopUpdatableApp.handles single updatable app
+    :id: TEST_SCOOP_LIST_SINGLE_APP
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'handles single updatable app' {
         Mock Invoke-CommandLine { return @(
                 "Name      Installed Version  Latest Version  Missing Dependencies  Info"
@@ -106,6 +142,12 @@ Describe 'Show-ScoopUpdatableApp' {
         Mock Write-Host {}
     }
 
+    <#
+    @need test: Show-ScoopUpdatableApp.displays header and app entries
+    :id: TEST_SCOOP_LIST_SHOWS_APPS
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'displays header and app entries' {
         $apps = @(
             [PSCustomObject]@{ Name = '7zip'; InstalledVersion = '24.08'; LatestVersion = '24.09' }
@@ -128,6 +170,12 @@ Describe 'Read-ScoopMenuChoice' {
         )
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns update-all when user enters A
+    :id: TEST_SCOOP_SELECT_ALL_UPPER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns update-all when user enters A' {
         Mock Read-Host { return 'A' }
 
@@ -137,6 +185,12 @@ Describe 'Read-ScoopMenuChoice' {
         @($result.Apps).Count | Should -Be 3
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns update-all when user enters lowercase a
+    :id: TEST_SCOOP_SELECT_ALL_LOWER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns update-all when user enters lowercase a' {
         Mock Read-Host { return 'a' }
 
@@ -146,6 +200,12 @@ Describe 'Read-ScoopMenuChoice' {
         @($result.Apps).Count | Should -Be 3
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns selected apps by comma-separated numbers
+    :id: TEST_SCOOP_SELECT_NUMBERS
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns selected apps by comma-separated numbers' {
         Mock Read-Host { return '1,3' }
 
@@ -157,6 +217,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Apps | Should -Contain 'pwsh'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns refresh when user enters R
+    :id: TEST_SCOOP_SELECT_REFRESH_UPPER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns refresh when user enters R' {
         Mock Read-Host { return 'R' }
 
@@ -165,6 +231,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Action | Should -Be 'refresh'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns refresh when user enters lowercase r
+    :id: TEST_SCOOP_SELECT_REFRESH_LOWER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns refresh when user enters lowercase r' {
         Mock Read-Host { return 'r' }
 
@@ -173,6 +245,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Action | Should -Be 'refresh'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns quit when user enters Q
+    :id: TEST_SCOOP_SELECT_QUIT_UPPER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns quit when user enters Q' {
         Mock Read-Host { return 'Q' }
 
@@ -181,6 +259,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Action | Should -Be 'quit'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns quit when user enters lowercase q
+    :id: TEST_SCOOP_SELECT_QUIT_LOWER
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns quit when user enters lowercase q' {
         Mock Read-Host { return 'q' }
 
@@ -189,6 +273,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Action | Should -Be 'quit'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns refresh even when no apps are updatable
+    :id: TEST_SCOOP_SELECT_REFRESH_WITHOUT_APPS
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns refresh even when no apps are updatable' {
         Mock Read-Host { return 'R' }
 
@@ -197,6 +287,12 @@ Describe 'Read-ScoopMenuChoice' {
         $result.Action | Should -Be 'refresh'
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.warns on out-of-range number and returns update with no apps
+    :id: TEST_SCOOP_SELECT_WARNS_OUT_OF_RANGE
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'warns on out-of-range number and returns update with no apps' {
         Mock Read-Host { return '5' }
 
@@ -207,6 +303,12 @@ Describe 'Read-ScoopMenuChoice' {
         Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid number*' }
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.warns on non-numeric input and returns update with no apps
+    :id: TEST_SCOOP_SELECT_WARNS_NON_NUMERIC
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'warns on non-numeric input and returns update with no apps' {
         Mock Read-Host { return 'xyz' }
 
@@ -217,6 +319,12 @@ Describe 'Read-ScoopMenuChoice' {
         Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like '*Invalid input*' }
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.handles mixed valid and invalid input
+    :id: TEST_SCOOP_SELECT_MIXED_INPUT
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'handles mixed valid and invalid input' {
         Mock Read-Host { return '1,abc,99' }
 
@@ -228,6 +336,12 @@ Describe 'Read-ScoopMenuChoice' {
         Should -Invoke Write-WarningMsg -Times 2
     }
 
+    <#
+    @need test: Read-ScoopMenuChoice.returns update with no apps on empty input
+    :id: TEST_SCOOP_SELECT_EMPTY_INPUT
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'returns update with no apps on empty input' {
         Mock Read-Host { return '' }
 
@@ -275,6 +389,12 @@ Describe 'Wait-ScoopKeyPress' {
         Mock Get-ScoopHostRawUi { return $script:stubRawUi }
     }
 
+    <#
+    @need test: Wait-ScoopKeyPress.prompts and reads a single key without echo when interactive
+    :id: TEST_SCOOP_UPDATE_WAITS_FOR_KEY
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'prompts and reads a single key without echo when interactive' {
         Wait-ScoopKeyPress
 
@@ -284,6 +404,12 @@ Describe 'Wait-ScoopKeyPress' {
         Should -Invoke Write-Host -ParameterFilter { $Object -eq 'Press any key to continue...' } -Times 1
     }
 
+    <#
+    @need test: Wait-ScoopKeyPress.skips the key read in CI/test environments
+    :id: TEST_SCOOP_CI_NO_KEY_WAIT
+    :tests: REQ_SCOOP_CI
+    @endneed
+    #>
     It 'skips the key read in CI/test environments' {
         Mock Test-RunningInCIorTestEnvironment { return $true }
 
@@ -294,6 +420,12 @@ Describe 'Wait-ScoopKeyPress' {
         $script:stubRawUi.ReadKeyCalls | Should -Be 0
     }
 
+    <#
+    @need test: Wait-ScoopKeyPress.does not throw when the host has no interactive console
+    :id: TEST_SCOOP_UPDATE_NO_CONSOLE_NO_FAIL
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'does not throw when the host has no interactive console' {
         $script:stubRawUi = Get-StubRawUi -FailOnRead
 
@@ -310,6 +442,12 @@ Describe 'Update-ScoopApp' {
         Mock Write-ErrorMsg {}
     }
 
+    <#
+    @need test: Update-ScoopApp.updates a single app successfully
+    :id: TEST_SCOOP_UPDATE_SINGLE_APP
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'updates a single app successfully' {
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 0 }
 
@@ -319,6 +457,12 @@ Describe 'Update-ScoopApp' {
         Should -Invoke Write-Success -Times 1
     }
 
+    <#
+    @need test: Update-ScoopApp.updates multiple apps
+    :id: TEST_SCOOP_UPDATE_ONE_BY_ONE
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'updates multiple apps' {
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 0 }
 
@@ -327,12 +471,24 @@ Describe 'Update-ScoopApp' {
         Should -Invoke Invoke-CommandLine -Times 2
     }
 
+    <#
+    @need test: Update-ScoopApp.skips update when -WhatIf is used
+    :id: TEST_SCOOP_UPDATE_WHATIF_SKIPS
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'skips update when -WhatIf is used' {
         Update-ScoopApp -AppNames @('7zip', 'git') -WhatIf
 
         Should -Invoke Invoke-CommandLine -Times 0
     }
 
+    <#
+    @need test: Update-ScoopApp.reports error when update fails
+    :id: TEST_SCOOP_UPDATE_REPORTS_FAILURE
+    :tests: REQ_SCOOP_UPDATE
+    @endneed
+    #>
     It 'reports error when update fails' {
         Mock Invoke-CommandLine { $global:LASTEXITCODE = 1 }
 
@@ -361,6 +517,12 @@ Describe 'Invoke-ScoopUpdate' {
         )
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.shows error when scoop is not installed
+    :id: TEST_SCOOP_PRESENT_ERROR_WITHOUT_SCOOP
+    :tests: REQ_SCOOP_PRESENT
+    @endneed
+    #>
     It 'shows error when scoop is not installed' {
         Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'scoop' }
 
@@ -369,6 +531,12 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Write-ErrorMsg -ParameterFilter { $Message -like '*Scoop is not installed*' } -Times 1
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.refreshes scoop exactly once at startup before the loop
+    :id: TEST_SCOOP_REFRESH_START_ONCE
+    :tests: REQ_SCOOP_REFRESH_START
+    @endneed
+    #>
     It 'refreshes scoop exactly once at startup before the loop' {
         Mock Get-ScoopUpdatableApp { return @() }
         Mock Read-ScoopMenuChoice { return @{ Action = 'quit'; Apps = @() } }
@@ -378,6 +546,12 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq 'scoop update' } -Times 1
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.shows up-to-date message when no updates available then quits
+    :id: TEST_SCOOP_LIST_UP_TO_DATE
+    :tests: REQ_SCOOP_LIST
+    @endneed
+    #>
     It 'shows up-to-date message when no updates available then quits' {
         Mock Get-ScoopUpdatableApp { return @() }
         Mock Read-ScoopMenuChoice { return @{ Action = 'quit'; Apps = @() } }
@@ -387,7 +561,13 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Write-Success -ParameterFilter { $Message -like '*up to date*' } -Times 1
     }
 
-    It 'updates selected apps, pauses for a keypress, then loops until quit' {
+    <#
+    @need test: Invoke-ScoopUpdate.updates selected apps and pauses for a keypress then loops until quit
+    :id: TEST_SCOOP_UPDATE_PAUSES_AND_LOOPS
+    :tests: REQ_SCOOP_UPDATE, REQ_SCOOP_LOOP
+    @endneed
+    #>
+    It 'updates selected apps and pauses for a keypress then loops until quit' {
         Mock Get-ScoopUpdatableApp { return $script:oneApp }
         $script:menuCalls = 0
         Mock Read-ScoopMenuChoice {
@@ -403,6 +583,12 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Wait-ScoopKeyPress -Times 1
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.refresh action re-runs the bucket refresh
+    :id: TEST_SCOOP_REFRESH_RERUNS
+    :tests: REQ_SCOOP_REFRESH
+    @endneed
+    #>
     It 'refresh action re-runs the bucket refresh' {
         Mock Get-ScoopUpdatableApp { return @() }
         $script:menuCalls = 0
@@ -418,6 +604,12 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Invoke-CommandLine -ParameterFilter { $CommandLine -eq 'scoop update' } -Times 2
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.warns when update chosen with no apps selected
+    :id: TEST_SCOOP_SELECT_NOTHING_VALID_WARNS
+    :tests: REQ_SCOOP_SELECT
+    @endneed
+    #>
     It 'warns when update chosen with no apps selected' {
         Mock Get-ScoopUpdatableApp { return $script:oneApp }
         $script:menuCalls = 0
@@ -433,6 +625,12 @@ Describe 'Invoke-ScoopUpdate' {
         Should -Invoke Update-ScoopApp -Times 0
     }
 
+    <#
+    @need test: Invoke-ScoopUpdate.catches an error inside an iteration and continues the loop
+    :id: TEST_SCOOP_LOOP_SURVIVES_ERROR
+    :tests: REQ_SCOOP_LOOP
+    @endneed
+    #>
     It 'catches an error inside an iteration and continues the loop' {
         $script:statusCalls = 0
         Mock Get-ScoopUpdatableApp {
@@ -447,6 +645,12 @@ Describe 'Invoke-ScoopUpdate' {
     }
 
     Context 'In CI environment' {
+        <#
+        @need test: Invoke-ScoopUpdate.In CI environment.does exactly one update-all pass and never calls Read-Host
+        :id: TEST_SCOOP_CI_ONE_UPDATE_ALL_PASS
+        :tests: REQ_SCOOP_CI
+        @endneed
+        #>
         It 'does exactly one update-all pass and never calls Read-Host' {
             Mock Test-RunningInCIorTestEnvironment { return $true }
             Mock Get-ScoopUpdatableApp { return $script:oneApp }
@@ -458,6 +662,12 @@ Describe 'Invoke-ScoopUpdate' {
             Should -Invoke Read-Host -Times 0
         }
 
+        <#
+        @need test: Invoke-ScoopUpdate.In CI environment.reports everything up to date and returns without updating
+        :id: TEST_SCOOP_CI_UP_TO_DATE_RETURNS
+        :tests: REQ_SCOOP_CI
+        @endneed
+        #>
         It 'reports everything up to date and returns without updating' {
             Mock Test-RunningInCIorTestEnvironment { return $true }
             Mock Get-ScoopUpdatableApp { return @() }

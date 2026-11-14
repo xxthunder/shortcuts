@@ -15,6 +15,12 @@ $ErrorActionPreference = 'Stop'
 # Source dependencies
 . "$PSScriptRoot\..\utils\utils.ps1"
 
+<#
+@need impl: Get-ScoopUpdatableApp
+:id: IMPL_SCOOP_LIST_READ
+:implements: REQ_SCOOP_LIST
+@endneed
+#>
 function Get-ScoopUpdatableApp {
     <#
     .SYNOPSIS
@@ -78,6 +84,12 @@ function Get-ScoopUpdatableApp {
     return $apps
 }
 
+<#
+@need impl: Show-ScoopUpdatableApp
+:id: IMPL_SCOOP_LIST_SHOW
+:implements: REQ_SCOOP_LIST
+@endneed
+#>
 function Show-ScoopUpdatableApp {
     <#
     .SYNOPSIS
@@ -106,6 +118,12 @@ function Show-ScoopUpdatableApp {
     Write-Host ""
 }
 
+<#
+@need impl: Read-ScoopMenuChoice
+:id: IMPL_SCOOP_MENU_CHOICE
+:implements: REQ_SCOOP_SELECT
+@endneed
+#>
 function Read-ScoopMenuChoice {
     <#
     .SYNOPSIS
@@ -189,6 +207,12 @@ function Get-ScoopHostRawUi {
     return $Host.UI.RawUI
 }
 
+<#
+@need impl: Wait-ScoopKeyPress
+:id: IMPL_SCOOP_KEY_PAUSE
+:implements: REQ_SCOOP_UPDATE, REQ_SCOOP_CI
+@endneed
+#>
 function Wait-ScoopKeyPress {
     <#
     .SYNOPSIS
@@ -219,6 +243,12 @@ function Wait-ScoopKeyPress {
     }
 }
 
+<#
+@need impl: Invoke-ScoopBucketRefresh
+:id: IMPL_SCOOP_BUCKET_REFRESH
+:implements: REQ_SCOOP_REFRESH_START, REQ_SCOOP_REFRESH
+@endneed
+#>
 function Invoke-ScoopBucketRefresh {
     <#
     .SYNOPSIS
@@ -235,6 +265,12 @@ function Invoke-ScoopBucketRefresh {
     Invoke-CommandLine -CommandLine "scoop update" -StopAtError $false -PrintCommand $false
 }
 
+<#
+@need impl: Update-ScoopApp
+:id: IMPL_SCOOP_UPDATE_APP
+:implements: REQ_SCOOP_UPDATE
+@endneed
+#>
 function Update-ScoopApp {
     <#
     .SYNOPSIS
@@ -264,6 +300,12 @@ function Update-ScoopApp {
     }
 }
 
+<#
+@need impl: Invoke-ScoopUpdate
+:id: IMPL_SCOOP_MAIN_LOOP
+:implements: REQ_SCOOP_PRESENT, REQ_SCOOP_REFRESH_START, REQ_SCOOP_LIST, REQ_SCOOP_SELECT, REQ_SCOOP_UPDATE, REQ_SCOOP_REFRESH, REQ_SCOOP_LOOP, REQ_SCOOP_CI
+@endneed
+#>
 function Invoke-ScoopUpdate {
     <#
     .SYNOPSIS

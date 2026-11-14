@@ -3,6 +3,7 @@
 ```{decision} Scoop and utils libraries stay Windows PowerShell 5.1-compatible
 :id: ADR-0001
 :status: Accepted
+:constrains: REQ_SCOOP_CONSOLE
 ```
 
 **Status**: Accepted
