@@ -47,6 +47,13 @@ outgoing = "constrains"
 nullable = true
 schema = { type = "string", enum = ["failed", "error", "passed", "skipped", "disabled", "not run"] }
 
+# The path of the wrapper that implements a requirement no function of ours carries out,
+# since a .bat has no codelinks marker. A requirement with this field set is not asked
+# for an incoming `implements` link (SC-073h).
+[needs.fields.implemented_in]
+nullable = true
+schema = { type = "string" }
+
 # A test's verdict: the worst of its results, "not run" with none. A requirement's: the
 # worst verdict of its tests (SC-073d).
 [needs.fields.verdict]

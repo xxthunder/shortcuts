@@ -2,11 +2,15 @@
   "schemas": [
     {
       "id": "req-implemented",
-      "message": "a requirement is implemented by at least one function (SC-073e)",
+      "message": "a requirement is implemented by at least one function, or names its wrapper in implemented_in (SC-073e, SC-073h)",
       "select": {
         "properties": {
           "type": {
             "const": "req"
+          },
+          "implemented_in": {
+            "type": "string",
+            "maxLength": 0
           }
         }
       },
