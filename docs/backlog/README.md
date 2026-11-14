@@ -20,7 +20,6 @@
 - [SC-075 — CI on Node 24 actions, Python toolchain past the emSign CA incident](sc-075.md)
 - [SC-073j — WSL Manager requirements](sc-073j.md)
 - [SC-073i — Installer and update requirements](sc-073i.md)
-- [SC-073h — update-scoop requirements](sc-073h.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
 - [SC-066 — wsl-manager hands the Linux side of a distribution to Ansible](sc-066.md)
@@ -41,6 +40,7 @@
 ### In Progress
 - [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
+- [SC-073h — update-scoop requirements](sc-073h.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
 - [SC-073a — PowerShell support in sphinx-codelinks](sc-073a.md)
