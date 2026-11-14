@@ -312,7 +312,7 @@ Manually delete these folders if desired:
 - **[Architecture](architecture/README.md)**: Diagrams and Architecture Decision Records (ADRs)
 - **[Roadmap](roadmap.md)**: Project vision and future direction
 - **[Backlog](backlog/README.md)**: Current work items, priorities, and completed features
-- **Requirements and traces**: The requirements of the tools and the code and tests that implement and test them, below each tool's documentation; px-proxy is the first ([requirements](requirements/px-proxy.md), [traces](traceability/px-proxy.md))
+- **Requirements and traces**: The requirements of the tools and the code and tests that implement and test them, below each tool's documentation; px-proxy ([requirements](requirements/px-proxy.md), [traces](traceability/px-proxy.md)) and update-scoop ([requirements](requirements/update-scoop.md), [traces](traceability/update-scoop.md))
 
 Build the published documentation locally with [uv](https://docs.astral.sh/uv/); CI runs the same command:
 

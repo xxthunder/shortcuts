@@ -6,6 +6,7 @@ A test's status is the worst of its results, and *not run* when it has none; its
 
 ```{needtable}
 :types: req
+:filter: id.startswith("REQ_PX")
 :columns: id, title, verdict as "Status", implements_back as "Implemented by", tests_back as "Tested by"
 :style: table
 ```
@@ -20,6 +21,7 @@ A test's status is the worst of its results, and *not run* when it has none; its
 
 ```{needtable}
 :types: test
+:filter: id.startswith("TEST_PX")
 :columns: id, title as "Pester path", verdict as "Status", tests as "Tests"
 :style: table
 ```

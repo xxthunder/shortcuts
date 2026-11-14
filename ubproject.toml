@@ -137,6 +137,45 @@ get_oneline_needs = false
 get_need_id_refs = false
 get_multiline_needs = true
 
+[codelinks.projects.update-scoop]
+remote_url_pattern = "https://github.com/xxthunder/shortcuts/blob/{commit}/{path}#L{line}"
+
+[codelinks.projects.update-scoop.source_discover]
+src_dir = "lib/scoop"
+include = ["scoop.ps1"]
+comment_type = "powershell"
+
+[codelinks.projects.update-scoop.analyse]
+get_oneline_needs = false
+get_need_id_refs = false
+get_multiline_needs = true
+
+[codelinks.projects.update-scoop-tests]
+remote_url_pattern = "https://github.com/xxthunder/shortcuts/blob/{commit}/{path}#L{line}"
+
+[codelinks.projects.update-scoop-tests.source_discover]
+src_dir = "lib/scoop"
+include = ["scoop.Tests.ps1"]
+comment_type = "powershell"
+
+[codelinks.projects.update-scoop-tests.analyse]
+get_oneline_needs = false
+get_need_id_refs = false
+get_multiline_needs = true
+
+[codelinks.projects.update-scoop-wrapper-tests]
+remote_url_pattern = "https://github.com/xxthunder/shortcuts/blob/{commit}/{path}#L{line}"
+
+[codelinks.projects.update-scoop-wrapper-tests.source_discover]
+src_dir = "tools/scoop"
+include = ["update-scoop.Tests.ps1"]
+comment_type = "powershell"
+
+[codelinks.projects.update-scoop-wrapper-tests.analyse]
+get_oneline_needs = false
+get_need_id_refs = false
+get_multiline_needs = true
+
 # Pester results (SC-073d).
 [test_reports]
 deterministic_case_ids = true
