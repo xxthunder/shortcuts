@@ -74,3 +74,14 @@ A Windows Terminal window is still open (it does not have to be the one you laun
 
 **An update fails for some other reason.**
 The raw Scoop error is printed and you are returned to the menu; the session keeps running. Read the error, resolve the cause (for example a running process or a network/proxy issue), press `R` to re-check, and retry.
+
+## Requirements and traces
+
+What update-scoop does, stated as requirements, and where the code implements and tests each of them.
+
+```{toctree}
+:maxdepth: 1
+
+Requirements <../requirements/update-scoop>
+Traces <../traceability/update-scoop>
+```
