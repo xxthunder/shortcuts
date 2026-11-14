@@ -1,6 +1,17 @@
 {
     "recommendations": [
+        "thqby.vscode-autohotkey2-lsp",
+        "useblocks.ubcode",
+        "tamasfe.even-better-toml",
+        "waderyan.gitblame",
+        "the0807.git-graph-plus",
+        "shd101wyy.markdown-preview-enhanced",
+        "bierner.markdown-mermaid",
+        "davidanson.vscode-markdownlint",
+        "pspester.pester-test",
+        "ms-python.python",
         "ms-vscode.powershell",
-        "thqby.vscode-autohotkey2-lsp"
+        "redhat.vscode-yaml",
+        "oderwat.indent-rainbow"
     ]
 }
