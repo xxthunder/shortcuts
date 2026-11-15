@@ -80,50 +80,17 @@
     },
     {
       "id": "result-links-its-test",
-      "message": "a result from a traced Describe of px-proxy.Tests.ps1 links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The Describes are those SC-073e and SC-073c traced: every Describe but \"Test safety\" and \"Removed upstream lookup\"",
+      "message": "a result from a traced Describe links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The traced Describes: in px-proxy.Tests.ps1 every Describe but \"Test safety\" and \"Removed upstream lookup\" (SC-073c, SC-073e); in scoop.Tests.ps1 every Describe but \"Get-ScoopHostRawUi\", and update-scoop.Tests.ps1 (SC-073h)",
       "select": {
         "properties": {
           "type": {
             "const": "testcase"
           },
           "classname": {
-            "pattern": "px-proxy\\.Tests\\.ps1$"
+            "pattern": "(^|/)(px-proxy|scoop|update-scoop)\\.Tests\\.ps1$"
           },
           "case_name": {
-            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Test-PxInstalled|Get-PxExecutable|Test-PxRunning|Get-PxUserConfigPath|Get-PxUserSetting|New-PxUserConfigTemplate|Write-PxConfig|Install-PxProxy|Stop-PxProxy|Start-PxProxy|Test-PxProxy|Script entry point|Invoke-PxProxyMain|Wait-ForKeyPress|Remove-PxProxy|Invoke-PxProxy)\\."
-          }
-        },
-        "required": [
-          "classname",
-          "case_name"
-        ]
-      },
-      "validate": {
-        "local": {
-          "properties": {
-            "result_of": {
-              "minItems": 1
-            }
-          },
-          "required": [
-            "result_of"
-          ]
-        }
-      }
-    },
-    {
-      "id": "result-links-its-test-update-scoop",
-      "message": "a result from a traced Describe of scoop.Tests.ps1 or update-scoop.Tests.ps1 links the test it resulted from; an It renamed without its marker's title breaks the match (SC-073d). The Describes are those SC-073h traced: every Describe but \"Get-ScoopHostRawUi\"",
-      "select": {
-        "properties": {
-          "type": {
-            "const": "testcase"
-          },
-          "classname": {
-            "pattern": "(^|/)(scoop|update-scoop)\\.Tests\\.ps1$"
-          },
-          "case_name": {
-            "pattern": "^(Get-ScoopUpdatableApp|Show-ScoopUpdatableApp|Read-ScoopMenuChoice|Wait-ScoopKeyPress|Update-ScoopApp|Invoke-ScoopUpdate|update-scoop\\.bat)\\."
+            "pattern": "^(Get-PxDataDir|Get-PxConfigPath|Test-PxInstalled|Get-PxExecutable|Test-PxRunning|Get-PxUserConfigPath|Get-PxUserSetting|New-PxUserConfigTemplate|Write-PxConfig|Install-PxProxy|Stop-PxProxy|Start-PxProxy|Test-PxProxy|Script entry point|Invoke-PxProxyMain|Wait-ForKeyPress|Remove-PxProxy|Invoke-PxProxy|Get-ScoopUpdatableApp|Show-ScoopUpdatableApp|Read-ScoopMenuChoice|Wait-ScoopKeyPress|Update-ScoopApp|Invoke-ScoopUpdate|update-scoop\\.bat)\\."
           }
         },
         "required": [
