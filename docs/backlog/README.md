@@ -10,6 +10,7 @@
 ## Table of Contents
 
 ### Open
+- [SC-090 — update-scoop's tests assert every clause of its requirements](sc-090.md)
 - [SC-089 — The install sets up the Shortcuts extension for Command Palette with both shortcuts folders](sc-089.md)
 - [SC-088 — A failed Ubuntu install in the Podman integration test shows its cause](sc-088.md)
 - [SC-082 — px-proxy sets the proxy variables in the user environment](sc-082.md)
