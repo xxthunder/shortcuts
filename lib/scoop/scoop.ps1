@@ -210,7 +210,7 @@ function Get-ScoopHostRawUi {
 <#
 @need impl: Wait-ScoopKeyPress
 :id: IMPL_SCOOP_KEY_PAUSE
-:implements: REQ_SCOOP_UPDATE
+:implements: REQ_SCOOP_UPDATE, REQ_SCOOP_CI
 @endneed
 #>
 function Wait-ScoopKeyPress {
