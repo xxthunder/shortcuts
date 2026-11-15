@@ -168,7 +168,7 @@ remote_url_pattern = "https://github.com/xxthunder/shortcuts/blob/{commit}/{path
 
 [codelinks.projects.update-scoop-wrapper-tests.source_discover]
 src_dir = "tools/scoop"
-include = ["update-scoop.Tests.ps1"]
+include = ["update-scoop.bat.Tests.ps1"]
 comment_type = "powershell"
 
 [codelinks.projects.update-scoop-wrapper-tests.analyse]
