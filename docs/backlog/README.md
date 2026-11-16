@@ -10,7 +10,6 @@
 ## Table of Contents
 
 ### Open
-- [SC-091 — The px-proxy runbook explains a 504 on site caused by the Windows proxy settings](sc-091.md)
 - [SC-090 — update-scoop's tests assert every clause of its requirements](sc-090.md)
 - [SC-089 — The install sets up the Shortcuts extension for Command Palette with both shortcuts folders](sc-089.md)
 - [SC-088 — A failed Ubuntu install in the Podman integration test shows its cause](sc-088.md)
@@ -41,6 +40,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
+- [SC-091 — The px-proxy runbook explains a 504 on site caused by the Windows proxy settings](sc-091.md)
 - [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
