@@ -99,6 +99,7 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 ## How discovery works
 
 - **Default:** `start` writes no upstream into `px.ini`. px then reads the Windows proxy settings and asks Windows for the proxy of each request with `WinHttpGetProxyForUrl`, like the browser does. `proxyreload` makes px reread the settings, so a network change needs no restart.
+- **Which Windows setting counts:** px uses one of the settings under **Settings > Network & internet > Proxy**, in this order: **Automatically detect settings** (WPAD), then **Use setup script** (the PAC), then **Use a proxy server**. With auto-detect on, px asks WPAD only and ignores the setup script. When WPAD finds nothing, px connects directly, which a company firewall drops. The browser falls back to the setup script in that case; px does not. This holds for px 0.13.1 (`px/wproxy.py`); see [`504 Gateway Timeout` on a company site](#504-gateway-timeout-on-a-company-site).
 - **Why Windows decides:** Windows evaluates the PAC (the script your company publishes to tell clients which proxy to use) with the machine's real addresses. px's own PAC engine (`pac =`) takes the first IP of the host name instead; on a machine with home Wi-Fi plus VPN that can be the home address, and the PAC then answers `DIRECT`. This comes from the item SC-087 and the comments of a sister setup; this repository has not verified it.
 - **`-ProxyHost` override:** writes `server = <host:port>` into `px.ini`. px then uses that proxy for every request and asks Windows nothing.
 
@@ -163,6 +164,20 @@ Behind TLS inspection, Schannel (Windows' built-in secure-connection layer) runs
 ### TLS / certificate errors
 
 Import the corporate root CA into the Windows trust store. For WSL, install it into the distribution with `setup-ca` (wsl-manager), see [Setup CA certificates (corporate)](../wsl-manager.md#setup-ca-certificates-corporate).
+
+### `504 Gateway Timeout` on a company site
+
+Requests through px wait about 20 seconds and then fail with `504 Gateway Timeout`, while the browser works. px connects directly instead of through the company proxy, because the Windows proxy settings give it no proxy (see [How discovery works](#how-discovery-works)). Check the settings:
+
+1. Open **Settings > Network & internet > Proxy**.
+2. If **Automatically detect settings** is on and your company does not use it, turn it off.
+3. Make sure **Use setup script** is on and shows the script address of your company.
+4. If both are off and the script address is empty, the company settings are missing. Run `gpupdate /force` to apply them again, then check once more.
+5. If the settings are still missing, contact your IT.
+6. Wait up to `proxyreload` seconds (default 60); px rereads the settings without a restart.
+7. Run `px-proxy test` to confirm px answers.
+
+As a stopgap, pin the upstream with `px-proxy start -ProxyHost '<host:port>'`. px then no longer follows network changes. Run `start` without `-ProxyHost` once the settings are right again.
 
 ### Nothing works / connection refused
 
