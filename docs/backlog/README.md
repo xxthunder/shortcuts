@@ -40,7 +40,7 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
-- [SC-092 — px falls back to the setup script when Windows auto-detect finds no proxy (upstream PR)](sc-092.md)
+- [SC-092 — px falls back like the browser when the Windows automatic proxy setup finds no proxy (upstream PR)](sc-092.md)
 - [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
