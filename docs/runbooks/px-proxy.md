@@ -99,7 +99,7 @@ To check px directly, bypassing the environment, add `-x http://127.0.0.1:3128`.
 ## How discovery works
 
 - **Default:** `start` writes no upstream into `px.ini`. px then reads the Windows proxy settings and asks Windows for the proxy of each request with `WinHttpGetProxyForUrl`, like the browser does. `proxyreload` makes px reread the settings, so a network change needs no restart.
-- **Which Windows setting counts:** px uses one of the settings under **Settings > Network & internet > Proxy**, in this order: **Automatically detect settings** (WPAD), then **Use setup script** (the PAC), then **Use a proxy server**. With auto-detect on, px asks WPAD only and ignores the setup script. When WPAD finds nothing, px connects directly, which a company firewall drops. The browser falls back to the setup script in that case; px does not. This holds for px 0.13.1 (`px/wproxy.py`); see [`504 Gateway Timeout` on a company site](#504-gateway-timeout-on-a-company-site).
+- **Which Windows setting counts:** px reads the settings under **Settings > Network & internet > Proxy**. From px 0.13.2, px falls back like the browser: **Automatically detect settings** (WPAD) first, then **Use setup script** (the PAC), then **Use a proxy server** with its bypass list. px connects directly only when none of them names a proxy, or when the setup script answers `DIRECT`. px 0.13.1 and older use only the first setting that is on: with auto-detect on, they ask WPAD only and connect directly when WPAD finds nothing, which a company firewall drops. `scoop list px` shows the version; see [`504 Gateway Timeout` on a company site](#504-gateway-timeout-on-a-company-site).
 - **Why Windows decides:** Windows evaluates the PAC (the script your company publishes to tell clients which proxy to use) with the machine's real addresses. px's own PAC engine (`pac =`) takes the first IP of the host name instead; on a machine with home Wi-Fi plus VPN that can be the home address, and the PAC then answers `DIRECT`. This comes from the item SC-087 and the comments of a sister setup; this repository has not verified it.
 - **`-ProxyHost` override:** writes `server = <host:port>` into `px.ini`. px then uses that proxy for every request and asks Windows nothing.
 
@@ -167,7 +167,15 @@ Import the corporate root CA into the Windows trust store. For WSL, install it i
 
 ### `504 Gateway Timeout` on a company site
 
-Requests through px wait about 20 seconds and then fail with `504 Gateway Timeout`, while the browser works. px connects directly instead of through the company proxy, because the Windows proxy settings give it no proxy (see [How discovery works](#how-discovery-works)). Check the settings:
+Requests through px wait about 20 seconds and then fail with `504 Gateway Timeout`, while the browser works. px connects directly instead of through the company proxy, because the Windows proxy settings give it no proxy (see [How discovery works](#how-discovery-works)).
+
+First check the px version with `scoop list px`. px 0.13.1 and older ask WPAD only when **Automatically detect settings** is on. If the version is older than 0.13.2, update px:
+
+1. Run `px-proxy stop`.
+2. Run `scoop update px`.
+3. Run `px-proxy start`. It starts px again and restores the start at logon.
+
+If the 504 stays, check the settings:
 
 1. Open **Settings > Network & internet > Proxy**.
 2. If **Automatically detect settings** is on and your company does not use it, turn it off.

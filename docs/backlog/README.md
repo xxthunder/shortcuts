@@ -49,6 +49,7 @@
 - [SC-001 — Backlog refinement](sc-001.md)
 
 ### Done
+- [SC-093 — The px-proxy runbook says that px 0.13.2 and later fall back like the browser](sc-093.md)
 - [SC-092 — px falls back like the browser when the Windows automatic proxy setup finds no proxy (upstream PR)](sc-092.md)
 - [SC-091 — The px-proxy runbook explains a 504 on site caused by the Windows proxy settings](sc-091.md)
 - [SC-087 — px takes the upstream proxy from Windows on every request](sc-087.md)
