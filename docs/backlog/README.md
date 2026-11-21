@@ -40,7 +40,6 @@
 - [SC-020 — Import and export WSL distributions to/from files](sc-020.md)
 
 ### In Progress
-- [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-083 — Format and lint each PowerShell file as soon as Claude changes it](sc-083.md)
 - [SC-073e — codelinks markers in the px-proxy code and tests](sc-073e.md)
 - [SC-073b — Documentation build and trace gate](sc-073b.md)
@@ -53,6 +52,7 @@
 - [SC-092 — px falls back like the browser when the Windows automatic proxy setup finds no proxy (upstream PR)](sc-092.md)
 - [SC-091 — The px-proxy runbook explains a 504 on site caused by the Windows proxy settings](sc-091.md)
 - [SC-087 — px takes the upstream proxy from Windows on every request](sc-087.md)
+- [SC-086 — Replace Keypirinha with PowerToys Command Palette on Alt+Space](sc-086.md)
 - [SC-085 — Keypirinha hint test passes on a UNC repository path](sc-085.md)
 - [SC-084 — A release branch holds only the files users need](sc-084.md)
 - [SC-079 — Containers in a mirrored-mode distribution reach neither the proxy nor its CA](sc-079.md)

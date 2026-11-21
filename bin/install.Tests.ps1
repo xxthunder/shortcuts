@@ -263,53 +263,6 @@ Describe 'Install-PwshSpectreDependency' {
     }
 }
 
-Describe 'Copy-Config' {
-    BeforeAll {
-        . $script:installScript -InPlace
-    }
-
-    It 'calls robocopy with source then destination in correct order' {
-        $script:robocopyArgs = $null
-        Mock robocopy { $script:robocopyArgs = $args; $global:LASTEXITCODE = 0 }
-
-        Copy-Config -source 'C:\from' -destination 'C:\to'
-
-        $script:robocopyArgs[0] | Should -Be 'C:\from'
-        $script:robocopyArgs[1] | Should -Be 'C:\to'
-    }
-
-    It 'passes /E /IS /IT flags to robocopy' {
-        $script:robocopyArgs = $null
-        Mock robocopy { $script:robocopyArgs = $args; $global:LASTEXITCODE = 0 }
-
-        Copy-Config -source 'C:\from' -destination 'C:\to'
-
-        $script:robocopyArgs | Should -Contain '/E'
-        $script:robocopyArgs | Should -Contain '/IS'
-        $script:robocopyArgs | Should -Contain '/IT'
-    }
-
-    It 'does not throw when robocopy exit code is less than 8' {
-        Mock robocopy { $global:LASTEXITCODE = 3 }
-
-        { Copy-Config -source 'C:\from' -destination 'C:\to' } | Should -Not -Throw
-    }
-
-    It 'throws when robocopy exit code is 8 or higher' {
-        Mock robocopy { $global:LASTEXITCODE = 8 }
-
-        { Copy-Config -source 'C:\from' -destination 'C:\to' } | Should -Throw "*failed*"
-    }
-
-    It 'supports -WhatIf and does not call robocopy' {
-        Mock robocopy {}
-
-        Copy-Config -source 'C:\from' -destination 'C:\to' -WhatIf
-
-        Should -Not -Invoke robocopy
-    }
-}
-
 Describe 'New-Shortcut' {
     BeforeAll {
         . $script:installScript -InPlace
@@ -360,5 +313,288 @@ Describe 'New-StartupShortcut' {
         New-StartupShortcut -Name 'myapp' -path 'C:\myapp.exe' -WhatIf
 
         Should -Not -Invoke New-Shortcut
+    }
+}
+
+Describe 'Start-Launcher' {
+    BeforeAll {
+        . $script:installScript -InPlace
+        $script:originalUserProfile = $Env:USERPROFILE
+    }
+
+    BeforeEach {
+        $Env:USERPROFILE = Join-Path $TestDrive 'home'
+        Mock Start-Process {}
+    }
+
+    AfterEach {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    AfterAll {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    It 'starts PowerToys only outside CI' {
+        Mock Test-RunningInCIorTestEnvironment { $false }
+
+        Start-Launcher
+
+        Should -Invoke Start-Process -Times 1 -Exactly
+        Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
+            $FilePath -eq (Join-Path $Env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe')
+        }
+        Should -Invoke Start-Process -Times 0 -Exactly -ParameterFilter {
+            $FilePath -like '*keypirinha*'
+        }
+    }
+
+    It 'starts no launcher in CI' {
+        Mock Test-RunningInCIorTestEnvironment { $true }
+
+        Start-Launcher
+
+        Should -Invoke Start-Process -Times 0
+    }
+}
+
+Describe 'scoop_mandatory.json' {
+    BeforeAll {
+        $script:manifest = Get-Content (Join-Path $PSScriptRoot '..\scoop_mandatory.json') -Raw | ConvertFrom-Json
+    }
+
+    It 'lists powertoys from the extras bucket' {
+        $entries = @($script:manifest.apps | Where-Object { $_.Name -eq 'powertoys' })
+
+        $entries | Should -HaveCount 1
+        $entries[0].Source | Should -Be 'extras'
+    }
+
+    It 'lists no keypirinha entry' {
+        @($script:manifest.apps | Where-Object { $_.Name -eq 'keypirinha' }) | Should -HaveCount 0
+    }
+}
+
+Describe 'Set-CommandPaletteHotkey' {
+    BeforeAll {
+        . $script:installScript -InPlace
+        $script:originalLocalAppData = $Env:LOCALAPPDATA
+    }
+
+    BeforeEach {
+        $script:settings = Join-Path $TestDrive 'cp\LocalState\settings.json'
+        Remove-Item (Split-Path $script:settings -Parent) -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    AfterEach {
+        $Env:LOCALAPPDATA = $script:originalLocalAppData
+    }
+
+    AfterAll {
+        $Env:LOCALAPPDATA = $script:originalLocalAppData
+    }
+
+    It 'creates the directory and a file holding only Hotkey when there is none' {
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $json = Get-Content $script:settings -Raw | ConvertFrom-Json
+        @($json.PSObject.Properties.Name) | Should -Be @('Hotkey')
+        $json.Hotkey.win | Should -BeFalse
+        $json.Hotkey.ctrl | Should -BeFalse
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.shift | Should -BeFalse
+        $json.Hotkey.code | Should -Be 32
+        $json.Hotkey.key | Should -Be ''
+    }
+
+    It 'sets Alt+Space and keeps every other key of an existing file' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        Set-Content -Path $script:settings -Value '{"Hotkey":{"win":true,"ctrl":false,"alt":true,"shift":false,"code":32,"key":""},"ShowAppDetails":true,"Dock":{"Enabled":true}}'
+
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $json = Get-Content $script:settings -Raw | ConvertFrom-Json
+        $json.Hotkey.win | Should -BeFalse
+        $json.Hotkey.ctrl | Should -BeFalse
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.shift | Should -BeFalse
+        $json.Hotkey.code | Should -Be 32
+        $json.Hotkey.key | Should -Be ''
+        $json.ShowAppDetails | Should -BeTrue
+        $json.Dock.Enabled | Should -BeTrue
+    }
+
+    It 'writes nothing with -WhatIf' {
+        Set-CommandPaletteHotkey -SettingsPath $script:settings -WhatIf
+
+        Test-Path $script:settings | Should -BeFalse
+    }
+
+    It 'leaves an existing file unchanged with -WhatIf' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        $original = '{"Hotkey":{"win":true,"ctrl":false,"alt":true,"shift":false,"code":32,"key":""}}'
+        Set-Content -Path $script:settings -Value $original
+
+        Set-CommandPaletteHotkey -SettingsPath $script:settings -WhatIf
+
+        (Get-Content $script:settings -Raw).Trim() | Should -Be $original
+    }
+
+    It 'treats an empty file as no file' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        [System.IO.File]::WriteAllBytes($script:settings, [byte[]]@())
+
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $json = Get-Content $script:settings -Raw | ConvertFrom-Json
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.code | Should -Be 32
+    }
+
+    It 'treats a whitespace-only file as no file' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        [System.IO.File]::WriteAllText($script:settings, "  `r`n ")
+
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $json = Get-Content $script:settings -Raw | ConvertFrom-Json
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.code | Should -Be 32
+    }
+
+    It 'leaves a malformed file untouched and warns' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        [System.IO.File]::WriteAllText($script:settings, '{ not json')
+        $before = [System.IO.File]::ReadAllBytes($script:settings)
+
+        # Called directly (not in a scriptblock) so $w lands in this scope; a throw still fails the It.
+        Set-CommandPaletteHotkey -SettingsPath $script:settings -WarningVariable w -WarningAction SilentlyContinue
+
+        [System.IO.File]::ReadAllBytes($script:settings) | Should -Be $before
+        $w | Should -Not -BeNullOrEmpty
+    }
+
+    It 'leaves a file whose root is not an object untouched and warns' {
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        [System.IO.File]::WriteAllText($script:settings, '[1,2]')
+        $before = [System.IO.File]::ReadAllBytes($script:settings)
+
+        # Called directly (not in a scriptblock) so $w lands in this scope; a throw still fails the It.
+        Set-CommandPaletteHotkey -SettingsPath $script:settings -WarningVariable w -WarningAction SilentlyContinue
+
+        [System.IO.File]::ReadAllBytes($script:settings) | Should -Be $before
+        $w | Should -Not -BeNullOrEmpty
+    }
+
+    It 'writes UTF-8 without a byte order mark' {
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $bytes = [System.IO.File]::ReadAllBytes($script:settings)
+        ($bytes[0..2] -join ',') | Should -Not -Be '239,187,191'
+    }
+
+    It 'keeps non-ASCII settings intact' {
+        $alias = 'M' + [char]0xFC + 'ller ' + [char]0x2713 + ' ' + [char]0x65E5 + [char]0x672C
+        New-Item -ItemType Directory -Path (Split-Path $script:settings -Parent) -Force | Out-Null
+        $text = '{"Alias":"' + $alias + '","Hotkey":{"win":true,"ctrl":false,"alt":true,"shift":false,"code":32,"key":""}}'
+        [System.IO.File]::WriteAllText($script:settings, $text, (New-Object System.Text.UTF8Encoding $false))
+
+        Set-CommandPaletteHotkey -SettingsPath $script:settings
+
+        $json = [System.IO.File]::ReadAllText($script:settings, (New-Object System.Text.UTF8Encoding $false)) | ConvertFrom-Json
+        $json.Alias | Should -BeExactly $alias
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.win | Should -BeFalse
+    }
+
+    It 'defaults to the Command Palette package settings under LOCALAPPDATA' {
+        $Env:LOCALAPPDATA = Join-Path $TestDrive 'local'
+
+        Set-CommandPaletteHotkey
+
+        $expected = Join-Path $Env:LOCALAPPDATA 'Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json'
+        Test-Path $expected | Should -BeTrue
+        (Get-Content $expected -Raw | ConvertFrom-Json).Hotkey.alt | Should -BeTrue
+    }
+}
+
+Describe 'Invoke-Install' {
+    BeforeAll {
+        . $script:installScript -InPlace
+        $script:originalUserProfile = $Env:USERPROFILE
+    }
+
+    BeforeEach {
+        $Env:USERPROFILE = Join-Path $TestDrive 'home'
+        $script:calls = [System.Collections.Generic.List[string]]::new()
+        foreach ($step in 'Install-Scoop', 'Install-ScoopDependency', 'Install-Git', 'Install-MandatoryToolset',
+            'Install-PwshSpectreDependency', 'Install-OptionalToolset', 'Set-CommandPaletteHotkey', 'Start-Launcher') {
+            $name = $step
+            $calls = $script:calls
+            Mock $name { $calls.Add($name) }.GetNewClosure()
+        }
+        Mock New-Directory { $script:calls.Add('New-Directory') }
+        Mock New-StartupShortcut { $script:calls.Add('New-StartupShortcut') }
+    }
+
+    AfterEach {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    AfterAll {
+        $Env:USERPROFILE = $script:originalUserProfile
+    }
+
+    Context 'with autohotkey installed' {
+        BeforeEach {
+            Mock Get-Command { @{ Name = 'autohotkey' } } -ParameterFilter { $Name -eq 'autohotkey' }
+        }
+
+        It 'runs the steps in order' {
+            Invoke-Install -ShortcutsDir 'C:\sc'
+
+            $script:calls | Should -Be @(
+                'Install-Scoop', 'Install-ScoopDependency', 'Install-Git', 'Install-MandatoryToolset',
+                'Install-PwshSpectreDependency', 'Install-OptionalToolset', 'New-Directory',
+                'New-StartupShortcut', 'Set-CommandPaletteHotkey', 'Start-Launcher')
+        }
+
+        It 'creates the private shortcuts directory' {
+            Invoke-Install -ShortcutsDir 'C:\sc'
+
+            Should -Invoke New-Directory -Times 1 -Exactly -ParameterFilter {
+                $Path -eq "$Env:USERPROFILE\shortcuts_private"
+            }
+        }
+
+        It 'creates the AutoHotkey startup shortcut once' {
+            Invoke-Install -ShortcutsDir 'C:\sc'
+
+            Should -Invoke New-StartupShortcut -Times 1 -Exactly -ParameterFilter {
+                $name -eq 'shortcuts_hotkeys' -and $path -eq 'C:\sc\tools\AutoHotKey\hotkeys.cmd'
+            }
+        }
+
+        It 'no longer has Copy-Config' {
+            Get-Command Copy-Config -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'without autohotkey' {
+        BeforeEach {
+            Mock Get-Command { $null } -ParameterFilter { $Name -eq 'autohotkey' }
+        }
+
+        It 'creates no startup shortcut' {
+            Invoke-Install -ShortcutsDir 'C:\sc'
+
+            Should -Invoke New-StartupShortcut -Times 0 -Exactly
+        }
+
+        It 'still configures the hotkey and starts the launcher last' {
+            Invoke-Install -ShortcutsDir 'C:\sc'
+
+            $script:calls[-2..-1] | Should -Be @('Set-CommandPaletteHotkey', 'Start-Launcher')
+        }
     }
 }

@@ -54,7 +54,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
 
 ## Quick Start
 
-**TUI**: To launch the TUI, search for `wsl-manager` in Keypirinha, or launch directly from a PowerShell terminal:
+**TUI**: To launch the TUI, run `tools\wsl-manager\wsl-manager.bat`, or launch directly from a PowerShell terminal:
 
 ```powershell
 .\tools\wsl-manager\wsl-manager.ps1
@@ -202,8 +202,6 @@ ssh-add -l                                        # verify key is loaded
 ```bash
 wsl --distribution Ubuntu-24.04
 ```
-
-> **Tip:** You can also open the distribution directly from Keypirinha: search for `Ubuntu-24.04`.
 
 #### Option A: Reuse Windows `.gitconfig` via Symlink (Recommended)
 
@@ -934,7 +932,7 @@ The table lists each distribution with its state, its architecture and a `*` for
 ```
 tools/wsl-manager/
 ├── wsl-manager.ps1            # Entry point (params + bootstrapping); sources lib/wsl/manager.ps1
-└── wsl-manager.bat            # Batch wrapper for Keypirinha
+└── wsl-manager.bat            # Batch wrapper
 
 lib/wsl/
 ├── wsl.ps1                    # Library facade (dot-sources all feature modules below)

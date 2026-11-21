@@ -57,16 +57,21 @@ Describe 'Post-Install: Scoop Buckets' -Tag 'Integration' {
     }
 }
 
-Describe 'Post-Install: Keypirinha' -Tag 'Integration' {
+Describe 'Post-Install: PowerToys' -Tag 'Integration' {
 
-    It 'keypirinha binary exists' {
-        $kpPath = Join-Path $env:USERPROFILE 'scoop\apps\keypirinha\current\keypirinha.exe'
-        Test-Path $kpPath | Should -BeTrue
+    It 'PowerToys binary exists' {
+        $ptPath = Join-Path $env:USERPROFILE 'scoop\apps\powertoys\current\PowerToys.exe'
+        Test-Path $ptPath | Should -BeTrue
     }
 
-    It 'keypirinha user profile directory exists' {
-        $profilePath = Join-Path $env:USERPROFILE 'scoop\apps\keypirinha\current\portable\Profile\User'
-        Test-Path $profilePath | Should -BeTrue
+    It 'sets the Command Palette hotkey to Alt+Space' {
+        $settings = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json'
+        $json = Get-Content $settings -Raw -Encoding UTF8 | ConvertFrom-Json
+        $json.Hotkey.alt | Should -BeTrue
+        $json.Hotkey.code | Should -Be 32
+        $json.Hotkey.win | Should -BeFalse
+        $json.Hotkey.ctrl | Should -BeFalse
+        $json.Hotkey.shift | Should -BeFalse
     }
 }
 

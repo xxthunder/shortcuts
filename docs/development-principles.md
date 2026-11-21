@@ -91,7 +91,6 @@ This document defines the core principles for developing the Shortcuts project. 
 - MUST include clear commit messages explaining "why" not just "what"
 - MUST reference file:line in code reviews and discussions
 - MUST update documentation when changing functionality
-- MUST remind users to refresh Keypirinha catalog when adding/modifying shortcuts
 
 **Rationale**: Maintains project history, enables effective code review, and ensures users understand how to use new features.
 
