@@ -8,9 +8,9 @@ requires-python = ">=3.13"
 dependencies = [
   "sphinx",
   "myst-parser",
-  "sphinx-needs>=9.1",
+  "sphinx-needs>=9.3.0",
   "furo",
-  "sphinx-codelinks",
+  "sphinx-codelinks>=2.2.0",
   "sphinx-test-reports",
 ]
 
@@ -19,10 +19,6 @@ dev = ["poethepoet"]
 
 [tool.uv]
 package = false
-
-[tool.uv.sources]
-sphinx-codelinks = { git = "https://github.com/xxthunder/sphinx-needs", subdirectory = "packages/sphinx-codelinks", rev = "sc-073a-preview-3" }
-sphinx-test-reports = { git = "https://github.com/xxthunder/sphinx-needs", subdirectory = "packages/sphinx-test-reports", rev = "sc-073a-preview-3" }
 
 # The one documentation build. CI runs this task too, so the local build and the CI build
 # are the same command; no build flag lives anywhere else.
