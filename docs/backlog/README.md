@@ -20,6 +20,7 @@
 - [SC-077 — One status per test and requirement, passed only when all tests passed](sc-077.md)
 - [SC-076 — Short test result IDs, and a Test results page that fits and stays current](sc-076.md)
 - [SC-075 — CI on Node 24 actions, Python toolchain past the emSign CA incident](sc-075.md)
+- [SC-073k — Two codelinks questions for useblocks: the Pester path of a test marker, markers in comment-based help](sc-073k.md)
 - [SC-073j — WSL Manager requirements](sc-073j.md)
 - [SC-073i — Installer and update requirements](sc-073i.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
