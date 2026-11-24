@@ -919,9 +919,9 @@ requires-dist = [
     { name = "furo" },
     { name = "myst-parser" },
     { name = "sphinx" },
-    { name = "sphinx-codelinks", git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-3" },
-    { name = "sphinx-needs", specifier = ">=9.1" },
-    { name = "sphinx-test-reports", git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-test-reports&rev=sc-073a-preview-3" },
+    { name = "sphinx-codelinks", specifier = ">=2.2.0" },
+    { name = "sphinx-needs", specifier = ">=9.3.0" },
+    { name = "sphinx-test-reports" },
 ]
 
 [package.metadata.requires-dev]
@@ -987,8 +987,8 @@ wheels = [
 
 [[package]]
 name = "sphinx-codelinks"
-version = "2.1.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-codelinks&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "comment-parser" },
     { name = "docutils" },
@@ -1009,9 +1009,14 @@ dependencies = [
     { name = "tree-sitter-python" },
     { name = "tree-sitter-rust" },
     { name = "tree-sitter-typescript" },
+    { name = "tree-sitter-vhdl" },
     { name = "tree-sitter-yaml" },
     { name = "typer" },
     { name = "ub-project" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b9/c7/df0d141a5c8a3aea827dfba4ee672614a092bb21b513fa4502783d71b6c5/sphinx_codelinks-2.2.0.tar.gz", hash = "sha256:c4b3957ac6de5e7e2284b0dc2281dc4a0ddfa0708653d25e6270668faeb8e11a", size = 227158, upload-time = "2026-11-19T13:40:37.423Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/c9/fb0ab0cb5dff375c08e9ae70670fa20202bd96073a5d57fe385fabc1a7cf/sphinx_codelinks-2.2.0-py3-none-any.whl", hash = "sha256:86935a1b36f2cfade262000c29576f235cbb6ecff416b04f99b9c764405981f8", size = 265720, upload-time = "2026-11-19T13:40:35.851Z" },
 ]
 
 [[package]]
@@ -1028,8 +1033,8 @@ wheels = [
 
 [[package]]
 name = "sphinx-needs"
-version = "9.2.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-needs&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+version = "9.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docutils" },
     { name = "jsonschema-rs" },
@@ -1043,16 +1048,24 @@ dependencies = [
     { name = "ub-needs-exchange" },
     { name = "ub-project" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/ab/9e6f41ddefe0a51212b114268536dd945cb1a497746989ceeed2b81f9777/sphinx_needs-9.3.0.tar.gz", hash = "sha256:b21f2576f1dfc8fb71241330636584a99eb44041c285f0c714e1bbb9d7d01e1d", size = 6072967, upload-time = "2026-11-19T13:06:56.313Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/84/79fab6c868742500d8c69a827dbf044c066430242bdf351241c01a13936c/sphinx_needs-9.3.0-py3-none-any.whl", hash = "sha256:eb86a0386aadc2e9465b3d269b0f90849777c5a636e94ac0380e9d7728dd097f", size = 957540, upload-time = "2026-11-19T13:06:54.129Z" },
+]
 
 [[package]]
 name = "sphinx-test-reports"
 version = "4.0.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fsphinx-test-reports&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docutils" },
     { name = "sphinx" },
     { name = "sphinx-needs" },
     { name = "ub-test-reports" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/26/6d/118fa89dfd71973fefdf5d47d2f10f221b52e397d13337fed74a077c58d2/sphinx_test_reports-4.0.0.tar.gz", hash = "sha256:f4900b1e419729f3f4c84c59c343ad7cc99365d0fe3c07bd093fc44b6645ac79", size = 39373, upload-time = "2026-11-04T09:31:02.169Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/57/a7/910358b1bcd4e204f06293144c3cfe23aa7883a03416de3967187f04ee1e/sphinx_test_reports-4.0.0-py3-none-any.whl", hash = "sha256:49311328b358d9e2641d79922f832972ee8ac299a6134f9432738fe58c4a01af", size = 48290, upload-time = "2026-11-04T09:31:00.97Z" },
 ]
 
 [[package]]
@@ -1339,6 +1352,22 @@ wheels = [
 ]
 
 [[package]]
+name = "tree-sitter-vhdl"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/31/77df85618d745fc9bead44e864ef415838f5f42ac981ad7cd8b08d5ba129/tree_sitter_vhdl-2.1.0.tar.gz", hash = "sha256:20a4bf223ff31716ff9cb96103f357c6c4ac65136404f9d1fb72c9327ad191c5", size = 424903, upload-time = "2026-11-15T17:02:29.829Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/dd/298527f7c42672fee56634f50eaa88522f807abc2c6a4ca9372b811759b8/tree_sitter_vhdl-2.1.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:05b531b9cf04aa61ba2d461e28b1810cdbc8b8aaa66f0b0e00f28f348ced75b2", size = 212431, upload-time = "2026-11-15T17:02:21.561Z" },
+    { url = "https://files.pythonhosted.org/packages/df/13/fe0497830adf2576769de80663ece2b6d7aff758a2ca8e36003878259c81/tree_sitter_vhdl-2.1.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:b77a3eb8139a4b536b2f1ade3e3f1585f4b6dfee10abf0177b1b041cd8ea7f1e", size = 226072, upload-time = "2026-11-15T17:02:22.699Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/f0/ba79dffe2cdeb203c331c1f1347968076f70cadd2d8f6140e0a46374d174/tree_sitter_vhdl-2.1.0-cp310-abi3-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:06fe892203a7c796840b3bed550e6dd40d612d716a63dd117d449a98fe0be271", size = 442907, upload-time = "2026-11-15T17:02:23.796Z" },
+    { url = "https://files.pythonhosted.org/packages/36/19/d44cf6a12f4c4ac27fd9874c06c2825fcc6465f49ffc03a59ed8cc7ec85d/tree_sitter_vhdl-2.1.0-cp310-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:421e4e2e660674bf674976eea88ccd3cbd7c37cd3a2a7b3e020a07fe846c9783", size = 461169, upload-time = "2026-11-15T17:02:24.806Z" },
+    { url = "https://files.pythonhosted.org/packages/98/43/5762dc6f5c1cb7fac0556d381ac1d353f30fb217c7da625f7c744bd12c5b/tree_sitter_vhdl-2.1.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:16c93e823cce5f6c38cb09ab34b2c8c3b2b1aa628c333a84588bb37894006052", size = 459130, upload-time = "2026-11-15T17:02:25.99Z" },
+    { url = "https://files.pythonhosted.org/packages/de/3d/e1adf6b2db0b8d2c8ce0068f70be021a0d4d66660178b133c0d69c77e819/tree_sitter_vhdl-2.1.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:3aeada6b5f99ad5db79567690ad0b1625c6b557ca59f4a098ee5385e8b6184ef", size = 441131, upload-time = "2026-11-15T17:02:26.898Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/11/ea149a663be205dc6f381a119f00fb5c788423f27314fb724535fdf16cde/tree_sitter_vhdl-2.1.0-cp310-abi3-win_amd64.whl", hash = "sha256:059345d853b68f6a01b73f7d6b48e7c2a6c2985b3c9f5ea1f7431f5fc5286f70", size = 208476, upload-time = "2026-11-15T17:02:28.077Z" },
+    { url = "https://files.pythonhosted.org/packages/00/0c/b264e42baff74a920e4506b51ec3b10558ce16e878e717eb6bc43184b831/tree_sitter_vhdl-2.1.0-cp310-abi3-win_arm64.whl", hash = "sha256:82ead7189379a3e43c0b2b4549f464a6bfd655d37161f851e491ec14303b0926", size = 209850, upload-time = "2026-11-15T17:02:29.017Z" },
+]
+
+[[package]]
 name = "tree-sitter-yaml"
 version = "0.7.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1380,24 +1409,36 @@ wheels = [
 
 [[package]]
 name = "ub-needs-exchange"
-version = "1.1.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-needs-exchange&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/93/31062ca49b2d415dd709b5f65e9b1fb1a1d9d66be77ae034b40af09eacf6/ub_needs_exchange-1.2.0.tar.gz", hash = "sha256:d5ab53946b6bbbd88b9a2677f56688963981a8bc5fe2835208d07402bcd1451d", size = 16307, upload-time = "2026-11-19T12:58:11.858Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/04/3abedb71d73fc6dd84b8188ace4eb1a32baa66c42e3c2cac14520bb2f46f/ub_needs_exchange-1.2.0-py3-none-any.whl", hash = "sha256:e92a06455ec4c20ce43d8108856002dbc00c9b603d27f68e1a0b249737fa94a4", size = 16817, upload-time = "2026-11-19T12:58:11.002Z" },
+]
 
 [[package]]
 name = "ub-project"
-version = "1.2.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-project&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tomli", marker = "python_full_version < '3.15'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/1b/f8fcaf2f6566243f62258b21cc9e4321c2db32430a32c5ba6d64b62780a9/ub_project-1.3.0.tar.gz", hash = "sha256:17ac4adfceddb3256dd671ae75f804233641c3f3efa44bc1195f47d93a0c371f", size = 15509, upload-time = "2026-11-19T12:58:29.604Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/1c/d60d7658b44e26aba2cac9dbbca9af4e55d0162e7f7ea1d6f8bdb99899c1/ub_project-1.3.0-py3-none-any.whl", hash = "sha256:fe849be49ef57ae9d85de2a84875fec65032d3600fb8c94bf4b94eb0d6a1388a", size = 16909, upload-time = "2026-11-19T12:58:28.58Z" },
 ]
 
 [[package]]
 name = "ub-test-reports"
 version = "2.0.0"
-source = { git = "https://github.com/xxthunder/sphinx-needs?subdirectory=packages%2Fub-test-reports&rev=sc-073a-preview-3#1d979c0bfe5230c423cb10e4b362eeca668b6ac1" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lxml" },
     { name = "ub-project" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/94/a0/da4cf9e769836d27003b4d5cd32c163cee49a8646de0c1f90e03624ffb8c/ub_test_reports-2.0.0.tar.gz", hash = "sha256:97615c65af1f8c0e254b0798090a58ea5bbc072138b8ff3e9f06d7e24c217a8d", size = 50736, upload-time = "2026-11-04T09:23:06.853Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/0e/8dafac25869a88c23f65e3a96f5acee772f61bb7801e858bb7ba9db3fd93/ub_test_reports-2.0.0-py3-none-any.whl", hash = "sha256:f149cb7802e67e0d3d483ed6a8788e8c582088c7cdb90e58ddcfbb2ad6fc53fc", size = 57191, upload-time = "2026-11-04T09:23:05.677Z" },
 ]
 
 [[package]]
