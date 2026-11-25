@@ -322,6 +322,8 @@ uv run poe docs   # Sphinx with -W: a warning, such as a link to a missing requi
 
 The output is in `_build/html`. `ubproject.toml` is the one configuration; ubCode reads it as well.
 
+CI also runs `ubc check` (ubCode's checks on the same `ubproject.toml`); it runs locally with ubc 0.40.0.
+
 ### Getting Started
 
 **AI-Assisted Development:**

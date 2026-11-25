@@ -5,6 +5,12 @@
 
 [project]
 name = "shortcuts"
+# Sphinx reads its sources from docs/ through conf.py, ubCode from this file's directory (SC-073b).
+root_doc = "docs/index"
+
+# pyproject.toml pins sphinx-needs>=9.3.0, above the 9.1.0 the `join` derive needs (SC-073b).
+[lint]
+ignore = ["config.derive_sphinx_minimum"]
 
 # Configuring a parser puts ubCode in parser mode: the document set is this `include`, and
 # it must equal `include_patterns` in conf.py, or ubCode reads documents Sphinx never builds.
