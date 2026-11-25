@@ -135,6 +135,34 @@ jobs:
         with:
           path: _build/html
 
+  # The ubc check (SC-073b) runs ubCode's checks on the needs model in ubproject.toml: the config,
+  # the toctree and, with the Pester report, the test results and verdicts. It runs on Linux,
+  # because ubc-action supports only Linux, and after the tests, because it reads their JUnit
+  # report from the artifact. It needs no licence key.
+  ubc:
+    name: ubc check
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download the test report
+        uses: actions/download-artifact@v8
+        with:
+          name: pester-report
+          path: test/out
+
+      - name: Install ubc
+        uses: useblocks/ubc-action@0.1
+        with:
+          version: "0.40.0"
+
+      - name: Check
+        run: ubc check
+
   deploy-docs:
     name: Publish to GitHub Pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
