@@ -779,3 +779,240 @@ generateHosts=false
         }
     }
 }
+
+Describe "Get-WslConf" {
+    # Contract: the result equals what the parser of Set-WslConf produces for the same content
+    # (lib/wsl/wsl-conf.ps1): section names lower-cased, keys as written, keys and values trimmed,
+    # comments and blank lines dropped, keys before the first section dropped.
+
+    Context "When distribution does not exist" {
+        It "Should throw when the distribution does not exist" {
+            Mock Assert-WslDistroExists { throw "Distribution '$DistroName' does not exist. Installed distributions: Ubuntu" }
+
+            { Get-WslConf -DistroName "NonExistent" } | Should -Throw "*does not exist*"
+        }
+
+        It "Should call Assert-WslDistroExists with the distribution name" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Get-WslConf -DistroName "Debian" | Out-Null
+
+            Should -Invoke Assert-WslDistroExists -Times 1 -Exactly -ParameterFilter { $DistroName -eq "Debian" }
+        }
+    }
+
+    Context "When wsl.conf is missing or empty" {
+        It "Should return an empty hashtable when cat fails" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { throw "cat: /etc/wsl.conf: No such file or directory" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $null -ne $result | Should -BeTrue -Because "an empty hashtable is not `$null"
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 0
+        }
+
+        It "Should return an empty hashtable when the output is empty" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $null -ne $result | Should -BeTrue
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 0
+        }
+
+        It "Should return an empty hashtable when the output is whitespace only" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "  `n`n   " }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 0
+        }
+
+        It "Should return an empty hashtable when the output is `$null" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { $null }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 0
+        }
+    }
+
+    Context "When wsl.conf has content" {
+        It "Should read the file with cat /etc/wsl.conf" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "" }
+
+            Get-WslConf -DistroName "Debian" | Out-Null
+
+            Should -Invoke Invoke-WslDistroCommand -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Command -eq "cat /etc/wsl.conf"
+            }
+        }
+
+        It "Should return nested hashtables for boot and user sections" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=true`ncommand=mount --make-rshared /`n`n[user]`ndefault=dev`n"
+            }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 2
+            $result['boot'] | Should -BeOfType [hashtable]
+            $result['boot'].Count | Should -Be 2
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result['boot']['command'] | Should -Be 'mount --make-rshared /'
+            $result['user'].Count | Should -Be 1
+            $result['user']['default'] | Should -Be 'dev'
+        }
+
+        It "Should trim whitespace around keys, equals signs and values" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "  [boot]  `n  systemd   =   true   `n`tcommand`t=`tmount --make-rshared /  `n"
+            }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result['boot']['command'] | Should -Be 'mount --make-rshared /'
+            $result['boot'].ContainsKey('systemd   ') | Should -BeFalse
+        }
+
+        It "Should keep everything after the first equals sign in the value" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "[boot]`ncommand=echo a=b" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result['boot']['command'] | Should -Be 'echo a=b'
+        }
+
+        It "Should keep an empty value as an empty string" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "[boot]`ncommand=`nsystemd=true" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result['boot'].ContainsKey('command') | Should -BeTrue
+            $result['boot']['command'] | Should -Be ''
+            $result['boot']['systemd'] | Should -Be 'true'
+        }
+
+        It "Should lower-case section names and keep the case of keys" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "[Network]`ngenerateHosts=false" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.ContainsKey('network') | Should -BeTrue
+            $result['network']['generateHosts'] | Should -Be 'false'
+        }
+
+        It "Should return a section without keys as an empty hashtable" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "[boot]`n[user]`ndefault=dev" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.ContainsKey('boot') | Should -BeTrue
+            $result['boot'] | Should -BeOfType [hashtable]
+            $result['boot'].Count | Should -Be 0
+            $result['user']['default'] | Should -Be 'dev'
+        }
+
+        It "Should merge a repeated section and let the later key win" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`nsystemd=false`n[user]`ndefault=dev`n[boot]`nsystemd=true`ncommand=true"
+            }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.Count | Should -Be 2
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result['boot']['command'] | Should -Be 'true'
+        }
+    }
+
+    Context "Comments and blank lines" {
+        It "Should drop comment lines and blank lines" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "# file comment`n`n# about boot`n[boot]`n# about systemd`nsystemd=true`n`n  # indented comment`ncommand=true`n"
+            }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.Count | Should -Be 1
+            $result['boot'].Count | Should -Be 2
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result['boot']['command'] | Should -Be 'true'
+            $result['boot'].ContainsKey('_comment') | Should -BeFalse
+            $result.ContainsKey('_comment') | Should -BeFalse
+        }
+
+        It "Should not turn a commented-out key into a key" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "[boot]`n#systemd=false`nsystemd=true" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result['boot'].Count | Should -Be 1
+            $result['boot']['systemd'] | Should -Be 'true'
+        }
+    }
+
+    Context "Keys before any section" {
+        It "Should ignore a key that comes before the first section" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "orphan=1`n[boot]`nsystemd=true" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.Count | Should -Be 1
+            $result.ContainsKey('boot') | Should -BeTrue
+            $result['boot'].Count | Should -Be 1
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result.ContainsKey('orphan') | Should -BeFalse
+        }
+
+        It "Should return an empty hashtable when the file has only a key without a section" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "orphan=1" }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result | Should -BeOfType [hashtable]
+            $result.Count | Should -Be 0
+        }
+    }
+
+    Context "Line endings" {
+        It "Should parse CRLF line endings without carriage returns in keys or values" {
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "[boot]`r`nsystemd=true`r`ncommand=mount --make-rshared /`r`n`r`n[user]`r`ndefault=dev`r`n"
+            }
+
+            $result = Get-WslConf -DistroName "Debian"
+
+            $result.Count | Should -Be 2
+            $result.ContainsKey('boot') | Should -BeTrue
+            $result.ContainsKey('user') | Should -BeTrue
+            $result['boot']['systemd'] | Should -Be 'true'
+            $result['boot']['command'] | Should -Be 'mount --make-rshared /'
+            $result['user']['default'] | Should -Be 'dev'
+        }
+    }
+}

@@ -7,6 +7,131 @@
 # Source dependencies
 . "$PSScriptRoot\..\utils\utils.ps1"
 
+function ConvertFrom-WslConfText {
+    <#
+    .SYNOPSIS
+        Parses the text of a wsl.conf file into sections, file-level comments and section comments.
+
+    .DESCRIPTION
+        Private helper of Set-WslConf and Get-WslConf, so the parsing lives in one place.
+        Section names are lower-cased; keys keep their case; keys and values are trimmed.
+        A key before the first section is dropped.
+
+    .PARAMETER Content
+        The text of the file. May be empty.
+
+    .OUTPUTS
+        System.Collections.Hashtable with the keys Sections (hashtable of hashtables),
+        Comments (file-level comment lines) and SectionComments (hashtable of line arrays).
+    #>
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Content
+    )
+
+    $existingSections = @{}
+    $existingComments = @()
+    $sectionComments = @{}
+    if (-not [string]::IsNullOrWhiteSpace($Content)) {
+        $currentSection = $null
+        $currentSectionComments = @()
+        $lines = $Content -split "`n"
+
+        foreach ($line in $lines) {
+            $trimmedLine = $line.Trim()
+
+            # Preserve comments at file level (before first section)
+            if ($null -eq $currentSection -and ($trimmedLine.StartsWith('#') -or [string]::IsNullOrWhiteSpace($trimmedLine))) {
+                $existingComments += $line
+                continue
+            }
+
+            # Collect comments within sections
+            if ($trimmedLine.StartsWith('#')) {
+                $currentSectionComments += $line
+                continue
+            }
+
+            # Skip empty lines within sections
+            if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+                continue
+            }
+
+            # Check for section header
+            if ($trimmedLine -match '^\[([^\]]+)\]') {
+                $currentSection = $matches[1].Trim().ToLower()
+                if (-not $existingSections.ContainsKey($currentSection)) {
+                    $existingSections[$currentSection] = @{}
+                    $sectionComments[$currentSection] = @()
+                }
+                # Add any comments that were before this section
+                if ($currentSectionComments.Count -gt 0) {
+                    $sectionComments[$currentSection] += $currentSectionComments
+                    $currentSectionComments = @()
+                }
+                continue
+            }
+
+            # Parse key=value within a section
+            if ($null -ne $currentSection -and $trimmedLine -match '^([^=]+)=(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                # Add any comments that were before this key
+                if ($currentSectionComments.Count -gt 0) {
+                    $sectionComments[$currentSection] += $currentSectionComments
+                    $currentSectionComments = @()
+                }
+                $existingSections[$currentSection][$key] = $value
+            }
+        }
+    }
+
+    return @{
+        Sections        = $existingSections
+        Comments        = $existingComments
+        SectionComments = $sectionComments
+    }
+}
+
+function Get-WslConf {
+    <#
+    .SYNOPSIS
+        Reads /etc/wsl.conf of a WSL distribution as a hashtable of sections.
+
+    .DESCRIPTION
+        Returns the sections of /etc/wsl.conf as a hashtable of hashtables, for example
+        @{ boot = @{ systemd = 'true' } }. Returns an empty hashtable when the file is
+        missing or empty. Comments are dropped.
+
+    .PARAMETER DistroName
+        The name of the WSL distribution to read.
+
+    .OUTPUTS
+        System.Collections.Hashtable
+
+    .EXAMPLE
+        (Get-WslConf -DistroName "Debian").boot.command
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    Assert-WslDistroExists -DistroName $DistroName
+
+    $content = ""
+    try {
+        $content = Invoke-WslDistroCommand -DistroName $DistroName -Command "cat /etc/wsl.conf" -StopAtError $false -PrintCommand $false -PassThru
+    }
+    catch {
+        Write-Verbose "wsl.conf does not exist"
+    }
+
+    return (ConvertFrom-WslConfText -Content $content).Sections
+}
+
 function Set-WslConf {
     <#
     .SYNOPSIS
@@ -75,62 +200,10 @@ function Set-WslConf {
         }
 
         # Parse existing content into hashtable structure
-        $existingSections = @{}
-        $existingComments = @()
-        $sectionComments = @{}  # Track comments for each section
-        if ($wslConfExists) {
-            $currentSection = $null
-            $currentSectionComments = @()
-            $lines = $existingContent -split "`n"
-
-            foreach ($line in $lines) {
-                $trimmedLine = $line.Trim()
-
-                # Preserve comments at file level (before first section)
-                if ($null -eq $currentSection -and ($trimmedLine.StartsWith('#') -or [string]::IsNullOrWhiteSpace($trimmedLine))) {
-                    $existingComments += $line
-                    continue
-                }
-
-                # Collect comments within sections
-                if ($trimmedLine.StartsWith('#')) {
-                    $currentSectionComments += $line
-                    continue
-                }
-
-                # Skip empty lines within sections
-                if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
-                    continue
-                }
-
-                # Check for section header
-                if ($trimmedLine -match '^\[([^\]]+)\]') {
-                    $currentSection = $matches[1].Trim().ToLower()
-                    if (-not $existingSections.ContainsKey($currentSection)) {
-                        $existingSections[$currentSection] = @{}
-                        $sectionComments[$currentSection] = @()
-                    }
-                    # Add any comments that were before this section
-                    if ($currentSectionComments.Count -gt 0) {
-                        $sectionComments[$currentSection] += $currentSectionComments
-                        $currentSectionComments = @()
-                    }
-                    continue
-                }
-
-                # Parse key=value within a section
-                if ($null -ne $currentSection -and $trimmedLine -match '^([^=]+)=(.*)$') {
-                    $key = $matches[1].Trim()
-                    $value = $matches[2].Trim()
-                    # Add any comments that were before this key
-                    if ($currentSectionComments.Count -gt 0) {
-                        $sectionComments[$currentSection] += $currentSectionComments
-                        $currentSectionComments = @()
-                    }
-                    $existingSections[$currentSection][$key] = $value
-                }
-            }
-        }
+        $parsed = ConvertFrom-WslConfText -Content $existingContent
+        $existingSections = $parsed.Sections
+        $existingComments = $parsed.Comments
+        $sectionComments = $parsed.SectionComments
 
         # Merge new sections with existing
         foreach ($sectionName in $Sections.Keys) {

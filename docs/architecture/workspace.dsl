@@ -31,6 +31,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
                 exec = component "Execution bridge" "Runs commands and Bash scripts inside a distribution through wsl.exe. exec.ps1." "PowerShell"
                 docker = component "Docker setup" "Installs Docker Engine in a distribution. docker.ps1: Install-WslDockerEngine." "PowerShell"
                 podman = component "Podman setup" "Installs rootless Podman in a distribution. podman.ps1: Install-WslPodman." "PowerShell"
+                devStack = component "Dev-stack setup" "Prepares wsl.conf and applies the dev-stack Ansible role to a distribution. dev-stack.ps1: Install-WslDevStack." "PowerShell"
                 devpod = component "DevPod setup" "Installs the DevPod CLI and its provider. devpod.ps1: Install-WslDevPod." "PowerShell"
                 ssh = component "SSH sync" "Syncs SSH keys and config between Windows and a distribution. ssh.ps1: Invoke-WslSyncSshConfig." "PowerShell"
                 proxy = component "Proxy setup" "Detects px or the PAC proxy and configures a distribution for it. proxy.ps1: Install-WslProxy." "PowerShell"
@@ -123,6 +124,8 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         docker -> wslConf "Set-WslConf, Test-*Configured"
         podman -> exec "Invoke-WslDistroScript"
         podman -> wslConf "Set-WslConf, Test-*Configured"
+        devStack -> exec "Invoke-WslDistroScript"
+        devStack -> wslConf "Get-WslConf, Set-WslConf, Test-WslSystemdConfigured"
         devpod -> exec "Invoke-WslDistroScript"
         ca -> exec "Invoke-WslDistroScript"
         ca -> windows "Reads the root certificate store"
@@ -167,7 +170,7 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
         }
 
         component wslManager "WslManager-PrepareDistribution" "User goal: prepare a distribution for dev containers." {
-            include developer menu dispatcher setupHandlers picker userMgmt docker podman devpod ca proxy ssh wslConf exec distroScripts proxyTools windows packageRepos devpodReleases
+            include developer menu dispatcher setupHandlers picker userMgmt docker podman devStack devpod ca proxy ssh wslConf exec distroScripts proxyTools windows packageRepos devpodReleases
         }
 
         component wslManager "WslManager-ConfigureWsl" "User goal: configure WSL as a whole." {

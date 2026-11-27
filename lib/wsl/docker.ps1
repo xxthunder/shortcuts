@@ -13,8 +13,10 @@ function Test-WslDockerInstalled {
 
     .DESCRIPTION
         Tests whether Docker is installed in a WSL distribution by attempting
-        to run 'docker --version'. Returns $true if Docker is installed and
-        the command succeeds, $false if Docker is not installed or the command fails.
+        to run 'docker --version'. Returns $true only if the output reports
+        'Docker version'. Returns $false if Docker is not installed, the command
+        fails, or the output is empty. The 'docker' wrapper of the podman-docker
+        package prints 'podman version ...' and does not count as Docker.
 
     .PARAMETER DistroName
         The name of the WSL distribution to check.
@@ -32,7 +34,8 @@ function Test-WslDockerInstalled {
 
     .NOTES
         This function is used to prevent attempting to install Docker when it's
-        already present in the distribution.
+        already present in the distribution. A Podman setup installs podman-docker,
+        whose 'docker' wrapper must not block a later Docker installation check.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -47,8 +50,8 @@ function Test-WslDockerInstalled {
     try {
         $output = Invoke-WslDistroCommand -DistroName $DistroName -Command "docker --version" -StopAtError $false -PrintCommand $false -PassThru
 
-        # If command succeeded and returned output, Docker is installed
-        if (-not [string]::IsNullOrWhiteSpace($output)) {
+        # Only real Docker prints 'Docker version'; the podman-docker wrapper prints 'podman version'
+        if (($output -join "`n") -match 'Docker version') {
             return $true
         }
         else {

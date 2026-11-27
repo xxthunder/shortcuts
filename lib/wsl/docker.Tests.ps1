@@ -82,6 +82,46 @@ Describe "Test-WslDockerInstalled" {
         }
     }
 
+    Context "When docker is the podman-docker wrapper" {
+        It "Should return false when docker --version prints the podman version" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "podman version 5.4.2" } -ParameterFilter {
+                $Command -like "*docker --version*"
+            }
+
+            $result = Test-WslDockerInstalled -DistroName "Ubuntu"
+
+            $result | Should -Be $false
+        }
+
+        It "Should return false when the Docker emulation notice precedes the podman version" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand {
+                "Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.`npodman version 5.4.2"
+            } -ParameterFilter { $Command -like "*docker --version*" }
+
+            $result = Test-WslDockerInstalled -DistroName "Ubuntu"
+
+            $result | Should -Be $false
+        }
+    }
+
+    Context "When Docker Engine prints its release version" {
+        It "Should return true for Docker version 27.3.1" {
+
+            Mock Assert-WslDistroExists { }
+            Mock Invoke-WslDistroCommand { "Docker version 27.3.1, build ce12230" } -ParameterFilter {
+                $Command -like "*docker --version*"
+            }
+
+            $result = Test-WslDockerInstalled -DistroName "Debian"
+
+            $result | Should -Be $true
+        }
+    }
+
     Context "Parameter validation" {
         It "Should throw when DistroName is empty" {
             { Test-WslDockerInstalled -DistroName "" } | Should -Throw
