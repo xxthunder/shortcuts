@@ -26,6 +26,8 @@
 - [SC-073i — Installer and update requirements](sc-073i.md)
 - [SC-073f — C4 elements as needs](sc-073f.md)
 - [SC-071 — Try Wox as a Keypirinha successor](sc-071.md)
+- [SC-066b — wsl-manager turns automount and interop off for a distribution](sc-066b.md)
+- [SC-066a — wsl-manager applies the dev-stack role to a distribution](sc-066a.md)
 - [SC-065 — Devcontainer for development and tests on Linux](sc-065.md)
 - [SC-061 — setup-proxy must not overwrite or delete apt, Docker and Podman files it does not own](sc-061.md)
 - [SC-056 — Escape distribution names before Spectre renders them](sc-056.md)
