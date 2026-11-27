@@ -29,7 +29,7 @@ The model follows two rules:
 
 Start Structurizr local; it shows the views in the browser. Ctrl+C stops it.
 
-- **Windows**: `tools\structurizr\structurizr-local.bat`, or `.\tools\structurizr\structurizr-local.ps1 -Distro <name> -Port <port>`. It runs the viewer in a WSL distribution (the default one unless `-Distro` is given) with docker or podman, set up with WSL Manager (`setup-docker` or `setup-podman`), and opens http://localhost:8080 once it answers.
+- **Windows**: `tools\structurizr\structurizr-local.bat`, or `.\tools\structurizr\structurizr-local.ps1 -Distro <name> -Port <port>`. It runs the viewer in a WSL distribution (the default one unless `-Distro` is given) with docker or podman, set up with WSL Manager (`setup-dev-stack`), and opens http://localhost:8080 once it answers.
 - **Linux or a WSL shell**: `tools/structurizr/structurizr-local.sh [--port=<port>]`, then open http://localhost:8080.
 
 ### Changing the model

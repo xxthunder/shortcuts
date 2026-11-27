@@ -19,8 +19,8 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Step 7: Windows SSH Agent Setup](#step-7-windows-ssh-agent-setup)
   - [Step 8: Git Configuration](#step-8-git-configuration)
   - [Step 9: Clone Distribution (Optional)](#step-9-clone-distribution-optional)
-  - [Step 10: Install Container Runtime](#step-10-install-container-runtime)
-  - [Step 11: Install Dev Container Client](#step-11-install-dev-container-client)
+  - [Step 10: Set Up the Dev Stack](#step-10-set-up-the-dev-stack)
+  - [Step 11: Choose a Dev Container Client](#step-11-choose-a-dev-container-client)
   - [Step 12: Sync SSH Config](#step-12-sync-ssh-config)
   - [Validation](#validation)
   - [Performance Tips](#performance-tips)
@@ -33,9 +33,7 @@ WSL Manager is a PowerShell tool for managing Windows Subsystem for Linux (WSL) 
   - [Update distribution](#update-distribution)
   - [Remove distribution](#remove-distribution)
   - [Setup user account](#setup-user-account)
-  - [Setup Docker](#setup-docker)
-  - [Setup Podman](#setup-podman)
-  - [Setup DevPod](#setup-devpod)
+  - [Setup dev stack (Ansible)](#setup-dev-stack-ansible)
   - [Sync SSH config](#sync-ssh-config)
   - [Setup CA certificates (corporate)](#setup-ca-certificates-corporate)
   - [Setup proxy (corporate)](#setup-proxy-corporate)
@@ -74,11 +72,11 @@ Use arrow keys to navigate, Enter to select, and type to search.
 
 This section walks you from a fresh Windows machine to running dev containers in WSL, with proper SSH agent forwarding and git configuration. It covers both Docker and Podman as container runtimes, and both DevPods and the VS Code Dev Containers extension as dev container clients.
 
-> **Recommended setup:** **Podman** + **DevPods**. Podman is rootless and daemonless (more secure, lighter footprint). DevPods are IDE-independent; you can use them with VS Code, JetBrains IDEs, or any editor, without being locked into a specific IDE extension.
+> **Recommended setup:** **Podman** + **DevPods**. Podman is rootless and daemonless (more secure, lighter footprint), and it is the default of `setup-dev-stack`. DevPods are IDE-independent; you can use them with VS Code, JetBrains IDEs, or any editor, without being locked into a specific IDE extension.
 
 ### Docker vs Podman
 
-Choose one container runtime per distribution. They cannot coexist in the same WSL distribution due to `DOCKER_HOST` conflicts.
+Choose one container runtime per distribution. They cannot coexist in the same WSL distribution due to `DOCKER_HOST` conflicts; `setup-dev-stack` refuses the second one before it runs Ansible. Docker is available on Debian only; Podman works on Debian and Ubuntu.
 
 | Feature | Docker | Podman (recommended) |
 |---------|--------|--------|
@@ -138,7 +136,7 @@ Ubuntu 24.04 LTS is recommended; long-term support, excellent WSL compatibility,
 
 ### Step 3: Setup User Account
 
-Create a non-root user with sudo privileges (required for both Docker and Podman).
+Create a non-root user with passwordless sudo (required for `setup-dev-stack`, which runs Ansible with `sudo` and no password prompt).
 
 > **Tip:** For a local development distro, a simple username like `wsluser` or `vscode` with a matching password (e.g., `wsluser`/`wsluser`) is sufficient.
 
@@ -158,7 +156,7 @@ If your corporate network inspects TLS, install the corporate root certificate a
 
 ### Step 5: Configure Proxy (Corporate Networks)
 
-If you're behind a corporate proxy, configure proxy settings before updating or installing packages so that APT, Docker, and Podman all route through the proxy. Skip this step if you have direct internet access.
+If you're behind a corporate proxy, configure proxy settings before updating or installing packages so that APT, Docker, Podman and the dev-stack setup all route through the proxy. Skip this step if you have direct internet access.
 
 - **TUI**: select **Setup proxy (corporate)** → select `Ubuntu-24.04`, follow proxy detection prompts
 - **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-proxy Ubuntu-24.04`
@@ -237,42 +235,39 @@ Keep a clean base Ubuntu-24.04 and create a dedicated dev container distribution
 
 → [Clone distribution](#clone-distribution)
 
-### Step 10: Install Container Runtime
+### Step 10: Set Up the Dev Stack
 
-Choose **one** of the two options below. Docker and Podman cannot coexist in the same distribution.
+One command installs the container runtime and DevPod. Run it after the user, CA and proxy steps (Steps 3 to 5): the dev-stack role is cloned from GitHub, and apt needs the corporate CA and the proxy before the first package.
+
+Choose **one** container runtime. Docker and Podman cannot coexist in the same distribution.
 
 #### Option A: Rootless Podman (Recommended)
 
 > **Note:** Pure cgroups v2 is required for rootless Podman. This is already covered by the `kernelCommandLine` setting in Step 1.
 
-- **TUI**: select **Setup Podman** → select `ubuntu-devcon`
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman ubuntu-devcon`
+- **TUI**: select **Setup dev stack (Ansible)** → select `ubuntu-devcon` → choose **podman**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-dev-stack ubuntu-devcon`
 
-→ [Setup Podman](#setup-podman)
+#### Option B: Docker (Debian only)
 
-#### Option B: Docker
+- **TUI**: select **Setup dev stack (Ansible)** → select a Debian distribution → choose **docker**
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-dev-stack <debian-distro> -Runtime docker`
 
-- **TUI**: select **Setup Docker** → select `ubuntu-devcon`
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-docker ubuntu-devcon`
+Add `-ClaudeCode` to install Claude Code in the same run.
 
-→ [Setup Docker](#setup-docker)
+→ [Setup dev stack (Ansible)](#setup-dev-stack-ansible)
 
 > **Note:** After installation, restart your terminal for docker group membership to take effect.
 
-### Step 11: Install Dev Container Client
+### Step 11: Choose a Dev Container Client
 
-Choose **one** of the two options below.
+Choose **one** of the two options below. The dev stack of Step 10 has already installed DevPod; Option B needs only the VS Code extensions.
 
 #### Option A: DevPods (Recommended)
 
-DevPods are IDE-independent; they work with VS Code, JetBrains IDEs, or any editor. No IDE extension required.
+DevPods are IDE-independent; they work with VS Code, JetBrains IDEs, or any editor. No IDE extension required. `setup-dev-stack` installs the DevPod CLI and selects its `docker` provider.
 
-- **TUI**: select **Setup DevPod** → select `ubuntu-devcon`
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod ubuntu-devcon`
-
-→ [Setup DevPod](#setup-devpod)
-
-After installation, open any project as a dev container:
+Open any project as a dev container:
 
 ```bash
 wsl --distribution ubuntu-devcon
@@ -485,14 +480,13 @@ Check `.devcontainer/devcontainer.json` includes:
 
 **Solutions:**
 
-1. **Verify interop is enabled:**
+1. **Verify interop is not switched off:**
+
+`setup-dev-stack` writes only `[boot] systemd=true` (and for Podman `command=mount --make-rshared /`) to `/etc/wsl.conf`; it writes no `[interop]` section. WSL enables interop by default, so a missing section is fine. Check that nothing set it to `false`:
 
 ```bash
-cat /etc/wsl.conf | grep -A 2 "\[interop\]"
-# Should show:
-# [interop]
-# enabled=true
-# appendWindowsPath=true
+grep -A 2 "\[interop\]" /etc/wsl.conf
+# Either no output, or: enabled=true
 ```
 
 2. **Verify binfmt.d configuration:**
@@ -527,13 +521,13 @@ wsl --distribution Ubuntu-24.04
 
 **Cause:** Legacy rc.local configuration that VS Code can overwrite when initializing its WSL server.
 
-**Solution:** Re-run the idempotent Docker setup to migrate to kernel-level binfmt.d configuration:
+**Solution:** Re-run the idempotent dev-stack setup. It runs `setup-binfmt-interop.sh`, which writes the kernel-level binfmt.d configuration again:
 
 ```powershell
-.\tools\wsl-manager\wsl-manager.ps1 setup-docker Ubuntu-24.04
+.\tools\wsl-manager\wsl-manager.ps1 setup-dev-stack Ubuntu-24.04
 ```
 
-This detects existing Docker (no reinstall), migrates from old rc.local to `/etc/binfmt.d/WSLInterop.conf` if needed, and verifies all components.
+Pass the same `-Runtime` as before. The script creates `/etc/binfmt.d/WSLInterop.conf` if it is missing or wrong and applies it with `systemd-binfmt`; a re-run converges without changes.
 
 **Verification:**
 
@@ -599,6 +593,14 @@ loginctl show-user $(whoami) -p Linger
 sudo loginctl enable-linger $(whoami)
 ```
 
+#### Dev-Stack Role Download Fails
+
+**Symptoms:** `setup-dev-stack` stops at "Failed to install the dev_stack role" (exit code 3), or apt fails in the step before it (exit code 2)
+
+**Cause:** The role is cloned from `https://github.com/xxthunder/ansible-role-dev-stack.git`, and the playbook downloads further files, so the distribution needs GitHub and the package sources through the corporate proxy.
+
+**Solution:** Run [Setup CA certificates (corporate)](#setup-ca-certificates-corporate) and [Setup proxy (corporate)](#setup-proxy-corporate) first, then run `setup-dev-stack` again. A failure of the playbook itself (exit code 5) shows the failed Ansible task in the error output above the message; the progress of the other tasks is not shown.
+
 #### Systemd Race Condition After Restart
 
 **Symptoms:** `systemctl --user` fails with "Failed to connect to bus" right after `wsl --distribution`
@@ -614,8 +616,8 @@ Or check if `XDG_RUNTIME_DIR` is set:
 ```bash
 echo $XDG_RUNTIME_DIR
 # Expected: /run/user/<uid>
-# If empty, source .bashrc:
-source ~/.bashrc
+# If empty, start a new login shell: the dev-stack role exports XDG_RUNTIME_DIR,
+# DBUS_SESSION_BUS_ADDRESS and DOCKER_HOST in ~/.profile and ~/.zprofile
 ```
 
 #### cgroups Warning
@@ -639,15 +641,15 @@ grep "mount --make-rshared" /etc/wsl.conf
 # Expected: command=mount --make-rshared /
 ```
 
-If missing, re-run `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <DistroName>` to repair.
+If missing, re-run `.\tools\wsl-manager\wsl-manager.ps1 setup-dev-stack <DistroName>` to repair.
 
 #### Docker Already Installed (Mutual Exclusion)
 
-**Symptoms:** `setup-podman` fails with "Docker is already installed"
+**Symptoms:** `setup-dev-stack` fails with "Docker is already installed" (or "Podman is already installed" with `-Runtime docker`) before Ansible starts
 
 **Solution:** Podman and Docker cannot coexist in the same distribution due to `DOCKER_HOST` conflicts. Either:
-- Use a different distribution for Podman (clone your base distro first)
-- Remove Docker first, then install Podman
+- Use a different distribution for the second runtime (clone your base distro first)
+- Remove the installed runtime first, then run `setup-dev-stack` again
 
 ---
 
@@ -746,55 +748,48 @@ This command:
 - Adds the user to the sudo group with NOPASSWD
 - Configures `/etc/wsl.conf` to set as default user
 
-### Setup Docker
+### Setup dev stack (Ansible)
 
-Install Docker Engine with automatic prerequisite configuration.
+Apply the [`dev-stack` Ansible role](https://github.com/xxthunder/ansible-role-dev-stack) to a distribution: the container runtime, DevPod and the developer tools. It replaces the former `setup-docker`, `setup-podman` and `setup-devpod` commands.
 
-- **TUI**: select **Setup Docker**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-docker <distro>`
+- **TUI**: select **Setup dev stack (Ansible)** → select the distribution → choose the runtime (**podman** or **docker**) → answer whether to install Claude Code
+- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-dev-stack <distro> [-Runtime podman|docker] [-ClaudeCode]`
 
-This command:
-- Validates the distribution is Debian or Ubuntu based and running WSL2
-- Configures `/etc/wsl.conf` with `[boot] systemd=true`, `[interop] enabled=true`, `[automount] options=metadata`
-- Creates `/etc/binfmt.d/WSLInterop.conf` for kernel-level Windows executable interop
-- Installs Docker CE, Docker CLI, containerd, Docker Compose, and Docker Buildx
-- Adds the default user to the `docker` group for rootless access
-- Restarts the distribution to apply changes
-- Is idempotent - safe to run multiple times to verify or repair
+Prerequisites: run [Setup user account](#setup-user-account) first (the run needs the passwordless sudo it sets up). Behind a corporate proxy run [Setup CA certificates (corporate)](#setup-ca-certificates-corporate) and [Setup proxy (corporate)](#setup-proxy-corporate) first as well, because the role is cloned from GitHub. The order for a dev container distribution is `setup-user`, `setup-ca`, `setup-proxy`, `setup-dev-stack`.
 
-### Setup Podman
-
-Install rootless Podman as a Docker alternative.
-
-- **TUI**: select **Setup Podman**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-podman <distro>`
+Parameters:
+- `-Runtime`: `podman` (default, rootless) or `docker`. Docker is available on Debian only; Ubuntu with `-Runtime docker` is refused
+- `-ClaudeCode`: also installs Claude Code
 
 This command:
-- Validates the distribution is Debian or Ubuntu based and running WSL2
-- Configures `/etc/wsl.conf` with `[boot] systemd=true`, `command=mount --make-rshared /`, `[interop] enabled=true`
-- Installs `podman`, `slirp4netns` (rootless networking), and `uidmap` (user namespace mapping)
-- Enables the rootless Podman socket via `systemctl --user enable --now podman.socket`
-- Enables user session persistence via `loginctl enable-linger`
-- Sets environment variables in `~/.bashrc` (`XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`, `DOCKER_HOST`)
-- Restarts the distribution to apply changes
-- Is idempotent - safe to run multiple times to verify or repair
+- Validates the distribution is Debian or Ubuntu based and running WSL2, and that it has a default user (`setup-user` creates it)
+- Refuses to run when the other container runtime is installed (Docker and Podman cannot coexist); this check runs before Ansible
+- Configures `/etc/wsl.conf` with `[boot] systemd=true`, and for Podman `command=mount --make-rshared /`; restarts the distribution when it changed the file
+- Writes `/etc/binfmt.d/WSLInterop.conf` for kernel-level Windows executable interop (`setup-binfmt-interop.sh`)
+- Installs `ansible-core` and `git` with apt, clones the role at the pinned version into the user's Ansible roles directory, and runs the playbook `lib/wsl/ansible/dev-stack.yml` against the distribution itself
+- Passes the proxy variables of the calling shell on to the playbook, so downloads follow the proxy set up by `setup-proxy`
+- Terminates the distribution at the end so the changes apply on the next start
+- Is idempotent - safe to run multiple times, and a rerun after a version bump takes the new role version
 
-### Setup DevPod
+The role installs in a WSL distribution:
+- **Distribution upgrade**: `apt dist-upgrade` brings the whole distribution current, not only the dev stack packages
+- **Base packages**: `ca-certificates`, `tmux`, `git-lfs` and `curl`
+- **Container runtime**: rootless Podman by default (with `podman-docker`, `slirp4netns` and `uidmap`; the user's `podman.socket` with linger; `DOCKER_HOST` in `~/.profile` and `~/.zprofile`), or Docker Engine on Debian with the user in the `docker` group
+- **DevPod**: the CLI, and wsl-manager then adds and selects its `docker` provider
+- **uv** and **gh**
+- **zsh** with oh-my-zsh as the login shell
+- **Claude Code**, only with `-ClaudeCode`
 
-Install the DevPod CLI and configure it to use the detected container engine (Docker or Podman).
+The role is pinned to the tag in `lib/wsl/ansible/requirements.yml` (`v1.8.0` at the time of writing). A new role release is a version bump there; the next run of the command takes it in.
 
-- **TUI**: select **Setup DevPod**
-- **CLI**: `.\tools\wsl-manager\wsl-manager.ps1 setup-devpod <distro>`
+#### Distributions set up by the former commands
 
-Prerequisites: Docker (`setup-docker`) or Podman (`setup-podman`) must be installed first.
+A distribution set up with `setup-docker`, `setup-podman` or `setup-devpod` runs `setup-dev-stack` as follows:
+- **Docker on Debian**: the command removes the former Docker apt source `/etc/apt/sources.list.d/docker.list` and its key `/etc/apt/keyrings/docker.gpg` before it installs anything, and logs that. The role writes its own source for the same repository, and apt refuses both together. Only a source that carries `signed-by=/etc/apt/keyrings/docker.gpg` is removed
+- **Docker on Ubuntu**: `-Runtime docker` is refused on Ubuntu, and `-Runtime podman` is refused because Docker is installed (coexistence). Such a distribution cannot move to the role. Install a new distribution and run the setup there
+- **Podman**: `-Runtime podman` runs as usual. `~/.profile` then holds a second `DOCKER_HOST` block next to the former one; it is harmless. `-Runtime docker` is refused because Podman is installed
 
-This command:
-- Downloads and installs the DevPod CLI binary to `/usr/local/bin/devpod`
-- Auto-detects Docker (preferred) or Podman as the container engine
-- Configures the detected engine as the DevPod provider via `devpod provider use`
-- Creates user configuration in `~/.config/devpod/`
-- Restarts the distribution to apply changes
-- Is idempotent - safe to re-run
+wsl-manager keeps these parts of the setup for itself: the corporate CA and the proxy (`setup-ca`, `setup-proxy`), `/etc/wsl.conf` (systemd, and for Podman the boot command), and the `WSLInterop` binfmt.d rule.
 
 ### Sync SSH config
 
@@ -874,7 +869,7 @@ This command:
 - Does not shut WSL down: running distributions use the new version after [Shutdown WSL](#shutdown-wsl), which stops them
 - Ends with an error when the update fails, naming the likely causes: missing rights, WSL managed by IT (Microsoft Store or Intune), or no network
 
-A new WSL release can break a setup that worked before, as WSL 3.0 did for `setup-docker` (SC-063). Older releases are available from the [WSL releases on GitHub](https://github.com/microsoft/WSL/releases).
+A new WSL release can break a setup that worked before, as WSL 3.0 did for the former `setup-docker` (SC-063). Older releases are available from the [WSL releases on GitHub](https://github.com/microsoft/WSL/releases).
 
 
 ---
@@ -947,22 +942,24 @@ lib/wsl/
 ├── wsl-conf.ps1               # Per-distro /etc/wsl.conf read/merge/write
 ├── user.ps1                   # User account creation & configuration
 ├── exec.ps1                   # Script execution in WSL
-├── docker.ps1                 # Docker installation & verification
-├── podman.ps1                 # Podman installation & verification
-├── devpod.ps1                 # DevPod CLI installation & checks
+├── docker.ps1                 # Docker installed check
+├── podman.ps1                 # Podman installed check
+├── dev-stack.ps1              # Dev-stack setup: wsl.conf, binfmt, hand-off to the Ansible role
 ├── ssh.ps1                    # SSH key/config sync between Windows and WSL
 ├── proxy.ps1                  # Proxy configuration
 ├── ca.ps1                     # Corporate root CA install/remove from the Windows certificate store
+├── ansible/
+│   ├── requirements.yml           # Pins the dev-stack role (git tag)
+│   └── dev-stack.yml              # Playbook that applies the role to the distribution itself
 └── scripts/
-    ├── install-docker.sh          # Docker Engine installation script
-    ├── install-podman.sh          # Rootless Podman installation script
-    ├── install-devpod.sh          # DevPod CLI installation script
+    ├── setup-dev-stack.sh         # Installs ansible-core and git, fetches the role, runs the playbook
+    ├── setup-binfmt-interop.sh    # Registers the WSLInterop binfmt.d rule
     ├── setup-ca.sh                # Corporate root CA files and trust store rebuild (update-ca-certificates)
     ├── setup-proxy.sh             # Proxy configuration (env, apt, Docker, Podman)
     └── sync-ssh-config.sh         # SSH config sync between Windows host and WSL
 ```
 
-Each module has a co-located `*.Tests.ps1` unit test (omitted above). Integration tests (`wsl.Integration.Tests.ps1`, `manager.docker.Integration.Tests.ps1`, `manager.podman.Integration.Tests.ps1`) live alongside the modules in `lib/wsl/`.
+Each module has a co-located `*.Tests.ps1` unit test (omitted above). Integration tests (`wsl.Integration.Tests.ps1`, `manager.Integration.Tests.ps1`, `manager.devstack.Integration.Tests.ps1`) live alongside the modules in `lib/wsl/`.
 
 ### Library Usage
 
@@ -978,10 +975,6 @@ Docker configuration:
 [boot]
 systemd=true
 
-[interop]
-enabled=true
-appendWindowsPath=true
-
 [user]
 default=<your-username>
 ```
@@ -992,21 +985,17 @@ Podman configuration:
 command=mount --make-rshared /
 systemd=true
 
-[interop]
-appendWindowsPath=true
-enabled=true
-
 [user]
 default=<your-username>
 ```
 
-**`/etc/binfmt.d/WSLInterop.conf` (Docker - managed by automation):**
+**`/etc/binfmt.d/WSLInterop.conf` (managed by automation):**
 
 ```
 :WSLInterop:M::MZ::/init:PF
 ```
 
-This kernel-level configuration is applied by `systemd-binfmt.service` at boot and is VS Code compatible (prevents interference). `setup-docker` applies the file directly with `systemd-binfmt`, without restarting the unit. On WSL 3.0 the unit shows `failed` although it applies the file (see Troubleshooting).
+This kernel-level configuration is applied by `systemd-binfmt.service` at boot and is VS Code compatible (prevents interference). `setup-binfmt-interop.sh` (run by `setup-dev-stack`) applies the file directly with `systemd-binfmt`, without restarting the unit. On WSL 3.0 the unit shows `failed` although it applies the file (see Troubleshooting).
 
 **Podman Socket and Environment Variables:**
 
@@ -1015,7 +1004,7 @@ Socket path:
 /run/user/<UID>/podman/podman.sock
 ```
 
-Environment variables (set in `~/.bashrc`):
+Environment variables (set by the dev-stack role in `~/.profile` and `~/.zprofile`):
 ```bash
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
