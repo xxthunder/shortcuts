@@ -46,7 +46,7 @@ elif command -v podman >/dev/null 2>&1; then
     # write the mounted directory; keep-id maps the calling user into the container unchanged
     RUN_AS=(--userns=keep-id --user "$(id -u):$(id -g)")
 else
-    echo "Error: neither docker nor podman found. Install one with wsl-manager (setup-docker or setup-podman)." >&2
+    echo "Error: neither docker nor podman found. Install one with wsl-manager (setup-dev-stack)." >&2
     exit 1
 fi
 

@@ -679,101 +679,67 @@ function Invoke-SetupCa {
     Write-Success "Installed $($certificates.Count) root certificate(s) into '$DistroName'."
 }
 
-function Invoke-SetupDocker {
+function Invoke-SetupDevStack {
     <#
     .SYNOPSIS
-        Handles the Docker setup workflow for a WSL distribution.
+        Handles the dev-stack setup workflow for a WSL distribution.
+    .DESCRIPTION
+        Applies the dev-stack Ansible role: the container runtime, DevPod and, on request,
+        Claude Code. With no distribution name the TUI path asks for the distribution, the
+        runtime and Claude Code.
     .PARAMETER DistroName
-        The name of the distribution to install Docker in. If not provided, prompts the user.
+        The name of the distribution to set up. If not provided, prompts the user.
+    .PARAMETER RuntimeName
+        The container runtime (alias Runtime): 'podman' (default) or 'docker'. Asked for when DistroName is empty.
+    .PARAMETER WithClaudeCode
+        Also installs Claude Code (alias ClaudeCode). Asked for when DistroName is empty.
+    .PARAMETER Username
+        The distribution user to set up. Defaults to the default user in /etc/wsl.conf.
     .PARAMETER Distros
         Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
     #>
     [CmdletBinding()]
     param(
         [string]$DistroName = "",
+        [ValidateSet('podman', 'docker')]
+        [Alias('Runtime')]
+        [string]$RuntimeName = 'podman',
+        [Alias('ClaudeCode')]
+        [switch]$WithClaudeCode,
+        [string]$Username = "",
         [PSCustomObject[]]$Distros = $null
     )
 
     if ([string]::IsNullOrWhiteSpace($DistroName)) {
         $DistroName = Select-WslDistro -Distros $Distros
         if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
+
+        $choice = Read-SpectreSelection -Message "Select the container runtime" -Choices @('podman', 'docker', $WslPickerBackChoice) -PageSize 3
+        if ([string]::IsNullOrWhiteSpace($choice) -or $choice -eq $WslPickerBackChoice) {
+            $script:WslSkipContinuePause = $true
+            return
+        }
+        $RuntimeName = $choice
+
+        $WithClaudeCode = [bool](Get-UserConfirmation -message "Install Claude Code too?" -defaultValueForUser $false)
     }
 
     Write-Host ""
-    Write-Host "Setting up Docker in '$DistroName' ..." -ForegroundColor Cyan
+    Write-Host "Setting up the dev stack ($RuntimeName) in '$DistroName' ..." -ForegroundColor Cyan
     Write-Host ""
 
-    # Install Docker Engine (skip confirmation since we're handling it interactively)
-    $result = Install-WslDockerEngine -DistroName $DistroName -Confirm:$false
+    $installParams = @{
+        DistroName = $DistroName
+        Runtime    = $RuntimeName
+        ClaudeCode = $WithClaudeCode
+        Confirm    = $false
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Username)) { $installParams.Username = $Username }
+    $result = Install-WslDevStack @installParams
 
     if ($result) {
         Write-Host ""
-        Write-Success "Successfully installed Docker in '$DistroName'."
-    }
-}
-
-function Invoke-SetupPodman {
-    <#
-    .SYNOPSIS
-        Handles the Podman setup workflow for a WSL distribution.
-    .PARAMETER DistroName
-        The name of the distribution to install Podman in. If not provided, prompts the user.
-    .PARAMETER Distros
-        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
-    #>
-    [CmdletBinding()]
-    param(
-        [string]$DistroName = "",
-        [PSCustomObject[]]$Distros = $null
-    )
-
-    if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $DistroName = Select-WslDistro -Distros $Distros
-        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
-    }
-
-    Write-Host ""
-    Write-Host "Setting up Podman in '$DistroName' ..." -ForegroundColor Cyan
-    Write-Host ""
-
-    # Install Podman (skip confirmation since we're handling it interactively)
-    $result = Install-WslPodman -DistroName $DistroName -Confirm:$false
-
-    if ($result) {
-        Write-Host ""
-        Write-Success "Successfully installed Podman in '$DistroName'."
-    }
-}
-
-function Invoke-SetupDevPod {
-    <#
-    .SYNOPSIS
-        Handles the DevPod setup workflow for a WSL distribution.
-    .PARAMETER DistroName
-        The name of the distribution to install DevPod in. If not provided, prompts the user.
-    .PARAMETER Distros
-        Optional pre-fetched list of distributions. If provided, skips fetching and reprinting the table.
-    #>
-    [CmdletBinding()]
-    param(
-        [string]$DistroName = "",
-        [PSCustomObject[]]$Distros = $null
-    )
-
-    if ([string]::IsNullOrWhiteSpace($DistroName)) {
-        $DistroName = Select-WslDistro -Distros $Distros
-        if ([string]::IsNullOrWhiteSpace($DistroName)) { return }
-    }
-
-    Write-Host ""
-    Write-Host "Setting up DevPod in '$DistroName' ..." -ForegroundColor Cyan
-    Write-Host ""
-
-    $result = Install-WslDevPod -DistroName $DistroName -Confirm:$false
-
-    if ($result) {
-        Write-Host ""
-        Write-Success "Successfully installed DevPod in '$DistroName'."
+        Write-Success "Successfully set up the dev stack in '$DistroName'."
     }
 }
 
@@ -1014,6 +980,10 @@ function Invoke-WslCommand {
         Certificate subject pattern for setup-ca.
     .PARAMETER Remove
         Remove instead of install, for setup-ca.
+    .PARAMETER Runtime
+        Container runtime for setup-dev-stack: podman (default) or docker.
+    .PARAMETER ClaudeCode
+        Also install Claude Code, for setup-dev-stack.
     .PARAMETER Distros
         Optional pre-fetched list of distributions (used by the TUI to avoid re-fetching).
     #>
@@ -1022,7 +992,7 @@ function Invoke-WslCommand {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-dev-stack", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "refresh")]
         [string]$Command,
 
         [string]$Name = "",
@@ -1032,6 +1002,9 @@ function Invoke-WslCommand {
         [string[]]$Url = @(),
         [string]$Subject = "",
         [switch]$Remove,
+        [ValidateSet("podman", "docker")]
+        [string]$Runtime = "podman",
+        [switch]$ClaudeCode,
         [PSCustomObject[]]$Distros = $null
     )
 
@@ -1063,14 +1036,8 @@ function Invoke-WslCommand {
         "setup-ca" {
             Invoke-SetupCa -DistroName $Name -Url $Url -Subject $Subject -Remove:$Remove -Distros $Distros
         }
-        "setup-docker" {
-            Invoke-SetupDocker -DistroName $Name -Distros $Distros
-        }
-        "setup-podman" {
-            Invoke-SetupPodman -DistroName $Name -Distros $Distros
-        }
-        "setup-devpod" {
-            Invoke-SetupDevPod -DistroName $Name -Distros $Distros
+        "setup-dev-stack" {
+            Invoke-SetupDevStack -DistroName $Name -Runtime $Runtime -ClaudeCode:$ClaudeCode -Username $Username -Distros $Distros
         }
         "sync-ssh-config" {
             Invoke-SyncSshConfig -DistroName $Name -Distros $Distros

@@ -72,18 +72,40 @@ Describe "Show-WslMenu" {
             $Choices -contains "Stop distribution" -and
             $Choices -contains "Sync SSH config" -and
             -not ($Choices -contains "Terminate distribution") -and
-            $Choices -contains "Setup Podman" -and
+            $Choices -contains "Setup dev stack (Ansible)" -and
             $Choices -contains "Quit" -and
             $EnableSearch -eq $true
         }
     }
 
     It "Should return command string for selected menu option" {
-        Mock Read-SpectreSelection { "Setup Podman" }
+        Mock Read-SpectreSelection { "Setup dev stack (Ansible)" }
 
         $result = Show-WslMenu
 
-        $result | Should -Be "setup-podman"
+        $result | Should -Be "setup-dev-stack"
+    }
+
+    It "Should no longer offer '<Label>'" -ForEach @(
+        @{ Label = "Setup Docker" }
+        @{ Label = "Setup Podman" }
+        @{ Label = "Setup DevPod" }
+    ) {
+        Mock Read-SpectreSelection { "Quit" }
+
+        Show-WslMenu
+
+        Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter { @($Choices) -notcontains $Label }
+    }
+
+    It "Should offer exactly one 'Setup dev stack (Ansible)' entry" {
+        Mock Read-SpectreSelection { "Quit" }
+
+        Show-WslMenu
+
+        Should -Invoke Read-SpectreSelection -Times 1 -ParameterFilter {
+            @(@($Choices) | Where-Object { $_ -eq "Setup dev stack (Ansible)" }).Count -eq 1
+        }
     }
 
     It "Should group the distribution entries first, in the documented order, mapping 'Start distribution' to 'shell'" {
@@ -280,7 +302,7 @@ Describe "Start-InteractiveMode" {
             Should -Invoke Read-Host -ParameterFilter { $Prompt -like "*Press Enter*" } -Times 1
         }
 
-        It "Should dispatch to Invoke-WslCommand with 'setup-podman'" {
+        It "Should dispatch to Invoke-WslCommand with 'setup-dev-stack'" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Get-WslDistroList {
                 @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
@@ -288,32 +310,14 @@ Describe "Start-InteractiveMode" {
             $script:callCount = 0
             Mock Show-WslMenu {
                 $script:callCount++
-                if ($script:callCount -eq 1) { "setup-podman" }
+                if ($script:callCount -eq 1) { "setup-dev-stack" }
                 else { "quit" }
             }
             Mock Invoke-WslCommand {}
 
             Start-InteractiveMode
 
-            Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-podman" } -Times 1
-        }
-
-        It "Should dispatch to Invoke-WslCommand with 'setup-devpod'" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Get-WslDistroList {
-                @([PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true })
-            } -ParameterFilter { $Detailed }
-            $script:callCount = 0
-            Mock Show-WslMenu {
-                $script:callCount++
-                if ($script:callCount -eq 1) { "setup-devpod" }
-                else { "quit" }
-            }
-            Mock Invoke-WslCommand {}
-
-            Start-InteractiveMode
-
-            Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-devpod" } -Times 1
+            Should -Invoke Invoke-WslCommand -ParameterFilter { $Command -eq "setup-dev-stack" } -Times 1
         }
 
         It "Should dispatch to Invoke-WslCommand with 'sync-ssh-config'" {
@@ -863,7 +867,7 @@ Describe "Invoke-WslManager" {
         }
     }
 
-    Context "When called with 'setup-docker' argument" {
+    Context "When called with 'setup-dev-stack' argument" {
         BeforeEach {
             Mock Get-WslDistroList {
                 @(
@@ -873,212 +877,84 @@ Describe "Invoke-WslManager" {
             } -ParameterFilter { $Detailed }
         }
 
-        It "Should prompt for distribution when Name is not provided" {
+        It "Should prompt for distribution, runtime and Claude Code when Name is not provided" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
-            Mock Read-SpectreSelection { "Debian" }
-            Mock Install-WslDockerEngine { $true }
+            Mock Read-SpectreSelection { "docker" } -ParameterFilter { $Message -like "*runtime*" }
+            Mock Read-SpectreSelection { "Debian" } -ParameterFilter { $Message -like "*distribution*" }
+            Mock Get-UserConfirmation { $true } -ParameterFilter { $message -like "*Claude Code*" }
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslManager -Command "setup-docker"
+            Invoke-WslManager -Command "setup-dev-stack"
 
-            Should -Invoke Read-SpectreSelection -Times 1
-            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Runtime -eq "docker" -and $ClaudeCode
+            }
         }
 
-        It "Should call Install-WslDockerEngine when Name is provided" {
-            Mock Install-WslDockerEngine { $true }
+        It "Should call Install-WslDevStack with podman and no Claude Code when Name is provided" {
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslManager -Command "setup-docker" -Name "Debian"
+            Invoke-WslManager -Command "setup-dev-stack" -Name "Debian"
 
-            Should -Invoke Install-WslDockerEngine -ParameterFilter {
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
                 $DistroName -eq "Debian" -and
+                $Runtime -eq "podman" -and
+                -not $ClaudeCode -and
                 $Confirm -eq $false
             }
         }
 
-        It "Should display success message after Docker installation" {
+        It "Should pass -Runtime docker and -ClaudeCode through to Install-WslDevStack" {
+            Mock Install-WslDevStack { $true }
+
+            Invoke-WslManager -Command "setup-dev-stack" -Name "Debian" -Runtime "docker" -ClaudeCode
+
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Runtime -eq "docker" -and $ClaudeCode
+            }
+        }
+
+        It "Should display success message after the dev stack is applied" {
             Mock Write-Host {}
-            Mock Install-WslDockerEngine { $true }
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslManager -Command "setup-docker" -Name "Ubuntu"
+            Invoke-WslManager -Command "setup-dev-stack" -Name "Ubuntu"
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Docker*" }
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully*dev stack*Ubuntu*" }
         }
 
-        It "Should handle WSL1 distribution error" {
-            Mock Install-WslDockerEngine { throw "Distribution 'OldDebian' is using WSL1.`nDocker requires WSL2. Upgrade with:`n  wsl.exe --set-version OldDebian 2" }
+        It "Should propagate the error '<Message>'" -ForEach @(
+            @{ Message = "is using WSL1" }
+            @{ Message = "does not support systemd" }
+            @{ Message = "Docker is already installed" }
+            @{ Message = "No default user configured" }
+        ) {
+            Mock Install-WslDevStack { throw "Distribution 'Debian': $Message" }
 
-            { Invoke-WslManager -Command "setup-docker" -Name "OldDebian" } | Should -Throw "*WSL1*"
-        }
-
-        It "Should handle missing systemd error" {
-            Mock Install-WslDockerEngine { throw "Distribution 'CustomDistro' does not support systemd" }
-
-            { Invoke-WslManager -Command "setup-docker" -Name "CustomDistro" } | Should -Throw "*systemd*"
-        }
-
-        It "Should handle Docker already installed error" {
-            Mock Install-WslDockerEngine { throw "Docker is already installed in 'Debian'" }
-
-            { Invoke-WslManager -Command "setup-docker" -Name "Debian" } | Should -Throw "*already installed*"
-        }
-
-        It "Should handle no default user error" {
-            Mock Install-WslDockerEngine { throw "No default user configured in 'Debian'.`nDocker setup requires a non-root user" }
-
-            { Invoke-WslManager -Command "setup-docker" -Name "Debian" } | Should -Throw "*default user*"
+            { Invoke-WslManager -Command "setup-dev-stack" -Name "Debian" } | Should -Throw "*$Message*"
         }
 
         It "Should cancel when selection is cancelled" {
             Mock Test-RunningInCIorTestEnvironment { $false }
             Mock Write-Host {}
             Mock Read-SpectreSelection { $null }
-            Mock Install-WslDockerEngine { $true }
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslManager -Command "setup-docker"
+            Invoke-WslManager -Command "setup-dev-stack"
 
             Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
-            Should -Invoke Install-WslDockerEngine -Times 0
+            Should -Invoke Install-WslDevStack -Times 0
         }
     }
 
-    Context "When called with 'setup-podman' argument" {
-        BeforeEach {
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-        }
-
-        It "Should prompt for distribution when Name is not provided" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-SpectreSelection { "Debian" }
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman"
-
-            Should -Invoke Read-SpectreSelection -Times 1
-            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Debian" }
-        }
-
-        It "Should call Install-WslPodman when Name is provided" {
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman" -Name "Debian"
-
-            Should -Invoke Install-WslPodman -ParameterFilter {
-                $DistroName -eq "Debian" -and
-                $Confirm -eq $false
-            }
-        }
-
-        It "Should display success message after Podman installation" {
-            Mock Write-Host {}
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman" -Name "Ubuntu"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Podman*" }
-        }
-
-        It "Should handle WSL1 distribution error" {
-            Mock Install-WslPodman { throw "Distribution 'OldDebian' is using WSL1.`nPodman requires WSL2. Upgrade with:`n  wsl.exe --set-version OldDebian 2" }
-
-            { Invoke-WslManager -Command "setup-podman" -Name "OldDebian" } | Should -Throw "*WSL1*"
-        }
-
-        It "Should handle Docker already installed (mutual exclusion) error" {
-            Mock Install-WslPodman { throw "Docker is already installed in 'Debian'. Podman and Docker cannot coexist." }
-
-            { Invoke-WslManager -Command "setup-podman" -Name "Debian" } | Should -Throw "*Docker is already installed*"
-        }
-
-        It "Should handle no default user error" {
-            Mock Install-WslPodman { throw "No default user configured in 'Debian'.`nPodman setup requires a non-root user" }
-
-            { Invoke-WslManager -Command "setup-podman" -Name "Debian" } | Should -Throw "*default user*"
-        }
-
-        It "Should cancel when selection is cancelled" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-SpectreSelection { $null }
-            Mock Install-WslPodman { $true }
-
-            Invoke-WslManager -Command "setup-podman"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
-            Should -Invoke Install-WslPodman -Times 0
-        }
-    }
-
-    Context "When called with 'setup-devpod' argument" {
-        BeforeEach {
-            Mock Get-WslDistroList {
-                @(
-                    [PSCustomObject]@{ Name = "Debian"; State = "Running"; Version = 2; IsDefault = $true },
-                    [PSCustomObject]@{ Name = "Ubuntu"; State = "Stopped"; Version = 2; IsDefault = $false }
-                )
-            } -ParameterFilter { $Detailed }
-        }
-
-        It "Should prompt for distribution when Name is not provided" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-SpectreSelection { "Debian" }
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod"
-
-            Should -Invoke Read-SpectreSelection -Times 1
-            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Debian" }
-        }
-
-        It "Should call Install-WslDevPod when Name is provided" {
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod" -Name "Debian"
-
-            Should -Invoke Install-WslDevPod -ParameterFilter {
-                $DistroName -eq "Debian" -and
-                $Confirm -eq $false
-            }
-        }
-
-        It "Should display success message after DevPod installation" {
-            Mock Write-Host {}
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod" -Name "Ubuntu"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed DevPod*" }
-        }
-
-        It "Should handle no container engine error" {
-            Mock Install-WslDevPod { throw "Neither Docker nor Podman is installed in 'Debian'." }
-
-            { Invoke-WslManager -Command "setup-devpod" -Name "Debian" } | Should -Throw "*Neither Docker nor Podman*"
-        }
-
-        It "Should handle no default user error" {
-            Mock Install-WslDevPod { throw "No default user configured in 'Debian'." }
-
-            { Invoke-WslManager -Command "setup-devpod" -Name "Debian" } | Should -Throw "*default user*"
-        }
-
-        It "Should cancel when selection is cancelled" {
-            Mock Test-RunningInCIorTestEnvironment { $false }
-            Mock Write-Host {}
-            Mock Read-SpectreSelection { $null }
-            Mock Install-WslDevPod { $true }
-
-            Invoke-WslManager -Command "setup-devpod"
-
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*cancel*" }
-            Should -Invoke Install-WslDevPod -Times 0
+    Context "When called with a removed setup command" {
+        It "Should reject '<Removed>'" -ForEach @(
+            @{ Removed = "setup-docker" }
+            @{ Removed = "setup-podman" }
+            @{ Removed = "setup-devpod" }
+        ) {
+            { Invoke-WslManager -Command $Removed -Name "Debian" } | Should -Throw "*does not belong to the set*"
         }
     }
 
