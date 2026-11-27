@@ -43,6 +43,8 @@ workspace "Shortcuts" "Keyboard-driven launcher and automation toolkit for Windo
                 installDevpodSh = component "install-devpod.sh" "Downloads the DevPod CLI and configures its provider." "Bash"
                 setupProxySh = component "setup-proxy.sh" "Writes the proxy settings for shells, apt, Docker and Podman." "Bash"
                 setupCaSh = component "setup-ca.sh" "Writes wsl-manager-*.crt to /usr/local/share/ca-certificates and runs update-ca-certificates." "Bash"
+                setupDevStackSh = component "setup-dev-stack.sh" "Installs ansible-core and git, fetches the pinned dev-stack role and runs the playbook in lib/wsl/ansible." "Bash"
+                setupBinfmtInteropSh = component "setup-binfmt-interop.sh" "Registers the WSLInterop binfmt format so Windows executables run in the distribution." "Bash"
                 syncSshConfigSh = component "sync-ssh-config.sh" "Copies SSH keys into the distribution and syncs DevPod entries back to Windows." "Bash"
             }
             claudeCodeInstaller = container "Claude Code installer" "Installs or updates the Claude Code CLI with the native installer. tools/claude-code." "PowerShell"

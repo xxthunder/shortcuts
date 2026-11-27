@@ -1,0 +1,6 @@
+---
+roles:
+  - src: https://github.com/xxthunder/ansible-role-dev-stack.git
+    scm: git
+    version: v1.8.0
+    name: dev_stack

@@ -1,0 +1,37 @@
+---
+# Applies the dev_stack role to the WSL distribution it runs in.
+# Called by setup-dev-stack.sh with -e runtime=... -e username=... -e claude_code=...
+- name: Set up the dev stack in this distribution
+  hosts: localhost
+  connection: local
+  become: true
+  environment:
+    http_proxy: "{{ lookup('ansible.builtin.env', 'http_proxy') }}"
+    https_proxy: "{{ lookup('ansible.builtin.env', 'https_proxy') }}"
+    no_proxy: "{{ lookup('ansible.builtin.env', 'no_proxy') }}"
+    HTTP_PROXY: "{{ lookup('ansible.builtin.env', 'HTTP_PROXY') }}"
+    HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'HTTPS_PROXY') }}"
+    NO_PROXY: "{{ lookup('ansible.builtin.env', 'NO_PROXY') }}"
+  vars:
+    dev_stack_container_runtime: "{{ runtime }}"
+    dev_stack_user: "{{ username }}"
+    dev_stack_install_claude_code: "{{ claude_code | bool }}"
+    dev_stack_install_devpod: true
+    dev_stack_install_uv: true
+    dev_stack_install_gh: true
+    dev_stack_install_zsh: true
+    dev_stack_ssh_agent: false
+    dev_stack_disable_password_auth: false
+  roles:
+    - dev_stack
+  post_tasks:
+    - name: List the DevPod providers
+      ansible.builtin.command: devpod provider list
+      become_user: "{{ username }}"
+      register: devpod_providers
+      changed_when: false
+
+    - name: Add and use the DevPod docker provider
+      ansible.builtin.shell: devpod provider add docker && devpod provider use docker
+      become_user: "{{ username }}"
+      when: "'docker' not in devpod_providers.stdout"
