@@ -10,6 +10,8 @@
 ## Table of Contents
 
 ### Open
+- [SC-096 — CI runner freezes during the WSL integration tests](sc-096.md)
+- [SC-095 — setup-dev-stack polish from the SC-066a review](sc-095.md)
 - [SC-094 — The gate as a script in the repository](sc-094.md)
 - [SC-090 — update-scoop's tests assert every clause of its requirements](sc-090.md)
 - [SC-089 — The install sets up the Shortcuts extension for Command Palette with both shortcuts folders](sc-089.md)
