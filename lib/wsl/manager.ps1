@@ -68,9 +68,7 @@ function Show-WslMenu {
         "Update distribution"               = "update"
         "Remove distribution"               = "remove"
         "Setup user account"                = "setup-user"
-        "Setup Docker"                      = "setup-docker"
-        "Setup Podman"                      = "setup-podman"
-        "Setup DevPod"                      = "setup-devpod"
+        "Setup dev stack (Ansible)"         = "setup-dev-stack"
         "Sync SSH config"                   = "sync-ssh-config"
         "Setup CA certificates (corporate)" = "setup-ca"
         "Setup proxy (corporate)"           = "setup-proxy"
@@ -170,7 +168,7 @@ function Invoke-WslManager {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
+        [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-dev-stack", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
         [string]$Command = "",
 
         [Parameter(Position = 1)]
@@ -183,7 +181,10 @@ function Invoke-WslManager {
         [string]$Password = "",
         [string[]]$Url = @(),
         [string]$Subject = "",
-        [switch]$Remove
+        [switch]$Remove,
+        [ValidateSet("podman", "docker")]
+        [string]$Runtime = "podman",
+        [switch]$ClaudeCode
     )
 
     Assert-Wsl2Installed
@@ -193,5 +194,5 @@ function Invoke-WslManager {
         return
     }
 
-    Invoke-WslCommand -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove
+    Invoke-WslCommand -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove -Runtime $Runtime -ClaudeCode:$ClaudeCode
 }

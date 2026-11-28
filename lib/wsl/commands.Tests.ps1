@@ -500,28 +500,56 @@ Describe "Invoke-WslCommand" {
             Should -Invoke Invoke-SetupCa -ParameterFilter { $DistroName -eq "Debian" -and $Remove }
         }
 
-        It "Should dispatch 'setup-docker' with DistroName" {
-            Mock Invoke-SetupDocker {}
+        It "Should dispatch 'setup-dev-stack' with the default runtime podman and no Claude Code" {
+            Mock Write-Host {}
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslCommand -Command "setup-docker" -Name "Debian"
+            Invoke-WslCommand -Command "setup-dev-stack" -Name "d"
 
-            Should -Invoke Invoke-SetupDocker -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "d" -and $Runtime -eq "podman" -and -not $ClaudeCode
+            }
         }
 
-        It "Should dispatch 'setup-podman' with DistroName" {
-            Mock Invoke-SetupPodman {}
+        It "Should pass -Runtime docker and -ClaudeCode through 'setup-dev-stack'" {
+            Mock Write-Host {}
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslCommand -Command "setup-podman" -Name "Debian"
+            Invoke-WslCommand -Command "setup-dev-stack" -Name "d" -Runtime "docker" -ClaudeCode
 
-            Should -Invoke Invoke-SetupPodman -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "d" -and $Runtime -eq "docker" -and $ClaudeCode
+            }
         }
 
-        It "Should dispatch 'setup-devpod' with DistroName" {
-            Mock Invoke-SetupDevPod {}
+        It "Should pass -Username through 'setup-dev-stack'" {
+            Mock Write-Host {}
+            Mock Install-WslDevStack { $true }
 
-            Invoke-WslCommand -Command "setup-devpod" -Name "Debian"
+            Invoke-WslCommand -Command "setup-dev-stack" -Name "d" -Username "alice"
 
-            Should -Invoke Invoke-SetupDevPod -ParameterFilter { $DistroName -eq "Debian" }
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "d" -and $Username -eq "alice"
+            }
+        }
+
+        It "Should reject the removed command '<Removed>'" -ForEach @(
+            @{ Removed = "setup-docker" }
+            @{ Removed = "setup-podman" }
+            @{ Removed = "setup-devpod" }
+        ) {
+            $act = { Invoke-WslCommand -Command $Removed -Name "d" }
+
+            $act | Should -Throw "*does not belong to the set*"
+        }
+
+        It "Should reject a runtime other than podman or docker" {
+            Mock Install-WslDevStack { $true }
+
+            $act = { Invoke-WslCommand -Command "setup-dev-stack" -Name "d" -Runtime "containerd" }
+
+            $act | Should -Throw "*does not belong to the set*"
+            Should -Invoke Install-WslDevStack -Times 0
         }
 
         It "Should dispatch 'sync-ssh-config' with DistroName" {
@@ -1291,31 +1319,58 @@ Describe "Invoke-SetupUser" {
     }
 }
 
-Describe "Invoke-SetupDocker" {
+Describe "Invoke-SetupDevStack" {
     Context "When DistroName is provided" {
         BeforeEach {
             Mock Write-Host {}
-            Mock Install-WslDockerEngine { $true }
+            Mock Install-WslDevStack { $true }
+            Mock Read-SpectreSelection { throw "Must not prompt for the runtime when the name is given" }
+            Mock Get-UserConfirmation { throw "Must not ask about Claude Code when the name is given" }
         }
 
-        It "Should call Install-WslDockerEngine directly" {
-            Invoke-SetupDocker -DistroName "Debian"
+        It "Should call Install-WslDevStack with podman and without Claude Code by default" {
+            Invoke-SetupDevStack -DistroName "Debian"
 
-            Should -Invoke Install-WslDockerEngine -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Runtime -eq "podman" -and -not $ClaudeCode -and $Confirm -eq $false
+            }
         }
 
-        It "Should display success message" {
-            Invoke-SetupDocker -DistroName "Ubuntu"
+        It "Should pass runtime '<Runtime>' and Claude Code '<ClaudeCode>' through" -ForEach @(
+            @{ Runtime = "podman"; ClaudeCode = $true }
+            @{ Runtime = "docker"; ClaudeCode = $false }
+            @{ Runtime = "docker"; ClaudeCode = $true }
+        ) {
+            $wantRuntime = $Runtime
+            $wantClaudeCode = $ClaudeCode
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Docker*" }
+            Invoke-SetupDevStack -DistroName "Debian" -Runtime $Runtime -ClaudeCode:$ClaudeCode
+
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Runtime -eq $wantRuntime -and ([bool]$ClaudeCode) -eq $wantClaudeCode
+            }
+        }
+
+        It "Should display a success message naming the dev stack and the distribution" {
+            Invoke-SetupDevStack -DistroName "Ubuntu"
+
+            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully*dev stack*Ubuntu*" }
+        }
+
+        It "Should not display a success message when Install-WslDevStack returns false" {
+            Mock Install-WslDevStack { $false }
+
+            Invoke-SetupDevStack -DistroName "Debian"
+
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { $Object -like "*Successfully*" }
         }
 
         It "Should propagate errors" {
-            Mock Install-WslDockerEngine { throw "Docker install failed" }
+            Mock Install-WslDevStack { throw "dev stack failed" }
 
-            $act = { Invoke-SetupDocker -DistroName "Debian" }
+            $act = { Invoke-SetupDevStack -DistroName "Debian" }
 
-            $act | Should -Throw "*Docker install failed*"
+            $act | Should -Throw "*dev stack failed*"
         }
     }
 
@@ -1324,98 +1379,104 @@ Describe "Invoke-SetupDocker" {
             Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
             Mock Write-Host {}
             Mock Write-WarningMsg {}
-            Mock Install-WslDockerEngine {}
+            Mock Install-WslDevStack {}
 
-            Invoke-SetupDocker
+            Invoke-SetupDevStack
 
             Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
-            Should -Invoke Install-WslDockerEngine -Times 0
+            Should -Invoke Install-WslDevStack -Times 0
+        }
+
+        It "Should not install when the distribution selection is cancelled" {
+            Mock Select-WslDistro { $null }
+            Mock Write-Host {}
+            Mock Install-WslDevStack {}
+
+            Invoke-SetupDevStack
+
+            Should -Invoke Install-WslDevStack -Times 0
         }
     }
-}
 
-Describe "Invoke-SetupPodman" {
-    Context "When DistroName is provided" {
+    Context "When asked in the TUI (empty name)" {
         BeforeEach {
             Mock Write-Host {}
-            Mock Install-WslPodman { $true }
+            Mock Test-RunningInCIorTestEnvironment { $false }
+            Mock Select-WslDistro { "Debian" }
+            Mock Install-WslDevStack { $true }
+            Mock Read-SpectreSelection { "podman" } -ParameterFilter { $Message -like "*runtime*" }
+            Mock Get-UserConfirmation { $false } -ParameterFilter { $message -like "*Claude Code*" }
         }
 
-        It "Should call Install-WslPodman directly" {
-            Invoke-SetupPodman -DistroName "Debian"
+        It "Should ask for the runtime with podman listed first as the default" {
+            Invoke-SetupDevStack
 
-            Should -Invoke Install-WslPodman -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+            Should -Invoke Read-SpectreSelection -Times 1 -Exactly -ParameterFilter {
+                $Message -like "*runtime*" -and @($Choices)[0] -eq "podman" -and @($Choices) -contains "docker"
+            }
         }
 
-        It "Should display success message" {
-            Invoke-SetupPodman -DistroName "Ubuntu"
+        It "Should ask yes or no for Claude Code" {
+            Invoke-SetupDevStack
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed Podman*" }
+            Should -Invoke Get-UserConfirmation -Times 1 -Exactly -ParameterFilter { $message -like "*Claude Code*" }
         }
 
-        It "Should propagate errors" {
-            Mock Install-WslPodman { throw "Podman install failed" }
+        It "Should ask for Claude Code with No as the default, like the CLI" {
+            Invoke-SetupDevStack
 
-            $act = { Invoke-SetupPodman -DistroName "Debian" }
-
-            $act | Should -Throw "*Podman install failed*"
-        }
-    }
-
-    Context "When DistroName is not provided" {
-        It "Should warn when no distributions exist" {
-            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Write-WarningMsg {}
-            Mock Install-WslPodman {}
-
-            Invoke-SetupPodman
-
-            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
-            Should -Invoke Install-WslPodman -Times 0
-        }
-    }
-}
-
-Describe "Invoke-SetupDevPod" {
-    Context "When DistroName is provided" {
-        BeforeEach {
-            Mock Write-Host {}
-            Mock Install-WslDevPod { $true }
+            Should -Invoke Get-UserConfirmation -Times 1 -Exactly -ParameterFilter {
+                $message -like "*Claude Code*" -and $defaultValueForUser -eq $false
+            }
         }
 
-        It "Should call Install-WslDevPod directly" {
-            Invoke-SetupDevPod -DistroName "Debian"
+        It "Should offer the back choice last in the runtime picker" {
+            Invoke-SetupDevStack
 
-            Should -Invoke Install-WslDevPod -ParameterFilter { $DistroName -eq "Debian" -and $Confirm -eq $false }
+            Should -Invoke Read-SpectreSelection -Times 1 -Exactly -ParameterFilter {
+                $Message -like "*runtime*" -and @($Choices)[-1] -eq $WslPickerBackChoice
+            }
         }
 
-        It "Should display success message" {
-            Invoke-SetupDevPod -DistroName "Ubuntu"
+        It "Should install nothing and skip the pause when the runtime answer is <Answer>" -ForEach @(
+            @{ Answer = "the back choice" }
+            @{ Answer = "null" }
+        ) {
+            $picked = if ($Answer -eq "null") { $null } else { $WslPickerBackChoice }
+            Mock Read-SpectreSelection { $picked } -ParameterFilter { $Message -like "*runtime*" }
+            $script:WslSkipContinuePause = $false
 
-            Should -Invoke Write-Host -ParameterFilter { $Object -like "*Successfully installed DevPod*" }
+            Invoke-SetupDevStack
+
+            Should -Invoke Install-WslDevStack -Times 0
+            Should -Invoke Get-UserConfirmation -Times 0
+            $script:WslSkipContinuePause | Should -BeTrue
         }
 
-        It "Should propagate errors" {
-            Mock Install-WslDevPod { throw "DevPod install failed" }
+        It "Should install with the chosen runtime '<Runtime>' and Claude Code '<ClaudeCode>'" -ForEach @(
+            @{ Runtime = "podman"; ClaudeCode = $false }
+            @{ Runtime = "podman"; ClaudeCode = $true }
+            @{ Runtime = "docker"; ClaudeCode = $false }
+            @{ Runtime = "docker"; ClaudeCode = $true }
+        ) {
+            Mock Read-SpectreSelection { $Runtime } -ParameterFilter { $Message -like "*runtime*" }
+            Mock Get-UserConfirmation { $ClaudeCode } -ParameterFilter { $message -like "*Claude Code*" }
+            $wantRuntime = $Runtime
+            $wantClaudeCode = $ClaudeCode
 
-            $act = { Invoke-SetupDevPod -DistroName "Debian" }
+            Invoke-SetupDevStack
 
-            $act | Should -Throw "*DevPod install failed*"
+            Should -Invoke Install-WslDevStack -Times 1 -Exactly -ParameterFilter {
+                $DistroName -eq "Debian" -and $Runtime -eq $wantRuntime -and ([bool]$ClaudeCode) -eq $wantClaudeCode
+            }
         }
-    }
 
-    Context "When DistroName is not provided" {
-        It "Should warn when no distributions exist" {
-            Mock Get-WslDistroList { @() } -ParameterFilter { $Detailed }
-            Mock Write-Host {}
-            Mock Write-WarningMsg {}
-            Mock Install-WslDevPod {}
+        It "Should not install when the runtime selection is cancelled" {
+            Mock Read-SpectreSelection { $null } -ParameterFilter { $Message -like "*runtime*" }
 
-            Invoke-SetupDevPod
+            Invoke-SetupDevStack
 
-            Should -Invoke Write-WarningMsg -ParameterFilter { $Message -like "*No WSL distributions*" }
-            Should -Invoke Install-WslDevPod -Times 0
+            Should -Invoke Install-WslDevStack -Times 0
         }
     }
 }

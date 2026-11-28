@@ -19,6 +19,30 @@ AfterAll {
     Stop-SutIsolation
 }
 
+Describe "structurizr-local.sh" {
+    BeforeAll {
+        $script:BashText = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'structurizr-local.sh'))
+        # The hint the script prints when neither docker nor podman is found
+        $script:NoRuntimeHint = [regex]::Match($script:BashText, '(?m)^.*neither docker nor podman found.*$').Value
+    }
+
+    It "Should print a hint when no container runtime is found" {
+        $script:NoRuntimeHint | Should -Not -BeNullOrEmpty
+    }
+
+    It "Should name setup-dev-stack in the hint" {
+        $script:NoRuntimeHint | Should -Match '\bsetup-dev-stack\b'
+    }
+
+    It "Should not name the removed command <Removed>" -ForEach @(
+        @{ Removed = 'setup-docker' }
+        @{ Removed = 'setup-podman' }
+        @{ Removed = 'setup-devpod' }
+    ) {
+        @($script:BashText -split "\n" | Where-Object { $_ -match ('\b' + [regex]::Escape($Removed) + '\b') }) | Should -BeNullOrEmpty
+    }
+}
+
 Describe "Get-StructurizrLocalCommandLine" {
     It "Should run the Bash script in the default distribution when none is given" {
         Get-StructurizrLocalCommandLine -RepoRoot 'C:\Users\dev\shortcuts' -Port 8080 |

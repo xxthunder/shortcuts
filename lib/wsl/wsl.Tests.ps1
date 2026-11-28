@@ -15,7 +15,7 @@ AfterAll {
 
 Describe "Module Structure - Backward Compatibility" {
     Context "When wsl.ps1 is sourced" {
-        It "Should export all 22 core WSL functions" {
+        It "Should export all 23 core WSL functions" {
             # Define all functions that must remain accessible after refactoring
             $expectedFunctions = @(
                 'Test-WslInstalled'
@@ -37,7 +37,8 @@ Describe "Module Structure - Backward Compatibility" {
                 'Test-WslSystemd'
                 'Test-Wsl2Version'
                 'Test-WslDockerInstalled'
-                'Install-WslDockerEngine'
+                'Test-WslPodmanInstalled'
+                'Install-WslDevStack'
                 'Assert-WslDistroExists'
                 'Assert-WslDistroNotExists'
             )
@@ -46,6 +47,23 @@ Describe "Module Structure - Backward Compatibility" {
             foreach ($functionName in $expectedFunctions) {
                 Get-Command -Name $functionName -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because "$functionName must be accessible after sourcing wsl.ps1"
             }
+        }
+
+        It "Should not define the removed function <Removed>" -ForEach @(
+            @{ Removed = "Install-WslDockerEngine" }
+            @{ Removed = "Install-WslPodman" }
+            @{ Removed = "Install-WslDevPod" }
+        ) {
+            Get-Command -Name $Removed -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        }
+
+        It "Should not ship the removed file <Relative>" -ForEach @(
+            @{ Relative = "scripts\install-docker.sh" }
+            @{ Relative = "scripts\install-podman.sh" }
+            @{ Relative = "scripts\install-devpod.sh" }
+            @{ Relative = "devpod.ps1" }
+        ) {
+            Join-Path $PSScriptRoot $Relative | Should -Not -Exist
         }
 
         It "Should allow wsl-manager.ps1 to source wsl.ps1 without errors" {

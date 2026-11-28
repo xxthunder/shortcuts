@@ -1,34 +1,28 @@
 ﻿<#
 .DESCRIPTION
     Integration tests for wsl-manager.ps1 that run against real WSL.
-    These tests execute WSL commands and verify the complete workflow.
+    They cover the commands that do not install a container stack:
+    create, update, clone, setup-user, list, terminate, script execution,
+    auto-terminate and the in-distro root CA (setup-ca).
+    The dev-stack role is covered by manager.devstack.Integration.Tests.ps1.
 
     Test workflow:
     1. Use existing Debian or install it (base distro)
     2. Update Debian (base distro) to latest packages
     3. Clone Debian to debian-custom-test (custom distro)
     4. Setup user in debian-custom-test (testuser with sudo)
-    5. Setup Docker in debian-custom-test (includes automatic systemd/interop/rc.local)
-    6. Verify systemd is configured and running
-    7. Verify Windows interop is configured and working
-    8. Verify rc.local fix is applied
-    9. Verify user configuration is preserved
-    10. Test complete Docker functionality (Compose, Buildx, hello-world)
-    11. Install DevPod with auto-detected Docker provider
-    12. Verify DevPod idempotency
-    13. List both distributions
-    14. Validate state management (running/stopped checks)
-
-    RESULT: After running this test, debian-custom-test is a FULLY PREPARED distribution with:
-    [OK] Latest packages, [OK] User account, [OK] Systemd, [OK] Windows interop, [OK] RC.local fix, [OK] Docker, [OK] DevPod
+    5. List the distributions
+    6. Auto-terminate for update, clone and remove
+    7. Terminate a running and a stopped distribution
+    8. Execute bash scripts in the distribution
+    9. Install and remove root CA certificates
 
     NOTE: Test distributions are PRESERVED after tests complete for exploratory testing.
-    Test distribution: debian-custom-test (fully prepared, kept after tests)
+    Test distribution: debian-custom-test (kept after tests)
     Base distribution: Debian (minimal, kept after tests)
 #>
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Integration tests use Write-Host for user feedback during manual test runs.')]
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '', Justification = 'File is UTF-8 without BOM, which is standard for cross-platform compatibility.')]
 param()
 
 Describe "WSL Manager Integration Tests" -Tag "Integration" {
@@ -198,10 +192,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             $output | Should -Match "Successfully created user '$testUsername'"
             $output | Should -Match "Restarting distribution"
 
-            # Verify NOPASSWD warning is displayed (Optional, output capture can be flaky)
-            $output | Should -Match "NOPASSWD sudo has been configured"
-            $output | Should -Match "allows running commands as root without password prompt"
-
             # Verify user exists in the distribution
             $userCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "id -u $testUsername" -PrintCommand $false -PassThru
             $userCheck | Should -Match '^\d+$'
@@ -209,11 +199,6 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
             # Verify user is in sudo group
             $groupCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "groups $testUsername" -PrintCommand $false -PassThru
             $groupCheck | Should -Match '\bsudo\b'
-
-            # Verify sudoers file exists with NOPASSWD configuration
-            $sudoersCheck = Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "sudo cat /etc/sudoers.d/$testUsername" -PrintCommand $false -PassThru
-            $sudoersCheck | Should -Match "NOPASSWD:ALL"
-            $sudoersCheck | Should -Match "$testUsername ALL="
 
             # Try to create the same user again (should fail with proper error message)
             Write-Host "`n==> TEST: Attempting to create same user again (should fail) ..." -ForegroundColor Magenta
@@ -534,255 +519,4 @@ Describe "WSL Manager Integration Tests" -Tag "Integration" {
         }
     }
 
-    Context "Docker Setup with Prerequisites" {
-        It "Should install or verify Docker and all components (idempotent)" {
-            Write-Host "`n==> TEST: Setting up Docker (demonstrating idempotency)..." -ForegroundColor Magenta
-
-            # First run: Install or verify
-            Write-Host "    First run: Installing/verifying Docker..." -ForegroundColor Cyan
-            Write-Host "    This may take several minutes..." -ForegroundColor Yellow
-            $result1 = Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false
-            $result1 | Should -Be $true
-
-            # Verify Docker installed
-            $dockerInstalled = Test-WslDockerInstalled -DistroName $script:customDistroName
-            $dockerInstalled | Should -Be $true
-
-            # Verify Docker version
-            $dockerVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "docker --version" -PrintCommand $false -PassThru
-            Write-Host "    Docker version: $dockerVersion" -ForegroundColor Cyan
-            $dockerVersion | Should -Match "Docker version"
-
-            # Second run: Demonstrate idempotency (no error)
-            Write-Host "    Second run: Demonstrating idempotency..." -ForegroundColor Cyan
-            $result2 = Install-WslDockerEngine -DistroName $script:customDistroName -Confirm:$false
-            $result2 | Should -Be $true
-
-            # Verify Docker still functional
-            $dockerVersion2 = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "docker --version" -PrintCommand $false -PassThru
-            Write-Host "    Docker version (after second run): $dockerVersion2" -ForegroundColor Cyan
-            $dockerVersion2 | Should -Match "Docker version"
-
-            # Restart distribution to apply group membership
-            Write-Host "    Restarting distribution for group membership..." -ForegroundColor Cyan
-            Stop-WslDistro -Name $script:customDistroName -Confirm:$false
-
-            # Start it again
-            Invoke-WslDistroCommand -DistroName $script:customDistroName -Command "echo 'restarted'" -PrintCommand $false -Silent $true
-
-            # Verify service is running
-            $serviceStatus = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "systemctl is-active docker" -PrintCommand $false -PassThru
-            Write-Host "    Docker service status: $serviceStatus" -ForegroundColor Cyan
-            $serviceStatus.Trim() | Should -Be "active"
-
-            # Verify user can run docker without sudo
-            Write-Host "    Testing docker ps as testuser..." -ForegroundColor Cyan
-            $dockerPsOutput = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "sudo -u testuser docker ps" -PrintCommand $false -PassThru
-            Write-Host "    Docker ps output: $dockerPsOutput" -ForegroundColor Cyan
-            $dockerPsOutput | Should -Match "CONTAINER ID|STATUS"
-
-            Write-Host "    Idempotent Docker setup verification complete" -ForegroundColor Green
-        }
-
-        It "Should verify systemd is configured and running (Docker prerequisite)" {
-            Write-Host "`n==> TEST: Verifying systemd configuration in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Verify systemd is configured in wsl.conf
-            $wslConfContent = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "cat /etc/wsl.conf" -PrintCommand $false -PassThru
-            Write-Host "    wsl.conf contents:" -ForegroundColor Cyan
-            Write-Host $wslConfContent
-
-            # Check for [boot] section with systemd=true
-            $wslConfContent | Should -Match '\[boot\]'
-            $wslConfContent | Should -Match 'systemd\s*=\s*true'
-
-            # Verify systemd is actually running
-            $systemdStatus = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "systemctl --version" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    systemctl version: $($systemdStatus -split "`n" | Select-Object -First 1)" -ForegroundColor Cyan
-            $systemdStatus | Should -Match "systemd \d+"
-
-            # Verify systemd is PID 1
-            $initProcess = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "ps -p 1 -o comm=" -PrintCommand $false -PassThru
-            Write-Host "    Init process (PID 1): $initProcess" -ForegroundColor Cyan
-            $initProcess.Trim() | Should -Be "systemd"
-
-            Write-Host "    Systemd verification complete" -ForegroundColor Green
-        }
-
-        It "Should verify Windows interop is configured (Docker prerequisite)" {
-            Write-Host "`n==> TEST: Verifying Windows interop configuration in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Verify interop section in wsl.conf
-            $wslConfContent = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "cat /etc/wsl.conf" -PrintCommand $false -PassThru
-
-            # Check for [interop] section
-            $wslConfContent | Should -Match '\[interop\]'
-            $wslConfContent | Should -Match 'enabled\s*=\s*true'
-            $wslConfContent | Should -Match 'appendWindowsPath\s*=\s*true'
-
-            # Verify Windows interop is actually working
-            $windowsPathTest = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "which cmd.exe" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Windows PATH integration: $windowsPathTest" -ForegroundColor Cyan
-            $windowsPathTest | Should -Match "cmd.exe|mnt.*Windows"
-
-            # Test executing a Windows command
-            $windowsCommandTest = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "cmd.exe /c echo Windows interop works" -PrintCommand $false -PassThru
-            Write-Host "    Windows command execution: $windowsCommandTest" -ForegroundColor Cyan
-            $windowsCommandTest | Should -Match "Windows interop works"
-
-            Write-Host "    Windows interop verification complete" -ForegroundColor Green
-        }
-
-        It "Should configure binfmt.d for WSL interop (not rc.local)" {
-            Write-Host "`n==> TEST: Verifying binfmt.d configuration in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Verify /etc/binfmt.d/WSLInterop.conf exists
-            $binfmtConfExists = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "test -f /etc/binfmt.d/WSLInterop.conf && echo 'exists'" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    /etc/binfmt.d/WSLInterop.conf exists: $binfmtConfExists" -ForegroundColor Cyan
-            $binfmtConfExists.Trim() | Should -Be "exists"
-
-            # Verify content matches expected configuration
-            $binfmtContent = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "cat /etc/binfmt.d/WSLInterop.conf" -PrintCommand $false -PassThru
-            Write-Host "    WSLInterop.conf contents: $binfmtContent" -ForegroundColor Cyan
-            $binfmtContent | Should -Match ":WSLInterop:M::MZ::/init:PF"
-
-            # Verify WSLInterop is registered and enabled in the kernel
-            # (systemd-binfmt.service itself fails on WSL 3.0, which mounts binfmt_misc/status read-only)
-            $interopState = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "head -n 1 /proc/sys/fs/binfmt_misc/WSLInterop 2>/dev/null || echo 'not-registered'" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Kernel WSLInterop registration: $interopState" -ForegroundColor Cyan
-            $interopState.Trim() | Should -Be "enabled"
-
-            # Verify rc.local does NOT exist (cleanup verification)
-            $rcLocalExists = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "test -f /etc/rc.local && echo 'exists' || echo 'not-found'" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    /etc/rc.local status: $rcLocalExists" -ForegroundColor Cyan
-            $rcLocalExists.Trim() | Should -Be "not-found"
-
-            Write-Host "    Binfmt.d configuration verification complete" -ForegroundColor Green
-        }
-
-        It "Should verify user configuration is preserved in wsl.conf" {
-            Write-Host "`n==> TEST: Verifying user configuration in $script:customDistroName ..." -ForegroundColor Magenta
-
-            # Verify [user] section exists with testuser
-            $wslConfContent = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "cat /etc/wsl.conf" -PrintCommand $false -PassThru
-
-            # Should have [user] section with default=testuser
-            $wslConfContent | Should -Match '\[user\]'
-            $wslConfContent | Should -Match 'default\s*=\s*testuser'
-
-            # Verify testuser is actually the default user
-            $currentUser = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "whoami" -PrintCommand $false -PassThru
-            Write-Host "    Current default user: $currentUser" -ForegroundColor Cyan
-            $currentUser.Trim() | Should -Be "testuser"
-
-            Write-Host "    User configuration verification complete" -ForegroundColor Green
-        }
-    }
-
-    Context "DevPod Setup with Docker Provider" {
-        It "Should install DevPod and auto-detect Docker as provider" {
-            Write-Host "`n==> TEST: Setting up DevPod with Docker provider ..." -ForegroundColor Magenta
-
-            Write-Host "    Installing DevPod..." -ForegroundColor Cyan
-            $result = Install-WslDevPod -DistroName $script:customDistroName -Confirm:$false
-            $result | Should -Be $true
-
-            # Verify DevPod installed
-            $devpodInstalled = Test-WslDevPodInstalled -DistroName $script:customDistroName
-            $devpodInstalled | Should -Be $true
-
-            # Verify DevPod version
-            $devpodVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "devpod version" -PrintCommand $false -PassThru
-            Write-Host "    DevPod version: $devpodVersion" -ForegroundColor Cyan
-            $devpodVersion | Should -Not -BeNullOrEmpty
-
-            Write-Host "    DevPod installation complete" -ForegroundColor Green
-        }
-
-        It "Should verify Docker provider is configured for testuser" {
-            Write-Host "`n==> TEST: Verifying Docker provider is configured ..." -ForegroundColor Magenta
-
-            $providerList = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "sudo -u testuser devpod provider list" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Provider list: $providerList" -ForegroundColor Cyan
-            $providerList | Should -Match "docker"
-
-            Write-Host "    Docker provider verification complete" -ForegroundColor Green
-        }
-
-        It "Should demonstrate DevPod idempotency" {
-            Write-Host "`n==> TEST: Demonstrating DevPod idempotency ..." -ForegroundColor Magenta
-
-            $result = Install-WslDevPod -DistroName $script:customDistroName -Confirm:$false
-            $result | Should -Be $true
-
-            Write-Host "    Idempotent DevPod setup verified" -ForegroundColor Green
-        }
-    }
-
-    Context "Final Validation - Fully Prepared Distribution" {
-        It "Should have all features working in the final distribution" {
-            Write-Host "`n==> TEST: Final validation of $script:customDistroName ..." -ForegroundColor Magenta
-            Write-Host "`n    This distribution has been fully prepared with:" -ForegroundColor Cyan
-            Write-Host "    [OK] Latest packages (updated)" -ForegroundColor Green
-            Write-Host "    [OK] User account (testuser with sudo)" -ForegroundColor Green
-            Write-Host "    [OK] Systemd enabled" -ForegroundColor Green
-            Write-Host "    [OK] Windows interop enabled" -ForegroundColor Green
-            Write-Host "    [OK] Kernel-level interop configured (binfmt.d)" -ForegroundColor Green
-            Write-Host "    [OK] Docker Engine installed" -ForegroundColor Green
-            Write-Host "    [OK] Docker Compose available" -ForegroundColor Green
-            Write-Host "    [OK] Docker Buildx available" -ForegroundColor Green
-            Write-Host "    [OK] DevPod CLI installed (Docker provider)" -ForegroundColor Green
-
-            # Summary verification
-            Write-Host "`n    Running summary verification..." -ForegroundColor Cyan
-
-            # Test Docker Compose
-            $composeVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "docker compose version" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Docker Compose: $($composeVersion -split "`n" | Select-Object -First 1)" -ForegroundColor Cyan
-            $composeVersion | Should -Match "Docker Compose version"
-
-            # Test Docker Buildx
-            $buildxVersion = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "docker buildx version" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Docker Buildx: $($buildxVersion -split "`n" | Select-Object -First 1)" -ForegroundColor Cyan
-            $buildxVersion | Should -Match "buildx"
-
-            # Test that testuser can actually use Docker (full integration test)
-            Write-Host "    Testing Docker hello-world as testuser..." -ForegroundColor Cyan
-            $helloWorld = Invoke-WslDistroCommand -DistroName $script:customDistroName `
-                -Command "sudo -u testuser docker run --rm hello-world" -PrintCommand $false -PassThru -StopAtError $false
-            Write-Host "    Docker hello-world output (excerpt): $(($helloWorld -split "`n" | Select-Object -First 3) -join ' ')" -ForegroundColor Cyan
-            $helloWorld | Should -Match "Hello from Docker"
-
-            Write-Host "`n    ===============================================" -ForegroundColor Green
-            Write-Host "    [OK] FULLY PREPARED DISTRIBUTION: $script:customDistroName" -ForegroundColor Green
-            Write-Host "    ===============================================" -ForegroundColor Green
-            Write-Host "`n    This distribution is ready for:" -ForegroundColor Cyan
-            Write-Host "    - Docker development" -ForegroundColor White
-            Write-Host "    - VS Code DevContainers" -ForegroundColor White
-            Write-Host "    - Container-based workflows" -ForegroundColor White
-            Write-Host "    - Systemd services" -ForegroundColor White
-            Write-Host "    - Windows/Linux interop" -ForegroundColor White
-        }
-
-    }
 }

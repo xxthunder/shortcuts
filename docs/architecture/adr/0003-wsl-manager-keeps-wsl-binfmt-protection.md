@@ -15,13 +15,13 @@
 
 WSL 3.0 protects against this with a read-only bind mount over `status` in each distribution ([WSL PR #40621](https://github.com/microsoft/WSL/pull/40621)); the `[boot] protectBinfmt` key in `/etc/wsl.conf` switches it and defaults to `true`. The side effect: `systemd-binfmt` flushes all rules through `status` before it applies `binfmt.d`, the flush fails with `EROFS`, and systemd reports the failure as its exit status. On WSL 3.0 `systemd-binfmt.service` is therefore `failed` after every boot and on every restart, although it registers the `binfmt.d` rules. The WSL team calls the failure benign ([WSL issue #41226](https://github.com/microsoft/WSL/issues/41226)).
 
-`setup-docker` restarted the unit and checked that it was `active`, so it failed on every distribution on WSL 3.0 until SC-063.
+The former `setup-docker` restarted the unit and checked that it was `active`, so it failed on every distribution on WSL 3.0 until SC-063. It is gone; `setup-dev-stack` runs `setup-binfmt-interop.sh`, which does not restart the unit.
 
 ## Decision
 
 wsl-manager leaves WSL's `binfmt_misc` protection on: it never writes `protectBinfmt` into a distribution.
 
-Nothing in wsl-manager depends on `systemd-binfmt.service` being `active`, neither in the scripts it runs in a distribution nor in its tests. It applies its own `binfmt.d` rule without the flush of all rules (see step 8.6 of `lib/wsl/scripts/install-docker.sh`), and it treats the kernel entry `/proc/sys/fs/binfmt_misc/WSLInterop` as the state to check.
+Nothing in wsl-manager depends on `systemd-binfmt.service` being `active`, neither in the scripts it runs in a distribution nor in its tests. It applies its own `binfmt.d` rule without the flush of all rules (see `lib/wsl/scripts/setup-binfmt-interop.sh`), and it treats the kernel entry `/proc/sys/fs/binfmt_misc/WSLInterop` as the state to check.
 
 ## Alternatives considered
 

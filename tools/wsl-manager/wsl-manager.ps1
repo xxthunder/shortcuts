@@ -17,9 +17,7 @@
       setup-user       Create a user account with sudo privileges
       setup-proxy      Configure corporate proxy settings
       setup-ca         Install or remove corporate root CA certificates, found by URL or by name
-      setup-docker     Install Docker Engine (includes systemd and interop setup)
-      setup-podman     Install Podman rootless (includes systemd and interop setup)
-      setup-devpod     Install the DevPod CLI and configure its container provider
+      setup-dev-stack  Set up the container runtime, DevPod and optionally Claude Code with Ansible (-Runtime podman|docker, -ClaudeCode)
       sync-ssh-config  Copy DevPod SSH config blocks to the Windows SSH config
       repair-interop   Repair Windows interop configuration in wsl.conf
       terminate        Stop a running distribution
@@ -30,7 +28,7 @@
     When called without a command, enters an interactive menu.
 
 .PARAMETER Command
-    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-ca, setup-docker, setup-podman, setup-devpod, sync-ssh-config, repair-interop, terminate, shutdown, update-wsl, configure-wsl.
+    The command to execute: list, install, shell, clone, remove, update, setup-user, setup-proxy, setup-ca, setup-dev-stack, sync-ssh-config, repair-interop, terminate, shutdown, update-wsl, configure-wsl.
     If not specified, enters interactive mode.
 
 .PARAMETER Name
@@ -64,11 +62,18 @@
 
 .PARAMETER Username
     The username to create (used with setup-user command).
+    Also the distribution user to set up with the setup-dev-stack command.
     If not provided, the user is prompted interactively.
 
 .PARAMETER Password
     The password for the new user (used with setup-user command).
     If not provided, the user is prompted interactively.
+
+.PARAMETER Runtime
+    The container runtime for setup-dev-stack: podman (default) or docker.
+
+.PARAMETER ClaudeCode
+    Also installs Claude Code (used with setup-dev-stack).
 
 .PARAMETER Url
     HTTPS URLs whose certificate chain root is installed (used with setup-ca), e.g.
@@ -118,7 +123,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-docker", "setup-podman", "setup-devpod", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
+    [ValidateSet("list", "install", "shell", "clone", "remove", "update", "setup-user", "setup-proxy", "setup-ca", "setup-dev-stack", "sync-ssh-config", "repair-interop", "terminate", "shutdown", "update-wsl", "configure-wsl", "")]
     [string]$Command = "",
 
     [Parameter(Position = 1)]
@@ -131,9 +136,12 @@ param(
     [string]$Password = "",
     [string[]]$Url = @(),
     [string]$Subject = "",
-    [switch]$Remove
+    [switch]$Remove,
+    [ValidateSet("podman", "docker")]
+    [string]$Runtime = "podman",
+    [switch]$ClaudeCode
 )
 
 . "$PSScriptRoot\..\..\lib\wsl\manager.ps1"
 
-Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove
+Invoke-WslManager -Command $Command -Name $Name -TargetName $TargetName -Username $Username -Password $Password -Url $Url -Subject $Subject -Remove:$Remove -Runtime $Runtime -ClaudeCode:$ClaudeCode
